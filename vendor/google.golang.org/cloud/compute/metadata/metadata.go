@@ -35,7 +35,7 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/net/context/ctxhttp"
 
-	"cloud.google.com/go/internal"
+	"google.golang.org/cloud/internal"
 )
 
 const (
@@ -200,7 +200,7 @@ func testOnGCE() bool {
 	resc := make(chan bool, 2)
 
 	// Try two strategies in parallel.
-	// See https://github.com/GoogleCloudPlatform/google-cloud-go/issues/194
+	// See https://github.com/GoogleCloudPlatform/gcloud-golang/issues/194
 	go func() {
 		res, err := ctxhttp.Get(ctx, metaClient, "http://"+metadataIP)
 		if err != nil {
@@ -263,8 +263,7 @@ func systemInfoSuggestsGCE() bool {
 		return false
 	}
 	slurp, _ := ioutil.ReadFile("/sys/class/dmi/id/product_name")
-	name := strings.TrimSpace(string(slurp))
-	return name == "Google" || name == "Google Compute Engine"
+	return strings.TrimSpace(string(slurp)) == "Google"
 }
 
 // Subscribe subscribes to a value from the metadata service.

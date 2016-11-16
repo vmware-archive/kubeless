@@ -15,15 +15,15 @@ package prometheus
 
 // Collector is the interface implemented by anything that can be used by
 // Prometheus to collect metrics. A Collector has to be registered for
-// collection. See Registerer.Register.
+// collection. See Register, MustRegister, RegisterOrGet, and MustRegisterOrGet.
 //
-// The stock metrics provided by this package (Gauge, Counter, Summary,
-// Histogram, Untyped) are also Collectors (which only ever collect one metric,
-// namely itself). An implementer of Collector may, however, collect multiple
-// metrics in a coordinated fashion and/or create metrics on the fly. Examples
-// for collectors already implemented in this library are the metric vectors
-// (i.e. collection of multiple instances of the same Metric but with different
-// label values) like GaugeVec or SummaryVec, and the ExpvarCollector.
+// The stock metrics provided by this package (like Gauge, Counter, Summary) are
+// also Collectors (which only ever collect one metric, namely itself). An
+// implementer of Collector may, however, collect multiple metrics in a
+// coordinated fashion and/or create metrics on the fly. Examples for collectors
+// already implemented in this library are the metric vectors (i.e. collection
+// of multiple instances of the same Metric but with different label values)
+// like GaugeVec or SummaryVec, and the ExpvarCollector.
 type Collector interface {
 	// Describe sends the super-set of all possible descriptors of metrics
 	// collected by this Collector to the provided channel and returns once
@@ -37,39 +37,39 @@ type Collector interface {
 	// executing this method, it must send an invalid descriptor (created
 	// with NewInvalidDesc) to signal the error to the registry.
 	Describe(chan<- *Desc)
-	// Collect is called by the Prometheus registry when collecting
-	// metrics. The implementation sends each collected metric via the
-	// provided channel and returns once the last metric has been sent. The
-	// descriptor of each sent metric is one of those returned by
-	// Describe. Returned metrics that share the same descriptor must differ
-	// in their variable label values. This method may be called
-	// concurrently and must therefore be implemented in a concurrency safe
-	// way. Blocking occurs at the expense of total performance of rendering
-	// all registered metrics. Ideally, Collector implementations support
-	// concurrent readers.
+	// Collect is called by Prometheus when collecting metrics. The
+	// implementation sends each collected metric via the provided channel
+	// and returns once the last metric has been sent. The descriptor of
+	// each sent metric is one of those returned by Describe. Returned
+	// metrics that share the same descriptor must differ in their variable
+	// label values. This method may be called concurrently and must
+	// therefore be implemented in a concurrency safe way. Blocking occurs
+	// at the expense of total performance of rendering all registered
+	// metrics. Ideally, Collector implementations support concurrent
+	// readers.
 	Collect(chan<- Metric)
 }
 
-// selfCollector implements Collector for a single Metric so that the Metric
-// collects itself. Add it as an anonymous field to a struct that implements
-// Metric, and call init with the Metric itself as an argument.
-type selfCollector struct {
+// SelfCollector implements Collector for a single Metric so that that the
+// Metric collects itself. Add it as an anonymous field to a struct that
+// implements Metric, and call Init with the Metric itself as an argument.
+type SelfCollector struct {
 	self Metric
 }
 
-// init provides the selfCollector with a reference to the metric it is supposed
+// Init provides the SelfCollector with a reference to the metric it is supposed
 // to collect. It is usually called within the factory function to create a
 // metric. See example.
-func (c *selfCollector) init(self Metric) {
+func (c *SelfCollector) Init(self Metric) {
 	c.self = self
 }
 
 // Describe implements Collector.
-func (c *selfCollector) Describe(ch chan<- *Desc) {
+func (c *SelfCollector) Describe(ch chan<- *Desc) {
 	ch <- c.self.Desc()
 }
 
 // Collect implements Collector.
-func (c *selfCollector) Collect(ch chan<- Metric) {
+func (c *SelfCollector) Collect(ch chan<- Metric) {
 	ch <- c.self
 }

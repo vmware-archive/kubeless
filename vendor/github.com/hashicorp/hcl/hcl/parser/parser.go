@@ -50,7 +50,7 @@ func (p *Parser) Parse() (*ast.File, error) {
 		scerr = &PosError{Pos: pos, Err: errors.New(msg)}
 	}
 
-	f.Node, err = p.objectList(false)
+	f.Node, err = p.objectList()
 	if scerr != nil {
 		return nil, scerr
 	}
@@ -62,23 +62,11 @@ func (p *Parser) Parse() (*ast.File, error) {
 	return f, nil
 }
 
-// objectList parses a list of items within an object (generally k/v pairs).
-// The parameter" obj" tells this whether to we are within an object (braces:
-// '{', '}') or just at the top level. If we're within an object, we end
-// at an RBRACE.
-func (p *Parser) objectList(obj bool) (*ast.ObjectList, error) {
+func (p *Parser) objectList() (*ast.ObjectList, error) {
 	defer un(trace(p, "ParseObjectList"))
 	node := &ast.ObjectList{}
 
 	for {
-		if obj {
-			tok := p.scan()
-			p.unscan()
-			if tok.Type == token.RBRACE {
-				break
-			}
-		}
-
 		n, err := p.objectItem()
 		if err == errEofToken {
 			break // we are finished
@@ -300,7 +288,7 @@ func (p *Parser) objectType() (*ast.ObjectType, error) {
 		Lbrace: p.tok.Pos,
 	}
 
-	l, err := p.objectList(true)
+	l, err := p.objectList()
 
 	// if we hit RBRACE, we are good to go (means we parsed all Items), if it's
 	// not a RBRACE, it's an syntax error and we just return it.
@@ -308,9 +296,9 @@ func (p *Parser) objectType() (*ast.ObjectType, error) {
 		return nil, err
 	}
 
-	// No error, scan and expect the ending to be a brace
-	if tok := p.scan(); tok.Type != token.RBRACE {
-		return nil, fmt.Errorf("object expected closing RBRACE got: %s", tok.Type)
+	// If there is no error, we should be at a RBRACE to end the object
+	if p.tok.Type != token.RBRACE {
+		return nil, fmt.Errorf("object expected closing RBRACE got: %s", p.tok.Type)
 	}
 
 	o.List = l
@@ -347,12 +335,6 @@ func (p *Parser) listType() (*ast.ListType, error) {
 			node, err := p.literalType()
 			if err != nil {
 				return nil, err
-			}
-
-			// If there is a lead comment, apply it
-			if p.leadComment != nil {
-				node.LeadComment = p.leadComment
-				p.leadComment = nil
 			}
 
 			l.Add(node)

@@ -20,16 +20,63 @@ package internal
 import (
 	"fmt"
 	"net/http"
+	"sync"
+
+	"golang.org/x/net/context"
 )
+
+type contextKey struct{}
+
+func WithContext(parent context.Context, projID string, c *http.Client) context.Context {
+	if c == nil {
+		panic("nil *http.Client passed to WithContext")
+	}
+	if projID == "" {
+		panic("empty project ID passed to WithContext")
+	}
+	return context.WithValue(parent, contextKey{}, &cloudContext{
+		ProjectID:  projID,
+		HTTPClient: c,
+	})
+}
 
 const userAgent = "gcloud-golang/0.1"
 
-// Transport is an http.RoundTripper that appends Google Cloud client's
-// user-agent to the original request's user-agent header.
-type Transport struct {
-	// TODO(bradfitz): delete internal.Transport. It's too wrappy for what it does.
-	// Do User-Agent some other way.
+type cloudContext struct {
+	ProjectID  string
+	HTTPClient *http.Client
 
+	mu  sync.Mutex             // guards svc
+	svc map[string]interface{} // e.g. "storage" => *rawStorage.Service
+}
+
+// Service returns the result of the fill function if it's never been
+// called before for the given name (which is assumed to be an API
+// service name, like "datastore"). If it has already been cached, the fill
+// func is not run.
+// It's safe for concurrent use by multiple goroutines.
+func Service(ctx context.Context, name string, fill func(*http.Client) interface{}) interface{} {
+	return cc(ctx).service(name, fill)
+}
+
+func (c *cloudContext) service(name string, fill func(*http.Client) interface{}) interface{} {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.svc == nil {
+		c.svc = make(map[string]interface{})
+	} else if v, ok := c.svc[name]; ok {
+		return v
+	}
+	v := fill(c.HTTPClient)
+	c.svc[name] = v
+	return v
+}
+
+// Transport is an http.RoundTripper that appends
+// Google Cloud client's user-agent to the original
+// request's user-agent header.
+type Transport struct {
 	// Base is the actual http.RoundTripper
 	// requests will use. It must not be nil.
 	Base http.RoundTripper
@@ -61,4 +108,21 @@ func cloneRequest(r *http.Request) *http.Request {
 		r2.Header[k] = s
 	}
 	return r2
+}
+
+func ProjID(ctx context.Context) string {
+	return cc(ctx).ProjectID
+}
+
+func HTTPClient(ctx context.Context) *http.Client {
+	return cc(ctx).HTTPClient
+}
+
+// cc returns the internal *cloudContext (cc) state for a context.Context.
+// It panics if the user did it wrong.
+func cc(ctx context.Context) *cloudContext {
+	if c, ok := ctx.Value(contextKey{}).(*cloudContext); ok {
+		return c
+	}
+	panic("invalid context.Context type; it should be created with cloud.NewContext")
 }

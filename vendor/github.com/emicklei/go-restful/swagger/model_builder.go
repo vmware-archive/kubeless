@@ -43,26 +43,12 @@ func (b modelBuilder) addModelFrom(sample interface{}) {
 }
 
 func (b modelBuilder) addModel(st reflect.Type, nameOverride string) *Model {
-	// Turn pointers into simpler types so further checks are
-	// correct.
-	if st.Kind() == reflect.Ptr {
-		st = st.Elem()
-	}
-
 	modelName := b.keyFrom(st)
 	if nameOverride != "" {
 		modelName = nameOverride
 	}
 	// no models needed for primitive types
 	if b.isPrimitiveType(modelName) {
-		return nil
-	}
-	// golang encoding/json packages says array and slice values encode as
-	// JSON arrays, except that []byte encodes as a base64-encoded string.
-	// If we see a []byte here, treat it at as a primitive type (string)
-	// and deal with it in buildArrayTypeProperty.
-	if (st.Kind() == reflect.Slice || st.Kind() == reflect.Array) &&
-		st.Elem().Kind() == reflect.Uint8 {
 		return nil
 	}
 	// see if we already have visited this model
@@ -140,11 +126,6 @@ func (b modelBuilder) buildProperty(field reflect.StructField, model *Model, mod
 	jsonName = b.jsonNameOfField(field)
 	if len(jsonName) == 0 {
 		// empty name signals skip property
-		return "", "", prop
-	}
-
-	if field.Name == "XMLName" && field.Type.String() == "xml.Name" {
-		// property is metadata for the xml.Name attribute, can be skipped
 		return "", "", prop
 	}
 
@@ -295,11 +276,6 @@ func (b modelBuilder) buildArrayTypeProperty(field reflect.StructField, jsonName
 		return jsonName, prop
 	}
 	fieldType := field.Type
-	if fieldType.Elem().Kind() == reflect.Uint8 {
-		stringt := "string"
-		prop.Type = &stringt
-		return jsonName, prop
-	}
 	var pType = "array"
 	prop.Type = &pType
 	isPrimitive := b.isPrimitiveType(fieldType.Elem().Name())

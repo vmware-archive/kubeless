@@ -85,10 +85,14 @@ func (p Port) Port() string {
 // Int returns the port number of a Port as an int
 func (p Port) Int() int {
 	portStr := p.Port()
+	if len(portStr) == 0 {
+		return 0
+	}
+
 	// We don't need to check for an error because we're going to
 	// assume that any error would have been found, and reported, in NewPort()
-	port, _ := ParsePort(portStr)
-	return port
+	port, _ := strconv.ParseUint(portStr, 10, 16)
+	return int(port)
 }
 
 // Range returns the start/end port numbers of a Port range as ints
@@ -155,36 +159,33 @@ type PortMapping struct {
 	Binding PortBinding
 }
 
-func splitParts(rawport string) (string, string, string) {
-	parts := strings.Split(rawport, ":")
-	n := len(parts)
-	containerport := parts[n-1]
-
-	switch n {
-	case 1:
-		return "", "", containerport
-	case 2:
-		return "", parts[0], containerport
-	case 3:
-		return parts[0], parts[1], containerport
-	default:
-		return strings.Join(parts[:n-2], ":"), parts[n-2], containerport
-	}
-}
-
 // ParsePortSpec parses a port specification string into a slice of PortMappings
 func ParsePortSpec(rawPort string) ([]PortMapping, error) {
-	var proto string
-	rawIP, hostPort, containerPort := splitParts(rawPort)
-	proto, containerPort = SplitProtoPort(containerPort)
+	proto := "tcp"
 
-	// Strip [] from IPV6 addresses
-	ip, _, err := net.SplitHostPort(rawIP + ":")
-	if err != nil {
-		return nil, fmt.Errorf("Invalid ip address %v: %s", rawIP, err)
+	if i := strings.LastIndex(rawPort, "/"); i != -1 {
+		proto = rawPort[i+1:]
+		rawPort = rawPort[:i]
 	}
-	if ip != "" && net.ParseIP(ip) == nil {
-		return nil, fmt.Errorf("Invalid ip address: %s", ip)
+	if !strings.Contains(rawPort, ":") {
+		rawPort = fmt.Sprintf("::%s", rawPort)
+	} else if len(strings.Split(rawPort, ":")) == 2 {
+		rawPort = fmt.Sprintf(":%s", rawPort)
+	}
+
+	parts, err := PartParser(portSpecTemplate, rawPort)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		containerPort = parts["containerPort"]
+		rawIP         = parts["ip"]
+		hostPort      = parts["hostPort"]
+	)
+
+	if rawIP != "" && net.ParseIP(rawIP) == nil {
+		return nil, fmt.Errorf("Invalid ip address: %s", rawIP)
 	}
 	if containerPort == "" {
 		return nil, fmt.Errorf("No port specified: %s<empty>", rawPort)
@@ -233,7 +234,7 @@ func ParsePortSpec(rawPort string) ([]PortMapping, error) {
 		}
 
 		binding := PortBinding{
-			HostIP:   ip,
+			HostIP:   rawIP,
 			HostPort: hostPort,
 		}
 		ports = append(ports, PortMapping{Port: port, Binding: binding})

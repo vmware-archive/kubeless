@@ -27,7 +27,6 @@ import (
 // ---------------------------------------------------
 // codecgen supports the full cycle of reflection-based codec:
 //    - RawExt
-//    - Raw
 //    - Builtins
 //    - Extensions
 //    - (Binary|Text|JSON)(Unm|M)arshal
@@ -78,7 +77,7 @@ import (
 // codecgen will panic if the file was generated with an old version of the library in use.
 //
 // Note:
-//   It was a conscious decision to have gen.go always explicitly call EncodeNil or TryDecodeAsNil.
+//   It was a concious decision to have gen.go always explicitly call EncodeNil or TryDecodeAsNil.
 //   This way, there isn't a function call overhead just to see that we should not enter a block of code.
 
 // GenVersion is the current version of codecgen.
@@ -212,7 +211,7 @@ func Gen(w io.Writer, buildTags, pkgName, uid string, useUnsafe bool, ti *TypeIn
 		x.genRefPkgs(t)
 	}
 	if buildTags != "" {
-		x.line("// +build " + buildTags)
+		x.line("//+build " + buildTags)
 		x.line("")
 	}
 	x.line(`
@@ -702,17 +701,13 @@ func (x *genRunner) enc(varname string, t reflect.Type) {
 	}
 
 	// check if
-	//   - type is RawExt, Raw
+	//   - type is RawExt
 	//   - the type implements (Text|JSON|Binary)(Unm|M)arshal
 	x.linef("%sm%s := z.EncBinary()", genTempVarPfx, mi)
 	x.linef("_ = %sm%s", genTempVarPfx, mi)
 	x.line("if false {")           //start if block
 	defer func() { x.line("}") }() //end if block
 
-	if t == rawTyp {
-		x.linef("} else { z.EncRaw(%v)", varname)
-		return
-	}
 	if t == rawExtTyp {
 		x.linef("} else { r.EncodeRawExt(%v, e)", varname)
 		return
@@ -992,14 +987,6 @@ func (x *genRunner) encStruct(varname string, rtid uintptr, t reflect.Type) {
 }
 
 func (x *genRunner) encListFallback(varname string, t reflect.Type) {
-	if t.AssignableTo(uint8SliceTyp) {
-		x.linef("r.EncodeStringBytes(codecSelferC_RAW%s, []byte(%s))", x.xs, varname)
-		return
-	}
-	if t.Kind() == reflect.Array && t.Elem().Kind() == reflect.Uint8 {
-		x.linef("r.EncodeStringBytes(codecSelferC_RAW%s, ([%v]byte(%s))[:])", x.xs, t.Len(), varname)
-		return
-	}
 	i := x.varsfx()
 	g := genTempVarPfx
 	x.line("r.EncodeArrayStart(len(" + varname + "))")
@@ -1136,7 +1123,7 @@ func (x *genRunner) dec(varname string, t reflect.Type) {
 	}
 
 	// check if
-	//   - type is Raw, RawExt
+	//   - type is RawExt
 	//   - the type implements (Text|JSON|Binary)(Unm|M)arshal
 	mi := x.varsfx()
 	x.linef("%sm%s := z.DecBinary()", genTempVarPfx, mi)
@@ -1144,10 +1131,6 @@ func (x *genRunner) dec(varname string, t reflect.Type) {
 	x.line("if false {")           //start if block
 	defer func() { x.line("}") }() //end if block
 
-	if t == rawTyp {
-		x.linef("} else { *%v = z.DecRaw()", varname)
-		return
-	}
 	if t == rawExtTyp {
 		x.linef("} else { r.DecodeExt(%v, 0, nil)", varname)
 		return
@@ -1323,14 +1306,6 @@ func (x *genRunner) decTryAssignPrimitive(varname string, t reflect.Type) (tryAs
 }
 
 func (x *genRunner) decListFallback(varname string, rtid uintptr, t reflect.Type) {
-	if t.AssignableTo(uint8SliceTyp) {
-		x.line("*" + varname + " = r.DecodeBytes(*((*[]byte)(" + varname + ")), false, false)")
-		return
-	}
-	if t.Kind() == reflect.Array && t.Elem().Kind() == reflect.Uint8 {
-		x.linef("r.DecodeBytes( ((*[%s]byte)(%s))[:], false, true)", t.Len(), varname)
-		return
-	}
 	type tstruc struct {
 		TempVar   string
 		Rand      string
@@ -1446,7 +1421,7 @@ func (x *genRunner) decStructMapSwitch(kName string, varname string, rtid uintpt
 		if si.i != -1 {
 			t2 = t.Field(int(si.i))
 		} else {
-			//we must accommodate anonymous fields, where the embedded field is a nil pointer in the value.
+			//we must accomodate anonymous fields, where the embedded field is a nil pointer in the value.
 			// t2 = t.FieldByIndex(si.is)
 			t2typ := t
 			varname3 := varname
@@ -1534,7 +1509,7 @@ func (x *genRunner) decStructArray(varname, lenvarname, breakString string, rtid
 		if si.i != -1 {
 			t2 = t.Field(int(si.i))
 		} else {
-			//we must accommodate anonymous fields, where the embedded field is a nil pointer in the value.
+			//we must accomodate anonymous fields, where the embedded field is a nil pointer in the value.
 			// t2 = t.FieldByIndex(si.is)
 			t2typ := t
 			varname3 := varname
@@ -1956,7 +1931,7 @@ func genInternalInit() {
 	}
 	var gt genInternal
 
-	// For each slice or map type, there must be a (symmetrical) Encode and Decode fast-path function
+	// For each slice or map type, there must be a (symetrical) Encode and Decode fast-path function
 	for _, s := range types {
 		gt.Values = append(gt.Values, genV{Primitive: s, Size: mapvaltypes2[s]})
 		if s != "uint8" { // do not generate fast path for slice of bytes. Treat specially already.

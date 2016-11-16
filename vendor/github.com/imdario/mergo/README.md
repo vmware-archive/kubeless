@@ -11,27 +11,20 @@ Also a lovely [comune](http://en.wikipedia.org/wiki/Mergo) (municipality) in the
 It is ready for production use. It works fine after extensive use in the wild.
 
 [![Build Status][1]][2]
-[![GoDoc][3]][4]
-[![GoCard][5]][6]
+[![GoDoc](https://godoc.org/github.com/imdario/mergo?status.svg)](https://godoc.org/github.com/imdario/mergo)
 
 [1]: https://travis-ci.org/imdario/mergo.png
 [2]: https://travis-ci.org/imdario/mergo
-[3]: https://godoc.org/github.com/imdario/mergo?status.svg
-[4]: https://godoc.org/github.com/imdario/mergo
-[5]: https://goreportcard.com/badge/imdario/mergo
-[6]: https://goreportcard.com/report/github.com/imdario/mergo
 
 ### Important note
 
-Mergo is intended to assign **only** zero value fields on destination with source value. Since April 6th it works like this. Before it didn't work properly, causing some random overwrites. After some issues and PRs I found it didn't merge as I designed it. Thanks to [imdario/mergo#8](https://github.com/imdario/mergo/pull/8) overwriting functions were added and the wrong behavior was clearly detected.
+Mergo is intended to merge **only** zero value fields on destination. Since April 6th it works like this. Before it didn't work properly, causing some random overwrites. After some issues and PRs I found it didn't merge as I designed it. Thanks to [imdario/mergo#8](https://github.com/imdario/mergo/pull/8) overwriting functions were added and the wrong behavior was clearly detected.
 
 If you were using Mergo **before** April 6th 2015, please check your project works as intended after updating your local copy with ```go get -u github.com/imdario/mergo```. I apologize for any issue caused by its previous behavior and any future bug that Mergo could cause (I hope it won't!) in existing projects after the change (release 0.2.0).
 
 ### Mergo in the wild
 
-- [docker/docker](https://github.com/docker/docker/)
-- [kubernetes/kubernetes](https://github.com/kubernetes/kubernetes)
-- [imdario/zas](https://github.com/imdario/zas)
+- [GoogleCloudPlatform/kubernetes](https://github.com/GoogleCloudPlatform/kubernetes)
 - [soniah/dnsmadeeasy](https://github.com/soniah/dnsmadeeasy)
 - [EagerIO/Stout](https://github.com/EagerIO/Stout)
 - [lynndylanhurley/defsynth-api](https://github.com/lynndylanhurley/defsynth-api)
@@ -40,17 +33,6 @@ If you were using Mergo **before** April 6th 2015, please check your project wor
 - [casualjim/exeggutor](https://github.com/casualjim/exeggutor)
 - [divshot/gitling](https://github.com/divshot/gitling)
 - [RWJMurphy/gorl](https://github.com/RWJMurphy/gorl)
-- [andrerocker/deploy42](https://github.com/andrerocker/deploy42)
-- [elwinar/rambler](https://github.com/elwinar/rambler)
-- [tmaiaroto/gopartman](https://github.com/tmaiaroto/gopartman)
-- [jfbus/impressionist](https://github.com/jfbus/impressionist)
-- [Jmeyering/zealot](https://github.com/Jmeyering/zealot)
-- [godep-migrator/rigger-host](https://github.com/godep-migrator/rigger-host)
-- [Dronevery/MultiwaySwitch-Go](https://github.com/Dronevery/MultiwaySwitch-Go)
-- [thoas/picfit](https://github.com/thoas/picfit)
-- [mantasmatelis/whooplist-server](https://github.com/mantasmatelis/whooplist-server)
-- [jnuthong/item_search](https://github.com/jnuthong/item_search)
-- [Iris Web Framework](https://github.com/kataras/iris)
 
 ## Installation
 
@@ -108,7 +90,7 @@ func main() {
 
 	fmt.Println(dest)
 	// Will print
-	// {two 2}
+	// {one 2}
 }
 ```
 

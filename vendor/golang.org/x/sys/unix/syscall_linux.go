@@ -69,10 +69,10 @@ func Ppoll(fds []PollFd, timeout *Timespec, sigmask *Sigset_t) (n int, err error
 	return ppoll(&fds[0], len(fds), timeout, sigmask)
 }
 
-//sys	Readlinkat(dirfd int, path string, buf []byte) (n int, err error)
+//sys	readlinkat(dirfd int, path string, buf []byte) (n int, err error)
 
 func Readlink(path string, buf []byte) (n int, err error) {
-	return Readlinkat(AT_FDCWD, path, buf)
+	return readlinkat(AT_FDCWD, path, buf)
 }
 
 func Rename(oldpath string, newpath string) (err error) {
@@ -80,20 +80,24 @@ func Rename(oldpath string, newpath string) (err error) {
 }
 
 func Rmdir(path string) error {
-	return Unlinkat(AT_FDCWD, path, AT_REMOVEDIR)
+	return unlinkat(AT_FDCWD, path, AT_REMOVEDIR)
 }
 
-//sys	Symlinkat(oldpath string, newdirfd int, newpath string) (err error)
+//sys	symlinkat(oldpath string, newdirfd int, newpath string) (err error)
 
 func Symlink(oldpath string, newpath string) (err error) {
-	return Symlinkat(oldpath, AT_FDCWD, newpath)
+	return symlinkat(oldpath, AT_FDCWD, newpath)
 }
 
 func Unlink(path string) error {
-	return Unlinkat(AT_FDCWD, path, 0)
+	return unlinkat(AT_FDCWD, path, 0)
 }
 
-//sys	Unlinkat(dirfd int, path string, flags int) (err error)
+//sys	unlinkat(dirfd int, path string, flags int) (err error)
+
+func Unlinkat(dirfd int, path string, flags int) error {
+	return unlinkat(dirfd, path, flags)
+}
 
 //sys	utimes(path string, times *[2]Timeval) (err error)
 
@@ -139,7 +143,8 @@ func UtimesNano(path string, ts []Timespec) error {
 	// in 2.6.22, Released, 8 July 2007) then fall back to utimes
 	var tv [2]Timeval
 	for i := 0; i < 2; i++ {
-		tv[i] = NsecToTimeval(TimespecToNsec(ts[i]))
+		tv[i].Sec = ts[i].Sec
+		tv[i].Usec = ts[i].Nsec / 1000
 	}
 	return utimes(path, (*[2]Timeval)(unsafe.Pointer(&tv[0])))
 }
@@ -899,7 +904,6 @@ func Getpgrp() (pid int) {
 //sysnb	Getppid() (ppid int)
 //sys	Getpriority(which int, who int) (prio int, err error)
 //sysnb	Getrusage(who int, rusage *Rusage) (err error)
-//sysnb	Getsid(pid int) (sid int, err error)
 //sysnb	Gettid() (tid int)
 //sys	Getxattr(path string, attr string, dest []byte) (sz int, err error)
 //sys	InotifyAddWatch(fd int, pathname string, mask uint32) (watchdesc int, err error)
@@ -912,7 +916,7 @@ func Getpgrp() (pid int) {
 //sys	Mknodat(dirfd int, path string, mode uint32, dev int) (err error)
 //sys	Nanosleep(time *Timespec, leftover *Timespec) (err error)
 //sys	PivotRoot(newroot string, putold string) (err error) = SYS_PIVOT_ROOT
-//sysnb prlimit(pid int, resource int, newlimit *Rlimit, old *Rlimit) (err error) = SYS_PRLIMIT64
+//sysnb prlimit(pid int, resource int, old *Rlimit, newlimit *Rlimit) (err error) = SYS_PRLIMIT64
 //sys   Prctl(option int, arg2 uintptr, arg3 uintptr, arg4 uintptr, arg5 uintptr) (err error)
 //sys	read(fd int, p []byte) (n int, err error)
 //sys	Removexattr(path string, attr string) (err error)

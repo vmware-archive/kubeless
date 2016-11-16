@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/docker/engine-api/types/blkiodev"
-	"github.com/docker/engine-api/types/mount"
 	"github.com/docker/engine-api/types/strslice"
 	"github.com/docker/go-connections/nat"
 	"github.com/docker/go-units"
@@ -318,7 +317,4 @@ type HostConfig struct {
 
 	// Contains container's resources (cgroups, ulimits)
 	Resources
-
-	// Mounts specs used by the container
-	Mounts []mount.Mount `json:",omitempty"`
 }

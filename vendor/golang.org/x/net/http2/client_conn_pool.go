@@ -52,16 +52,7 @@ const (
 	noDialOnMiss = false
 )
 
-func (p *clientConnPool) getClientConn(req *http.Request, addr string, dialOnMiss bool) (*ClientConn, error) {
-	if isConnectionCloseRequest(req) && dialOnMiss {
-		// It gets its own connection.
-		const singleUse = true
-		cc, err := p.t.dialClientConn(addr, singleUse)
-		if err != nil {
-			return nil, err
-		}
-		return cc, nil
-	}
+func (p *clientConnPool) getClientConn(_ *http.Request, addr string, dialOnMiss bool) (*ClientConn, error) {
 	p.mu.Lock()
 	for _, cc := range p.conns[addr] {
 		if cc.CanTakeNewRequest() {
@@ -104,8 +95,7 @@ func (p *clientConnPool) getStartDialLocked(addr string) *dialCall {
 
 // run in its own goroutine.
 func (c *dialCall) dial(addr string) {
-	const singleUse = false // shared conn
-	c.res, c.err = c.p.t.dialClientConn(addr, singleUse)
+	c.res, c.err = c.p.t.dialClientConn(addr)
 	close(c.done)
 
 	c.p.mu.Lock()

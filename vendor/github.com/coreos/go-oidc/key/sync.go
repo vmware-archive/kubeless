@@ -2,7 +2,6 @@ package key
 
 import (
 	"errors"
-	"log"
 	"time"
 
 	"github.com/jonboulle/clockwork"
@@ -39,14 +38,15 @@ func (s *KeySetSyncer) Run() chan struct{} {
 					next = timeutil.ExpBackoff(next, time.Minute)
 				}
 				if exp == 0 {
-					log.Printf("Synced to already expired key set, retrying in %v: %v", next, err)
+					log.Errorf("Synced to already expired key set, retrying in %v: %v", next, err)
 
 				} else {
-					log.Printf("Failed syncing key set, retrying in %v: %v", next, err)
+					log.Errorf("Failed syncing key set, retrying in %v: %v", next, err)
 				}
 			} else {
 				failing = false
 				next = exp / 2
+				log.Infof("Synced key set, checking again in %v", next)
 			}
 
 			select {
