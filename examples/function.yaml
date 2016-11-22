@@ -1,0 +1,12 @@
+--- 
+apiVersion: k8s.io/v1
+kind: LambDa
+metadata: 
+  name: function
+spec: 
+  handler: hello.handler
+  runtime: python2.7
+  lambda: |
+      import json
+      def handler():
+              return "hello world"
