@@ -18,8 +18,20 @@ $ go build -o kubeless main.go
 $ go get -u github.com/skippbox/kubeless
 ```
 
-### Run kubeless locally
+### Run kubeless
+
+**Kubectl is required**
 
 ```console
-$ kubeless
+// Run kubeless server
+$ kubeless --master <master_node>
+
+// Submit function
+$ kubeless --master <master_node> function create <function_name> \
+           --from-file <file> \
+           --handler <handler> \
+           --runtime <runtime>
+
+// Delete function
+$ kubeless --master <master_node> function delete <function_name>
 ```
