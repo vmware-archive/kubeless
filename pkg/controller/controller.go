@@ -174,7 +174,6 @@ func (c *Controller) findResourceVersion() (string, error) {
 		funcName := item.Name
 		c.functions[funcName] = &item
 	}
-	fmt.Println(c.functions)
 	return list.ListMeta.ResourceVersion, nil
 }
 

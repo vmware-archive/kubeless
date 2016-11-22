@@ -19,19 +19,22 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
-
+	"bytes"
+	"io/ioutil"
 	"github.com/skippbox/kubeless/pkg/spec"
 	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/util/intstr"
-	"k8s.io/kubernetes/pkg/kubectl"
+	"encoding/json"
 )
 
 const TIMEOUT = 300
@@ -69,6 +72,21 @@ func ListResources(host, ns string, httpClient *http.Client) (*http.Response, er
 func WatchResources(host, ns string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
 	return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas?watch=true&resourceVersion=%s",
 		host, ns, resourceVersion))
+}
+
+func submitResource(host, ns string, httpClient *http.Client, body io.Reader) (*http.Response, error) {
+	return httpClient.Post(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas",
+		host, ns), "application/json", body)
+}
+
+func deleteResource(host, ns, funcName string, httpClient *http.Client) (*http.Response, error) {
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas/%s",
+		host, ns, funcName),nil)
+	if err != nil {
+		return nil, err
+	}
+	resq, err := httpClient.Do(req)
+	return resq, err
 }
 
 func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client.Client) error {
@@ -222,4 +240,46 @@ func DeleteK8sResources(ns, name string, client *client.Client) error {
 	}
 
 	return nil
+}
+
+func CreateK8sCustomResource(runtime, handler, file, funcName, host string) error {
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		return err
+	}
+	code := string(data[:])
+	f := &spec.Function{
+		ObjectMeta: api.ObjectMeta{
+			Name: funcName,
+		},
+		Spec: spec.FunctionSpec{
+			Handler: handler,
+			Runtime: runtime,
+			Version: "0",
+			Lambda:  code,
+		},
+	}
+
+	kClient, ns, err := GetClient()
+	if err != nil {
+		fmt.Errorf("Can not get kubernetes config: %s", err)
+	}
+
+	funcJson, err := json.Marshal(f)
+	if err != nil {
+		return err
+	}
+
+	_, err = submitResource(host, ns, kClient.RESTClient.Client, bytes.NewBuffer(funcJson))
+	return err
+}
+
+func DeleteK8sCustomResource(funcName, host string) error {
+	kClient, ns, err := GetClient()
+	if err != nil {
+		fmt.Errorf("Can not get kubernetes config: %s", err)
+	}
+
+	_, err = deleteResource(host, ns, funcName, kClient.RESTClient.Client)
+	return err
 }

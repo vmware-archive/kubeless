@@ -14,10 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package cmd
 
-import "github.com/skippbox/kubeless/cmd"
+import (
+	"github.com/spf13/cobra"
+)
 
-func main() {
-	cmd.Execute()
+var functionCmd = &cobra.Command{
+	Use:   "function SUBCOMMAND",
+	Short: "function specific subcommands",
+	Long: `function command allows user create, edit, delete his functions running on Kubeless`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
+}
+
+func init() {
+	RootCmd.AddCommand(functionCmd)
+	functionCmd.AddCommand(createCmd)
+	functionCmd.AddCommand(deleteCmd)
+	//TODO: reserve edit cmd later
+	//functionCmd.AddCommand(editCmd)
 }
