@@ -327,8 +327,16 @@ func DeployKubeless(client *client.Client) error {
 						{
 							Name:  "Kubeless",
 							Image: "skippbox/kubeless-controller:0.0.1",
+							ImagePullPolicy: api.PullIfNotPresent,
+						},
+						{
+							Name: "kubectl",
+							Image: "kelseyhightower/kubectl:1.4.0",
+							Args: []string{"proxy", "-p", "8080"},
+							ImagePullPolicy: api.PullAlways,
 						},
 					},
+					RestartPolicy: api.RestartPolicyAlways,
 				},
 			},
 		},
