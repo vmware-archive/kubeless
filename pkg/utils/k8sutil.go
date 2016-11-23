@@ -65,23 +65,50 @@ func IsKubernetesResourceAlreadyExistError(err error) bool {
 }
 
 func ListResources(host, ns string, httpClient *http.Client) (*http.Response, error) {
-	return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas",
-		host, ns))
+	if host == "localhost" {
+		return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas",
+			host, ns))
+	} else {
+		return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas",
+			host, ns))
+	}
+
 }
 
 func WatchResources(host, ns string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
-	return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas?watch=true&resourceVersion=%s",
-		host, ns, resourceVersion))
+	if host == "localhost" {
+		return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas?watch=true&resourceVersion=%s",
+			host, ns, resourceVersion))
+	} else {
+		return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas?watch=true&resourceVersion=%s",
+			host, ns, resourceVersion))
+	}
 }
 
 func submitResource(host, ns string, httpClient *http.Client, body io.Reader) (*http.Response, error) {
-	return httpClient.Post(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas",
-		host, ns), "application/json", body)
+	if host == "localhost" {
+		return httpClient.Post(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas",
+			host, ns), "application/json", body)
+	} else {
+		return httpClient.Post(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas",
+			host, ns), "application/json", body)
+	}
 }
 
 func deleteResource(host, ns, funcName string, httpClient *http.Client) (*http.Response, error) {
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas/%s",
-		host, ns, funcName),nil)
+	var (
+		req *http.Request
+		err error
+	)
+
+	if host == "localhost" {
+		req, err = http.NewRequest("DELETE", fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas/%s",
+			host, ns, funcName),nil)
+	} else {
+		req, err = http.NewRequest("DELETE", fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas/%s",
+			host, ns, funcName),nil)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +193,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 					Containers: []api.Container{
 						{
 							Name:  name,
-							Image: "runseb/kubeless:0.0.5",
+							Image: "skippbox/kubeless-python:0.0.1",
 							Ports: []api.ContainerPort{
 								{
 									ContainerPort: 8080,
@@ -282,4 +309,50 @@ func DeleteK8sCustomResource(funcName, host string) error {
 
 	_, err = deleteResource(host, ns, funcName, kClient.RESTClient.Client)
 	return err
+}
+
+func DeployKubeless(client *client.Client) error {
+	//add deployment
+	dpm := &extensions.Deployment{
+		ObjectMeta: api.ObjectMeta{
+			Name:   "Kubeless",
+		},
+		Spec: extensions.DeploymentSpec{
+			Replicas: 1,
+			Template: api.PodTemplateSpec{
+				ObjectMeta: api.ObjectMeta{
+				},
+				Spec: api.PodSpec{
+					Containers: []api.Container{
+						{
+							Name:  "Kubeless",
+							Image: "skippbox/kubeless-controller:0.0.1",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	//create Kubeless namespace if it's not exists
+	_, err := client.Namespaces().Get("Kubeless")
+	if err != nil {
+		ns := &api.Namespace{
+			ObjectMeta: api.ObjectMeta{
+				Name: "Kubeless",
+			},
+		}
+		_, err = client.Namespaces().Create(ns)
+		if err != nil {
+			return err
+		}
+	}
+
+	//deploy Kubeless controller
+	_, err = client.Deployments("Kubeless").Create(dpm)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

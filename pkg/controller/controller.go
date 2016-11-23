@@ -78,15 +78,11 @@ func New(cfg Config) *Controller {
 	}
 }
 
-func (c *Controller) Run() error {
-	var (
-		watchVersion string
-		err          error
-	)
-
+func (c *Controller) Init() {
+	c.logger.Infof("Initialing Kubeless controller...")
 	for {
-		//create TPR, if exists, get the current version
-		watchVersion, err = c.initResource()
+		//create TPR if it's not exists
+		err := c.initResource()
 		if err == nil {
 			break
 		}
@@ -94,6 +90,27 @@ func (c *Controller) Run() error {
 		c.logger.Infof("retry in %v...", initRetryWaitTime)
 		time.Sleep(initRetryWaitTime)
 	}
+}
+
+func (c *Controller) Install() {
+	c.logger.Infof("Installing Kubeless controller into Kubernetes deployment...")
+	err := utils.DeployKubeless(c.Config.KubeCli)
+	if err != nil {
+		c.logger.Errorf("installation failed: %v", err)
+	}
+}
+
+func (c *Controller) Run() error {
+	var (
+		watchVersion string
+		err          error
+	)
+
+	watchVersion, err = c.findResourceVersion()
+	if err != nil {
+		return err
+	}
+
 	c.logger.Infof("starts running Kubeless controller from watch version: %s", watchVersion)
 	defer func() {
 		for _, stopC := range c.stopChMap {
@@ -140,21 +157,14 @@ func (c *Controller) Run() error {
 	return <-errCh
 }
 
-//create TPR, if exists, get the current version
-func (c *Controller) initResource() (string, error) {
-	watchVersion := "0"
+func (c *Controller) initResource() error {
 	err := c.createTPR()
 	if err != nil {
-		if utils.IsKubernetesResourceAlreadyExistError(err) {
-			watchVersion, err = c.findResourceVersion()
-			if err != nil {
-				return "", err
-			}
-		} else {
-			return "", fmt.Errorf("fail to create TPR: %v", err)
+		if !utils.IsKubernetesResourceAlreadyExistError(err) {
+			return fmt.Errorf("fail to create TPR: %v", err)
 		}
 	}
-	return watchVersion, nil
+	return nil
 }
 
 func (c *Controller) findResourceVersion() (string, error) {

@@ -43,8 +43,8 @@ var createCmd = &cobra.Command{
 		}
 
 		master, err := cmd.Flags().GetString("master")
-		if err != nil {
-			logrus.Fatal(err)
+		if master == "" {
+			master = "localhost"
 		}
 
 		if len(args) != 1 {

@@ -32,8 +32,8 @@ var RootCmd = &cobra.Command{
 	Long: `A serverless manager on top of Kubernetes`,
 	Run: func(cmd *cobra.Command, args []string) {
 		master, err := cmd.Flags().GetString("master")
-		if err != nil {
-			logrus.Fatal(err)
+		if master == "" {
+			master = "localhost"
 		}
 		cfg := newControllerConfig(master)
 		c := controller.New(cfg)
