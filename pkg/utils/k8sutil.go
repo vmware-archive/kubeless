@@ -313,19 +313,24 @@ func DeleteK8sCustomResource(funcName, host string) error {
 
 func DeployKubeless(client *client.Client) error {
 	//add deployment
+	labels := map[string]string{
+		"app": "kubeless-controller",
+	}
 	dpm := &extensions.Deployment{
 		ObjectMeta: api.ObjectMeta{
-			Name:   "Kubeless",
+			Name:   "kubeless-controller",
+			Labels: labels,
 		},
 		Spec: extensions.DeploymentSpec{
 			Replicas: 1,
 			Template: api.PodTemplateSpec{
 				ObjectMeta: api.ObjectMeta{
+					Labels: labels,
 				},
 				Spec: api.PodSpec{
 					Containers: []api.Container{
 						{
-							Name:  "Kubeless",
+							Name:  "kubeless",
 							Image: "skippbox/kubeless-controller:0.0.1",
 							ImagePullPolicy: api.PullIfNotPresent,
 						},
@@ -343,11 +348,11 @@ func DeployKubeless(client *client.Client) error {
 	}
 
 	//create Kubeless namespace if it's not exists
-	_, err := client.Namespaces().Get("Kubeless")
+	_, err := client.Namespaces().Get("kubeless")
 	if err != nil {
 		ns := &api.Namespace{
 			ObjectMeta: api.ObjectMeta{
-				Name: "Kubeless",
+				Name: "kubeless",
 			},
 		}
 		_, err = client.Namespaces().Create(ns)
@@ -357,7 +362,7 @@ func DeployKubeless(client *client.Client) error {
 	}
 
 	//deploy Kubeless controller
-	_, err = client.Deployments("Kubeless").Create(dpm)
+	_, err = client.Deployments("kubeless").Create(dpm)
 	if err != nil {
 		return err
 	}

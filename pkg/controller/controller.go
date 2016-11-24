@@ -79,7 +79,7 @@ func New(cfg Config) *Controller {
 }
 
 func (c *Controller) Init() {
-	c.logger.Infof("Initialing Kubeless controller...")
+	c.logger.Infof("Initializing Kubeless controller...")
 	for {
 		//create TPR if it's not exists
 		err := c.initResource()
@@ -98,6 +98,7 @@ func (c *Controller) Install() {
 	if err != nil {
 		c.logger.Errorf("installation failed: %v", err)
 	}
+	c.logger.Infof("Installation finished!")
 }
 
 func (c *Controller) Run() error {
