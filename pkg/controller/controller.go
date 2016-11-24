@@ -60,7 +60,7 @@ type Controller struct {
 	Config       Config
 	stopChMap    map[string]chan struct{}
 	waitFunction sync.WaitGroup
-	functions    map[string]*spec.Function
+	Functions    map[string]*spec.Function
 }
 
 type Config struct {
@@ -73,7 +73,7 @@ func New(cfg Config) *Controller {
 	return &Controller{
 		logger:    logrus.WithField("pkg", "controller"),
 		Config:    cfg,
-		functions: make(map[string]*spec.Function),
+		Functions: make(map[string]*spec.Function),
 		stopChMap: map[string]chan struct{}{},
 	}
 }
@@ -106,7 +106,7 @@ func (c *Controller) Run() error {
 		err          error
 	)
 
-	watchVersion, err = c.findResourceVersion()
+	watchVersion, err = c.FindResourceVersion()
 	if err != nil {
 		return err
 	}
@@ -134,22 +134,22 @@ func (c *Controller) Run() error {
 				if err != nil {
 					break
 				}
-				c.functions[functionName] = event.Object
-				fmt.Println(c.functions)
+				c.Functions[functionName] = event.Object
+				fmt.Println(c.Functions)
 				c.logger.Infof("a new function was added: %s", functionName)
 
 			case "DELETED":
-				if c.functions[functionName] == nil {
+				if c.Functions[functionName] == nil {
 					c.logger.Warningf("ignore deletion: function %q not found (or dead)", functionName)
 					break
 				}
 				stopC := make(chan struct{})
-				delete(c.functions, functionName)
+				delete(c.Functions, functionName)
 				err := function.Delete(c.Config.KubeCli, functionName, c.Config.Namespace, stopC, &c.waitFunction)
 				if err != nil {
 					break
 				}
-				fmt.Println(c.functions)
+				fmt.Println(c.Functions)
 				c.logger.Infof("a function was deleted: %s", functionName)
 			}
 		}
@@ -167,8 +167,7 @@ func (c *Controller) initResource() error {
 	return nil
 }
 
-func (c *Controller) findResourceVersion() (string, error) {
-	c.logger.Info("finding current resource version...")
+func (c *Controller) FindResourceVersion() (string, error) {
 	resp, err := utils.ListResources(c.Config.MasterHost, c.Config.Namespace, c.Config.KubeCli.RESTClient.Client)
 	if err != nil {
 		return "", err
@@ -182,7 +181,7 @@ func (c *Controller) findResourceVersion() (string, error) {
 
 	for _, item := range list.Items {
 		funcName := item.Name
-		c.functions[funcName] = &item
+		c.Functions[funcName] = &item
 	}
 	return list.ListMeta.ResourceVersion, nil
 }

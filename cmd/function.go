@@ -33,6 +33,7 @@ func init() {
 	RootCmd.AddCommand(functionCmd)
 	functionCmd.AddCommand(createCmd)
 	functionCmd.AddCommand(deleteCmd)
+	functionCmd.AddCommand(listCmd)
 	//TODO: reserve edit cmd later
 	//functionCmd.AddCommand(editCmd)
 }
