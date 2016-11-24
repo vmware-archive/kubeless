@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# Copyright 2016 Skippbox, Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+source "$(dirname "$BASH_SOURCE")/.validate"
+
+IFS=$'\n'
+files=( $(validate_diff --diff-filter=ACMR --name-only -- '*.go' | grep -v '^vendor/' || true) )
+unset IFS
+
+badFiles=()
+for f in "${files[@]}"; do
+	# we use "git show" here to validate that what's committed is formatted
+	if [ "$(git show "$VALIDATE_HEAD:$f" | gofmt -s -l)" ]; then
+		badFiles+=( "$f" )
+	fi
+done
+
+if [ ${#badFiles[@]} -eq 0 ]; then
+	echo 'Congratulations!  All Go source files are properly formatted.'
+else
+	{
+		echo "These files are not properly gofmt'd:"
+		for f in "${badFiles[@]}"; do
+			echo " - $f"
+		done
+		echo
+		echo 'Please reformat the above files using "gofmt -s -w" and commit the result.'
+		echo
+	} >&2
+	false
+fi
