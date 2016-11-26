@@ -23,15 +23,21 @@ $ go get -u github.com/skippbox/kubeless
 **Kubectl is required**
 
 ```console
-// Run kubeless server
-$ kubeless --master <master_node>
+// Proxy kubectl
+$ kubectl proxy -p 8080
+
+// Install Kubeless controller
+$ kubeless install
 
 // Submit function
-$ kubeless --master <master_node> function create <function_name> \
+$ kubeless function create <function_name> \
            --from-file <file> \
            --handler <handler> \
            --runtime <runtime>
 
 // Delete function
-$ kubeless --master <master_node> function delete <function_name>
+$ kubeless function delete <function_name>
+
+// List running functions
+$ kubeless function ls
 ```
