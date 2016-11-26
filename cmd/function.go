@@ -22,8 +22,8 @@ import (
 
 var functionCmd = &cobra.Command{
 	Use:   "function SUBCOMMAND",
-	Short: "function specific subcommands",
-	Long: `function command allows user create, edit, delete his functions running on Kubeless`,
+	Short: "function specific operations",
+	Long:  `function command allows user to list, create, edit, delete functions running on Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},

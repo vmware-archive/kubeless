@@ -27,13 +27,13 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/skippbox/kubeless/pkg/function"
-	"github.com/skippbox/kubeless/pkg/utils"
 	"github.com/skippbox/kubeless/pkg/spec"
+	"github.com/skippbox/kubeless/pkg/utils"
 
-	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/apis/extensions"
 	k8sapi "k8s.io/kubernetes/pkg/api"
+	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/apis/extensions"
+	"k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 const (
@@ -41,7 +41,7 @@ const (
 )
 
 var (
-	ErrVersionOutdated = errors.New("requested version is outdated in apiserver")
+	ErrVersionOutdated = errors.New("Requested version is outdated in apiserver")
 	initRetryWaitTime  = 30 * time.Second
 )
 
@@ -58,7 +58,6 @@ type Event struct {
 type Controller struct {
 	logger       *logrus.Entry
 	Config       Config
-	stopChMap    map[string]chan struct{}
 	waitFunction sync.WaitGroup
 	Functions    map[string]*spec.Function
 }
@@ -74,7 +73,6 @@ func New(cfg Config) *Controller {
 		logger:    logrus.WithField("pkg", "controller"),
 		Config:    cfg,
 		Functions: make(map[string]*spec.Function),
-		stopChMap: map[string]chan struct{}{},
 	}
 }
 
@@ -86,8 +84,8 @@ func (c *Controller) Init() {
 		if err == nil {
 			break
 		}
-		c.logger.Errorf("initialization failed: %v", err)
-		c.logger.Infof("retry in %v...", initRetryWaitTime)
+		c.logger.Errorf("Initialization failed: %v", err)
+		c.logger.Infof("Retry in %v...", initRetryWaitTime)
 		time.Sleep(initRetryWaitTime)
 	}
 }
@@ -96,9 +94,10 @@ func (c *Controller) Install() {
 	c.logger.Infof("Installing Kubeless controller into Kubernetes deployment...")
 	err := utils.DeployKubeless(c.Config.KubeCli)
 	if err != nil {
-		c.logger.Errorf("installation failed: %v", err)
+		c.logger.Errorf("Installation failed: %v", err)
+	} else {
+		c.logger.Infof("Installation finished!")
 	}
-	c.logger.Infof("Installation finished!")
 }
 
 func (c *Controller) Run() error {
@@ -112,11 +111,8 @@ func (c *Controller) Run() error {
 		return err
 	}
 
-	c.logger.Infof("starts running Kubeless controller from watch version: %s", watchVersion)
+	c.logger.Infof("Start running Kubeless controller from watch version: %s", watchVersion)
 	defer func() {
-		for _, stopC := range c.stopChMap {
-			close(stopC)
-		}
 		c.waitFunction.Wait()
 	}()
 
@@ -129,29 +125,24 @@ func (c *Controller) Run() error {
 			switch event.Type {
 			case "ADDED":
 				functionSpec := &event.Object.Spec
-				stopC := make(chan struct{})
-				c.stopChMap[functionName] = stopC
-				err := function.New(c.Config.KubeCli, functionName, c.Config.Namespace, functionSpec, stopC, &c.waitFunction)
+				err := function.New(c.Config.KubeCli, functionName, c.Config.Namespace, functionSpec, &c.waitFunction)
 				if err != nil {
 					break
 				}
 				c.Functions[functionName] = event.Object
-				fmt.Println(c.Functions)
-				c.logger.Infof("a new function was added: %s", functionName)
+				c.logger.Infof("A new function was added: %s", functionName)
 
 			case "DELETED":
 				if c.Functions[functionName] == nil {
-					c.logger.Warningf("ignore deletion: function %q not found (or dead)", functionName)
+					c.logger.Warningf("Ignore deletion: function %q not found", functionName)
 					break
 				}
-				stopC := make(chan struct{})
 				delete(c.Functions, functionName)
-				err := function.Delete(c.Config.KubeCli, functionName, c.Config.Namespace, stopC, &c.waitFunction)
+				err := function.Delete(c.Config.KubeCli, functionName, c.Config.Namespace, &c.waitFunction)
 				if err != nil {
 					break
 				}
-				fmt.Println(c.Functions)
-				c.logger.Infof("a function was deleted: %s", functionName)
+				c.logger.Infof("A function was deleted: %s", functionName)
 			}
 		}
 	}()
@@ -162,7 +153,7 @@ func (c *Controller) initResource() error {
 	err := c.createTPR()
 	if err != nil {
 		if !utils.IsKubernetesResourceAlreadyExistError(err) {
-			return fmt.Errorf("fail to create TPR: %v", err)
+			return fmt.Errorf("Fail to create TPR: %v", err)
 		}
 	}
 	return nil
@@ -195,7 +186,7 @@ func (c *Controller) createTPR() error {
 		Versions: []extensions.APIVersion{
 			{Name: "v1"},
 		},
-		Description: "Kubeless: Manage serverless functions in Kubernetes",
+		Description: "Kubeless: Serverless framework for Kubernetes",
 	}
 	_, err := c.Config.KubeCli.ThirdPartyResources().Create(tpr)
 	if err != nil {
@@ -226,18 +217,18 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 				errCh <- errors.New("Invalid status code: " + resp.Status)
 				return
 			}
-			c.logger.Infof("start watching at %v", watchVersion)
+			c.logger.Infof("Start watching at %v", watchVersion)
 			decoder := json.NewDecoder(resp.Body)
 			for {
 				ev, st, err := pollEvent(decoder)
 
 				if err != nil {
 					if err == io.EOF { // apiserver will close stream periodically
-						c.logger.Debug("apiserver closed stream")
+						c.logger.Debug("Apiserver closed stream")
 						break
 					}
 
-					c.logger.Errorf("received invalid event from API server: %v", err)
+					c.logger.Errorf("Received invalid event from API server: %v", err)
 					errCh <- err
 					return
 				}
@@ -247,10 +238,10 @@ func (c *Controller) monitor(watchVersion string) (<-chan *Event, <-chan error) 
 						errCh <- ErrVersionOutdated // go to recovery path
 						return
 					}
-					c.logger.Fatalf("unexpected status response from API server: %v", st.Message)
+					c.logger.Fatalf("Unexpected status response from API server: %v", st.Message)
 				}
 
-				c.logger.Debugf("function event: %v %v", ev.Type, ev.Object.Spec)
+				c.logger.Debugf("Function event: %v %v", ev.Type, ev.Object.Spec)
 
 				watchVersion = ev.Object.ObjectMeta.ResourceVersion
 				eventCh <- ev
@@ -270,14 +261,14 @@ func pollEvent(decoder *json.Decoder) (*Event, *unversionedAPI.Status, error) {
 		if err == io.EOF {
 			return nil, nil, err
 		}
-		return nil, nil, fmt.Errorf("fail to decode raw event from apiserver (%v)", err)
+		return nil, nil, fmt.Errorf("Fail to decode raw event from apiserver (%v)", err)
 	}
 
 	if re.Type == "ERROR" {
 		status := &unversionedAPI.Status{}
 		err = json.Unmarshal(re.Object, status)
 		if err != nil {
-			return nil, nil, fmt.Errorf("fail to decode (%s) into unversioned.Status (%v)", re.Object, err)
+			return nil, nil, fmt.Errorf("Fail to decode (%s) into unversioned.Status (%v)", re.Object, err)
 		}
 		return nil, status, nil
 	}
@@ -288,7 +279,7 @@ func pollEvent(decoder *json.Decoder) (*Event, *unversionedAPI.Status, error) {
 	}
 	err = json.Unmarshal(re.Object, ev.Object)
 	if err != nil {
-		return nil, nil, fmt.Errorf("fail to unmarshal Function object from data (%s): %v", re.Object, err)
+		return nil, nil, fmt.Errorf("Fail to unmarshal function object from data (%s): %v", re.Object, err)
 	}
 	return ev, nil, nil
 }

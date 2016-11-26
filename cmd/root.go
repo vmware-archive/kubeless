@@ -17,19 +17,19 @@ limitations under the License.
 package cmd
 
 import (
-	"os"
 	"fmt"
+	"os"
 
-	"github.com/spf13/cobra"
+	"github.com/Sirupsen/logrus"
 	"github.com/skippbox/kubeless/pkg/controller"
 	"github.com/skippbox/kubeless/pkg/utils"
-	"github.com/Sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 var RootCmd = &cobra.Command{
 	Use:   "kubeless",
-	Short: "A serverless manager on top of Kubernetes",
-	Long: `A serverless manager on top of Kubernetes`,
+	Short: "Serverless framework for Kubernetes",
+	Long:  `Serverless framework for Kubernetes`,
 	Run: func(cmd *cobra.Command, args []string) {
 		master, err := cmd.Flags().GetString("master")
 		if master == "" {
@@ -61,8 +61,8 @@ func newControllerConfig(masterHost string) controller.Config {
 		fmt.Errorf("Can not get kubernetes config: %s", err)
 	}
 	cfg := controller.Config{
-		Namespace: ns,
-		KubeCli:   kubecli,
+		Namespace:  ns,
+		KubeCli:    kubecli,
 		MasterHost: masterHost,
 	}
 

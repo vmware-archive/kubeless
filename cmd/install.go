@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/skippbox/kubeless/pkg/controller"
 	"github.com/spf13/cobra"

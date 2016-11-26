@@ -17,16 +17,16 @@ limitations under the License.
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"github.com/Sirupsen/logrus"
 	"github.com/skippbox/kubeless/pkg/utils"
+	"github.com/spf13/cobra"
 )
 
 var createCmd = &cobra.Command{
 	Use:   "create <function_name> FLAG",
 	Short: "create a function to Kubeless",
-	Long: `create a function to Kubeless`,
-	Run: func(cmd *cobra.Command, args []string){
+	Long:  `create a function to Kubeless`,
+	Run: func(cmd *cobra.Command, args []string) {
 		runtime, err := cmd.Flags().GetString("runtime")
 		if err != nil {
 			logrus.Fatal(err)

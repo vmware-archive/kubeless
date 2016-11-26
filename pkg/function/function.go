@@ -17,17 +17,16 @@ limitations under the License.
 package function
 
 import (
-	"github.com/Sirupsen/logrus"
-	"github.com/skippbox/kubeless/pkg/utils"
-	"github.com/skippbox/kubeless/pkg/spec"
-	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"sync"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/skippbox/kubeless/pkg/spec"
+	"github.com/skippbox/kubeless/pkg/utils"
+	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 const (
 	defaultVersion                        = "1.0"
-	eventDeleteFunction functionEventType = "Delete"
-	eventModifyFunction functionEventType = "Modify"
 )
 
 type functionEventType string
@@ -45,18 +44,17 @@ type Function struct {
 	Name      string
 	Namespace string
 	eventCh   chan *functionEvent
-	stopCh    chan struct{}
 }
 
-func New(c *client.Client, name, ns string, spec *spec.FunctionSpec, stopC <-chan struct{}, wg *sync.WaitGroup) error {
-	return new(c, name, ns, spec, stopC, wg)
+func New(c *client.Client, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
+	return new(c, name, ns, spec, wg)
 }
 
-func Delete(c *client.Client, name, ns string, stopC <-chan struct{}, wg *sync.WaitGroup) error {
-	return delete(c, name, ns, stopC, wg)
+func Delete(c *client.Client, name, ns string, wg *sync.WaitGroup) error {
+	return delete(c, name, ns, wg)
 }
 
-func new(kclient *client.Client, name, ns string, spec *spec.FunctionSpec, stopC <-chan struct{}, wg *sync.WaitGroup) error {
+func new(kclient *client.Client, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
 	if len(spec.Version) == 0 {
 		// TODO: set version in spec in apiserver
 		spec.Version = defaultVersion
@@ -67,7 +65,6 @@ func new(kclient *client.Client, name, ns string, spec *spec.FunctionSpec, stopC
 		Name:      name,
 		Namespace: ns,
 		eventCh:   make(chan *functionEvent, 100),
-		stopCh:    make(chan struct{}),
 		Spec:      spec,
 		status:    &Status{},
 	}
@@ -83,33 +80,8 @@ func new(kclient *client.Client, name, ns string, spec *spec.FunctionSpec, stopC
 	return nil
 }
 
-func delete(kclient *client.Client, name, ns string, stopC <-chan struct{}, wg *sync.WaitGroup) error {
+func delete(kclient *client.Client, name, ns string, wg *sync.WaitGroup) error {
 	err := utils.DeleteK8sResources(ns, name, kclient)
 	wg.Add(1)
 	return err
-}
-
-func (c *Function) send(ev *functionEvent) {
-	select {
-	case c.eventCh <- ev:
-	case <-c.stopCh:
-	default:
-		panic("TODO: too many events queued...")
-	}
-}
-
-func (c *Function) Update(spec *spec.FunctionSpec) {
-	anyInterestedChange := false
-	if len(spec.Version) == 0 {
-		spec.Version = defaultVersion
-	}
-	if spec.Version != c.Spec.Version {
-		anyInterestedChange = true
-	}
-	if anyInterestedChange {
-		c.send(&functionEvent{
-			typ:  eventModifyFunction,
-			spec: *spec,
-		})
-	}
 }

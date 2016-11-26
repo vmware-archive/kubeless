@@ -17,18 +17,19 @@ limitations under the License.
 package cmd
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/skippbox/kubeless/pkg/controller"
-	"fmt"
 	"encoding/json"
+	"fmt"
+
+	"github.com/skippbox/kubeless/pkg/controller"
+	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
 
 var listCmd = &cobra.Command{
 	Use:   "ls FLAG",
 	Short: "list all functions deployed to Kubeless",
-	Long: `list all functions deployed to Kubeless`,
-	Run: func(cmd *cobra.Command, args []string){
+	Long:  `list all functions deployed to Kubeless`,
+	Run: func(cmd *cobra.Command, args []string) {
 		master, err := cmd.Flags().GetString("master")
 		if master == "" {
 			master = "localhost"

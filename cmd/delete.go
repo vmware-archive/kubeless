@@ -17,16 +17,16 @@ limitations under the License.
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"github.com/Sirupsen/logrus"
 	"github.com/skippbox/kubeless/pkg/utils"
+	"github.com/spf13/cobra"
 )
 
 var deleteCmd = &cobra.Command{
 	Use:   "delete <function_name>",
 	Short: "delete a function from Kubeless",
-	Long: `delete a function from Kubeless`,
-	Run: func(cmd *cobra.Command, args []string){
+	Long:  `delete a function from Kubeless`,
+	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - function name")
 		}

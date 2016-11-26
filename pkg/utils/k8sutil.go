@@ -17,14 +17,16 @@ limitations under the License.
 package utils
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
-	"bytes"
-	"io/ioutil"
+
 	"github.com/skippbox/kubeless/pkg/spec"
 	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
@@ -34,7 +36,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/util/intstr"
-	"encoding/json"
 )
 
 const TIMEOUT = 300
@@ -49,8 +50,8 @@ func GetClient() (*client.Client, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	client := client.NewOrDie(clientConfig)
-	return client, namespace, nil
+	kclient := client.NewOrDie(clientConfig)
+	return kclient, namespace, nil
 }
 
 func IsKubernetesResourceAlreadyExistError(err error) bool {
@@ -103,10 +104,10 @@ func deleteResource(host, ns, funcName string, httpClient *http.Client) (*http.R
 
 	if host == "localhost" {
 		req, err = http.NewRequest("DELETE", fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas/%s",
-			host, ns, funcName),nil)
+			host, ns, funcName), nil)
 	} else {
 		req, err = http.NewRequest("DELETE", fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas/%s",
-			host, ns, funcName),nil)
+			host, ns, funcName), nil)
 	}
 
 	if err != nil {
@@ -330,14 +331,14 @@ func DeployKubeless(client *client.Client) error {
 				Spec: api.PodSpec{
 					Containers: []api.Container{
 						{
-							Name:  "kubeless",
-							Image: "skippbox/kubeless-controller:0.0.1",
+							Name:            "kubeless",
+							Image:           "skippbox/kubeless-controller:0.0.1",
 							ImagePullPolicy: api.PullIfNotPresent,
 						},
 						{
-							Name: "kubectl",
-							Image: "kelseyhightower/kubectl:1.4.0",
-							Args: []string{"proxy", "-p", "8080"},
+							Name:            "kubectl",
+							Image:           "kelseyhightower/kubectl:1.4.0",
+							Args:            []string{"proxy", "-p", "8080"},
 							ImagePullPolicy: api.PullAlways,
 						},
 					},
