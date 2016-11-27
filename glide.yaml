@@ -1,0 +1,16 @@
+package: github.com/skippbox/kubeless
+import:
+- package: github.com/Sirupsen/logrus
+- package: github.com/spf13/cobra
+- package: gopkg.in/yaml.v2
+- package: k8s.io/kubernetes
+  version: v1.4.0
+  subpackages:
+  - pkg/api
+  - pkg/api/errors
+  - pkg/api/unversioned
+  - pkg/apis/extensions
+  - pkg/client/unversioned
+  - pkg/kubectl
+  - pkg/kubectl/cmd/util
+  - pkg/util/intstr
