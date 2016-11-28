@@ -277,6 +277,10 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, host string) erro
 	}
 	code := string(data[:])
 	f := &spec.Function{
+		TypeMeta: unversionedAPI.TypeMeta{
+			Kind: "LambDa",
+			APIVersion: "k8s.io/v1",
+		},
 		ObjectMeta: api.ObjectMeta{
 			Name: funcName,
 		},
