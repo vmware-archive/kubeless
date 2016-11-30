@@ -20,9 +20,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/gosuri/uitable"
 	"github.com/skippbox/kubeless/pkg/controller"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+	"github.com/skippbox/kubeless/pkg/spec"
 )
 
 var listCmd = &cobra.Command{
@@ -34,6 +36,7 @@ var listCmd = &cobra.Command{
 		if master == "" {
 			master = "localhost"
 		}
+
 		output, err := cmd.Flags().GetString("out")
 		cfg := newControllerConfig(master)
 		c := controller.New(cfg)
@@ -41,23 +44,45 @@ var listCmd = &cobra.Command{
 		if err != nil {
 			fmt.Errorf("Can not list functions: %v", err)
 		}
-		for k, v := range c.Functions {
-			switch output {
-			case "":
-				fmt.Println(k)
-			case "json":
-				b, _ := json.MarshalIndent(v.Spec, "", "  ")
-				fmt.Println(string(b))
-			case "yaml":
-				b, _ := yaml.Marshal(v.Spec)
-				fmt.Println(string(b))
-			default:
-				fmt.Errorf("Wrong output format. Please use only json|yaml.")
+
+		if len(args) == 0 {
+			for k, _ := range c.Functions {
+				args = append(args, k)
 			}
 		}
+
+		printFunctions(args, c.Functions, output)
 	},
 }
 
 func init() {
 	listCmd.Flags().StringP("out", "o", "", "Output format. One of: json|yaml")
+}
+
+func printFunctions(args []string, functions map[string]*spec.Function, output string) {
+	if output == "" {
+		table := uitable.New()
+		table.MaxColWidth = 30
+		table.AddRow("NAME", "HANDLER", "RUNTIME")
+		for _, f := range args {
+			n := fmt.Sprintf(f)
+			h := fmt.Sprintf(functions[f].Spec.Handler)
+			r := fmt.Sprintf(functions[f].Spec.Runtime)
+			table.AddRow(n, h, r)
+		}
+		fmt.Println(table.String())
+	} else {
+		for _, f := range args {
+			switch output {
+			case "json":
+				b, _ := json.MarshalIndent(functions[f].Spec, "", "  ")
+				fmt.Println(string(b))
+			case "yaml":
+				b, _ := yaml.Marshal(functions[f].Spec)
+				fmt.Println(string(b))
+			default:
+				fmt.Errorf("Wrong output format. Please use only json|yaml.")
+			}
+		}
+	}
 }

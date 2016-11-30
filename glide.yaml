@@ -14,3 +14,4 @@ import:
   - pkg/kubectl
   - pkg/kubectl/cmd/util
   - pkg/util/intstr
+- package: github.com/gosuri/uitable
