@@ -54,6 +54,11 @@ func GetClient() (*client.Client, string, error) {
 	return kclient, namespace, nil
 }
 
+func GetFactory() *cmdutil.Factory {
+	factory := cmdutil.NewFactory(nil)
+	return factory
+}
+
 func IsKubernetesResourceAlreadyExistError(err error) bool {
 	se, ok := err.(*apierrors.StatusError)
 	if !ok {
@@ -278,7 +283,7 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, host string) erro
 	code := string(data[:])
 	f := &spec.Function{
 		TypeMeta: unversionedAPI.TypeMeta{
-			Kind: "LambDa",
+			Kind:       "LambDa",
 			APIVersion: "k8s.io/v1",
 		},
 		ObjectMeta: api.ObjectMeta{
@@ -373,4 +378,19 @@ func DeployKubeless(client *client.Client) error {
 	}
 
 	return nil
+}
+
+func GetPodName(c *client.Client, ns, funcName string) (string, error) {
+	po, err := c.Pods(ns).List(api.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	for _, item := range po.Items {
+		if strings.Index(item.Name, funcName) == 0 {
+			return item.Name, nil
+		}
+	}
+
+	return "", errors.New("Can't find pod starting with the function name")
 }
