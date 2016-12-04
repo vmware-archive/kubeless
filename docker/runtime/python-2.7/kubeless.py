@@ -4,7 +4,7 @@ import sys
 import os
 import imp
 
-from bottle import route, run, template
+from bottle import route, run, request
 
 mod_name = os.getenv('MOD_NAME')
 func_handler = os.getenv('FUNC_HANDLER')
@@ -18,6 +18,6 @@ except ImportError:
 
 @route('/')
 def handler():
-    return getattr(mod, func_handler)()
+    return getattr(mod, func_handler)(request)
 
 run(host='0.0.0.0', port=8080)

@@ -1,4 +1,5 @@
 import json
 
-def handler():
-    return "hello world"
+def handler(context):
+    print context.json
+    return context.json
