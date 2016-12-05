@@ -34,6 +34,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned/portforward"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	k8scmd "k8s.io/kubernetes/pkg/kubectl/cmd"
+	"bytes"
 )
 
 const (
@@ -72,10 +73,11 @@ var callCmd = &cobra.Command{
 		}
 		funcName := args[0]
 
-		//data, err := cmd.Flags().GetString("data")
-		//if err != nil {
-		//	logrus.Fatal(err)
-		//}
+		data, err := cmd.Flags().GetString("data")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		jsonStr := []byte(data)
 
 		f := utils.GetFactory()
 		ns, _, err := f.DefaultNamespace()
@@ -125,7 +127,12 @@ var callCmd = &cobra.Command{
 		resp := &http.Response{}
 
 		for {
-			resp, err = httpClient.Get(fmt.Sprintf("http://%s:%s", master, port))
+			url := fmt.Sprintf("http://%s:%s", master, port)
+			req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+			req.Header.Set("Content-Type", "application/json")
+			resp, err = httpClient.Do(req)
+
+			//resp, err = httpClient.Get(fmt.Sprintf("http://%s:%s", master, port))
 			if err == nil {
 				htmlData, err := ioutil.ReadAll(resp.Body)
 				if err != nil {
@@ -147,7 +154,7 @@ var callCmd = &cobra.Command{
 }
 
 func init() {
-	//callCmd.Flags().StringP("data", "", "", "Specify data for function")
+	callCmd.Flags().StringP("data", "", "", "Specify data for function")
 }
 
 func getLocalPort() (string, error) {
