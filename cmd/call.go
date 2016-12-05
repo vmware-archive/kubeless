@@ -27,6 +27,7 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"bytes"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/skippbox/kubeless/pkg/utils"
@@ -34,12 +35,11 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned/portforward"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	k8scmd "k8s.io/kubernetes/pkg/kubectl/cmd"
-	"bytes"
 )
 
 const (
-	MaxRetries = 5
-	DefaultTimeSleep = 5 * time.Second
+	MaxRetries       = 5
+	DefaultTimeSleep = 1 * time.Second
 )
 
 type defaultPortForwarder struct {
