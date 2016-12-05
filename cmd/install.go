@@ -45,7 +45,8 @@ var installCmd = &cobra.Command{
 			cfg := newControllerConfig(master)
 			c := controller.New(cfg)
 			c.Init()
-			c.Install()
+			c.InstallKubeless()
+			c.InstallMsgBroker()
 		} else if containsString(nokayResponses, text) {
 			return
 		} else {

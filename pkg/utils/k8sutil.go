@@ -198,8 +198,8 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 				Spec: api.PodSpec{
 					Containers: []api.Container{
 						{
-							Name:  name,
-							Image: "skippbox/kubeless-python:0.0.3",
+							Name:            name,
+							Image:           "skippbox/kubeless-python:0.0.3",
 							ImagePullPolicy: api.PullAlways,
 							Ports: []api.ContainerPort{
 								{
@@ -373,6 +373,128 @@ func DeployKubeless(client *client.Client) error {
 	}
 
 	//deploy Kubeless controller
+	_, err = client.Deployments("kubeless").Create(dpm)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func DeployMsgBroker(client *client.Client) error {
+	labels := map[string]string{
+		"app": "kafka",
+	}
+
+	//add zookeeper svc
+	svc := &api.Service{
+		ObjectMeta: api.ObjectMeta{
+			Name:   "zookeeper",
+			Labels: labels,
+		},
+		Spec: api.ServiceSpec{
+			Ports: []api.ServicePort{
+				{
+					Name:       "zookeeper-port",
+					Port:       2181,
+					TargetPort: intstr.FromInt(2181),
+					Protocol:   api.ProtocolTCP,
+				},
+			},
+			Selector: labels,
+			Type:     api.ServiceTypeClusterIP,
+		},
+	}
+
+	_, err := client.Services("kubeless").Create(svc)
+	if err != nil {
+		return err
+	}
+
+	//add kafka svc
+	svc = &api.Service{
+		ObjectMeta: api.ObjectMeta{
+			Name:   "kafka",
+			Labels: labels,
+		},
+		Spec: api.ServiceSpec{
+			Ports: []api.ServicePort{
+				{
+					Name:       "kafka-port",
+					Port:       9092,
+					TargetPort: intstr.FromInt(9092),
+					Protocol:   api.ProtocolTCP,
+				},
+			},
+			Selector: labels,
+			Type:     api.ServiceTypeClusterIP,
+		},
+	}
+
+	_, err = client.Services("kubeless").Create(svc)
+	if err != nil {
+		return err
+	}
+
+	//add deployment
+	dpm := &extensions.Deployment{
+		ObjectMeta: api.ObjectMeta{
+			Name:   "kafka-controller",
+			Labels: labels,
+		},
+		Spec: extensions.DeploymentSpec{
+			Replicas: 1,
+			Template: api.PodTemplateSpec{
+				ObjectMeta: api.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: api.PodSpec{
+					Containers: []api.Container{
+						{
+							Name:            "kafka",
+							Image:           "wurstmeister/kafka",
+							ImagePullPolicy: api.PullIfNotPresent,
+							Env: []api.EnvVar{
+								{
+									Name:  "KAFKA_ADVERTISED_HOST_NAME",
+									Value: "kafka.kubeless",
+								},
+								{
+									Name:  "KAFKA_ADVERTISED_PORT",
+									Value: "9092",
+								},
+								{
+									Name:  "KAFKA_PORT",
+									Value: "9092",
+								},
+								{
+									Name:  "KAFKA_ZOOKEEPER_CONNECT",
+									Value: "zookeeper.kubeless:2181",
+								},
+							},
+							Ports: []api.ContainerPort{
+								{
+									ContainerPort: 9092,
+								},
+							},
+						},
+						{
+							Name:            "zookeeper",
+							Image:           "wurstmeister/zookeeper",
+							ImagePullPolicy: api.PullIfNotPresent,
+							Ports: []api.ContainerPort{
+								{
+									ContainerPort: 2181,
+								},
+							},
+						},
+					},
+					RestartPolicy: api.RestartPolicyAlways,
+				},
+			},
+		},
+	}
+
 	_, err = client.Deployments("kubeless").Create(dpm)
 	if err != nil {
 		return err

@@ -90,13 +90,23 @@ func (c *Controller) Init() {
 	}
 }
 
-func (c *Controller) Install() {
+func (c *Controller) InstallKubeless() {
 	c.logger.Infof("Installing Kubeless controller into Kubernetes deployment...")
 	err := utils.DeployKubeless(c.Config.KubeCli)
 	if err != nil {
-		c.logger.Errorf("Installation failed: %v", err)
+		c.logger.Errorf("Kubeless controller installation failed: %v", err)
 	} else {
-		c.logger.Infof("Installation finished!")
+		c.logger.Infof("Kubeless controller installation finished!")
+	}
+}
+
+func (c *Controller) InstallMsgBroker() {
+	c.logger.Infof("Installing Message Broker into Kubernetes deployment...")
+	err := utils.DeployMsgBroker(c.Config.KubeCli)
+	if err != nil {
+		c.logger.Errorf("Message Broker installation failed: %v", err)
+	} else {
+		c.logger.Infof("Message Broker installation finished!")
 	}
 }
 
