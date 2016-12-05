@@ -63,12 +63,13 @@ func printFunctions(args []string, functions map[string]*spec.Function, output s
 	if output == "" {
 		table := uitable.New()
 		table.MaxColWidth = 30
-		table.AddRow("NAME", "HANDLER", "RUNTIME")
+		table.AddRow("NAME", "HANDLER", "RUNTIME", "TYPE")
 		for _, f := range args {
 			n := fmt.Sprintf(f)
 			h := fmt.Sprintf(functions[f].Spec.Handler)
 			r := fmt.Sprintf(functions[f].Spec.Runtime)
-			table.AddRow(n, h, r)
+			t := fmt.Sprintf(functions[f].Spec.Type)
+			table.AddRow(n, h, r, t)
 		}
 		fmt.Println(table.String())
 	} else {
