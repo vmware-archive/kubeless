@@ -20,4 +20,8 @@ except ImportError:
 def handler():
     return getattr(mod, func_handler)(request)
 
+@route('/', method="POST")
+def post_handler():
+    return getattr(mod, func_handler)(request)
+
 run(host='0.0.0.0', port=8080)
