@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -27,7 +28,6 @@ import (
 	"os"
 	"strconv"
 	"time"
-	"bytes"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/skippbox/kubeless/pkg/utils"
@@ -63,6 +63,11 @@ var callCmd = &cobra.Command{
 	Short: "call function from cli",
 	Long:  `call function from cli`,
 	Run: func(cmd *cobra.Command, args []string) {
+		var (
+			jsonStr []byte
+			get     bool = false
+		)
+
 		master, _ := cmd.Flags().GetString("master")
 		if master == "" {
 			master = "localhost"
@@ -77,7 +82,11 @@ var callCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		jsonStr := []byte(data)
+		if data == "" {
+			get = true
+		} else {
+			jsonStr = []byte(data)
+		}
 
 		f := utils.GetFactory()
 		ns, _, err := f.DefaultNamespace()
@@ -125,14 +134,18 @@ var callCmd = &cobra.Command{
 		retries := 0
 		httpClient := &http.Client{}
 		resp := &http.Response{}
+		req := &http.Request{}
+		url := fmt.Sprintf("http://%s:%s", master, port)
 
 		for {
-			url := fmt.Sprintf("http://%s:%s", master, port)
-			req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
-			req.Header.Set("Content-Type", "application/json")
+			if get {
+				req, _ = http.NewRequest("GET", url, nil)
+			} else {
+				req, _ = http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+				req.Header.Set("Content-Type", "application/json")
+			}
 			resp, err = httpClient.Do(req)
 
-			//resp, err = httpClient.Get(fmt.Sprintf("http://%s:%s", master, port))
 			if err == nil {
 				htmlData, err := ioutil.ReadAll(resp.Body)
 				if err != nil {

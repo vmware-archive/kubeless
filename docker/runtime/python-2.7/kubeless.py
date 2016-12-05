@@ -16,9 +16,9 @@ try:
 except ImportError:
     print("No valid module found for the name: lambda, Failed to import module")
 
-@route('/')
+@route('/', method="GET")
 def handler():
-    return getattr(mod, func_handler)(request)
+    return getattr(mod, func_handler)()
 
 @route('/', method="POST")
 def post_handler():
