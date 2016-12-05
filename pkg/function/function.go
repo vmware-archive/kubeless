@@ -25,10 +25,6 @@ import (
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
-const (
-	defaultVersion                        = "1.0"
-)
-
 type functionEventType string
 
 type functionEvent struct {
@@ -55,10 +51,6 @@ func Delete(c *client.Client, name, ns string, wg *sync.WaitGroup) error {
 }
 
 func new(kclient *client.Client, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
-	if len(spec.Version) == 0 {
-		// TODO: set version in spec in apiserver
-		spec.Version = defaultVersion
-	}
 	f := &Function{
 		logger:    logrus.WithField("pkg", "function").WithField("function-name", name),
 		kclient:   kclient,

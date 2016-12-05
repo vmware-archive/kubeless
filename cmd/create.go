@@ -27,6 +27,21 @@ var createCmd = &cobra.Command{
 	Short: "create a function to Kubeless",
 	Long:  `create a function to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
+		master, err := cmd.Flags().GetString("master")
+		if master == "" {
+			master = "localhost"
+		}
+
+		if len(args) != 1 {
+			logrus.Fatal("Need exactly one argument - function name")
+		}
+		funcName := args[0]
+
+		triggerHTTP, err := cmd.Flags().GetBool("trigger-http")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		runtime, err := cmd.Flags().GetString("runtime")
 		if err != nil {
 			logrus.Fatal(err)
@@ -42,17 +57,12 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		master, err := cmd.Flags().GetString("master")
-		if master == "" {
-			master = "localhost"
+		funcType := "PubSub"
+		if triggerHTTP {
+			funcType = "HTTP"
 		}
 
-		if len(args) != 1 {
-			logrus.Fatal("Need exactly one argument - function name")
-		}
-		funcName := args[0]
-
-		utils.CreateK8sCustomResource(runtime, handler, file, funcName, master)
+		utils.CreateK8sCustomResource(runtime, handler, file, funcName, master, funcType)
 	},
 }
 
@@ -60,4 +70,6 @@ func init() {
 	createCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	createCmd.Flags().StringP("handler", "", "", "Specify handler")
 	createCmd.Flags().StringP("from-file", "", "", "Specify code file")
+	createCmd.Flags().StringP("trigger-topic", "", "", "Create a pubsub function to Kubeless")
+	createCmd.Flags().Bool("trigger-http", false, "Create a http-based function to Kubeless")
 }

@@ -139,6 +139,12 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 		fileName = modName + ".js"
 	}
 
+	//TODO: add images for other runtimes. Now only work for python
+	imageName := "skippbox/kubeless-python:0.0.3"
+	if spec.Type == "PubSub" {
+		imageName = "skippbox/kubeless-event-consumer:0.0.1"
+	}
+
 	//add configmap
 	labels := map[string]string{
 		"lambda": name,
@@ -199,7 +205,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 					Containers: []api.Container{
 						{
 							Name:            name,
-							Image:           "skippbox/kubeless-python:0.0.3",
+							Image:           imageName,
 							ImagePullPolicy: api.PullAlways,
 							Ports: []api.ContainerPort{
 								{
@@ -276,7 +282,7 @@ func DeleteK8sResources(ns, name string, client *client.Client) error {
 	return nil
 }
 
-func CreateK8sCustomResource(runtime, handler, file, funcName, host string) error {
+func CreateK8sCustomResource(runtime, handler, file, funcName, host, funcType string) error {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err
@@ -293,7 +299,7 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, host string) erro
 		Spec: spec.FunctionSpec{
 			Handler: handler,
 			Runtime: runtime,
-			Version: "0",
+			Type:    funcType,
 			Lambda:  code,
 		},
 	}
@@ -342,7 +348,7 @@ func DeployKubeless(client *client.Client) error {
 					Containers: []api.Container{
 						{
 							Name:            "kubeless",
-							Image:           "skippbox/kubeless-controller:0.0.1",
+							Image:           "skippbox/kubeless-controller:0.0.2",
 							ImagePullPolicy: api.PullIfNotPresent,
 						},
 						{
