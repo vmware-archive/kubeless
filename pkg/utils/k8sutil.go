@@ -200,6 +200,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 						{
 							Name:  name,
 							Image: "skippbox/kubeless-python:0.0.3",
+							ImagePullPolicy: api.PullAlways,
 							Ports: []api.ContainerPort{
 								{
 									ContainerPort: 8080,
