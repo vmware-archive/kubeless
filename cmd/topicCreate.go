@@ -32,67 +32,14 @@ var topicCreateCmd = &cobra.Command{
 	Short: "create a topic to Kubeless",
 	Long:  `create a topic to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
-		f := utils.GetFactory()
-		ns := "kubeless"
-		kClient, err := f.Client()
-		if err != nil {
-			logrus.Fatalf("Creation failed: %v", err)
-		}
-		kClientConfig, err := f.ClientConfig()
-		if err != nil {
-			logrus.Fatalf("Creation failed: %v", err)
-		}
-
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - topic name")
 		}
 
-		// wrap-up kubectl exec
 		topicName := args[0]
 		command := []string{"bash", "/opt/kafka_2.11-0.10.1.0/bin/kafka-topics.sh", "--zookeeper", "zookeeper:2181", "--replication-factor", "1", "--partitions", "1", "--create", "--topic", topicName}
 
-		podName, err := utils.GetPodName(kClient, ns, "kafka-controller")
-		params := &k8scmd.ExecOptions{
-			StreamOptions: k8scmd.StreamOptions{
-				Namespace:     ns,
-				PodName:       podName,
-				ContainerName: "kafka",
-				In:            nil,
-				Out:           os.Stdout,
-				Err:           os.Stderr,
-				TTY:           false,
-			},
-			Executor: &k8scmd.DefaultRemoteExecutor{},
-			Command:  command,
-			Client:   kClient,
-			Config:   kClientConfig,
-		}
-
-		t := setupTTY(params)
-		var sizeQueue term.TerminalSizeQueue
-
-		fn := func() error {
-			req := params.Client.RESTClient.Post().
-				Resource("pods").
-				Name(podName).
-				Namespace(ns).
-				SubResource("exec").
-				Param("container", "kafka")
-			req.VersionedParams(&api.PodExecOptions{
-				Container: "kafka",
-				Command:   params.Command,
-				Stdin:     params.Stdin,
-				Stdout:    params.Out != nil,
-				Stderr:    params.Err != nil,
-				TTY:       false,
-			}, api.ParameterCodec)
-
-			return params.Executor.Execute("POST", req.URL(), params.Config, params.In, params.Out, params.Err, t.Raw, sizeQueue)
-		}
-
-		if err := t.Safe(fn); err != nil {
-			logrus.Fatalf("Topic creation failed: %v", err)
-		}
+		execCommand(command)
 	},
 }
 
@@ -103,4 +50,60 @@ func setupTTY(params *k8scmd.ExecOptions) term.TTY {
 	}
 
 	return t
+}
+
+// wrap-up kubectl exec
+func execCommand(command []string) {
+	f := utils.GetFactory()
+	ns := "kubeless"
+	kClient, err := f.Client()
+	if err != nil {
+		logrus.Fatalln(err)
+	}
+	kClientConfig, err := f.ClientConfig()
+	if err != nil {
+		logrus.Fatalln(err)
+	}
+	podName, _ := utils.GetPodName(kClient, ns, "kafka-controller")
+	params := &k8scmd.ExecOptions{
+		StreamOptions: k8scmd.StreamOptions{
+			Namespace:     ns,
+			PodName:       podName,
+			ContainerName: "kafka",
+			In:            nil,
+			Out:           os.Stdout,
+			Err:           os.Stderr,
+			TTY:           false,
+		},
+		Executor: &k8scmd.DefaultRemoteExecutor{},
+		Command:  command,
+		Client:   kClient,
+		Config:   kClientConfig,
+	}
+
+	t := setupTTY(params)
+	var sizeQueue term.TerminalSizeQueue
+
+	fn := func() error {
+		req := params.Client.RESTClient.Post().
+			Resource("pods").
+			Name(podName).
+			Namespace(ns).
+			SubResource("exec").
+			Param("container", "kafka")
+		req.VersionedParams(&api.PodExecOptions{
+			Container: "kafka",
+			Command:   params.Command,
+			Stdin:     params.Stdin,
+			Stdout:    params.Out != nil,
+			Stderr:    params.Err != nil,
+			TTY:       false,
+		}, api.ParameterCodec)
+
+		return params.Executor.Execute("POST", req.URL(), params.Config, params.In, params.Out, params.Err, t.Raw, sizeQueue)
+	}
+
+	if err := t.Safe(fn); err != nil {
+		logrus.Fatalln(err)
+	}
 }
