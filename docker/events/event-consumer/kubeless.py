@@ -9,6 +9,7 @@ from kafka import KafkaConsumer
 
 mod_name = os.getenv('MOD_NAME')
 func_handler = os.getenv('FUNC_HANDLER')
+topic_name = os.getenv('TOPIC_NAME')
 
 mod_path = '/kubeless/' + mod_name + '.py'
 
@@ -18,7 +19,7 @@ except ImportError:
     print("No valid module found for the name: lambda, Failed to import module")
 
 consumer=KafkaConsumer(bootstrap_servers='kafka.kubeless:9092',value_deserializer=json.dumps)
-consumer.subscribe(['kubeless'])
+consumer.subscribe([topic_name])
 while True:
     for msg in consumer:
 	    getattr(mod, func_handler)(json.loads(msg.value))
