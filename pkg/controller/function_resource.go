@@ -27,5 +27,5 @@ type FunctionList struct {
 	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
 	unversioned.ListMeta `json:"metadata,omitempty"`
 	// Items is a list of third party objects
-	Items []spec.Function `json:"items"`
+	Items []*spec.Function `json:"items"`
 }

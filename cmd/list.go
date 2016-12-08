@@ -64,6 +64,7 @@ func printFunctions(args []string, functions map[string]*spec.Function, output s
 		table := uitable.New()
 		table.MaxColWidth = 30
 		table.AddRow("NAME", "HANDLER", "RUNTIME", "TYPE", "TOPIC")
+
 		for _, f := range args {
 			n := fmt.Sprintf(f)
 			h := fmt.Sprintf(functions[f].Spec.Handler)

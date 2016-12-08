@@ -184,7 +184,7 @@ func (c *Controller) FindResourceVersion() (string, error) {
 
 	for _, item := range list.Items {
 		funcName := item.Name
-		c.Functions[funcName] = &item
+		c.Functions[funcName] = item
 	}
 	return list.ListMeta.ResourceVersion, nil
 }
