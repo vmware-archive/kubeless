@@ -61,7 +61,6 @@ func new(kclient *client.Client, name, ns string, spec *spec.FunctionSpec, wg *s
 		status:    &Status{},
 	}
 
-	//TODO: create deployment & svc
 	err := utils.CreateK8sResources(f.Namespace, f.Name, f.Spec, kclient)
 	if err != nil {
 		return err

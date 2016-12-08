@@ -135,6 +135,7 @@ func (c *Controller) Run() error {
 			switch event.Type {
 			case "ADDED":
 				functionSpec := &event.Object.Spec
+				// c.logger.Infof("%s", functionSpec.Type)
 				err := function.New(c.Config.KubeCli, functionName, c.Config.Namespace, functionSpec, &c.waitFunction)
 				if err != nil {
 					break

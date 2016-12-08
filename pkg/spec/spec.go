@@ -31,5 +31,6 @@ type FunctionSpec struct {
 	Handler string `json:"handler"`
 	Lambda  string `json:"lambda"`
 	Runtime string `json:"runtime"`
-	Type    string `json:"version"`
+	Type    string `json:"type"`
+	Topic   string `json:"topic"`
 }

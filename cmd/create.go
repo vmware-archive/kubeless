@@ -42,6 +42,11 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		topic, err := cmd.Flags().GetString("trigger-topic")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		runtime, err := cmd.Flags().GetString("runtime")
 		if err != nil {
 			logrus.Fatal(err)
@@ -60,9 +65,10 @@ var createCmd = &cobra.Command{
 		funcType := "PubSub"
 		if triggerHTTP {
 			funcType = "HTTP"
+			topic = ""
 		}
 
-		utils.CreateK8sCustomResource(runtime, handler, file, funcName, master, funcType)
+		utils.CreateK8sCustomResource(runtime, handler, file, funcName, master, funcType, topic)
 	},
 }
 
@@ -70,6 +76,6 @@ func init() {
 	createCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	createCmd.Flags().StringP("handler", "", "", "Specify handler")
 	createCmd.Flags().StringP("from-file", "", "", "Specify code file")
-	createCmd.Flags().StringP("trigger-topic", "", "", "Create a pubsub function to Kubeless")
+	createCmd.Flags().StringP("trigger-topic", "", "kubeless", "Create a pubsub function to Kubeless")
 	createCmd.Flags().Bool("trigger-http", false, "Create a http-based function to Kubeless")
 }
