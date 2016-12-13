@@ -67,7 +67,7 @@ NAME      LABELS    DATA
 test      <none>    {"apiVersion":"k8s.io/v1","kind":"LambDa","metadat...
 ```
 
-### PuSub function
+### PubSub function
 
 Messages need to be JSON messages. A function cane be as simple as:
 
