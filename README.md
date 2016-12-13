@@ -67,7 +67,7 @@ NAME      LABELS    DATA
 test      <none>    {"apiVersion":"k8s.io/v1","kind":"LambDa","metadat...
 ```
 
-### PuSub function
+### PubSub function
 
 Messages need to be JSON messages. A function cane be as simple as:
 
@@ -106,7 +106,7 @@ $ kubeless topic ls
 To test your endpoints you can call the function directly with the `kubeless` CLI:
 
 ```
-$ kubeless function call kubeless function call test --data {'kube':'coodle'}
+$ kubeless function call test --data {'kube':'coodle'}
 ```
 
 ## Building
