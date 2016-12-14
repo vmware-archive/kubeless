@@ -9,6 +9,12 @@ Kubeless stands out as we use a ThirdPartyResource to be able to create function
 
 For PubSub we use [Kafka](https://kafka.apache.org). Currently we start Kafka and Zookeeper in a non-persistent setup. With `kubeless` you can create topics, and publish events that get consumed by the runtime.
 
+## Screencasts
+
+From the December 8th 2016 Kubernetes Community meeting
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/gRVuFupq1Y4" frameborder="0" allowfullscreen></iframe>
+
 ## Usage
 
 Download `kubeless` from the release page. Then launch the controller. It will ask you if you are OK to do it. It will create a _kubeless_ namespace and a _lambda_ ThirdPartyResource. You will see a _kubeless_ controller and a _kafka_ controller running.
