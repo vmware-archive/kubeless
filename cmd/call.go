@@ -135,7 +135,7 @@ var callCmd = &cobra.Command{
 		httpClient := &http.Client{}
 		resp := &http.Response{}
 		req := &http.Request{}
-		url := fmt.Sprintf("http://%s:%s", master, port)
+		url := fmt.Sprintf("http://localhost:%s", port)
 
 		for {
 			if get {
