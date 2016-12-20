@@ -40,20 +40,6 @@ import (
 
 const TIMEOUT = 300
 
-func GetClient() (*client.Client, string, error) {
-	factory := cmdutil.NewFactory(nil)
-	clientConfig, err := factory.ClientConfig()
-	if err != nil {
-		return nil, "", err
-	}
-	namespace, _, err := factory.DefaultNamespace()
-	if err != nil {
-		return nil, "", err
-	}
-	kclient := client.NewOrDie(clientConfig)
-	return kclient, namespace, nil
-}
-
 func GetFactory() *cmdutil.Factory {
 	factory := cmdutil.NewFactory(nil)
 	return factory
@@ -75,7 +61,7 @@ func ListResources(host, ns string, httpClient *http.Client) (*http.Response, er
 		return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas",
 			host, ns))
 	} else {
-		return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas",
+		return httpClient.Get(fmt.Sprintf("%s/apis/k8s.io/v1/namespaces/%s/lambdas",
 			host, ns))
 	}
 
@@ -96,7 +82,7 @@ func submitResource(host, ns string, httpClient *http.Client, body io.Reader) (*
 		return httpClient.Post(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas",
 			host, ns), "application/json", body)
 	} else {
-		return httpClient.Post(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas",
+		return httpClient.Post(fmt.Sprintf("%s/apis/k8s.io/v1/namespaces/%s/lambdas",
 			host, ns), "application/json", body)
 	}
 }
@@ -111,7 +97,7 @@ func deleteResource(host, ns, funcName string, httpClient *http.Client) (*http.R
 		req, err = http.NewRequest("DELETE", fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas/%s",
 			host, ns, funcName), nil)
 	} else {
-		req, err = http.NewRequest("DELETE", fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas/%s",
+		req, err = http.NewRequest("DELETE", fmt.Sprintf("%s/apis/k8s.io/v1/namespaces/%s/lambdas/%s",
 			host, ns, funcName), nil)
 	}
 
@@ -286,7 +272,7 @@ func DeleteK8sResources(ns, name string, client *client.Client) error {
 	return nil
 }
 
-func CreateK8sCustomResource(runtime, handler, file, funcName, host, funcType, topic string) error {
+func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic string) error {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err
@@ -309,10 +295,20 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, host, funcType, t
 		},
 	}
 
-	kClient, ns, err := GetClient()
+	fa := GetFactory()
+	kClient, err := fa.Client()
 	if err != nil {
-		fmt.Errorf("Can not get kubernetes config: %s", err)
+		return err
 	}
+	ns, _, err := fa.DefaultNamespace()
+	if err != nil {
+		return err
+	}
+	cfg, err := fa.ClientConfig()
+	if err != nil {
+		return err
+	}
+	host := cfg.Host
 
 	funcJson, err := json.Marshal(f)
 	if err != nil {
@@ -323,11 +319,21 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, host, funcType, t
 	return err
 }
 
-func DeleteK8sCustomResource(funcName, host string) error {
-	kClient, ns, err := GetClient()
+func DeleteK8sCustomResource(funcName string) error {
+	fa := GetFactory()
+	kClient, err := fa.Client()
 	if err != nil {
-		fmt.Errorf("Can not get kubernetes config: %s", err)
+		return err
 	}
+	ns, _, err := fa.DefaultNamespace()
+	if err != nil {
+		return err
+	}
+	cfg, err := fa.ClientConfig()
+	if err != nil {
+		return err
+	}
+	host := cfg.Host
 
 	_, err = deleteResource(host, ns, funcName, kClient.RESTClient.Client)
 	return err

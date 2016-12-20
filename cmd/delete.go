@@ -32,11 +32,6 @@ var deleteCmd = &cobra.Command{
 		}
 		funcName := args[0]
 
-		master, _ := cmd.Flags().GetString("master")
-		if master == "" {
-			master = "localhost"
-		}
-
-		utils.DeleteK8sCustomResource(funcName, master)
+		utils.DeleteK8sCustomResource(funcName)
 	},
 }

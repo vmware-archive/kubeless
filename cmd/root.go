@@ -52,13 +52,25 @@ func Execute() {
 }
 
 func init() {
-	RootCmd.PersistentFlags().StringP("master", "", "", "Apiserver address")
+	RootCmd.Flags().StringP("master", "", "", "Apiserver address")
 }
 
 func newControllerConfig(masterHost string) controller.Config {
-	kubecli, ns, err := utils.GetClient()
+	f := utils.GetFactory()
+	kubecli, err := f.Client()
 	if err != nil {
 		fmt.Errorf("Can not get kubernetes config: %s", err)
+	}
+	ns, _, err := f.DefaultNamespace()
+	if err != nil {
+		fmt.Errorf("Can not get kubernetes config: %s", err)
+	}
+	if masterHost == "" {
+		k8sConfig, err := f.ClientConfig()
+		if err != nil {
+			fmt.Errorf("Can not get kubernetes config: %s", err)
+		}
+		masterHost = k8sConfig.Host
 	}
 	cfg := controller.Config{
 		Namespace:  ns,

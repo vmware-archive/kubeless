@@ -68,11 +68,6 @@ var callCmd = &cobra.Command{
 			get     bool = false
 		)
 
-		master, _ := cmd.Flags().GetString("master")
-		if master == "" {
-			master = "localhost"
-		}
-
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - function name")
 		}

@@ -38,11 +38,7 @@ var installCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if containsString(okayResponses, text) {
-			master, _ := cmd.Flags().GetString("master")
-			if master == "" {
-				master = "localhost"
-			}
-			cfg := newControllerConfig(master)
+			cfg := newControllerConfig("")
 			c := controller.New(cfg)
 			c.Init()
 			c.InstallKubeless()

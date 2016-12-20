@@ -27,11 +27,6 @@ var createCmd = &cobra.Command{
 	Short: "create a function to Kubeless",
 	Long:  `create a function to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
-		master, err := cmd.Flags().GetString("master")
-		if master == "" {
-			master = "localhost"
-		}
-
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - function name")
 		}
@@ -68,7 +63,7 @@ var createCmd = &cobra.Command{
 			topic = ""
 		}
 
-		utils.CreateK8sCustomResource(runtime, handler, file, funcName, master, funcType, topic)
+		utils.CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic)
 	},
 }
 

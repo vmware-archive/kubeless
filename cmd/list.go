@@ -22,9 +22,9 @@ import (
 
 	"github.com/gosuri/uitable"
 	"github.com/skippbox/kubeless/pkg/controller"
+	"github.com/skippbox/kubeless/pkg/spec"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-	"github.com/skippbox/kubeless/pkg/spec"
 )
 
 var listCmd = &cobra.Command{
@@ -32,13 +32,8 @@ var listCmd = &cobra.Command{
 	Short: "list all functions deployed to Kubeless",
 	Long:  `list all functions deployed to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
-		master, err := cmd.Flags().GetString("master")
-		if master == "" {
-			master = "localhost"
-		}
-
 		output, err := cmd.Flags().GetString("out")
-		cfg := newControllerConfig(master)
+		cfg := newControllerConfig("")
 		c := controller.New(cfg)
 		_, err = c.FindResourceVersion()
 		if err != nil {
