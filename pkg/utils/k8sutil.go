@@ -58,22 +58,30 @@ func IsKubernetesResourceAlreadyExistError(err error) bool {
 
 func ListResources(host, ns string, httpClient *http.Client) (*http.Response, error) {
 	if host == "localhost" {
-		return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas",
-			host, ns))
+		//return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas",
+		//	host, ns))
+		return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/lambdas",
+			host))
 	} else {
-		return httpClient.Get(fmt.Sprintf("%s/apis/k8s.io/v1/namespaces/%s/lambdas",
-			host, ns))
+		//return httpClient.Get(fmt.Sprintf("%s/apis/k8s.io/v1/namespaces/%s/lambdas",
+		//	host, ns))
+		return httpClient.Get(fmt.Sprintf("%s/apis/k8s.io/v1/lambdas",
+			host))
 	}
 
 }
 
 func WatchResources(host, ns string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
 	if host == "localhost" {
-		return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas?watch=true&resourceVersion=%s",
-			host, ns, resourceVersion))
+		//return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas?watch=true&resourceVersion=%s",
+		//	host, ns, resourceVersion))
+		return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/lambdas?watch=true&resourceVersion=%s",
+			host, resourceVersion))
 	} else {
-		return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas?watch=true&resourceVersion=%s",
-			host, ns, resourceVersion))
+		//return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas?watch=true&resourceVersion=%s",
+		//	host, ns, resourceVersion))
+		return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/lambdas?watch=true&resourceVersion=%s",
+			host, resourceVersion))
 	}
 }
 
@@ -272,7 +280,7 @@ func DeleteK8sResources(ns, name string, client *client.Client) error {
 	return nil
 }
 
-func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic string) error {
+func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns string) error {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err
@@ -300,9 +308,11 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic s
 	if err != nil {
 		return err
 	}
-	ns, _, err := fa.DefaultNamespace()
-	if err != nil {
-		return err
+	if ns == "" {
+		ns, _, err = fa.DefaultNamespace()
+		if err != nil {
+			return err
+		}
 	}
 	cfg, err := fa.ClientConfig()
 	if err != nil {
@@ -319,16 +329,19 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic s
 	return err
 }
 
-func DeleteK8sCustomResource(funcName string) error {
+func DeleteK8sCustomResource(funcName, ns string) error {
 	fa := GetFactory()
 	kClient, err := fa.Client()
 	if err != nil {
 		return err
 	}
-	ns, _, err := fa.DefaultNamespace()
-	if err != nil {
-		return err
+	if ns == "" {
+		ns, _, err = fa.DefaultNamespace()
+		if err != nil {
+			return err
+		}
 	}
+
 	cfg, err := fa.ClientConfig()
 	if err != nil {
 		return err
@@ -359,7 +372,7 @@ func DeployKubeless(client *client.Client) error {
 					Containers: []api.Container{
 						{
 							Name:            "kubeless",
-							Image:           "skippbox/kubeless-controller:0.0.4",
+							Image:           "skippbox/kubeless-controller:0.0.5",
 							ImagePullPolicy: api.PullAlways,
 						},
 						{

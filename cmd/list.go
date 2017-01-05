@@ -33,7 +33,8 @@ var listCmd = &cobra.Command{
 	Long:  `list all functions deployed to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		output, err := cmd.Flags().GetString("out")
-		cfg := newControllerConfig("")
+		//ns, err := cmd.Flags().GetString("namespace")
+		cfg := newControllerConfig("", "")
 		c := controller.New(cfg)
 		_, err = c.FindResourceVersion()
 		if err != nil {
@@ -52,13 +53,15 @@ var listCmd = &cobra.Command{
 
 func init() {
 	listCmd.Flags().StringP("out", "o", "", "Output format. One of: json|yaml")
+	// TODO: list all namespaces now. Will add specific ns later
+	//listCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 }
 
 func printFunctions(args []string, functions map[string]*spec.Function, output string) {
 	if output == "" {
 		table := uitable.New()
 		table.MaxColWidth = 30
-		table.AddRow("NAME", "HANDLER", "RUNTIME", "TYPE", "TOPIC")
+		table.AddRow("NAME", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "NAMESPACE")
 
 		for _, f := range args {
 			n := fmt.Sprintf(f)
@@ -66,7 +69,8 @@ func printFunctions(args []string, functions map[string]*spec.Function, output s
 			r := fmt.Sprintf(functions[f].Spec.Runtime)
 			t := fmt.Sprintf(functions[f].Spec.Type)
 			tp := fmt.Sprintf(functions[f].Spec.Topic)
-			table.AddRow(n, h, r, t, tp)
+			ns := fmt.Sprintf(functions[f].ObjectMeta.Namespace)
+			table.AddRow(n, h, r, t, tp, ns)
 		}
 		fmt.Println(table.String())
 	} else {

@@ -35,7 +35,7 @@ var RootCmd = &cobra.Command{
 		if master == "" {
 			master = "localhost"
 		}
-		cfg := newControllerConfig(master)
+		cfg := newControllerConfig(master, "")
 		c := controller.New(cfg)
 		err = c.Run()
 		if err != nil {
@@ -55,15 +55,17 @@ func init() {
 	RootCmd.Flags().StringP("master", "", "", "Apiserver address")
 }
 
-func newControllerConfig(masterHost string) controller.Config {
+func newControllerConfig(masterHost, ns string) controller.Config {
 	f := utils.GetFactory()
 	kubecli, err := f.Client()
 	if err != nil {
 		fmt.Errorf("Can not get kubernetes config: %s", err)
 	}
-	ns, _, err := f.DefaultNamespace()
-	if err != nil {
-		fmt.Errorf("Can not get kubernetes config: %s", err)
+	if ns == "" {
+		ns, _, err = f.DefaultNamespace()
+		if err != nil {
+			fmt.Errorf("Can not get kubernetes config: %s", err)
+		}
 	}
 	if masterHost == "" {
 		k8sConfig, err := f.ClientConfig()

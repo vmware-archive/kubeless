@@ -38,7 +38,7 @@ var installCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if containsString(okayResponses, text) {
-			cfg := newControllerConfig("")
+			cfg := newControllerConfig("", "")
 			c := controller.New(cfg)
 			c.Init()
 			c.InstallKubeless()

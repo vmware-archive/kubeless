@@ -132,11 +132,12 @@ func (c *Controller) Run() error {
 	go func() {
 		for event := range eventCh {
 			functionName := event.Object.ObjectMeta.Name
+			ns := event.Object.ObjectMeta.Namespace
 			switch event.Type {
 			case "ADDED":
 				functionSpec := &event.Object.Spec
-				// c.logger.Infof("%s", functionSpec.Type)
-				err := function.New(c.Config.KubeCli, functionName, c.Config.Namespace, functionSpec, &c.waitFunction)
+				//err := function.New(c.Config.KubeCli, functionName, c.Config.Namespace, functionSpec, &c.waitFunction)
+				err := function.New(c.Config.KubeCli, functionName, ns, functionSpec, &c.waitFunction)
 				if err != nil {
 					break
 				}
@@ -149,7 +150,8 @@ func (c *Controller) Run() error {
 					break
 				}
 				delete(c.Functions, functionName)
-				err := function.Delete(c.Config.KubeCli, functionName, c.Config.Namespace, &c.waitFunction)
+				//err := function.Delete(c.Config.KubeCli, functionName, c.Config.Namespace, &c.waitFunction)
+				err := function.Delete(c.Config.KubeCli, functionName, ns, &c.waitFunction)
 				if err != nil {
 					break
 				}

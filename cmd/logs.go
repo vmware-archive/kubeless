@@ -39,11 +39,17 @@ var logsCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
 
 		f := utils.GetFactory()
-		ns, _, err := f.DefaultNamespace()
-		if err != nil {
-			logrus.Fatalf("Getting log failed: %v", err)
+		if ns == "" {
+			ns, _, err = f.DefaultNamespace()
+			if err != nil {
+				logrus.Fatalf("Getting log failed: %v", err)
+			}
 		}
 		kClient, err := f.Client()
 		if err != nil {
@@ -67,4 +73,5 @@ var logsCmd = &cobra.Command{
 
 func init() {
 	logsCmd.Flags().BoolP("follow", "f", false, "Specify if the logs should be streamed.")
+	logsCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 }

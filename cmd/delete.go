@@ -32,6 +32,18 @@ var deleteCmd = &cobra.Command{
 		}
 		funcName := args[0]
 
-		utils.DeleteK8sCustomResource(funcName)
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		err = utils.DeleteK8sCustomResource(funcName, ns)
+		if err != nil {
+			logrus.Fatal(err)
+		}
 	},
+}
+
+func init() {
+	deleteCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 }

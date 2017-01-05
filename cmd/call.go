@@ -77,6 +77,7 @@ var callCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		ns, err := cmd.Flags().GetString("namespace")
 		if data == "" {
 			get = true
 		} else {
@@ -84,9 +85,11 @@ var callCmd = &cobra.Command{
 		}
 
 		f := utils.GetFactory()
-		ns, _, err := f.DefaultNamespace()
-		if err != nil {
-			logrus.Fatalf("Connection failed: %v", err)
+		if ns == "" {
+			ns, _, err = f.DefaultNamespace()
+			if err != nil {
+				logrus.Fatalf("Connection failed: %v", err)
+			}
 		}
 		kClient, err := f.Client()
 		if err != nil {
@@ -163,6 +166,8 @@ var callCmd = &cobra.Command{
 
 func init() {
 	callCmd.Flags().StringP("data", "", "", "Specify data for function")
+	callCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
+
 }
 
 func getLocalPort() (string, error) {
