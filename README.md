@@ -13,7 +13,7 @@ For PubSub we use [Kafka](https://kafka.apache.org). Currently we start Kafka an
 
 From the December 8th 2016 Kubernetes Community meeting
 
-![screencast](https://www.youtube.com/gRVuFupq1Y4)
+[![screencast](https://img.youtube.com/vi/gRVuFupq1Y4/0.jpg)](https://www.youtube.com/watch?v=gRVuFupq1Y4)
 
 ## Usage
 
