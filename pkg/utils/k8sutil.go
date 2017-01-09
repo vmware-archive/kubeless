@@ -136,7 +136,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 	//TODO: add images for other runtimes. Now only work for python
 	imageName := "skippbox/kubeless-python:0.0.3"
 	if spec.Type == "PubSub" {
-		imageName = "skippbox/kubeless-event-consumer:0.0.2"
+		imageName = "skippbox/kubeless-event-consumer:0.0.3"
 	}
 
 	//add configmap
