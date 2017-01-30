@@ -372,7 +372,7 @@ func DeployKubeless(client *client.Client) error {
 					Containers: []api.Container{
 						{
 							Name:            "kubeless",
-							Image:           "skippbox/kubeless-controller:0.0.5",
+							Image:           "skippbox/kubeless-controller:0.0.6",
 							ImagePullPolicy: api.PullAlways,
 						},
 						{
@@ -482,7 +482,7 @@ func DeployMsgBroker(client *client.Client) error {
 					Containers: []api.Container{
 						{
 							Name:            "kafka",
-							Image:           "wurstmeister/kafka",
+							Image:           "wurstmeister/kafka:0.10.1.0-2",
 							ImagePullPolicy: api.PullIfNotPresent,
 							Env: []api.EnvVar{
 								{
