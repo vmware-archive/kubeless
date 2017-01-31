@@ -72,7 +72,11 @@ func newControllerConfig(masterHost, ns string) controller.Config {
 		if err != nil {
 			fmt.Errorf("Can not get kubernetes config: %s", err)
 		}
-		masterHost = k8sConfig.Host
+		if k8sConfig == nil {
+			fmt.Errorf("Got nil k8sConfig, please check if k8s cluster is available.")
+		} else {
+			masterHost = k8sConfig.Host
+		}
 	}
 	cfg := controller.Config{
 		Namespace:  ns,
