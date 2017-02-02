@@ -163,6 +163,9 @@ func (c *Controller) Run() error {
 }
 
 func (c *Controller) initResource() error {
+	if c.Config.MasterHost == "" {
+		return fmt.Errorf("MasterHost is empty. Please check if k8s cluster is available.")
+	}
 	err := c.createTPR()
 	if err != nil {
 		if !utils.IsKubernetesResourceAlreadyExistError(err) {
