@@ -1,8 +1,12 @@
-hash: 5e52618390fee46f3e86541d52a8ecfb761c8f4617b934c1e71c2212d015aefd
-updated: 2016-11-30T22:05:35.762189447+01:00
+hash: 7e92eb177da59ade184858533eb20a988ca284c835e91a6b993110a657af94fc
+updated: 2017-02-07T12:52:14.063841613+01:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
+- name: github.com/Azure/go-ansiterm
+  version: 70b2c90b260171e829f1ebd7c17f600c11858dbe
+  subpackages:
+  - winterm
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
@@ -93,11 +97,25 @@ imports:
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
   - spew
+- name: github.com/daviddengcn/go-colortext
+  version: 511bcaf42ccd42c38aba7427b6673277bf19e2a1
 - name: github.com/docker/distribution
   version: cd27f179f2c10c5d300e6d09025b538c475b0d51
   subpackages:
   - digest
   - reference
+- name: github.com/docker/docker
+  version: b9f10c951893f9a00865890a5232e85d770c1087
+  subpackages:
+  - pkg/jsonlog
+  - pkg/jsonmessage
+  - pkg/longpath
+  - pkg/mount
+  - pkg/stdcopy
+  - pkg/symlink
+  - pkg/system
+  - pkg/term
+  - pkg/term/windows
 - name: github.com/docker/engine-api
   version: dea108d3aa0c67d7162a3fd8aa65f38a430019fd
   subpackages:
@@ -122,6 +140,10 @@ imports:
   - tlsconfig
 - name: github.com/docker/go-units
   version: 0bbddae09c5a5419a8c6dcdd7ff90da3d450393b
+- name: github.com/docker/spdystream
+  version: 449fdfce4d962303d702fec724ef0ad181c92528
+  subpackages:
+  - spdy
 - name: github.com/emicklei/go-restful
   version: 89ef8af493ab468a45a42bb0d89a06fccdd2fb22
   subpackages:
@@ -258,6 +280,8 @@ imports:
   - model
 - name: github.com/prometheus/procfs
   version: 454a56f35412459b5e684fd5ec0f9211b94f002a
+- name: github.com/renstrom/dedent
+  version: 020d11c3b9c0c7a3c2efcc8e5cf5b9ef7bcea21f
 - name: github.com/Sirupsen/logrus
   version: a437dfd2463eaedbec3dfe443e477d3b0a810b3f
 - name: github.com/spf13/cobra
@@ -395,6 +419,10 @@ imports:
   - 1.4/tools/clientcmd/api
   - 1.4/tools/metrics
   - 1.4/transport
+- name: k8s.io/heapster
+  version: c2ac40f1adf8c42a79badddb2a2acd673cae3bcb
+  subpackages:
+  - metrics/apis/metrics/v1alpha1
 - name: k8s.io/kubernetes
   version: a16c0a7f71a6f93c7e0f222d961f4675cd97a46b
   subpackages:
@@ -484,6 +512,8 @@ imports:
   - pkg/client/unversioned/clientcmd/api
   - pkg/client/unversioned/clientcmd/api/latest
   - pkg/client/unversioned/clientcmd/api/v1
+  - pkg/client/unversioned/portforward
+  - pkg/client/unversioned/remotecommand
   - pkg/controller
   - pkg/controller/deployment/util
   - pkg/controller/framework
@@ -492,10 +522,21 @@ imports:
   - pkg/credentialprovider
   - pkg/fieldpath
   - pkg/fields
+  - pkg/httplog
   - pkg/kubectl
+  - pkg/kubectl/cmd
+  - pkg/kubectl/cmd/config
+  - pkg/kubectl/cmd/rollout
+  - pkg/kubectl/cmd/set
+  - pkg/kubectl/cmd/templates
   - pkg/kubectl/cmd/util
+  - pkg/kubectl/cmd/util/editor
+  - pkg/kubectl/cmd/util/jsonmerge
+  - pkg/kubectl/metricsutil
   - pkg/kubectl/resource
   - pkg/kubelet/qos
+  - pkg/kubelet/server/portforward
+  - pkg/kubelet/server/remotecommand
   - pkg/kubelet/types
   - pkg/labels
   - pkg/master/ports
@@ -524,6 +565,7 @@ imports:
   - pkg/util/certificates
   - pkg/util/clock
   - pkg/util/config
+  - pkg/util/crlf
   - pkg/util/crypto
   - pkg/util/errors
   - pkg/util/exec
@@ -532,7 +574,10 @@ imports:
   - pkg/util/framer
   - pkg/util/hash
   - pkg/util/homedir
+  - pkg/util/httpstream
+  - pkg/util/httpstream/spdy
   - pkg/util/integer
+  - pkg/util/interrupt
   - pkg/util/intstr
   - pkg/util/json
   - pkg/util/jsonpath
@@ -547,10 +592,12 @@ imports:
   - pkg/util/sets
   - pkg/util/slice
   - pkg/util/strategicpatch
+  - pkg/util/term
   - pkg/util/uuid
   - pkg/util/validation
   - pkg/util/validation/field
   - pkg/util/wait
+  - pkg/util/wsstream
   - pkg/util/yaml
   - pkg/version
   - pkg/watch
@@ -559,6 +606,7 @@ imports:
   - plugin/pkg/client/auth/gcp
   - plugin/pkg/client/auth/oidc
   - third_party/forked/golang/json
+  - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
   - third_party/forked/golang/template
 testImports: []

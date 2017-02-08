@@ -15,3 +15,8 @@ import:
   - pkg/kubectl/cmd/util
   - pkg/util/intstr
 - package: github.com/gosuri/uitable
+- package: github.com/docker/spdystream
+- package: github.com/renstrom/dedent
+- package: k8s.io/heapster
+  subpackages:
+  - metrics/apis/metrics/v1alpha1
