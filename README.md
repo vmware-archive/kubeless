@@ -3,9 +3,9 @@
 
 `kubeless` is a proof of concept to develop a serverless framework for Kubernetes.
 
-They are other solutions, like [fission](http://fission.io) form Platform9, [funktion](https://github.com/fabric8io/funktion) from Fabric8. There is also an incubating project at the ASF: [OpenWhisk](https://github.com/openwhisk/openwhisk).
+There are other solutions, like [fission](http://fission.io) form Platform9, [funktion](https://github.com/fabric8io/funktion) from Fabric8. There is also an incubating project at the ASF: [OpenWhisk](https://github.com/openwhisk/openwhisk).
 
-Kubeless stands out as we use a ThirdPartyResource to be able to create functions as custom resources. We then run an in-cluster controller that watches these custome resources and launches _runtimes_ on-demand. These runtimes, dynamically inject the functions and make them available over HTTP or via a PubSub mechanism.
+Kubeless stands out as we use a ThirdPartyResource to be able to create functions as custom resources. We then run an in-cluster controller that watches these custom resources and launches _runtimes_ on-demand. These runtimes, dynamically inject the functions and make them available over HTTP or via a PubSub mechanism.
 
 For PubSub we use [Kafka](https://kafka.apache.org). Currently we start Kafka and Zookeeper in a non-persistent setup. With `kubeless` you can create topics, and publish events that get consumed by the runtime.
 
@@ -139,4 +139,4 @@ This is still currently a POC, feel free to land a hand. We need to implement th
 * Add other runtimes, currently only Python is supported
 * Deploy Kafka and Zookeeper using StatefulSets for persistency
 * Instrument the runtimes via Prometheus to be able to create pod autoscalers automatically
-* Get rid off the need for a proxy by switching k8s clients to monitor the custom resources.
+* Get rid of the need for a proxy by switching k8s clients to monitor the custom resources.
