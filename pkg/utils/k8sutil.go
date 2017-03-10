@@ -124,19 +124,21 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 	funcHandler := str[1]
 	modName := str[0]
 	fileName := modName
+
+	//TODO: add images for other runtimes. Now only work for python and nodejs
+	imageName := ""
 	switch {
 	case strings.Contains(spec.Runtime, "python"):
 		fileName = modName + ".py"
+		imageName = "skippbox/kubeless-python:0.0.3"
+		if spec.Type == "PubSub" {
+			imageName = "skippbox/kubeless-event-consumer:0.0.3"
+		}
 	case strings.Contains(spec.Runtime, "go"):
 		fileName = modName + ".go"
 	case strings.Contains(spec.Runtime, "nodejs"):
 		fileName = modName + ".js"
-	}
-
-	//TODO: add images for other runtimes. Now only work for python
-	imageName := "skippbox/kubeless-python:0.0.3"
-	if spec.Type == "PubSub" {
-		imageName = "skippbox/kubeless-event-consumer:0.0.3"
+		imageName = "rosskukulinski/kubeless-nodejs:0.0.0"
 	}
 
 	//add configmap
