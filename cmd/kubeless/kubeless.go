@@ -14,24 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd
+package main
 
 import (
 	"github.com/spf13/cobra"
+	"os"
 )
 
-var topicCmd = &cobra.Command{
-	Use:   "topic SUBCOMMAND",
-	Short: "manage message topics in Kubeless",
-	Long:  `topic command allows user to list, create, delete topics on Kubeless`,
-	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
-	},
+var globalUsage = `` //TODO: add explanation
+
+func newRootCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "kubeless",
+		Short: "Serverless framework for Kubernetes",
+		Long:  globalUsage,
+	}
+
+	cmd.AddCommand(functionCmd, topicCmd, versionCmd, installCmd)
+	return cmd
 }
 
-func init() {
-	RootCmd.AddCommand(topicCmd)
-	topicCmd.AddCommand(topicCreateCmd)
-	topicCmd.AddCommand(topicDeleteCmd)
-	topicCmd.AddCommand(topicListCmd)
+func main() {
+	cmd := newRootCmd()
+	if err := cmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }

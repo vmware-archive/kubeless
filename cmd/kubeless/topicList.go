@@ -14,23 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd
+package main
 
 import (
-	"fmt"
-	"github.com/skippbox/kubeless/version"
 	"github.com/spf13/cobra"
 )
 
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print the version of Kubeless",
-	Long:  ``,
+var topicListCmd = &cobra.Command{
+	Use:   "ls FLAG",
+	Short: "list all topics created in Kubeless",
+	Long:  `list all topics created in Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Kubeless version: " + version.VERSION + " (" + version.GITCOMMIT + ")")
+		command := []string{"bash", "/opt/kafka_2.11-0.10.1.0/bin/kafka-topics.sh", "--zookeeper", "zookeeper:2181", "--list"}
+		execCommand(command)
 	},
-}
-
-func init() {
-	RootCmd.AddCommand(versionCmd)
 }

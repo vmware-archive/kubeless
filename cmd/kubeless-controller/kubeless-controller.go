@@ -14,24 +14,44 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd
+package main
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/Sirupsen/logrus"
+	"github.com/skippbox/kubeless/pkg/controller"
 	"github.com/spf13/cobra"
 )
 
-var topicDeleteCmd = &cobra.Command{
-	Use:   "delete <topic_name>",
-	Short: "delete a topic from Kubeless",
-	Long:  `delete a topic from Kubeless`,
-	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) != 1 {
-			logrus.Fatal("Need exactly one argument - topic name")
-		}
-		topicName := args[0]
-		command := []string{"bash", "/opt/kafka_2.11-0.10.1.0/bin/kafka-topics.sh", "--zookeeper", "zookeeper:2181", "--delete", "--topic", topicName}
+const globalUsage = `` //TODO: adding explanation
 
-		execCommand(command)
+var rootCmd = &cobra.Command{
+	Use:   "kubeless-controller",
+	Short: "Kubeless controller",
+	Long:  globalUsage,
+	Run: func(cmd *cobra.Command, args []string) {
+		master, err := cmd.Flags().GetString("master")
+		if master == "" {
+			master = "localhost"
+		}
+		cfg := controller.NewControllerConfig(master, "")
+		c := controller.New(cfg)
+		err = c.Run()
+		if err != nil {
+			logrus.Fatalf("Kubeless controller running failed: %s", err)
+		}
 	},
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func init() {
+	rootCmd.Flags().StringP("master", "", "", "Apiserver address")
 }

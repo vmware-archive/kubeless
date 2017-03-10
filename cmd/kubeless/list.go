@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd
+package main
 
 import (
 	"encoding/json"
@@ -34,7 +34,7 @@ var listCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		output, err := cmd.Flags().GetString("out")
 		//ns, err := cmd.Flags().GetString("namespace")
-		cfg := newControllerConfig("", "")
+		cfg := controller.NewControllerConfig("", "")
 		c := controller.New(cfg)
 		_, err = c.FindResourceVersion()
 		if err != nil {

@@ -14,18 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd
+package main
 
 import (
+	"github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-var topicListCmd = &cobra.Command{
-	Use:   "ls FLAG",
-	Short: "list all topics created in Kubeless",
-	Long:  `list all topics created in Kubeless`,
+var topicDeleteCmd = &cobra.Command{
+	Use:   "delete <topic_name>",
+	Short: "delete a topic from Kubeless",
+	Long:  `delete a topic from Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
-		command := []string{"bash", "/opt/kafka_2.11-0.10.1.0/bin/kafka-topics.sh", "--zookeeper", "zookeeper:2181", "--list"}
+		if len(args) != 1 {
+			logrus.Fatal("Need exactly one argument - topic name")
+		}
+		topicName := args[0]
+		command := []string{"bash", "/opt/kafka_2.11-0.10.1.0/bin/kafka-topics.sh", "--zookeeper", "zookeeper:2181", "--delete", "--topic", topicName}
+
 		execCommand(command)
 	},
 }

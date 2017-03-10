@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd
+package main
 
 import (
 	"fmt"
@@ -38,7 +38,7 @@ var installCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if containsString(okayResponses, text) {
-			cfg := newControllerConfig("", "")
+			cfg := controller.NewControllerConfig("", "")
 			c := controller.New(cfg)
 			c.Init()
 			c.InstallKubeless()
@@ -49,10 +49,6 @@ var installCmd = &cobra.Command{
 			fmt.Println("Please type yes or no and then press enter:")
 		}
 	},
-}
-
-func init() {
-	RootCmd.AddCommand(installCmd)
 }
 
 func containsString(slice []string, element string) bool {

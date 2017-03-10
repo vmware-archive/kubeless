@@ -14,29 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd
+package main
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var functionCmd = &cobra.Command{
-	Use:   "function SUBCOMMAND",
-	Short: "function specific operations",
-	Long:  `function command allows user to list, create, edit, delete functions running on Kubeless`,
+var topicCmd = &cobra.Command{
+	Use:   "topic SUBCOMMAND",
+	Short: "manage message topics in Kubeless",
+	Long:  `topic command allows user to list, create, delete topics on Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
 }
 
 func init() {
-	RootCmd.AddCommand(functionCmd)
-	functionCmd.AddCommand(createCmd)
-	functionCmd.AddCommand(deleteCmd)
-	functionCmd.AddCommand(listCmd)
-	functionCmd.AddCommand(callCmd)
-	functionCmd.AddCommand(publishCmd)
-	functionCmd.AddCommand(logsCmd)
-	//TODO: reserve edit cmd later
-	//functionCmd.AddCommand(editCmd)
+	topicCmd.AddCommand(topicCreateCmd)
+	topicCmd.AddCommand(topicDeleteCmd)
+	topicCmd.AddCommand(topicListCmd)
 }

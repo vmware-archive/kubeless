@@ -16,8 +16,17 @@ limitations under the License.
 
 package main
 
-import "github.com/skippbox/kubeless/cmd"
+import (
+	"fmt"
+	"github.com/skippbox/kubeless/version"
+	"github.com/spf13/cobra"
+)
 
-func main() {
-	cmd.Execute()
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version of Kubeless",
+	Long:  ``,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("Kubeless version: " + version.VERSION + " (" + version.GITCOMMIT + ")")
+	},
 }
