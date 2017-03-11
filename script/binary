@@ -18,19 +18,16 @@ set -e
 
 source "$(dirname "$BASH_SOURCE")/.build"
 
-OUT_FILE="./kubeless"
-
 # Get rid of existing binary
-rm -f $OUT_FILE
+rm -f $GOPATH/bin/kubeless*
 
 # Build binary
-go build \
+go install \
     "${BUILD_FLAGS[@]}" \
-    -o $OUT_FILE \
-    main.go
+    github.com/skippbox/kubeless/cmd/...
 
 if [ $? -eq 0 ]; then
-  echo "Build successful. Program saved as ${OUT_FILE}"
+  echo "Build successful. Program saved at $GOPATH/bin"
 else
   echo "Build failed."
 fi

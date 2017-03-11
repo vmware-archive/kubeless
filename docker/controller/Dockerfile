@@ -1,4 +1,4 @@
 FROM alpine
 MAINTAINER Nguyen Anh Tu <tuna@skippbox.com>
-ADD kubeless /kubeless
-ENTRYPOINT ["/kubeless"]
+ADD kubeless-controller /kubeless-controller
+ENTRYPOINT ["/kubeless-controller"]

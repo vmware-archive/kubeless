@@ -20,7 +20,6 @@ source "$(dirname "$BASH_SOURCE")/.build"
 
 if [ -z "$1" ]; then
 #    TODO: Skip windows at this moment
-#    OS_PLATFORM_ARG=(-os="darwin linux windows")
     OS_PLATFORM_ARG=(-os="darwin linux")
 else
     OS_PLATFORM_ARG=($1)
@@ -35,10 +34,16 @@ fi
 GITCOMMIT=$(git rev-parse --short HEAD)
 
 # Get rid of existing binaries
-rm -f kubeless*
+rm -rf bundles/kubeless*
 
-# Build binaries
+# Build kubeless
 gox "${OS_PLATFORM_ARG[@]}" "${OS_ARCH_ARG[@]}" \
     -output="bundles/kubeless_{{.OS}}-{{.Arch}}/kubeless" \
     "${BUILD_FLAGS[@]}" \
-    .
+    github.com/skippbox/kubeless/cmd/kubeless
+
+# Build kubeless-controller
+gox "${OS_PLATFORM_ARG[@]}" "${OS_ARCH_ARG[@]}" \
+    -output="bundles/kubeless_{{.OS}}-{{.Arch}}/kubeless-controller" \
+    "${BUILD_FLAGS[@]}" \
+    github.com/skippbox/kubeless/cmd/kubeless-controller
