@@ -1,0 +1,12 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: function
+spec:
+  rules:
+  - host: 192.168.99.100.nip.io
+    http:
+      paths:
+      - backend:
+          serviceName: demo
+          servicePort: 80
