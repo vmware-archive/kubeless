@@ -18,7 +18,7 @@ package version
 
 var (
 	// VERSION should be updated by hand at each release
-	VERSION = "0.0.1"
+	VERSION = "0.0.7"
 
 	// GITCOMMIT will be overwritten automatically by the build system
 	GITCOMMIT = "HEAD"
