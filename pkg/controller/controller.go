@@ -90,9 +90,9 @@ func (c *Controller) Init() {
 	}
 }
 
-func (c *Controller) InstallKubeless() {
+func (c *Controller) InstallKubeless(ctlVer string) {
 	c.logger.Infof("Installing Kubeless controller into Kubernetes deployment...")
-	err := utils.DeployKubeless(c.Config.KubeCli)
+	err := utils.DeployKubeless(c.Config.KubeCli, ctlVer)
 	if err != nil {
 		c.logger.Errorf("Kubeless controller installation failed: %v", err)
 	} else {
@@ -100,9 +100,9 @@ func (c *Controller) InstallKubeless() {
 	}
 }
 
-func (c *Controller) InstallMsgBroker() {
+func (c *Controller) InstallMsgBroker(kafkaVer string) {
 	c.logger.Infof("Installing Message Broker into Kubernetes deployment...")
-	err := utils.DeployMsgBroker(c.Config.KubeCli)
+	err := utils.DeployMsgBroker(c.Config.KubeCli, kafkaVer)
 	if err != nil {
 		c.logger.Errorf("Message Broker installation failed: %v", err)
 	} else {

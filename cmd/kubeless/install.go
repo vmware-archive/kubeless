@@ -37,12 +37,23 @@ var installCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+
+		//getting versions
+		ctlVer, err := cmd.Flags().GetString("controller-version")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		kafkaVer, err := cmd.Flags().GetString("kafka-version")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		if containsString(okayResponses, text) {
 			cfg := controller.NewControllerConfig("", "")
 			c := controller.New(cfg)
 			c.Init()
-			c.InstallKubeless()
-			c.InstallMsgBroker()
+			c.InstallKubeless(ctlVer)
+			c.InstallMsgBroker(kafkaVer)
 		} else if containsString(nokayResponses, text) {
 			return
 		} else {
@@ -62,4 +73,9 @@ func posString(slice []string, element string) int {
 		}
 	}
 	return -1
+}
+
+func init() {
+	installCmd.Flags().StringP("controller-version", "", "", "Install a specific version of Kubeless controller")
+	installCmd.Flags().StringP("kafka-version", "", "", "Install a specific version of Kafka")
 }

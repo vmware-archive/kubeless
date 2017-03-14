@@ -354,7 +354,11 @@ func DeleteK8sCustomResource(funcName, ns string) error {
 	return err
 }
 
-func DeployKubeless(client *client.Client) error {
+func DeployKubeless(client *client.Client, ctlVer string) error {
+	if ctlVer == "" {
+		ctlVer = "latest"
+	}
+
 	//add deployment
 	labels := map[string]string{
 		"app": "kubeless-controller",
@@ -374,7 +378,7 @@ func DeployKubeless(client *client.Client) error {
 					Containers: []api.Container{
 						{
 							Name:            "kubeless",
-							Image:           "skippbox/kubeless-controller:0.0.6",
+							Image:           "tuna/kubeless-controller:" + ctlVer,
 							ImagePullPolicy: api.PullAlways,
 						},
 						{
@@ -413,7 +417,11 @@ func DeployKubeless(client *client.Client) error {
 	return nil
 }
 
-func DeployMsgBroker(client *client.Client) error {
+func DeployMsgBroker(client *client.Client, kafkaVer string) error {
+	if kafkaVer == "" {
+		kafkaVer = "latest"
+	}
+
 	labels := map[string]string{
 		"app": "kafka",
 	}
@@ -484,7 +492,7 @@ func DeployMsgBroker(client *client.Client) error {
 					Containers: []api.Container{
 						{
 							Name:            "kafka",
-							Image:           "wurstmeister/kafka:0.10.1.0-2",
+							Image:           "wurstmeister/kafka:" + kafkaVer,
 							ImagePullPolicy: api.PullIfNotPresent,
 							Env: []api.EnvVar{
 								{
