@@ -378,7 +378,7 @@ func DeployKubeless(client *client.Client, ctlVer string) error {
 					Containers: []api.Container{
 						{
 							Name:            "kubeless",
-							Image:           "tuna/kubeless-controller:" + ctlVer,
+							Image:           "skippbox/kubeless-controller:" + ctlVer,
 							ImagePullPolicy: api.PullAlways,
 						},
 						{
