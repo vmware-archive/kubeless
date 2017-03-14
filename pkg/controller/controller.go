@@ -90,9 +90,9 @@ func (c *Controller) Init() {
 	}
 }
 
-func (c *Controller) InstallKubeless(ctlVer string) {
+func (c *Controller) InstallKubeless(ctlImage string) {
 	c.logger.Infof("Installing Kubeless controller into Kubernetes deployment...")
-	err := utils.DeployKubeless(c.Config.KubeCli, ctlVer)
+	err := utils.DeployKubeless(c.Config.KubeCli, ctlImage)
 	if err != nil {
 		c.logger.Errorf("Kubeless controller installation failed: %v", err)
 	} else {

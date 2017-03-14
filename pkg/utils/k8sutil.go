@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/skippbox/kubeless/pkg/spec"
+	"github.com/skippbox/kubeless/version"
 	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
@@ -38,7 +39,12 @@ import (
 	"k8s.io/kubernetes/pkg/util/intstr"
 )
 
-const TIMEOUT = 300
+const (
+	TIMEOUT = 300
+	CONTROLLER_IMAGE = "bitnami/kubeless-controller"
+	KAFKA_IMAGE = "wurstmeister/kafka"
+)
+
 
 func GetFactory() *cmdutil.Factory {
 	factory := cmdutil.NewFactory(nil)
@@ -354,11 +360,7 @@ func DeleteK8sCustomResource(funcName, ns string) error {
 	return err
 }
 
-func DeployKubeless(client *client.Client, ctlVer string) error {
-	if ctlVer == "" {
-		ctlVer = "latest"
-	}
-
+func DeployKubeless(client *client.Client, ctlImage string) error {
 	//add deployment
 	labels := map[string]string{
 		"app": "kubeless-controller",
@@ -378,7 +380,7 @@ func DeployKubeless(client *client.Client, ctlVer string) error {
 					Containers: []api.Container{
 						{
 							Name:            "kubeless",
-							Image:           "skippbox/kubeless-controller:" + ctlVer,
+							Image:           getImage(ctlImage),
 							ImagePullPolicy: api.PullAlways,
 						},
 						{
@@ -418,10 +420,6 @@ func DeployKubeless(client *client.Client, ctlVer string) error {
 }
 
 func DeployMsgBroker(client *client.Client, kafkaVer string) error {
-	if kafkaVer == "" {
-		kafkaVer = "latest"
-	}
-
 	labels := map[string]string{
 		"app": "kafka",
 	}
@@ -492,7 +490,7 @@ func DeployMsgBroker(client *client.Client, kafkaVer string) error {
 					Containers: []api.Container{
 						{
 							Name:            "kafka",
-							Image:           "wurstmeister/kafka:" + kafkaVer,
+							Image:           getKafkaImage(kafkaVer),
 							ImagePullPolicy: api.PullIfNotPresent,
 							Env: []api.EnvVar{
 								{
@@ -556,4 +554,22 @@ func GetPodName(c *client.Client, ns, funcName string) (string, error) {
 	}
 
 	return "", errors.New("Can't find pod starting with the function name")
+}
+
+func getImage(v string) string {
+	switch v {
+	case "":
+		return fmt.Sprintf("%s:%s", CONTROLLER_IMAGE, version.VERSION)
+	default:
+		return v
+	}
+}
+
+func getKafkaImage(v string) string {
+	switch v {
+	case "":
+		return KAFKA_IMAGE
+	default:
+		return fmt.Sprintf("%s:%s", KAFKA_IMAGE, v)
+	}
 }

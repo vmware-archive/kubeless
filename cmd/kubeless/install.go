@@ -26,12 +26,16 @@ import (
 
 var installCmd = &cobra.Command{
 	Use:   "install",
-	Short: "install Kubeless controller",
-	Long:  ``,
+	Short: "Install Kubeless controller",
+	Long: `This command helps to install the Kubeless controller and along with Apache Kafka to handle event-based functions.
+
+By default we will install the latest release of bitnami/kubeless-controller image.
+Use your own controller by specifying --controller-image flag.
+`,
 	Run: func(cmd *cobra.Command, args []string) {
 		okayResponses := []string{"y", "Y", "yes", "Yes", "YES"}
 		nokayResponses := []string{"n", "N", "no", "No", "NO"}
-		fmt.Println("We are going to install the controller in the default namespace. Are you OK with this: [Y/N]")
+		fmt.Println("We are going to install the controller in the kubeless namespace. Are you OK with this: [Y/N]")
 		var text string
 		_, err := fmt.Scanln(&text)
 		if err != nil {
@@ -39,7 +43,7 @@ var installCmd = &cobra.Command{
 		}
 
 		//getting versions
-		ctlVer, err := cmd.Flags().GetString("controller-version")
+		ctlImage, err := cmd.Flags().GetString("controller-image")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -52,7 +56,7 @@ var installCmd = &cobra.Command{
 			cfg := controller.NewControllerConfig("", "")
 			c := controller.New(cfg)
 			c.Init()
-			c.InstallKubeless(ctlVer)
+			c.InstallKubeless(ctlImage)
 			c.InstallMsgBroker(kafkaVer)
 		} else if containsString(nokayResponses, text) {
 			return
@@ -76,6 +80,6 @@ func posString(slice []string, element string) int {
 }
 
 func init() {
-	installCmd.Flags().StringP("controller-version", "", "", "Install a specific version of Kubeless controller")
+	installCmd.Flags().StringP("controller-image", "", "", "Install a specific image of Kubeless controller")
 	installCmd.Flags().StringP("kafka-version", "", "", "Install a specific version of Kafka")
 }
