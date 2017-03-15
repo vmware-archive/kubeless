@@ -1,5 +1,4 @@
 # Kubeless
-[![Join us on Slack](https://s3.eu-central-1.amazonaws.com/ngtuna/join-us-on-slack.png)](https://skippbox.herokuapp.com)
 
 `kubeless` is a proof of concept to develop a serverless framework for Kubernetes.
 
@@ -19,9 +18,9 @@ From the December 8th 2016 Kubernetes Community meeting
 
 Download `kubeless` from the release page. Then launch the controller. It will ask you if you are OK to do it. It will create a _kubeless_ namespace and a _lambda_ ThirdPartyResource. You will see a _kubeless_ controller and a _kafka_ controller running.
 
-```
+```console
 $ kubeless install
-We are going to install the controller in the default namespace. Are you OK with this: [Y/N]
+We are going to install the controller in the kubeless namespace. Are you OK with this: [Y/N]
 Y
 INFO[0002] Initializing Kubeless controller...           pkg=controller
 INFO[0002] Installing Kubeless controller into Kubernetes deployment...  pkg=controller
@@ -41,7 +40,9 @@ lamb-da.k8s.io   Kubeless: Serverless framework for Kubernetes   v1
 $ kubectl get lambdas
 ```
 
-You are now ready to create functions. You need to run a proxy locally (soon to be fixed). Then you can use the CLI to create a function. Functions have two possible types:
+**Note** We provide `--kafka-version` flag for specifying the kafka version will be installed and `--controller-image` in case you are willing to install your customized Kubeless controller. Without the flags, we will install the newest release of `bitnami/kubeless-controller` and the latest `wurstmeister/kafka`. Check `kubeless install --help` for more detail.
+
+You are now ready to create functions. Then you can use the CLI to create a function. Functions have two possible types:
 
 * http trigger (function will expose an HTTP endpoint)
 * pubsub trigger (function will consume event on a specific topic)
@@ -50,7 +51,7 @@ You are now ready to create functions. You need to run a proxy locally (soon to 
 
 Here is a toy:
 
-```
+```python
 def foobar(context):
    print context.json
    return context.json
@@ -59,7 +60,7 @@ def foobar(context):
 You create it with:
 
 ```
-kubeless function create test --runtime python27 \
+$ kubeless function create test --runtime python27 \
                               --handler test.foobar \
                               --from-file test.py \
                               --trigger-http
@@ -67,7 +68,7 @@ kubeless function create test --runtime python27 \
 
 You will see the lambda custom resource created:
 
-```
+```console
 $ kubectl get lambdas
 NAME      LABELS    DATA
 test      <none>    {"apiVersion":"k8s.io/v1","kind":"LambDa","metadat...
@@ -77,7 +78,7 @@ test      <none>    {"apiVersion":"k8s.io/v1","kind":"LambDa","metadat...
 
 Messages need to be JSON messages. A function cane be as simple as:
 
-```
+```python
 def foobar(context):
    print context.json
    return context.json
@@ -86,7 +87,7 @@ def foobar(context):
 You create it the same way than an _HTTP_ function except that you specify a `--trigger-topic`.
 
 ```
-kubeless function create test --runtime python27 \
+$ kubeless function create test --runtime python27 \
                               --handler test.foobar \
                               --from-file test.py \
                               --trigger-topic <topic_name>
@@ -121,14 +122,21 @@ $ kubeless function call test --data {'kube':'coodle'}
 
 - you need go v1.5 or later.
 - if your working copy is not in your `GOPATH`, you need to set it accordingly.
+- we provided Makefile.
 
-```console
-$ go build -o kubeless main.go
+```
+$ make binary
+```
+
+You can build kubeless for multiple platforms with:
+
+```
+$ make binary-cross
 ```
 
 ## Download kubeless package
 
-```console
+```
 $ go get -u github.com/skippbox/kubeless
 ```
 
@@ -136,7 +144,6 @@ $ go get -u github.com/skippbox/kubeless
 
 This is still currently a POC, feel free to land a hand. We need to implement the following high level features:
 
-* Add other runtimes, currently only Python is supported
+* Add other runtimes, currently only Python and NodeJS is supported
 * Deploy Kafka and Zookeeper using StatefulSets for persistency
 * Instrument the runtimes via Prometheus to be able to create pod autoscalers automatically
-* Get rid of the need for a proxy by switching k8s clients to monitor the custom resources.
