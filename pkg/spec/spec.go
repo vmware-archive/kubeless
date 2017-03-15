@@ -33,4 +33,5 @@ type FunctionSpec struct {
 	Runtime string `json:"runtime"`
 	Type    string `json:"type"`
 	Topic   string `json:"topic"`
+	Deps    string `json:"deps"`
 }

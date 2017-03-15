@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -40,11 +41,10 @@ import (
 )
 
 const (
-	TIMEOUT = 300
+	TIMEOUT          = 300
 	CONTROLLER_IMAGE = "bitnami/kubeless-controller"
-	KAFKA_IMAGE = "wurstmeister/kafka"
+	KAFKA_IMAGE      = "wurstmeister/kafka"
 )
-
 
 func GetFactory() *cmdutil.Factory {
 	factory := cmdutil.NewFactory(nil)
@@ -131,8 +131,9 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 	modName := str[0]
 	fileName := modName
 
-	//TODO: add images for other runtimes. Now only work for python and nodejs
+	//TODO: Only python and nodejs supported. Add more...
 	imageName := ""
+	depName := ""
 	switch {
 	case strings.Contains(spec.Runtime, "python"):
 		fileName = modName + ".py"
@@ -140,11 +141,13 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 		if spec.Type == "PubSub" {
 			imageName = "skippbox/kubeless-event-consumer:0.0.3"
 		}
+		depName = "requirements.txt"
 	case strings.Contains(spec.Runtime, "go"):
 		fileName = modName + ".go"
 	case strings.Contains(spec.Runtime, "nodejs"):
 		fileName = modName + ".js"
 		imageName = "rosskukulinski/kubeless-nodejs:0.0.0"
+		depName = "package.json"
 	}
 
 	//add configmap
@@ -154,6 +157,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 	data := map[string]string{
 		"handler": spec.Handler,
 		fileName:  spec.Lambda,
+		depName:   spec.Deps,
 	}
 	configMap := &api.ConfigMap{
 		ObjectMeta: api.ObjectMeta{
@@ -191,6 +195,18 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 		return err
 	}
 
+	//prepare init-container for custom runtime
+	initContainer := []api.Container{}
+	if spec.Deps != "" {
+		initContainer = append(initContainer, api.Container{
+			Name:            "install",
+			Image:           getInitImage(spec.Runtime),
+			Command:         getCommand(spec.Runtime),
+			VolumeMounts:    getVolumeMounts(name, spec.Runtime),
+			ImagePullPolicy: api.PullIfNotPresent,
+		})
+	}
+
 	//add deployment
 	dpm := &extensions.Deployment{
 		ObjectMeta: api.ObjectMeta{
@@ -204,6 +220,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 					Labels: labels,
 				},
 				Spec: api.PodSpec{
+					InitContainers: initContainer,
 					Containers: []api.Container{
 						{
 							Name:            name,
@@ -253,6 +270,11 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 		},
 	}
 
+	// update deployment for custom runtime
+	if spec.Deps != "" {
+		updateDeployment(dpm, spec.Runtime)
+	}
+
 	_, err = client.Deployments(ns).Create(dpm)
 	if err != nil {
 		return err
@@ -288,12 +310,7 @@ func DeleteK8sResources(ns, name string, client *client.Client) error {
 	return nil
 }
 
-func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns string) error {
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		return err
-	}
-	code := string(data[:])
+func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps string) error {
 	f := &spec.Function{
 		TypeMeta: unversionedAPI.TypeMeta{
 			Kind:       "LambDa",
@@ -306,9 +323,14 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, 
 			Handler: handler,
 			Runtime: runtime,
 			Type:    funcType,
-			Lambda:  code,
+			Lambda:  readFile(file),
 			Topic:   topic,
 		},
+	}
+
+	// add dependencies file to func spec
+	if deps != "" {
+		f.Spec.Deps = readFile(deps)
 	}
 
 	fa := GetFactory()
@@ -571,5 +593,75 @@ func getKafkaImage(v string) string {
 		return KAFKA_IMAGE
 	default:
 		return fmt.Sprintf("%s:%s", KAFKA_IMAGE, v)
+	}
+}
+
+//TODO: add initImage for other runtimes
+func getInitImage(runtime string) string {
+	switch {
+	case strings.Contains(runtime, "python"):
+		return "python:2.7-alpine"
+	default:
+		return "alpine"
+	}
+}
+
+//TODO: add command for other runtimes
+func getCommand(runtime string) []string {
+	switch {
+	case strings.Contains(runtime, "python"):
+		return []string{"pip", "install", "--prefix=/pythonpath", "-r", "/requirements/requirements.txt"}
+	default:
+		return []string{}
+	}
+}
+
+//TODO: add volume mounts for other runtimes
+func getVolumeMounts(name, runtime string) []api.VolumeMount {
+	switch {
+	case strings.Contains(runtime, "python"):
+		return []api.VolumeMount{
+			{
+				Name:      "pythonpath",
+				MountPath: "/pythonpath",
+			},
+			{
+				Name:      name,
+				MountPath: "/requirements",
+			},
+		}
+	default:
+		return []api.VolumeMount{}
+	}
+}
+
+func readFile(file string) string {
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Fatal("Can not read file: %s. The file may not exist", file)
+	}
+	return string(data[:])
+}
+
+// update deployment object in case of custom runtime
+// TODO: only python supported, add more
+func updateDeployment(dpm *extensions.Deployment, runtime string) {
+	switch {
+	case strings.Contains(runtime, "python"):
+		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, api.EnvVar{
+			Name:  "PYTHONPATH",
+			Value: "/opt/kubeless/pythonpath/lib/python2.7/site-packages",
+		})
+		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, api.VolumeMount{
+			Name:      "pythonpath",
+			MountPath: "/opt/kubeless/pythonpath",
+		})
+		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, api.Volume{
+			Name: "pythonpath",
+			VolumeSource: api.VolumeSource{
+				EmptyDir: &api.EmptyDirVolumeSource{},
+			},
+		})
+	default:
 	}
 }

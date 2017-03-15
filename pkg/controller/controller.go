@@ -139,6 +139,7 @@ func (c *Controller) Run() error {
 				//err := function.New(c.Config.KubeCli, functionName, c.Config.Namespace, functionSpec, &c.waitFunction)
 				err := function.New(c.Config.KubeCli, functionName, ns, functionSpec, &c.waitFunction)
 				if err != nil {
+					c.logger.Errorf("A new function is detected but can't be added: ", err)
 					break
 				}
 				c.Functions[functionName] = event.Object
@@ -153,6 +154,7 @@ func (c *Controller) Run() error {
 				//err := function.Delete(c.Config.KubeCli, functionName, c.Config.Namespace, &c.waitFunction)
 				err := function.Delete(c.Config.KubeCli, functionName, ns, &c.waitFunction)
 				if err != nil {
+					c.logger.Errorf("Can't delete function: ", err)
 					break
 				}
 				c.logger.Infof("A function was deleted: %s", functionName)
