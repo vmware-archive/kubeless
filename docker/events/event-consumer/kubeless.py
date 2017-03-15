@@ -18,8 +18,10 @@ try:
 except ImportError:
     print("No valid module found for the name: lambda, Failed to import module")
 
-consumer=KafkaConsumer(bootstrap_servers='kafka.kubeless:9092', value_deserializer=json.dumps, auto_offset_reset='earliest')
+consumer=KafkaConsumer(bootstrap_servers='kafka.kubeless:9092', value_deserializer=json.loads)
 consumer.subscribe([topic_name])
 while True:
     for msg in consumer:
-	    getattr(mod, func_handler)(json.loads(msg.value))
+        res = getattr(mod, func_handler)(msg.value)
+        print res
+        print type(res)
