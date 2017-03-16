@@ -603,7 +603,7 @@ func getKafkaImage(v string) string {
 func getInitImage(runtime string) string {
 	switch {
 	case strings.Contains(runtime, "python"):
-		return "python:2.7-alpine"
+		return "python:2.7.11-alpine"
 	default:
 		return "alpine"
 	}
