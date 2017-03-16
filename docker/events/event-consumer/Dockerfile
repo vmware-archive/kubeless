@@ -6,4 +6,4 @@ RUN pip install kafka-python
 
 ADD kubeless.py .
 
-CMD ["python", "/kubeless.py"]
+CMD ["python", "-u", "/kubeless.py"]
