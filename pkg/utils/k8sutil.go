@@ -44,6 +44,9 @@ const (
 	TIMEOUT          = 300
 	CONTROLLER_IMAGE = "bitnami/kubeless-controller"
 	KAFKA_IMAGE      = "wurstmeister/kafka"
+	PYTHON_RUNTIME   = "skippbox/kubeless-python:0.0.4"
+	PUBSUB_RUNTIME   = "skippbox/kubeless-event-consumer:0.0.4"
+	NODEJS_RUNTIME   = "rosskukulinski/kubeless-nodejs:0.0.0"
 )
 
 func GetFactory() *cmdutil.Factory {
@@ -137,16 +140,16 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 	switch {
 	case strings.Contains(spec.Runtime, "python"):
 		fileName = modName + ".py"
-		imageName = "skippbox/kubeless-python:0.0.3"
+		imageName = PYTHON_RUNTIME
 		if spec.Type == "PubSub" {
-			imageName = "skippbox/kubeless-event-consumer:0.0.3"
+			imageName = PUBSUB_RUNTIME
 		}
 		depName = "requirements.txt"
 	case strings.Contains(spec.Runtime, "go"):
 		fileName = modName + ".go"
 	case strings.Contains(spec.Runtime, "nodejs"):
 		fileName = modName + ".js"
-		imageName = "rosskukulinski/kubeless-nodejs:0.0.0"
+		imageName = NODEJS_RUNTIME
 		depName = "package.json"
 	}
 
