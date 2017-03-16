@@ -24,4 +24,8 @@ def handler():
 def post_handler():
     return getattr(mod, func_handler)(request)
 
+@route('/healthz', method="GET")
+def healthz():
+    return "OK"
+
 run(host='0.0.0.0', port=8080)
