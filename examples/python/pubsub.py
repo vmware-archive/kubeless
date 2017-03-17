@@ -1,3 +1,3 @@
 
 def handler(context):
-    print context
+    return context
