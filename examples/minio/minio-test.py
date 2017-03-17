@@ -18,7 +18,7 @@ for secrets in v1.list_secret_for_all_namespaces().items:
         secret_key = base64.b64decode(secrets.data['secret_key'])
 
 # Replace the DNS below with the minio service name (helm release name -svc)
-client = Minio('mangy-tapir-minio-svc:9000',
+client = Minio('invited-crab-minio-svc:9000',
                   access_key=access_key,
                   secret_key=secret_key,
                   secure=False)
