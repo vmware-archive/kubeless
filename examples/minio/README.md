@@ -7,7 +7,7 @@ The Minio access keys are stored as a Kubernetes secret
 
 ## Deploy Minio via Helm
 
-If you have clone the kubeless repo:
+If you have cloned the kubeless repo:
 
 ```
 cd examples
@@ -33,7 +33,7 @@ The following are Minio specific, it assumes your are using minikube on `192.168
 mc config host add localminio http://192.168.99.100:32751 foobar foobarfoo
 ```
 
-Login to the Minio UI and create a `foobar` bucket:
+Login to the Minio UI and create a `foobar` and a `ocr` bucket:
 
 ```
 minikube services <helm_release_name_for_minio>
