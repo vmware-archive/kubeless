@@ -206,6 +206,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 			Image:           getInitImage(spec.Runtime),
 			Command:         getCommand(spec.Runtime),
 			VolumeMounts:    getVolumeMounts(name, spec.Runtime),
+			WorkingDir:      "/requirements",
 			ImagePullPolicy: api.PullIfNotPresent,
 		})
 	}
@@ -599,27 +600,31 @@ func getKafkaImage(v string) string {
 	}
 }
 
-//TODO: add initImage for other runtimes
+// specify image for the init container
 func getInitImage(runtime string) string {
 	switch {
 	case strings.Contains(runtime, "python"):
 		return "python:2.7.11-alpine"
+	case strings.Contains(runtime, "nodejs"):
+		return "node:6.10-alpine"
 	default:
-		return "alpine"
+		return ""
 	}
 }
 
-//TODO: add command for other runtimes
+// specify command for the init container
 func getCommand(runtime string) []string {
 	switch {
 	case strings.Contains(runtime, "python"):
 		return []string{"pip", "install", "--prefix=/pythonpath", "-r", "/requirements/requirements.txt"}
+	case strings.Contains(runtime, "nodejs"):
+		return []string{"/bin/sh", "-c", "cp package.json /nodepath && npm install --prefix=/nodepath"}
 	default:
 		return []string{}
 	}
 }
 
-//TODO: add volume mounts for other runtimes
+// specify volumes for the init container
 func getVolumeMounts(name, runtime string) []api.VolumeMount {
 	switch {
 	case strings.Contains(runtime, "python"):
@@ -627,6 +632,17 @@ func getVolumeMounts(name, runtime string) []api.VolumeMount {
 			{
 				Name:      "pythonpath",
 				MountPath: "/pythonpath",
+			},
+			{
+				Name:      name,
+				MountPath: "/requirements",
+			},
+		}
+	case strings.Contains(runtime, "nodejs"):
+		return []api.VolumeMount{
+			{
+				Name:      "nodepath",
+				MountPath: "/nodepath",
 			},
 			{
 				Name:      name,
@@ -647,7 +663,6 @@ func readFile(file string) string {
 }
 
 // update deployment object in case of custom runtime
-// TODO: only python supported, add more
 func updateDeployment(dpm *extensions.Deployment, runtime string) {
 	switch {
 	case strings.Contains(runtime, "python"):
@@ -665,6 +680,20 @@ func updateDeployment(dpm *extensions.Deployment, runtime string) {
 				EmptyDir: &api.EmptyDirVolumeSource{},
 			},
 		})
-	default:
+	case strings.Contains(runtime, "nodejs"):
+		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, api.EnvVar{
+			Name:  "NODE_PATH",
+			Value: "/opt/kubeless/nodepath/node_modules",
+		})
+		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, api.VolumeMount{
+			Name:      "nodepath",
+			MountPath: "/opt/kubeless/nodepath",
+		})
+		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, api.Volume{
+			Name: "nodepath",
+			VolumeSource: api.VolumeSource{
+				EmptyDir: &api.EmptyDirVolumeSource{},
+			},
+		})
 	}
 }
