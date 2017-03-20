@@ -30,7 +30,7 @@ var topicDeleteCmd = &cobra.Command{
 			logrus.Fatal("Need exactly one argument - topic name")
 		}
 		topicName := args[0]
-		command := []string{"bash", "/opt/kafka_2.11-0.10.1.0/bin/kafka-topics.sh", "--zookeeper", "zookeeper:2181", "--delete", "--topic", topicName}
+		command := []string{"bash", "/opt/kafka/bin/kafka-topics.sh", "--zookeeper", "zookeeper:2181", "--delete", "--topic", topicName}
 
 		execCommand(command)
 	},
