@@ -229,7 +229,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 						{
 							Name:            name,
 							Image:           imageName,
-							ImagePullPolicy: api.PullAlways,
+							ImagePullPolicy: api.PullIfNotPresent,
 							Ports: []api.ContainerPort{
 								{
 									ContainerPort: 8080,
@@ -407,13 +407,13 @@ func DeployKubeless(client *client.Client, ctlImage string) error {
 						{
 							Name:            "kubeless",
 							Image:           getImage(ctlImage),
-							ImagePullPolicy: api.PullAlways,
+							ImagePullPolicy: api.PullIfNotPresent,
 						},
 						{
 							Name:            "kubectl",
 							Image:           "kelseyhightower/kubectl:1.4.0",
 							Args:            []string{"proxy", "-p", "8080"},
-							ImagePullPolicy: api.PullAlways,
+							ImagePullPolicy: api.PullIfNotPresent,
 						},
 					},
 					RestartPolicy: api.RestartPolicyAlways,
