@@ -1,4 +1,5 @@
 import json
+import base64
 
 from slackclient import SlackClient
 from kubernetes import client, config
