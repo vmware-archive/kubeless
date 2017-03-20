@@ -23,10 +23,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var publishCmd = &cobra.Command{
+var topicPublishCmd = &cobra.Command{
 	Use:   "publish FLAG",
-	Short: "publish message to PubSub function",
-	Long:  `publish message to PubSub function`,
+	Short: "publish message to a topic",
+	Long:  `publish message to a topic`,
 	Run: func(cmd *cobra.Command, args []string) {
 		data, err := cmd.Flags().GetString("data")
 		if err != nil {
@@ -49,6 +49,6 @@ var publishCmd = &cobra.Command{
 }
 
 func init() {
-	publishCmd.Flags().StringP("data", "", "", "Specify data for function")
-	publishCmd.Flags().StringP("topic", "", "kubeless", "Specify topic name")
+	topicPublishCmd.Flags().StringP("data", "", "", "Specify data for function")
+	topicPublishCmd.Flags().StringP("topic", "", "kubeless", "Specify topic name")
 }

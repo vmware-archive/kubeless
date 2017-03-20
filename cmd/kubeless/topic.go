@@ -33,4 +33,5 @@ func init() {
 	topicCmd.AddCommand(topicCreateCmd)
 	topicCmd.AddCommand(topicDeleteCmd)
 	topicCmd.AddCommand(topicListCmd)
+	topicCmd.AddCommand(topicPublishCmd)
 }

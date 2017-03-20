@@ -34,7 +34,6 @@ func init() {
 	functionCmd.AddCommand(deleteCmd)
 	functionCmd.AddCommand(listCmd)
 	functionCmd.AddCommand(callCmd)
-	functionCmd.AddCommand(publishCmd)
 	functionCmd.AddCommand(logsCmd)
 	//TODO: reserve edit cmd later
 	//functionCmd.AddCommand(editCmd)
