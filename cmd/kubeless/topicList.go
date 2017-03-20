@@ -21,9 +21,10 @@ import (
 )
 
 var topicListCmd = &cobra.Command{
-	Use:   "ls FLAG",
-	Short: "list all topics created in Kubeless",
-	Long:  `list all topics created in Kubeless`,
+	Use:     "list FLAG",
+	Aliases: []string{"ls"},
+	Short:   "list all topics created in Kubeless",
+	Long:    `list all topics created in Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		command := []string{"bash", "/opt/kafka/bin/kafka-topics.sh", "--zookeeper", "zookeeper:2181", "--list"}
 		execCommand(command)

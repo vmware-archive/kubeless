@@ -28,9 +28,10 @@ import (
 )
 
 var listCmd = &cobra.Command{
-	Use:   "ls FLAG",
-	Short: "list all functions deployed to Kubeless",
-	Long:  `list all functions deployed to Kubeless`,
+	Use:     "list FLAG",
+	Aliases: []string{"ls"},
+	Short:   "list all functions deployed to Kubeless",
+	Long:    `list all functions deployed to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		output, err := cmd.Flags().GetString("out")
 		//ns, err := cmd.Flags().GetString("namespace")
