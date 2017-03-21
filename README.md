@@ -113,7 +113,7 @@ $ kubeless topic ls
 To test your endpoints you can call the function directly with the `kubeless` CLI:
 
 ```
-$ kubeless function call test --data {'kube':'coodle'}
+$ kubeless function call test --data '{"kube":"coodle"}'
 ```
 
 ## Building
