@@ -14,9 +14,9 @@ topic_name = os.getenv('TOPIC_NAME')
 mod_path = '/kubeless/' + mod_name + '.py'
 
 try:
-    mod = imp.load_source('lambda', mod_path)
+    mod = imp.load_source('function', mod_path)
 except ImportError:
-    print("No valid module found for the name: lambda, Failed to import module")
+    print("No valid module found for the name: function, Failed to import module")
 
 def json_safe_loads(msg):
     try:

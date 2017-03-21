@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	tprName = "lamb-da.k8s.io"
+	tprName = "function.k8s.io"
 )
 
 var (

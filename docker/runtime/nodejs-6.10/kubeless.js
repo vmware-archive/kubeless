@@ -12,7 +12,7 @@ console.log('Loading', modPath)
 try {
   var mod = require(modPath)
 } catch (e) {
-  console.error('No valid module found for the name: lambda, Failed to import module')
+  console.error('No valid module found for the name: function, Failed to import module')
   process.exit(1)
 }
 

@@ -67,14 +67,14 @@ func IsKubernetesResourceAlreadyExistError(err error) bool {
 
 func ListResources(host, ns string, httpClient *http.Client) (*http.Response, error) {
 	if host == "localhost" {
-		//return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas",
+		//return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/functions",
 		//	host, ns))
-		return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/lambdas",
+		return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/functions",
 			host))
 	} else {
-		//return httpClient.Get(fmt.Sprintf("%s/apis/k8s.io/v1/namespaces/%s/lambdas",
+		//return httpClient.Get(fmt.Sprintf("%s/apis/k8s.io/v1/namespaces/%s/functions",
 		//	host, ns))
-		return httpClient.Get(fmt.Sprintf("%s/apis/k8s.io/v1/lambdas",
+		return httpClient.Get(fmt.Sprintf("%s/apis/k8s.io/v1/functions",
 			host))
 	}
 
@@ -82,24 +82,24 @@ func ListResources(host, ns string, httpClient *http.Client) (*http.Response, er
 
 func WatchResources(host, ns string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
 	if host == "localhost" {
-		//return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas?watch=true&resourceVersion=%s",
+		//return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/functions?watch=true&resourceVersion=%s",
 		//	host, ns, resourceVersion))
-		return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/lambdas?watch=true&resourceVersion=%s",
+		return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/functions?watch=true&resourceVersion=%s",
 			host, resourceVersion))
 	} else {
-		//return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/lambdas?watch=true&resourceVersion=%s",
+		//return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/functions?watch=true&resourceVersion=%s",
 		//	host, ns, resourceVersion))
-		return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/lambdas?watch=true&resourceVersion=%s",
+		return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/functions?watch=true&resourceVersion=%s",
 			host, resourceVersion))
 	}
 }
 
 func submitResource(host, ns string, httpClient *http.Client, body io.Reader) (*http.Response, error) {
 	if host == "localhost" {
-		return httpClient.Post(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas",
+		return httpClient.Post(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/functions",
 			host, ns), "application/json", body)
 	} else {
-		return httpClient.Post(fmt.Sprintf("%s/apis/k8s.io/v1/namespaces/%s/lambdas",
+		return httpClient.Post(fmt.Sprintf("%s/apis/k8s.io/v1/namespaces/%s/functions",
 			host, ns), "application/json", body)
 	}
 }
@@ -111,10 +111,10 @@ func deleteResource(host, ns, funcName string, httpClient *http.Client) (*http.R
 	)
 
 	if host == "localhost" {
-		req, err = http.NewRequest("DELETE", fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/lambdas/%s",
+		req, err = http.NewRequest("DELETE", fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/functions/%s",
 			host, ns, funcName), nil)
 	} else {
-		req, err = http.NewRequest("DELETE", fmt.Sprintf("%s/apis/k8s.io/v1/namespaces/%s/lambdas/%s",
+		req, err = http.NewRequest("DELETE", fmt.Sprintf("%s/apis/k8s.io/v1/namespaces/%s/functions/%s",
 			host, ns, funcName), nil)
 	}
 
@@ -155,11 +155,11 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 
 	//add configmap
 	labels := map[string]string{
-		"lambda": name,
+		"function": name,
 	}
 	data := map[string]string{
 		"handler": spec.Handler,
-		fileName:  spec.Lambda,
+		fileName:  spec.Function,
 		depName:   spec.Deps,
 	}
 	configMap := &api.ConfigMap{
@@ -317,18 +317,18 @@ func DeleteK8sResources(ns, name string, client *client.Client) error {
 func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps string) error {
 	f := &spec.Function{
 		TypeMeta: unversionedAPI.TypeMeta{
-			Kind:       "LambDa",
+			Kind:       "Function",
 			APIVersion: "k8s.io/v1",
 		},
 		ObjectMeta: api.ObjectMeta{
 			Name: funcName,
 		},
 		Spec: spec.FunctionSpec{
-			Handler: handler,
-			Runtime: runtime,
-			Type:    funcType,
-			Lambda:  readFile(file),
-			Topic:   topic,
+			Handler:  handler,
+			Runtime:  runtime,
+			Type:     funcType,
+			Function: readFile(file),
+			Topic:    topic,
 		},
 	}
 

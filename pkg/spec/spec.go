@@ -28,10 +28,10 @@ type Function struct {
 }
 
 type FunctionSpec struct {
-	Handler string `json:"handler"`
-	Lambda  string `json:"lambda"`
-	Runtime string `json:"runtime"`
-	Type    string `json:"type"`
-	Topic   string `json:"topic"`
-	Deps    string `json:"deps"`
+	Handler  string `json:"handler"`
+	Function string `json:"function"`
+	Runtime  string `json:"runtime"`
+	Type     string `json:"type"`
+	Topic    string `json:"topic"`
+	Deps     string `json:"deps"`
 }

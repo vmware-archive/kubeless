@@ -11,9 +11,9 @@ func_handler = 'handler'
 mod_path = 'hello.py'
 
 try:
-    mod = imp.load_source('lambda', mod_path)
+    mod = imp.load_source('function', mod_path)
 except ImportError:
-    print("No valid module found for the name: lambda, Failed to import module")
+    print("No valid module found for the name: function, Failed to import module")
 
 consumer=KafkaConsumer(bootstrap_servers='10.0.0.110:9092',value_deserializer=json.dumps)
 consumer.subscribe(['kubeless'])
