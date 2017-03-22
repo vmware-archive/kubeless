@@ -34,12 +34,12 @@ Use your own controller by specifying --controller-image flag.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		okayResponses := []string{"y", "Y", "yes", "Yes", "YES"}
-		nokayResponses := []string{"n", "N", "no", "No", "NO"}
-		fmt.Println("We are going to install the controller in the kubeless namespace. Are you OK with this: [Y/N]")
+		fmt.Println("We are going to install the controller into the kubeless namespace. [Y/n]?")
 		var text string
-		_, err := fmt.Scanln(&text)
-		if err != nil {
-			logrus.Fatal(err)
+		n, _ := fmt.Scanln(&text)
+		if n < 1 {
+			// If no value is provided, default to Yes
+			text = "Y"
 		}
 
 		//getting versions
@@ -58,10 +58,9 @@ Use your own controller by specifying --controller-image flag.
 			c.Init()
 			c.InstallKubeless(ctlImage)
 			c.InstallMsgBroker(kafkaVer)
-		} else if containsString(nokayResponses, text) {
-			return
 		} else {
-			fmt.Println("Please type yes or no and then press enter:")
+			fmt.Println("Kubeless wasn't installed, exiting.")
+			return
 		}
 	},
 }
