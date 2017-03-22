@@ -49,6 +49,7 @@ const (
 	pythonRuntime   = "skippbox/kubeless-python:0.0.5"
 	pubsubRuntime   = "skippbox/kubeless-event-consumer:0.0.5"
 	nodejsRuntime   = "rosskukulinski/kubeless-nodejs:0.0.0"
+	rubyRuntime     = "jbianquettibitnami/kubeless-ruby:0.0.0"
 )
 
 // GetClient returns a k8s clientset to the request from inside of cluster
@@ -166,6 +167,10 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 		fileName = modName + ".js"
 		imageName = nodejsRuntime
 		depName = "package.json"
+	case strings.Contains(spec.Runtime, "ruby"):
+		fileName = modName + ".rb"
+		imageName = rubyRuntime
+		depName = "Gemfile"
 	}
 
 	//add configmap
