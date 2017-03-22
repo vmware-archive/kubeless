@@ -28,8 +28,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/skippbox/kubeless/pkg/spec"
-	"github.com/skippbox/kubeless/version"
+	"github.com/bitnami/kubeless/pkg/spec"
+	"github.com/bitnami/kubeless/version"
 	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"

@@ -26,9 +26,9 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/skippbox/kubeless/pkg/function"
-	"github.com/skippbox/kubeless/pkg/spec"
-	"github.com/skippbox/kubeless/pkg/utils"
+	"github.com/bitnami/kubeless/pkg/function"
+	"github.com/bitnami/kubeless/pkg/spec"
+	"github.com/bitnami/kubeless/pkg/utils"
 
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"

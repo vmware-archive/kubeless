@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	"github.com/gosuri/uitable"
-	"github.com/skippbox/kubeless/pkg/controller"
-	"github.com/skippbox/kubeless/pkg/spec"
+	"github.com/bitnami/kubeless/pkg/controller"
+	"github.com/bitnami/kubeless/pkg/spec"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )

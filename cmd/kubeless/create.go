@@ -18,7 +18,7 @@ package main
 
 import (
 	"github.com/Sirupsen/logrus"
-	"github.com/skippbox/kubeless/pkg/utils"
+	"github.com/bitnami/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
