@@ -1,12 +1,12 @@
 ---
 apiVersion: k8s.io/v1
-kind: LambDa
+kind: Function
 metadata:
   name: function1
 spec:
   handler: hello.foobar
   runtime: nodejs2.7
-  lambda: |
+  function: |
       module.exports = {
         foo: function (req, res) {
           console.log(req.body)

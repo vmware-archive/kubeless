@@ -1,16 +1,16 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: lambda-deployment
+  name: function-deployment
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        app: lambda
+        app: function
     spec:
       containers:
-      - name: lambda
+      - name: function
         image: runseb/kubeless:0.0.5
         ports:
         - containerPort: 8080
@@ -20,9 +20,9 @@ spec:
         - name: MOD_NAME
           value: "hello"
         volumeMounts:
-        - name: lambda
+        - name: function
           mountPath: /kubeless
       volumes:
-      - name: lambda
+      - name: function
         configMap:
           name: hello.handler

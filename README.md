@@ -16,7 +16,7 @@ From the December 8th 2016 Kubernetes Community meeting
 
 ## Usage
 
-Download `kubeless` from the release page. Then launch the controller. It will ask you if you are OK to do it. It will create a _kubeless_ namespace and a _lambda_ ThirdPartyResource. You will see a _kubeless_ controller and a _kafka_ controller running.
+Download `kubeless` from the release page. Then launch the controller. It will ask you if you are OK to do it. It will create a _kubeless_ namespace and a _function_ ThirdPartyResource. You will see a _kubeless_ controller and a _kafka_ controller running.
 
 ```console
 $ kubeless install
@@ -35,9 +35,9 @@ kubeless-controller-1801423959-yow3t   0/2       ContainerCreating   0          
 
 $ kubectl get thirdpartyresource
 NAME             DESCRIPTION                                     VERSION(S)
-lamb-da.k8s.io   Kubeless: Serverless framework for Kubernetes   v1
+function.k8s.io   Kubeless: Serverless framework for Kubernetes   v1
 
-$ kubectl get lambdas
+$ kubectl get functions
 ```
 
 **Note** We provide `--kafka-version` flag for specifying the kafka version will be installed and `--controller-image` in case you are willing to install your customized Kubeless controller. Without the flags, we will install the newest release of `bitnami/kubeless-controller` and the latest `wurstmeister/kafka`. Check `kubeless install --help` for more detail.
@@ -66,12 +66,12 @@ $ kubeless function create test --runtime python27 \
                               --trigger-http
 ```
 
-You will see the lambda custom resource created:
+You will see the function custom resource created:
 
 ```console
-$ kubectl get lambdas
+$ kubectl get functions
 NAME      LABELS    DATA
-test      <none>    {"apiVersion":"k8s.io/v1","kind":"LambDa","metadat...
+test      <none>    {"apiVersion":"k8s.io/v1","kind":"Function","metadat...
 ```
 
 ### PubSub function
