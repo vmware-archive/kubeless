@@ -19,7 +19,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/skippbox/kubeless/version"
+	"github.com/bitnami/kubeless/version"
 	"github.com/spf13/cobra"
 )
 

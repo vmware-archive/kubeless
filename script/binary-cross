@@ -40,10 +40,10 @@ rm -rf bundles/kubeless*
 gox "${OS_PLATFORM_ARG[@]}" "${OS_ARCH_ARG[@]}" \
     -output="bundles/kubeless_{{.OS}}-{{.Arch}}/kubeless" \
     "${BUILD_FLAGS[@]}" \
-    github.com/skippbox/kubeless/cmd/kubeless
+    github.com/bitnami/kubeless/cmd/kubeless
 
 # Build kubeless-controller
 gox "${OS_PLATFORM_ARG[@]}" "${OS_ARCH_ARG[@]}" \
     -output="bundles/kubeless_{{.OS}}-{{.Arch}}/kubeless-controller" \
     "${BUILD_FLAGS[@]}" \
-    github.com/skippbox/kubeless/cmd/kubeless-controller
+    github.com/bitnami/kubeless/cmd/kubeless-controller

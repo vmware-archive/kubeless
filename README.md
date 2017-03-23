@@ -137,7 +137,7 @@ $ make binary-cross
 ## Download kubeless package
 
 ```
-$ go get -u github.com/skippbox/kubeless
+$ go get -u github.com/bitnami/kubeless
 ```
 
 ## _Roadmap_

@@ -17,7 +17,7 @@ limitations under the License.
 package controller
 
 import (
-	"github.com/skippbox/kubeless/pkg/spec"
+	"github.com/bitnami/kubeless/pkg/spec"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 )
 
