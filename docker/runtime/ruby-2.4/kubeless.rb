@@ -11,7 +11,8 @@ puts('Loading', modPath.join())
 
 begin 
   require 'sinatra'
-rescue (e)
+  require  modPath.join()
+rescue RuntimeError => e 
   puts('No valid module found for the name: lambda, Failed to import module')
   exit 1
 end
@@ -20,12 +21,11 @@ set :server, 'webrick'
 set :port, 8080
 
 get '/' do 
-	return "#{ request.env }"
+	Slfunction.run(request)
 end 
 
 post '/' do 
-  	msg = eval File.read(modPath.join())
-	return msg
+	Slfunction.run(request)
 end 
 
 get '/healthz' do 

@@ -1,3 +1,5 @@
-def test()
-  puts  request.env
+class Slfunction
+        def self.run(request)
+          puts 'Hello World!'
+        end
 end
