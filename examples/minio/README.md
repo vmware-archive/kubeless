@@ -12,7 +12,7 @@ If you have cloned the kubeless repo:
 ```
 cd examples
 cd minio
-helm install ./minio
+helm install --name minio ./minio
 ```
 
 This will use the default values in `./minio/values.yaml`
