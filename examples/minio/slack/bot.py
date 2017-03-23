@@ -26,7 +26,7 @@ for secrets in v1.list_secret_for_all_namespaces().items:
 
 
 # Replace the DNS below with the minio service name (helm release name -svc)
-client = Minio('intent-elk-minio-svc:9000',
+client = Minio('minio-minio-svc:9000',
                   access_key=access_key,
                   secret_key=secret_key,
                   secure=False)
@@ -38,7 +38,7 @@ def handler(context):
         bucket = context['Key'].split('/')[0]
         filename = context['Key'].split('/')[1]
 
-        msg = "An object called % was uploaded to bucket %s" % (filename,bucket)
+        msg = "An object called %s was uploaded to bucket %s" % (filename,bucket)
 
         sc.api_call(
                     "chat.postMessage",
