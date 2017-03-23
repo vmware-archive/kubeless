@@ -3,5 +3,5 @@
 This function is triggered when an object is added to a bucket
 
 ```
-kubeless function create slack --trigger-topic s3 --from-file bot.py --handler bot.handler --runtime python2.7 --dependencies requirements.txt
+kubeless function deploy slack --trigger-topic s3 --from-file bot.py --handler bot.handler --runtime python2.7 --dependencies requirements.txt
 ```
