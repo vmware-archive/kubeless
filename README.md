@@ -76,7 +76,7 @@ test      <none>    {"apiVersion":"k8s.io/v1","kind":"Function","metadat...
 
 ### PubSub function
 
-Messages need to be JSON messages. A function cane be as simple as:
+Messages need to be JSON messages. A function can be as simple as:
 
 ```python
 def foobar(context):
