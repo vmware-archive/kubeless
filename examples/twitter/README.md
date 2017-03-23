@@ -20,7 +20,7 @@ kubectl create secret generic twitter --from-literal=consumer_key=<> --from-lite
 ## Write a `requirements.txt` file
 
 The function we will write uses this [Python twitter](https://github.com/bear/python-twitter) module as well as the Kubernetes [Python client](https://github.com/kubernetes-incubator/client-python).
-Define those dependencies in a `requirements.txt` file. 
+Define those dependencies in a `requirements.txt` file.
 
 ```
 python-twitter
@@ -60,10 +60,10 @@ The `context` object is a request that comes from the `bottle` wrapper of the ku
 
 Store this function in a `send-tweet.py` file
 
-## Create the function with `kubeless`
+## Deploy the function with `kubeless`
 
 ```
-kubeless function create tweet --trigger-http --runtime python27 --handler send-tweet.tweet --from-file send-tweet.py --dependencies requirements.txt
+kubeless function deploy tweet --trigger-http --runtime python27 --handler send-tweet.tweet --from-file send-tweet.py --dependencies requirements.txt
 ```
 
 The `handler` referes to the file name of the function and the method name that we will trigger. Note that the dependency file is loaded with the `--dependencies` option.
