@@ -315,28 +315,6 @@ func DeleteK8sResources(ns, name string, client *client.Client) error {
 }
 
 func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps string) error {
-	f := &spec.Function{
-		TypeMeta: unversionedAPI.TypeMeta{
-			Kind:       "Function",
-			APIVersion: "k8s.io/v1",
-		},
-		ObjectMeta: api.ObjectMeta{
-			Name: funcName,
-		},
-		Spec: spec.FunctionSpec{
-			Handler:  handler,
-			Runtime:  runtime,
-			Type:     funcType,
-			Function: readFile(file),
-			Topic:    topic,
-		},
-	}
-
-	// add dependencies file to func spec
-	if deps != "" {
-		f.Spec.Deps = readFile(deps)
-	}
-
 	fa := GetFactory()
 	kClient, err := fa.Client()
 	if err != nil {
@@ -353,6 +331,29 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, 
 		return err
 	}
 	host := cfg.Host
+
+	f := &spec.Function{
+		TypeMeta: unversionedAPI.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "k8s.io/v1",
+		},
+		ObjectMeta: api.ObjectMeta{
+			Name:      funcName,
+			Namespace: ns,
+		},
+		Spec: spec.FunctionSpec{
+			Handler:  handler,
+			Runtime:  runtime,
+			Type:     funcType,
+			Function: readFile(file),
+			Topic:    topic,
+		},
+	}
+
+	// add dependencies file to func spec
+	if deps != "" {
+		f.Spec.Deps = readFile(deps)
+	}
 
 	funcJson, err := json.Marshal(f)
 	if err != nil {
