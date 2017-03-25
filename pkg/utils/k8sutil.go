@@ -386,7 +386,7 @@ func DeleteK8sCustomResource(funcName, ns string) error {
 	return err
 }
 
-func DeployKubeless(client *client.Client, ctlImage string) error {
+func DeployKubeless(client *client.Client, ctlImage string, ctlNamespace string) error {
 	//add deployment
 	labels := map[string]string{
 		"app": "kubeless-controller",
@@ -405,7 +405,7 @@ func DeployKubeless(client *client.Client, ctlImage string) error {
 				Spec: api.PodSpec{
 					Containers: []api.Container{
 						{
-							Name:            "kubeless",
+							Name:            ctlNamespace,
 							Image:           getImage(ctlImage),
 							ImagePullPolicy: api.PullIfNotPresent,
 						},
@@ -423,11 +423,11 @@ func DeployKubeless(client *client.Client, ctlImage string) error {
 	}
 
 	//create Kubeless namespace if it's not exists
-	_, err := client.Namespaces().Get("kubeless")
+	_, err := client.Namespaces().Get(ctlNamespace)
 	if err != nil {
 		ns := &api.Namespace{
 			ObjectMeta: api.ObjectMeta{
-				Name: "kubeless",
+				Name: ctlNamespace,
 			},
 		}
 		_, err = client.Namespaces().Create(ns)
@@ -437,7 +437,7 @@ func DeployKubeless(client *client.Client, ctlImage string) error {
 	}
 
 	//deploy Kubeless controller
-	_, err = client.Deployments("kubeless").Create(dpm)
+	_, err = client.Deployments(ctlNamespace).Create(dpm)
 	if err != nil {
 		return err
 	}
@@ -445,7 +445,7 @@ func DeployKubeless(client *client.Client, ctlImage string) error {
 	return nil
 }
 
-func DeployMsgBroker(client *client.Client, kafkaVer string) error {
+func DeployMsgBroker(client *client.Client, kafkaVer string, ctlNamespace string) error {
 	labels := map[string]string{
 		"app": "kafka",
 	}
@@ -470,7 +470,7 @@ func DeployMsgBroker(client *client.Client, kafkaVer string) error {
 		},
 	}
 
-	_, err := client.Services("kubeless").Create(svc)
+	_, err := client.Services(ctlNamespace).Create(svc)
 	if err != nil {
 		return err
 	}
@@ -495,7 +495,7 @@ func DeployMsgBroker(client *client.Client, kafkaVer string) error {
 		},
 	}
 
-	_, err = client.Services("kubeless").Create(svc)
+	_, err = client.Services(ctlNamespace).Create(svc)
 	if err != nil {
 		return err
 	}
@@ -521,7 +521,7 @@ func DeployMsgBroker(client *client.Client, kafkaVer string) error {
 							Env: []api.EnvVar{
 								{
 									Name:  "KAFKA_ADVERTISED_HOST_NAME",
-									Value: "kafka.kubeless",
+									Value: "kafka." + ctlNamespace,
 								},
 								{
 									Name:  "KAFKA_ADVERTISED_PORT",
@@ -533,7 +533,7 @@ func DeployMsgBroker(client *client.Client, kafkaVer string) error {
 								},
 								{
 									Name:  "KAFKA_ZOOKEEPER_CONNECT",
-									Value: "zookeeper.kubeless:2181",
+									Value: "zookeeper." + ctlNamespace + ":2181",
 								},
 							},
 							Ports: []api.ContainerPort{
@@ -558,8 +558,8 @@ func DeployMsgBroker(client *client.Client, kafkaVer string) error {
 			},
 		},
 	}
-
-	_, err = client.Deployments("kubeless").Create(dpm)
+	
+	_, err = client.Deployments(ctlNamespace).Create(dpm)
 	if err != nil {
 		return err
 	}

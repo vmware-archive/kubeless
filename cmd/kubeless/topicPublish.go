@@ -38,17 +38,23 @@ var topicPublishCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+                ctlNamespace, err := cmd.Flags().GetString("controller-namespace")
+                if err != nil {
+                        logrus.Fatal(err)
+                }
+
 		body := fmt.Sprintf(`echo %s > msg.txt`, data)
 		command := []string{"bash", "-c", body}
-		execCommand(command)
+		execCommand(command, ctlNamespace)
 
 		body = fmt.Sprintf(`/opt/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic %s < msg.txt`, topic)
 		command = []string{"bash", "-c", body}
-		execCommand(command)
+		execCommand(command, ctlNamespace)
 	},
 }
 
 func init() {
+	topicPublishCmd.Flags().StringP("controller-namespace", "", "kubeless", "Install Kubeless Topic to a specific namespace. It will default to 'kubeless'")
 	topicPublishCmd.Flags().StringP("data", "", "", "Specify data for function")
 	topicPublishCmd.Flags().StringP("topic", "", "kubeless", "Specify topic name")
 }
