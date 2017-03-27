@@ -138,4 +138,8 @@ Or you might wanna check log of a particular function deployed to kubeless.
 $ kubeless function logs <function_name> -f
 ```
 
+## Manage dependencies
+
+We use [Glide](https://github.com/Masterminds/glide) to vendor the dependencies. Take a quick look on README to understand how it works. Packages that Kubeless relying on is listed at [glide.yaml](https://github.com/bitnami/kubeless/blob/master/glide.yaml)
+
 Happy hacking!
