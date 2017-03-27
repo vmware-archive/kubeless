@@ -26,9 +26,9 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/skippbox/kubeless/pkg/function"
-	"github.com/skippbox/kubeless/pkg/spec"
-	"github.com/skippbox/kubeless/pkg/utils"
+	"github.com/bitnami/kubeless/pkg/function"
+	"github.com/bitnami/kubeless/pkg/spec"
+	"github.com/bitnami/kubeless/pkg/utils"
 
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	tprName = "lamb-da.k8s.io"
+	tprName = "function.k8s.io"
 )
 
 var (
@@ -142,11 +142,11 @@ func (c *Controller) Run() error {
 					c.logger.Errorf("A new function is detected but can't be added: ", err)
 					break
 				}
-				c.Functions[functionName] = event.Object
+				c.Functions[functionName + "." + ns] = event.Object
 				c.logger.Infof("A new function was added: %s", functionName)
 
 			case "DELETED":
-				if c.Functions[functionName] == nil {
+				if c.Functions[functionName + "." + ns] == nil {
 					c.logger.Warningf("Ignore deletion: function %q not found", functionName)
 					break
 				}
@@ -190,7 +190,7 @@ func (c *Controller) FindResourceVersion() (string, error) {
 	}
 
 	for _, item := range list.Items {
-		funcName := item.Name
+		funcName := item.Name + "." + item.Namespace
 		c.Functions[funcName] = item
 	}
 	return list.ListMeta.ResourceVersion, nil

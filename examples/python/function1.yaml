@@ -1,12 +1,12 @@
---- 
+---
 apiVersion: k8s.io/v1
-kind: LambDa
-metadata: 
+kind: Function
+metadata:
   name: function1
-spec: 
+spec:
   handler: hello.foobar
   runtime: python2.7
-  lambda: |
+  function: |
       import json
       def foobar():
               return "hello world"

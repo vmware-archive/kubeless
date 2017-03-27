@@ -16,7 +16,7 @@
 
 set -e
 
-export KUBELESS_PKG='github.com/skippbox/kubeless'
+export KUBELESS_PKG='github.com/bitnami/kubeless'
 
 # List of bundles to create when no argument is passed
 DEFAULT_BUNDLES=(

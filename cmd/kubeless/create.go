@@ -18,14 +18,14 @@ package main
 
 import (
 	"github.com/Sirupsen/logrus"
-	"github.com/skippbox/kubeless/pkg/utils"
+	"github.com/bitnami/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
-var createCmd = &cobra.Command{
-	Use:   "create <function_name> FLAG",
-	Short: "create a function to Kubeless",
-	Long:  `create a function to Kubeless`,
+var deployCmd = &cobra.Command{
+	Use:   "deploy <function_name> FLAG",
+	Short: "deploy a function to Kubeless",
+	Long:  `deploy a function to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - function name")
@@ -81,11 +81,11 @@ var createCmd = &cobra.Command{
 }
 
 func init() {
-	createCmd.Flags().StringP("runtime", "", "", "Specify runtime")
-	createCmd.Flags().StringP("handler", "", "", "Specify handler")
-	createCmd.Flags().StringP("from-file", "", "", "Specify code file")
-	createCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
-	createCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
-	createCmd.Flags().StringP("trigger-topic", "", "kubeless", "Create a pubsub function to Kubeless")
-	createCmd.Flags().Bool("trigger-http", false, "Create a http-based function to Kubeless")
+	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime")
+	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
+	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
+	deployCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
+	deployCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
+	deployCmd.Flags().StringP("trigger-topic", "", "kubeless", "Deploy a pubsub function to Kubeless")
+	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 }

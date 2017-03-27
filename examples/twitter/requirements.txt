@@ -1,2 +1,2 @@
-twitter
+python-twitter
 kubernetes

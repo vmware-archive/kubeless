@@ -20,7 +20,7 @@ kubectl create secret generic twitter --from-literal=consumer_key=<> --from-lite
 ## Write a `requirements.txt` file
 
 The function we will write uses this [Python twitter](https://github.com/bear/python-twitter) module as well as the Kubernetes [Python client](https://github.com/kubernetes-incubator/client-python).
-Define those dependencies in a `requirements.txt` file. 
+Define those dependencies in a `requirements.txt` file.
 
 ```
 python-twitter
@@ -60,10 +60,10 @@ The `context` object is a request that comes from the `bottle` wrapper of the ku
 
 Store this function in a `send-tweet.py` file
 
-## Create the function with `kubeless`
+## Deploy the function with `kubeless`
 
 ```
-kubeless function create tweet --trigger-http --runtime python27 --handler send-tweet.tweet --from-file send-tweet.py --dependencies requirements.txt
+kubeless function deploy tweet --trigger-http --runtime python27 --handler send-tweet.tweet --from-file send-tweet.py --dependencies requirements.txt
 ```
 
 The `handler` referes to the file name of the function and the method name that we will trigger. Note that the dependency file is loaded with the `--dependencies` option.
@@ -75,7 +75,7 @@ kubeless will launch a container. An init container will first load all the depe
 If you run a proxy you can then call your function:
 
 ```
-curl --data '{"tweet":"this rocks from kubeless"}' localhost:8080/api/v1/proxy/namespaces/default/services/tweetos/ --header "Content-Type:application/json"
+curl --data '{"tweet":"this rocks from kubeless"}' localhost:8080/api/v1/proxy/namespaces/default/services/tweet/ --header "Content-Type:application/json"
 ```
 
 Your container will log a `200 OK` response and your twitter timeline will be populated with the message.

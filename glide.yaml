@@ -1,4 +1,4 @@
-package: github.com/skippbox/kubeless
+package: github.com/bitnami/kubeless
 import:
 - package: github.com/Sirupsen/logrus
 - package: github.com/spf13/cobra

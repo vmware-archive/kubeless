@@ -1,12 +1,12 @@
 ---
 apiVersion: k8s.io/v1
-kind: LambDa
+kind: Function
 metadata:
   name: function
 spec:
   handler: hello.handler
   runtime: nodejs6.10
-  lambda: |
+  function: |
       module.exports = {
         hello: function(req, res) {
           res.end('Hello World')

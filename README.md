@@ -2,7 +2,7 @@
 
 `kubeless` is a proof of concept to develop a serverless framework for Kubernetes.
 
-There are other solutions, like [fission](http://fission.io) form Platform9, [funktion](https://github.com/fabric8io/funktion) from Fabric8. There is also an incubating project at the ASF: [OpenWhisk](https://github.com/openwhisk/openwhisk).
+There are other solutions, like [fission](http://fission.io) from Platform9, [funktion](https://github.com/fabric8io/funktion) from Fabric8. There is also an incubating project at the ASF: [OpenWhisk](https://github.com/openwhisk/openwhisk).
 
 Kubeless stands out as we use a ThirdPartyResource to be able to create functions as custom resources. We then run an in-cluster controller that watches these custom resources and launches _runtimes_ on-demand. These runtimes, dynamically inject the functions and make them available over HTTP or via a PubSub mechanism.
 
@@ -16,7 +16,7 @@ From the December 8th 2016 Kubernetes Community meeting
 
 ## Usage
 
-Download `kubeless` from the release page. Then launch the controller. It will ask you if you are OK to do it. It will create a _kubeless_ namespace and a _lambda_ ThirdPartyResource. You will see a _kubeless_ controller and a _kafka_ controller running.
+Download `kubeless` from the release page. Then launch the controller. It will ask you if you are OK to do it. It will create a _kubeless_ namespace and a _function_ ThirdPartyResource. You will see a _kubeless_ controller and a _kafka_ controller running.
 
 ```console
 $ kubeless install
@@ -35,9 +35,9 @@ kubeless-controller-1801423959-yow3t   0/2       ContainerCreating   0          
 
 $ kubectl get thirdpartyresource
 NAME             DESCRIPTION                                     VERSION(S)
-lamb-da.k8s.io   Kubeless: Serverless framework for Kubernetes   v1
+function.k8s.io   Kubeless: Serverless framework for Kubernetes   v1
 
-$ kubectl get lambdas
+$ kubectl get functions
 ```
 
 **Note** We provide `--kafka-version` flag for specifying the kafka version will be installed and `--controller-image` in case you are willing to install your customized Kubeless controller. Without the flags, we will install the newest release of `bitnami/kubeless-controller` and the latest `wurstmeister/kafka`. Check `kubeless install --help` for more detail.
@@ -60,23 +60,23 @@ def foobar(context):
 You create it with:
 
 ```
-$ kubeless function create test --runtime python27 \
+$ kubeless function deploy test --runtime python27 \
                               --handler test.foobar \
                               --from-file test.py \
                               --trigger-http
 ```
 
-You will see the lambda custom resource created:
+You will see the function custom resource created:
 
 ```console
-$ kubectl get lambdas
+$ kubectl get functions
 NAME      LABELS    DATA
-test      <none>    {"apiVersion":"k8s.io/v1","kind":"LambDa","metadat...
+test      <none>    {"apiVersion":"k8s.io/v1","kind":"Function","metadat...
 ```
 
 ### PubSub function
 
-Messages need to be JSON messages. A function cane be as simple as:
+Messages need to be JSON messages. A function can be as simple as:
 
 ```python
 def foobar(context):
@@ -87,7 +87,7 @@ def foobar(context):
 You create it the same way than an _HTTP_ function except that you specify a `--trigger-topic`.
 
 ```
-$ kubeless function create test --runtime python27 \
+$ kubeless function deploy test --runtime python27 \
                               --handler test.foobar \
                               --from-file test.py \
                               --trigger-topic <topic_name>
@@ -113,7 +113,7 @@ $ kubeless topic ls
 To test your endpoints you can call the function directly with the `kubeless` CLI:
 
 ```
-$ kubeless function call test --data {'kube':'coodle'}
+$ kubeless function call test --data '{"kube":"coodle"}'
 ```
 
 ## Building
@@ -137,7 +137,7 @@ $ make binary-cross
 ## Download kubeless package
 
 ```
-$ go get -u github.com/skippbox/kubeless
+$ go get -u github.com/bitnami/kubeless
 ```
 
 ## _Roadmap_

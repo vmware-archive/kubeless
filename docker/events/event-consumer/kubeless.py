@@ -12,11 +12,12 @@ func_handler = os.getenv('FUNC_HANDLER')
 topic_name = os.getenv('TOPIC_NAME')
 
 mod_path = '/kubeless/' + mod_name + '.py'
+group = mod_name + func_handler
 
 try:
-    mod = imp.load_source('lambda', mod_path)
+    mod = imp.load_source('function', mod_path)
 except ImportError:
-    print("No valid module found for the name: lambda, Failed to import module")
+    print("No valid module found for the name: function, Failed to import module")
 
 def json_safe_loads(msg):
     try:
@@ -25,10 +26,9 @@ def json_safe_loads(msg):
     except:
         return {'type':'text','payload':msg}
 
-consumer=KafkaConsumer(bootstrap_servers='kafka.kubeless:9092', value_deserializer=json_safe_loads)
+consumer=KafkaConsumer(bootstrap_servers='kafka.kubeless:9092', group_id=group, value_deserializer=json_safe_loads)
 consumer.subscribe([topic_name])
 while True:
     for msg in consumer:
         res = getattr(mod, func_handler)(msg.value['payload'])
         print res
-        print type(res)
