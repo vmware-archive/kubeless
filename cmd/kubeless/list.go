@@ -20,11 +20,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/gosuri/uitable"
 	"github.com/bitnami/kubeless/pkg/controller"
 	"github.com/bitnami/kubeless/pkg/spec"
+	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+	"strings"
 )
 
 var listCmd = &cobra.Command{
@@ -65,7 +66,7 @@ func printFunctions(args []string, functions map[string]*spec.Function, output s
 		table.AddRow("NAME", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "NAMESPACE")
 
 		for _, f := range args {
-			n := fmt.Sprintf(f)
+			n := strings.Split(fmt.Sprintf(f), ".")[0]
 			h := fmt.Sprintf(functions[f].Spec.Handler)
 			r := fmt.Sprintf(functions[f].Spec.Runtime)
 			t := fmt.Sprintf(functions[f].Spec.Type)
