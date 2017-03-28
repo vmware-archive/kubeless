@@ -33,8 +33,14 @@ By default we will install the latest release of bitnami/kubeless-controller ima
 Use your own controller by specifying --controller-image flag.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
+		// Default namespace
+		ctlNamespace, err := cmd.Flags().GetString("controller-namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
 		okayResponses := []string{"y", "Y", "yes", "Yes", "YES"}
-		fmt.Println("We are going to install the controller into the kubeless namespace. [Y/n]?")
+		// ToDo martin: this fmt doesn't work
+		fmt.Println("We are going to install the controller into the '" + ctlNamespace + "' namespace. [Y/n]?")
 		var text string
 		n, _ := fmt.Scanln(&text)
 		if n < 1 {
@@ -42,7 +48,9 @@ Use your own controller by specifying --controller-image flag.
 			text = "Y"
 		}
 
-		//getting versions
+		// Additional user flags
+
+
 		ctlImage, err := cmd.Flags().GetString("controller-image")
 		if err != nil {
 			logrus.Fatal(err)
@@ -56,8 +64,8 @@ Use your own controller by specifying --controller-image flag.
 			cfg := controller.NewControllerConfig("", "")
 			c := controller.New(cfg)
 			c.Init()
-			c.InstallKubeless(ctlImage)
-			c.InstallMsgBroker(kafkaVer)
+			c.InstallKubeless(ctlImage, ctlNamespace)
+			c.InstallMsgBroker(kafkaVer, ctlNamespace)
 		} else {
 			fmt.Println("Kubeless wasn't installed, exiting.")
 			return
@@ -79,6 +87,7 @@ func posString(slice []string, element string) int {
 }
 
 func init() {
+	installCmd.Flags().StringP("controller-namespace", "", "kubeless", "Install Kubeless to a specific namespace. It will default to 'kubeless'")
 	installCmd.Flags().StringP("controller-image", "", "", "Install a specific image of Kubeless controller")
 	installCmd.Flags().StringP("kafka-version", "", "", "Install a specific version of Kafka")
 }

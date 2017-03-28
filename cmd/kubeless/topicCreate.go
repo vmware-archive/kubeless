@@ -35,11 +35,14 @@ var topicCreateCmd = &cobra.Command{
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - topic name")
 		}
-
+                ctlNamespace, err := cmd.Flags().GetString("controller-namespace")
+                if err != nil {
+                        logrus.Fatal(err)
+                }
 		topicName := args[0]
 		command := []string{"bash", "/opt/kafka/bin/kafka-topics.sh", "--zookeeper", "zookeeper:2181", "--replication-factor", "1", "--partitions", "1", "--create", "--topic", topicName}
 
-		execCommand(command)
+		execCommand(command, ctlNamespace)
 	},
 }
 
@@ -52,10 +55,9 @@ func setupTTY(params *k8scmd.ExecOptions) term.TTY {
 	return t
 }
 
-// wrap-up kubectl exec
-func execCommand(command []string) {
+// wrap kubectl exec
+func execCommand(command []string, ctlNamespace string) {
 	f := utils.GetFactory()
-	ns := "kubeless"
 	kClient, err := f.Client()
 	if err != nil {
 		logrus.Fatalln(err)
@@ -64,10 +66,10 @@ func execCommand(command []string) {
 	if err != nil {
 		logrus.Fatalln(err)
 	}
-	podName, _ := utils.GetPodName(kClient, ns, "kafka-controller")
+	podName, _ := utils.GetPodName(kClient, ctlNamespace, "kafka-controller")
 	params := &k8scmd.ExecOptions{
 		StreamOptions: k8scmd.StreamOptions{
-			Namespace:     ns,
+			Namespace:     ctlNamespace,
 			PodName:       podName,
 			ContainerName: "kafka",
 			In:            nil,
@@ -88,7 +90,7 @@ func execCommand(command []string) {
 		req := params.Client.RESTClient.Post().
 			Resource("pods").
 			Name(podName).
-			Namespace(ns).
+			Namespace(ctlNamespace).
 			SubResource("exec").
 			Param("container", "kafka")
 		req.VersionedParams(&api.PodExecOptions{
