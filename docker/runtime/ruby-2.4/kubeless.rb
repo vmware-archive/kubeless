@@ -6,28 +6,28 @@ funcHandler = ENV['FUNC_HANDLER']
 
 
 modRootPath = ENV['MOD_ROOT_PATH'] ? ENV['MOD_ROOT_PATH'] : '/kubeless/'
-modPath = [ modRootPath, modName, '.rb' ]  
+modPath = [ modRootPath, modName, '.rb' ]
 puts('Loading', modPath.join())
 
-begin 
+begin
   require 'sinatra'
   require  modPath.join()
-rescue RuntimeError => e 
+rescue RuntimeError => e
   puts('No valid module found for the name: lambda, Failed to import module')
   exit 1
 end
 
-set :server, 'webrick' 
+set :server, 'webrick'
 set :port, 8080
 
-get '/' do 
-	Slfunction.run(request)
-end 
+get '/' do
+	Kubelessfunction.run(request)
+end
 
-post '/' do 
-	Slfunction.run(request)
-end 
+post '/' do
+	Kubelessfunction.run(request)
+end
 
-get '/healthz' do 
+get '/healthz' do
 	return 'OK'
 end
