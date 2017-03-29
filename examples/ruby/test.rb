@@ -1,5 +1,5 @@
-class Slfunction
+class Kubelessfunction
         def self.run(request)
-          puts 'Hello World!'
+          puts request.env
         end
 end

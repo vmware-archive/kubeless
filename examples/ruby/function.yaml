@@ -1,12 +1,14 @@
---- 
+---
 apiVersion: k8s.io/v1
 kind: LambDa
-metadata: 
+metadata:
   name: function
-spec: 
-  handler: test.test
+spec:
+  handler: test.run
   runtime: ruby2.4
   lambda: |
-     def test()
-       puts  request.env
-     end
+    class Kubelessfunction
+            def self.run(request)
+             puts  request.env
+            end
+    end
