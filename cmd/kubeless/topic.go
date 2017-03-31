@@ -34,6 +34,6 @@ func init() {
 
 	for _, cmd := range cmds {
 		topicCmd.AddCommand(cmd)
-		cmd.Flags().StringP("kafka-namespace", "", "kubeless", "---Namespace where kafka-controller is deployed. It will default to 'kubeless'")
+		cmd.Flags().StringP("kafka-namespace", "", "kubeless", "Namespace where kafka-controller is deployed. It will default to 'kubeless'")
 	}
 }
