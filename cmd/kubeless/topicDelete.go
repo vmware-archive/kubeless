@@ -29,7 +29,7 @@ var topicDeleteCmd = &cobra.Command{
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - topic name")
 		}
-                ctlNamespace, err := cmd.Flags().GetString("controller-namespace")
+                ctlNamespace, err := cmd.Flags().GetString("kafka-namespace")
                 if err != nil {
                         logrus.Fatal(err)
                 }

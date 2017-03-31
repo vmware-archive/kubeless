@@ -38,7 +38,7 @@ var topicPublishCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-                ctlNamespace, err := cmd.Flags().GetString("controller-namespace")
+                ctlNamespace, err := cmd.Flags().GetString("kafka-namespace")
                 if err != nil {
                         logrus.Fatal(err)
                 }
@@ -54,7 +54,6 @@ var topicPublishCmd = &cobra.Command{
 }
 
 func init() {
-	topicPublishCmd.Flags().StringP("controller-namespace", "", "kubeless", "Install Kubeless Topic to a specific namespace. It will default to 'kubeless'")
 	topicPublishCmd.Flags().StringP("data", "", "", "Specify data for function")
 	topicPublishCmd.Flags().StringP("topic", "", "kubeless", "Specify topic name")
 }

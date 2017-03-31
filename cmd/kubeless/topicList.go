@@ -27,7 +27,7 @@ var topicListCmd = &cobra.Command{
 	Short:   "list all topics created in Kubeless",
 	Long:    `list all topics created in Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
-                ctlNamespace, err := cmd.Flags().GetString("controller-namespace")
+                ctlNamespace, err := cmd.Flags().GetString("kafka-namespace")
                 if err != nil {
                         logrus.Fatal(err)
                 }

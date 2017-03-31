@@ -30,8 +30,10 @@ var topicCmd = &cobra.Command{
 }
 
 func init() {
-	topicCmd.AddCommand(topicCreateCmd)
-	topicCmd.AddCommand(topicDeleteCmd)
-	topicCmd.AddCommand(topicListCmd)
-	topicCmd.AddCommand(topicPublishCmd)
+	cmds := []*cobra.Command{topicCreateCmd, topicDeleteCmd, topicListCmd, topicPublishCmd}
+
+	for _, cmd := range cmds {
+		topicCmd.AddCommand(cmd)
+		cmd.Flags().StringP("kafka-namespace", "", "kubeless", "---Namespace where kafka-controller is deployed. It will default to 'kubeless'")
+	}
 }
