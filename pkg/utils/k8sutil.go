@@ -17,6 +17,7 @@ limitations under the License.
 package utils
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -30,6 +31,7 @@ import (
 	"github.com/bitnami/kubeless/pkg/spec"
 	"github.com/bitnami/kubeless/version"
 
+	"bytes"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	kerrors "k8s.io/client-go/pkg/api/errors"
@@ -41,6 +43,8 @@ import (
 	"k8s.io/client-go/pkg/util/intstr"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubernetes/pkg/kubectl/cmd"
+	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 const (
@@ -331,6 +335,75 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 	return nil
 }
 
+// UpdateK8sResources applies function changes to the existing k8s configmap,
+// then the deployment rolling update will be triggered automately
+func UpdateK8sResources(name string, spec *spec.FunctionSpec) error {
+	fa := cmdutil.NewFactory(nil)
+
+	str := strings.Split(spec.Handler, ".")
+	if len(str) != 2 {
+		return errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
+	}
+	modName := str[0]
+	fileName := modName
+
+	//TODO: Only python and nodejs supported. Add more...
+	depName := ""
+	switch {
+	case strings.Contains(spec.Runtime, "python"):
+		fileName = modName + ".py"
+		depName = "requirements.txt"
+	case strings.Contains(spec.Runtime, "go"):
+		fileName = modName + ".go"
+	case strings.Contains(spec.Runtime, "nodejs"):
+		fileName = modName + ".js"
+		depName = "package.json"
+	}
+
+	//update configmap
+	labels := map[string]string{
+		"function": name,
+	}
+	data := map[string]string{
+		"handler": spec.Handler,
+		fileName:  spec.Function,
+		depName:   spec.Deps,
+	}
+	configMap := &v1.ConfigMap{
+		ObjectMeta: v1.ObjectMeta{
+			Name:   name,
+			Labels: labels,
+		},
+		Data: data,
+	}
+
+	cmJSON, err := json.Marshal(configMap)
+	if err != nil {
+		return err
+	}
+
+	// TODO: looking for a way to not writing to temp file
+	err = ioutil.WriteFile(".cm.json", cmJSON, 0644)
+	if err != nil {
+		return err
+	}
+
+	buf := bytes.NewBuffer([]byte{})
+	applyCmd := cmd.NewCmdApply(fa, buf)
+
+	applyCmd.Flags().Set("filename", ".cm.json")
+	applyCmd.Flags().Set("output", "name")
+	applyCmd.Run(applyCmd, []string{})
+
+	// remove temp cm file
+	err = os.Remove(".cm.json")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // DeleteK8sResources removes k8s objects of the function
 func DeleteK8sResources(ns, name string, client *kubernetes.Clientset) error {
 	replicas := int32(0)
@@ -419,6 +492,56 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, 
 	}
 
 	return nil
+}
+
+// UpdateK8sCustomResource applies changes to the function custom object
+func UpdateK8sCustomResource(handler, file, funcName, ns string) error {
+	fa := cmdutil.NewFactory(nil)
+
+	if ns == "" {
+		ns, _, _ = fa.DefaultNamespace()
+	}
+
+	f := &spec.Function{
+		TypeMeta: unversioned.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "k8s.io/v1",
+		},
+		Metadata: api.ObjectMeta{
+			Name:      funcName,
+			Namespace: ns,
+		},
+		Spec: spec.FunctionSpec{
+			Handler:  handler,
+			Function: readFile(file),
+		},
+	}
+
+	funcJSON, err := json.Marshal(f)
+	if err != nil {
+		return err
+	}
+
+	// TODO: looking for a way to not writing to temp file
+	err = ioutil.WriteFile(".func.json", funcJSON, 0644)
+	if err != nil {
+		return err
+	}
+
+	buf := bytes.NewBuffer([]byte{})
+	applyCmd := cmd.NewCmdApply(fa, buf)
+
+	applyCmd.Flags().Set("filename", ".func.json")
+	applyCmd.Flags().Set("output", "name")
+	applyCmd.Run(applyCmd, []string{})
+
+	// remove temp func file
+	err = os.Remove(".func.json")
+	if err != nil {
+		return err
+	}
+
+	return err
 }
 
 // DeleteK8sCustomResource will delete custom function object

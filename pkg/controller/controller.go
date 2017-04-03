@@ -170,6 +170,16 @@ func (c *Controller) Run() error {
 					break
 				}
 				c.logger.Infof("A function was deleted: %s", functionName)
+
+			case "MODIFIED":
+				functionSpec := &event.Object.Spec
+				err := function.Update(c.Config.KubeCli, functionName, ns, functionSpec, &c.waitFunction)
+				if err != nil {
+					c.logger.Error("Function can not be updated: ", err)
+					break
+				}
+				c.Functions[functionName+"."+ns] = event.Object
+				c.logger.Infof("A function was updated: %s", functionName)
 			}
 		}
 	}()
