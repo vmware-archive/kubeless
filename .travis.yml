@@ -1,24 +1,41 @@
 language: go
 
+os:
+  - linux
+  - osx
+
 go:
-  - 1.6.x
-  - 1.7.x
+  - 1.6
+  - 1.7
+  - 1.8
 
 env:
   - CGO_ENABLED=0
 
-script: |
-  make all
+install:
+  - go get github.com/mitchellh/gox github.com/golang/lint/golint
+
+script:
+  - ./script/make.sh validate-gofmt
+  - ./script/make.sh validate-git-marks
+  - ./script/make.sh validate-lint
+  - ./script/make.sh validate-vet
+  - ./script/make.sh binary
+
+before_deploy:
+  - ./script/make.sh binary-cross
+  - cd bundles && for d in kubeless_*; do zip -r9 $d.zip $d/; done
 
 deploy:
   provider: releases
   api_key:
     secure: ratV3LtnNO9x5u0bjFz3EMO+qs65k0OIDJOKqBXrWEuwhUZov51gdt0757Znbl4rm57bptiFt9QVMrzoAC/IBLgQ39uo4vXBoRbthxCYrui4Zml2dMz0xlx+hohq/WAOvCdYfFjxeleNWomm1anOxS73iQ3UUPtUofYqcysmpqzzmGuYSYPUC5Ecsv9Tg1y87kPtsc25lj7ba3MTxdvoQcuDAYB9FqJ75fgKU2NxvROf+G7YNJ9z48slzlODQDsBIHrTCGVrBRedjuazILz6+Fhc1ypNL6L9N6DqrpRIK9rd5KOhJPk4pUXfKIHKX/vfuPBGDMWpM/yxPhbn6WoV0S0QjY7ynmVut8TiTJyVHZxwKDRbgl/omdL6RBsKyHkipy2TNir+kfnmxX7PCDkPIsUGmFsjKBRTIFVhbzs6XPMHXXt5IdOOn8YV0CLg2GgG8DtJ5cikz3H7vHuBXMZH4ZobfNObQIqxblCpspzvrnbGOsqD5XNNW+IN3SWe3YsW3hc9/d/xR3o+Gypkhtrno9B/9pQkF+b5VUd7lhPOvXjMcUyNMVMTjlETG3HMhUiXMMbsBqVumF2+8Qi/qWzR8PEN4bzfNdfQWWVpwRpNzeKL+iK/+Vjx7gjSshVE6EmITYk34NO3ef8D2IT6VzIlbOoxVtxlr6NPJkBRhVbtIKY=
   file_glob: true
-  file: bin/*
+  file: bundles/kubeless_*.zip
   skip_cleanup: true
   on:
     tags: true
     repo: bitnami/kubeless
-    go: 1.7.x
+    go: 1.8
+    os: linux
     condition: $CGO_ENABLED = 0
