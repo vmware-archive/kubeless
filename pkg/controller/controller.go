@@ -154,11 +154,11 @@ func (c *Controller) Run() error {
 					c.logger.Errorf("A new function is detected but can't be added: ", err)
 					break
 				}
-				c.Functions[functionName + "." + ns] = event.Object
+				c.Functions[functionName+"."+ns] = event.Object
 				c.logger.Infof("A new function was added: %s", functionName)
 
 			case "DELETED":
-				if c.Functions[functionName + "." + ns] == nil {
+				if c.Functions[functionName+"."+ns] == nil {
 					c.logger.Warningf("Ignore deletion: function %q not found", functionName)
 					break
 				}
