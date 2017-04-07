@@ -96,7 +96,7 @@ func (c *Controller) InstallKubeless(ctlImage string, ctlNamespace string) {
 	c.logger.Infof("Installing Kubeless controller into Kubernetes deployment...")
 	err := utils.DeployKubeless(c.Config.KubeCli, ctlImage, ctlNamespace)
 	if err != nil {
-		//c.logger.Errorf("Kubeless controller installation failed: %v", err)
+		
 		if strings.Contains(err.Error(), "already exists") {
 			c.logger.Warning("Kubeless controler is already installed. Skipping installation...")
 		} else {
@@ -111,7 +111,7 @@ func (c *Controller) InstallMsgBroker(kafkaVer string, ctlNamespace string) {
 	c.logger.Infof("Installing Message Broker into Kubernetes deployment...")
 	err := utils.DeployMsgBroker(c.Config.KubeCli, kafkaVer, ctlNamespace)
 	if err != nil {
-		//c.logger.Errorf("Message Broker installation failed: %v", err)
+		
 		if strings.Contains(err.Error(), "already exists") {
 			c.logger.Warning("Message Broker is already installed. Skipping installation...")
 		} else {
