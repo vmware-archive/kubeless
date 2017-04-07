@@ -30,6 +30,8 @@ import (
 	"github.com/bitnami/kubeless/pkg/spec"
 	"github.com/bitnami/kubeless/pkg/utils"
 
+	"strings"
+
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apis/extensions"
@@ -94,7 +96,12 @@ func (c *Controller) InstallKubeless(ctlImage string, ctlNamespace string) {
 	c.logger.Infof("Installing Kubeless controller into Kubernetes deployment...")
 	err := utils.DeployKubeless(c.Config.KubeCli, ctlImage, ctlNamespace)
 	if err != nil {
-		c.logger.Errorf("Kubeless controller installation failed: %v", err)
+		//c.logger.Errorf("Kubeless controller installation failed: %v", err)
+		if strings.Contains(err.Error(), "already exists") {
+			c.logger.Warning("Kubeless controler is already installed. Skipping installation...")
+		} else {
+			c.logger.Errorf("Kubeless controller installation failed: %v", err)
+		}
 	} else {
 		c.logger.Infof("Kubeless controller installation successful!")
 	}
@@ -104,7 +111,12 @@ func (c *Controller) InstallMsgBroker(kafkaVer string, ctlNamespace string) {
 	c.logger.Infof("Installing Message Broker into Kubernetes deployment...")
 	err := utils.DeployMsgBroker(c.Config.KubeCli, kafkaVer, ctlNamespace)
 	if err != nil {
-		c.logger.Errorf("Message Broker installation failed: %v", err)
+		//c.logger.Errorf("Message Broker installation failed: %v", err)
+		if strings.Contains(err.Error(), "already exists") {
+			c.logger.Warning("Message Broker is already installed. Skipping installation...")
+		} else {
+			c.logger.Errorf("Message Broker installation failed: %v", err)
+		}
 	} else {
 		c.logger.Infof("Message Broker installation successful!")
 	}
