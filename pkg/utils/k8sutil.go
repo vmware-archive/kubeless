@@ -44,8 +44,8 @@ const (
 	TIMEOUT          = 300
 	CONTROLLER_IMAGE = "bitnami/kubeless-controller"
 	KAFKA_IMAGE      = "wurstmeister/kafka"
-	PYTHON_RUNTIME   = "skippbox/kubeless-python:0.0.4"
-	PUBSUB_RUNTIME   = "skippbox/kubeless-event-consumer:0.0.4"
+	PYTHON_RUNTIME   = "skippbox/kubeless-python:0.0.5"
+	PUBSUB_RUNTIME   = "skippbox/kubeless-event-consumer:0.0.5"
 	NODEJS_RUNTIME   = "rosskukulinski/kubeless-nodejs:0.0.0"
 )
 
@@ -605,7 +605,7 @@ func getKafkaImage(v string) string {
 func getInitImage(runtime string) string {
 	switch {
 	case strings.Contains(runtime, "python"):
-		return "python:2.7.11-alpine"
+		return "tuna/python-pillow:2.7.11-alpine"
 	case strings.Contains(runtime, "nodejs"):
 		return "node:6.10-alpine"
 	default:
