@@ -19,7 +19,7 @@ set -e
 source "$(dirname "$BASH_SOURCE")/.build"
 
 # Get rid of existing binary
-rm -f $GOPATH/bin/kubeless*
+rm -f ${GOPATH%%:*}/bin/kubeless*
 
 # Build binary
 go install \
@@ -27,7 +27,7 @@ go install \
     github.com/bitnami/kubeless/cmd/...
 
 if [ $? -eq 0 ]; then
-  echo "Build successful. Program saved at $GOPATH/bin"
+  echo "Build successful. Program saved at ${GOPATH%%:*}/bin"
 else
   echo "Build failed."
 fi
