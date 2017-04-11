@@ -96,7 +96,7 @@ func (c *Controller) InstallKubeless(ctlImage string, ctlNamespace string) {
 	c.logger.Infof("Installing Kubeless controller into Kubernetes deployment...")
 	err := utils.DeployKubeless(c.Config.KubeCli, ctlImage, ctlNamespace)
 	if err != nil {
-		
+
 		if strings.Contains(err.Error(), "already exists") {
 			c.logger.Warning("Kubeless controler is already installed. Skipping installation...")
 		} else {
@@ -111,7 +111,7 @@ func (c *Controller) InstallMsgBroker(kafkaVer string, ctlNamespace string) {
 	c.logger.Infof("Installing Message Broker into Kubernetes deployment...")
 	err := utils.DeployMsgBroker(c.Config.KubeCli, kafkaVer, ctlNamespace)
 	if err != nil {
-		
+
 		if strings.Contains(err.Error(), "already exists") {
 			c.logger.Warning("Message Broker is already installed. Skipping installation...")
 		} else {
@@ -332,7 +332,7 @@ func NewControllerConfig(masterHost, ns string) Config {
 			fmt.Errorf("Can not get kubernetes config: %s", err)
 		}
 		if k8sConfig == nil {
-			fmt.Errorf("Got nil k8sConfig, please check if k8s cluster is available.")
+			fmt.Errorf("Got nil k8sConfig, please check if k8s cluster is available")
 		} else {
 			masterHost = k8sConfig.Host
 		}
