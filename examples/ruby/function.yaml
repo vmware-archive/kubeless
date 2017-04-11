@@ -1,6 +1,6 @@
 ---
 apiVersion: k8s.io/v1
-kind: LambDa
+kind: Function
 metadata:
   name: function
 spec:
