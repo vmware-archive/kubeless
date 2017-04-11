@@ -48,6 +48,7 @@ func AddOutputFlagsForMutation(cmd *cobra.Command) {
 // AddOutputFlags adds output related flags to a command.
 func AddOutputFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP("output", "o", "", "Output format. One of: json|yaml|wide|name|custom-columns=...|custom-columns-file=...|go-template=...|go-template-file=...|jsonpath=...|jsonpath-file=... See custom columns [http://kubernetes.io/docs/user-guide/kubectl-overview/#custom-columns], golang template [http://golang.org/pkg/text/template/#pkg-overview] and jsonpath template [http://kubernetes.io/docs/user-guide/jsonpath].")
+	cmd.Flags().Bool("allow-missing-template-keys", true, "If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats.")
 }
 
 // AddNoHeadersFlags adds no-headers flags to a command.
@@ -56,8 +57,12 @@ func AddNoHeadersFlags(cmd *cobra.Command) {
 }
 
 // PrintSuccess prints message after finishing mutating operations
-func PrintSuccess(mapper meta.RESTMapper, shortOutput bool, out io.Writer, resource string, name string, operation string) {
+func PrintSuccess(mapper meta.RESTMapper, shortOutput bool, out io.Writer, resource string, name string, dryRun bool, operation string) {
 	resource, _ = mapper.ResourceSingularizer(resource)
+	dryRunMsg := ""
+	if dryRun {
+		dryRunMsg = " (dry run)"
+	}
 	if shortOutput {
 		// -o name: prints resource/name
 		if len(resource) > 0 {
@@ -68,9 +73,9 @@ func PrintSuccess(mapper meta.RESTMapper, shortOutput bool, out io.Writer, resou
 	} else {
 		// understandable output by default
 		if len(resource) > 0 {
-			fmt.Fprintf(out, "%s \"%s\" %s\n", resource, name, operation)
+			fmt.Fprintf(out, "%s \"%s\" %s%s\n", resource, name, operation, dryRunMsg)
 		} else {
-			fmt.Fprintf(out, "\"%s\" %s\n", name, operation)
+			fmt.Fprintf(out, "\"%s\" %s%s\n", name, operation, dryRunMsg)
 		}
 	}
 }
@@ -121,7 +126,13 @@ func PrinterForCommand(cmd *cobra.Command) (kubectl.ResourcePrinter, bool, error
 		}
 	}
 
-	printer, generic, err := kubectl.GetPrinter(outputFormat, templateFile, GetFlagBool(cmd, "no-headers"))
+	// this function may be invoked by a command that did not call AddPrinterFlags first, so we need
+	// to be safe about how we access the allow-missing-template-keys flag
+	allowMissingTemplateKeys := false
+	if cmd.Flags().Lookup("allow-missing-template-keys") != nil {
+		allowMissingTemplateKeys = GetFlagBool(cmd, "allow-missing-template-keys")
+	}
+	printer, generic, err := kubectl.GetPrinter(outputFormat, templateFile, GetFlagBool(cmd, "no-headers"), allowMissingTemplateKeys)
 	if err != nil {
 		return nil, generic, err
 	}

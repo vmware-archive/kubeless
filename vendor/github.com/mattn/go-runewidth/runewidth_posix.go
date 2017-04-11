@@ -10,25 +10,20 @@ import (
 
 var reLoc = regexp.MustCompile(`^[a-z][a-z][a-z]?(?:_[A-Z][A-Z])?\.(.+)`)
 
-var mblenTable = map[string]int{
-	"utf-8":   6,
-	"utf8":    6,
-	"jis":     8,
-	"eucjp":   3,
-	"euckr":   2,
-	"euccn":   2,
-	"sjis":    2,
-	"cp932":   2,
-	"cp51932": 2,
-	"cp936":   2,
-	"cp949":   2,
-	"cp950":   2,
-	"big5":    2,
-	"gbk":     2,
-	"gb2312":  2,
-}
+func IsEastAsian() bool {
+	locale := os.Getenv("LC_CTYPE")
+	if locale == "" {
+		locale = os.Getenv("LANG")
+	}
 
-func isEastAsian(locale string) bool {
+	// ignore C locale
+	if locale == "POSIX" || locale == "C" {
+		return false
+	}
+	if len(locale) > 1 && locale[0] == 'C' && (locale[1] == '.' || locale[1] == '-') {
+		return false
+	}
+
 	charset := strings.ToLower(locale)
 	r := reLoc.FindStringSubmatch(locale)
 	if len(r) == 2 {
@@ -45,33 +40,30 @@ func isEastAsian(locale string) bool {
 			break
 		}
 	}
-	max := 1
-	if m, ok := mblenTable[charset]; ok {
-		max = m
+
+	mbc_max := 1
+	switch charset {
+	case "utf-8", "utf8":
+		mbc_max = 6
+	case "jis":
+		mbc_max = 8
+	case "eucjp":
+		mbc_max = 3
+	case "euckr", "euccn":
+		mbc_max = 2
+	case "sjis", "cp932", "cp51932", "cp936", "cp949", "cp950":
+		mbc_max = 2
+	case "big5":
+		mbc_max = 2
+	case "gbk", "gb2312":
+		mbc_max = 2
 	}
-	if max > 1 && (charset[0] != 'u' ||
+
+	if mbc_max > 1 && (charset[0] != 'u' ||
 		strings.HasPrefix(locale, "ja") ||
 		strings.HasPrefix(locale, "ko") ||
 		strings.HasPrefix(locale, "zh")) {
 		return true
 	}
 	return false
-}
-
-// IsEastAsian return true if the current locale is CJK
-func IsEastAsian() bool {
-	locale := os.Getenv("LC_CTYPE")
-	if locale == "" {
-		locale = os.Getenv("LANG")
-	}
-
-	// ignore C locale
-	if locale == "POSIX" || locale == "C" {
-		return false
-	}
-	if len(locale) > 1 && locale[0] == 'C' && (locale[1] == '.' || locale[1] == '-') {
-		return false
-	}
-
-	return isEastAsian(locale)
 }
