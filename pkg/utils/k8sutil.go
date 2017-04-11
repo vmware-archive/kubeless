@@ -17,115 +17,130 @@ limitations under the License.
 package utils
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
+	"os"
 	"strings"
-	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/bitnami/kubeless/pkg/spec"
 	"github.com/bitnami/kubeless/version"
-	"k8s.io/kubernetes/pkg/api"
-	apierrors "k8s.io/kubernetes/pkg/api/errors"
-	unversionedAPI "k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/apis/extensions"
-	client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/kubectl"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/util/intstr"
+
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api"
+	kerrors "k8s.io/client-go/pkg/api/errors"
+	"k8s.io/client-go/pkg/api/unversioned"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/pkg/runtime"
+	"k8s.io/client-go/pkg/runtime/serializer"
+	"k8s.io/client-go/pkg/util/intstr"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
-	TIMEOUT          = 300
-	CONTROLLER_IMAGE = "bitnami/kubeless-controller"
-	KAFKA_IMAGE      = "wurstmeister/kafka"
-	PYTHON_RUNTIME   = "skippbox/kubeless-python:0.0.5"
-	PUBSUB_RUNTIME   = "skippbox/kubeless-event-consumer:0.0.5"
-	NODEJS_RUNTIME   = "rosskukulinski/kubeless-nodejs:0.0.0"
+	controllerImage = "bitnami/kubeless-controller"
+	kafkaImage      = "wurstmeister/kafka"
+	pythonRuntime   = "skippbox/kubeless-python:0.0.5"
+	pubsubRuntime   = "skippbox/kubeless-event-consumer:0.0.5"
+	nodejsRuntime   = "rosskukulinski/kubeless-nodejs:0.0.0"
 )
 
-func GetFactory() *cmdutil.Factory {
-	factory := cmdutil.NewFactory(nil)
-	return factory
+// GetClient returns a k8s clientset to the request from inside of cluster
+func GetClient() *kubernetes.Clientset {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		logrus.Fatalf("Can not get kubernetes config: %v", err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		logrus.Fatalf("Can not create kubernetes client: %v", err)
+	}
+
+	return clientset
 }
 
-func IsKubernetesResourceAlreadyExistError(err error) bool {
-	se, ok := err.(*apierrors.StatusError)
-	if !ok {
-		return false
+// GetClientOutOfCluster returns a k8s clientset to the request from outside of cluster
+func GetClientOutOfCluster() *kubernetes.Clientset {
+	config, err := clientcmd.BuildConfigFromFlags("", os.Getenv("HOME")+"/.kube/config")
+	if err != nil {
+		logrus.Fatalf("Can not get kubernetes config: %v", err)
 	}
-	if se.Status().Code == http.StatusConflict && se.Status().Reason == unversionedAPI.StatusReasonAlreadyExists {
-		return true
-	}
-	return false
+
+	clientset, err := kubernetes.NewForConfig(config)
+
+	return clientset
 }
 
-func ListResources(host, ns string, httpClient *http.Client) (*http.Response, error) {
-	if host == "localhost" {
-		//return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/functions",
-		//	host, ns))
-		return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/functions",
-			host))
-	} else {
-		//return httpClient.Get(fmt.Sprintf("%s/apis/k8s.io/v1/namespaces/%s/functions",
-		//	host, ns))
-		return httpClient.Get(fmt.Sprintf("%s/apis/k8s.io/v1/functions",
-			host))
-	}
-
-}
-
-func WatchResources(host, ns string, httpClient *http.Client, resourceVersion string) (*http.Response, error) {
-	if host == "localhost" {
-		//return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/functions?watch=true&resourceVersion=%s",
-		//	host, ns, resourceVersion))
-		return httpClient.Get(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/functions?watch=true&resourceVersion=%s",
-			host, resourceVersion))
-	} else {
-		//return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/namespaces/%s/functions?watch=true&resourceVersion=%s",
-		//	host, ns, resourceVersion))
-		return httpClient.Get(fmt.Sprintf("https://%s:8443/apis/k8s.io/v1/functions?watch=true&resourceVersion=%s",
-			host, resourceVersion))
-	}
-}
-
-func submitResource(host, ns string, httpClient *http.Client, body io.Reader) (*http.Response, error) {
-	if host == "localhost" {
-		return httpClient.Post(fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/functions",
-			host, ns), "application/json", body)
-	} else {
-		return httpClient.Post(fmt.Sprintf("%s/apis/k8s.io/v1/namespaces/%s/functions",
-			host, ns), "application/json", body)
-	}
-}
-
-func deleteResource(host, ns, funcName string, httpClient *http.Client) (*http.Response, error) {
-	var (
-		req *http.Request
-		err error
-	)
-
-	if host == "localhost" {
-		req, err = http.NewRequest("DELETE", fmt.Sprintf("http://%s:8080/apis/k8s.io/v1/namespaces/%s/functions/%s",
-			host, ns, funcName), nil)
-	} else {
-		req, err = http.NewRequest("DELETE", fmt.Sprintf("%s/apis/k8s.io/v1/namespaces/%s/functions/%s",
-			host, ns, funcName), nil)
-	}
-
+// GetRestClient returns a k8s restclient to the request from inside of cluster
+func GetRestClient() (*rest.RESTClient, error) {
+	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
 	}
-	resq, err := httpClient.Do(req)
-	return resq, err
+
+	restClient, err := rest.RESTClientFor(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return restClient, nil
 }
 
-func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client.Client) error {
+// GetTPRClient returns tpr client to the request from inside of cluster
+func GetTPRClient() (*rest.RESTClient, error) {
+	tprconfig, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	configureClient(tprconfig)
+
+	tprclient, err := rest.RESTClientFor(tprconfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return tprclient, nil
+}
+
+// GetTPRClientOutOfCluster returns tpr client to the request from outside of cluster
+func GetTPRClientOutOfCluster() (*rest.RESTClient, error) {
+	tprconfig, err := clientcmd.BuildConfigFromFlags("", os.Getenv("HOME")+"/.kube/config")
+	if err != nil {
+		logrus.Fatalf("Can not get kubernetes config: %v", err)
+	}
+
+	configureClient(tprconfig)
+
+	tprclient, err := rest.RESTClientFor(tprconfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return tprclient, nil
+}
+
+// WatchResources looking for changes of custom function objects
+func WatchResources(httpClient *http.Client, resourceVersion string) (*http.Response, error) {
+	host, port := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
+	if len(host) == 0 || len(port) == 0 {
+		return nil, fmt.Errorf("unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined")
+	}
+
+	return httpClient.Get(fmt.Sprintf("https://%s/apis/k8s.io/v1/functions?watch=true&resourceVersion=%s",
+		net.JoinHostPort(host, port), resourceVersion))
+
+}
+
+// CreateK8sResources deploys k8s objects (deploy, svc, configmap) for the function
+func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubernetes.Clientset) error {
 	str := strings.Split(spec.Handler, ".")
 	if len(str) != 2 {
 		return errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
@@ -140,16 +155,16 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 	switch {
 	case strings.Contains(spec.Runtime, "python"):
 		fileName = modName + ".py"
-		imageName = PYTHON_RUNTIME
+		imageName = pythonRuntime
 		if spec.Type == "PubSub" {
-			imageName = PUBSUB_RUNTIME
+			imageName = pubsubRuntime
 		}
 		depName = "requirements.txt"
 	case strings.Contains(spec.Runtime, "go"):
 		fileName = modName + ".go"
 	case strings.Contains(spec.Runtime, "nodejs"):
 		fileName = modName + ".js"
-		imageName = NODEJS_RUNTIME
+		imageName = nodejsRuntime
 		depName = "package.json"
 	}
 
@@ -162,80 +177,79 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 		fileName:  spec.Function,
 		depName:   spec.Deps,
 	}
-	configMap := &api.ConfigMap{
-		ObjectMeta: api.ObjectMeta{
+	configMap := &v1.ConfigMap{
+		ObjectMeta: v1.ObjectMeta{
 			Name:   name,
 			Labels: labels,
 		},
 		Data: data,
 	}
 
-	_, err := client.ConfigMaps(ns).Create(configMap)
+	_, err := client.Core().ConfigMaps(ns).Create(configMap)
 	if err != nil {
 		return err
 	}
 
 	//add service
-	svc := &api.Service{
-		ObjectMeta: api.ObjectMeta{
+	svc := &v1.Service{
+		ObjectMeta: v1.ObjectMeta{
 			Name:   name,
 			Labels: labels,
 		},
-		Spec: api.ServiceSpec{
-			Ports: []api.ServicePort{
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
 				{
 					Port:       8080,
 					TargetPort: intstr.FromInt(8080),
-					Protocol:   api.ProtocolTCP,
+					Protocol:   v1.ProtocolTCP,
 				},
 			},
 			Selector: labels,
-			Type:     api.ServiceTypeNodePort,
+			Type:     v1.ServiceTypeNodePort,
 		},
 	}
-	_, err = client.Services(ns).Create(svc)
+	_, err = client.Core().Services(ns).Create(svc)
 	if err != nil {
 		return err
 	}
 
 	//prepare init-container for custom runtime
-	initContainer := []api.Container{}
+	initContainer := []v1.Container{}
 	if spec.Deps != "" {
-		initContainer = append(initContainer, api.Container{
+		initContainer = append(initContainer, v1.Container{
 			Name:            "install",
 			Image:           getInitImage(spec.Runtime),
 			Command:         getCommand(spec.Runtime),
 			VolumeMounts:    getVolumeMounts(name, spec.Runtime),
 			WorkingDir:      "/requirements",
-			ImagePullPolicy: api.PullIfNotPresent,
+			ImagePullPolicy: v1.PullIfNotPresent,
 		})
 	}
 
 	//add deployment
-	dpm := &extensions.Deployment{
-		ObjectMeta: api.ObjectMeta{
+	dpm := &v1beta1.Deployment{
+		ObjectMeta: v1.ObjectMeta{
 			Name:   name,
 			Labels: labels,
 		},
-		Spec: extensions.DeploymentSpec{
-			Replicas: 1,
-			Template: api.PodTemplateSpec{
-				ObjectMeta: api.ObjectMeta{
+		Spec: v1beta1.DeploymentSpec{
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: v1.ObjectMeta{
 					Labels: labels,
 				},
-				Spec: api.PodSpec{
+				Spec: v1.PodSpec{
 					InitContainers: initContainer,
-					Containers: []api.Container{
+					Containers: []v1.Container{
 						{
 							Name:            name,
 							Image:           imageName,
-							ImagePullPolicy: api.PullIfNotPresent,
-							Ports: []api.ContainerPort{
+							ImagePullPolicy: v1.PullIfNotPresent,
+							Ports: []v1.ContainerPort{
 								{
 									ContainerPort: 8080,
 								},
 							},
-							Env: []api.EnvVar{
+							Env: []v1.EnvVar{
 								{
 									Name:  "FUNC_HANDLER",
 									Value: funcHandler,
@@ -249,7 +263,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 									Value: spec.Topic,
 								},
 							},
-							VolumeMounts: []api.VolumeMount{
+							VolumeMounts: []v1.VolumeMount{
 								{
 									Name:      name,
 									MountPath: "/kubeless",
@@ -257,12 +271,12 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 							},
 						},
 					},
-					Volumes: []api.Volume{
+					Volumes: []v1.Volume{
 						{
 							Name: name,
-							VolumeSource: api.VolumeSource{
-								ConfigMap: &api.ConfigMapVolumeSource{
-									LocalObjectReference: api.LocalObjectReference{
+							VolumeSource: v1.VolumeSource{
+								ConfigMap: &v1.ConfigMapVolumeSource{
+									LocalObjectReference: v1.LocalObjectReference{
 										Name: name,
 									},
 								},
@@ -279,7 +293,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 		updateDeployment(dpm, spec.Runtime)
 	}
 
-	_, err = client.Deployments(ns).Create(dpm)
+	_, err = client.Extensions().Deployments(ns).Create(dpm)
 	if err != nil {
 		return err
 	}
@@ -287,26 +301,32 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *client
 	return nil
 }
 
-func DeleteK8sResources(ns, name string, client *client.Client) error {
-	rp, err := kubectl.ReaperFor(extensions.Kind("Deployment"), client)
-	if err != nil {
-		return err
-	}
-	err = rp.Stop(ns, name, TIMEOUT*time.Second, nil)
-	if err != nil {
-		return err
-	}
-
-	rp, err = kubectl.ReaperFor(api.Kind("Service"), client)
-	if err != nil {
-		return err
-	}
-	err = rp.Stop(ns, name, TIMEOUT*time.Second, nil)
+// DeleteK8sResources removes k8s objects of the function
+func DeleteK8sResources(ns, name string, client *kubernetes.Clientset) error {
+	replicas := int32(0)
+	// scale deployment to 0
+	oldScale, err := client.Scales(ns).Get("Deployment", name)
 	if err != nil {
 		return err
 	}
 
-	err = client.ConfigMaps(ns).Delete(name)
+	oldScale.Spec = v1beta1.ScaleSpec{Replicas: replicas}
+	_, err = client.Scales(ns).Update("Deployment", oldScale)
+
+	// and delete it
+	err = client.Extensions().Deployments(ns).Delete(name, &v1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	// delete svc
+	err = client.Core().Services(ns).Delete(name, &v1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	// delete cm
+	err = client.Core().ConfigMaps(ns).Delete(name, &v1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
@@ -314,131 +334,143 @@ func DeleteK8sResources(ns, name string, client *client.Client) error {
 	return nil
 }
 
+// CreateK8sCustomResource will create a custom function object
 func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps string) error {
-	fa := GetFactory()
-	kClient, err := fa.Client()
+	var f spec.Function
+
+	tprClient, err := GetTPRClientOutOfCluster()
 	if err != nil {
 		return err
 	}
-	if ns == "" {
-		ns, _, err = fa.DefaultNamespace()
-		if err != nil {
-			return err
+
+	err = tprClient.Get().
+		Resource("functions").
+		Namespace(ns).
+		Name(funcName).
+		Do().Into(&f)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			f := &spec.Function{
+				TypeMeta: unversioned.TypeMeta{
+					Kind:       "Function",
+					APIVersion: "k8s.io/v1",
+				},
+				Metadata: api.ObjectMeta{
+					Name:      funcName,
+					Namespace: ns,
+				},
+				Spec: spec.FunctionSpec{
+					Handler:  handler,
+					Runtime:  runtime,
+					Type:     funcType,
+					Function: readFile(file),
+					Topic:    topic,
+				},
+			}
+			// add dependencies file to func spec
+			if deps != "" {
+				f.Spec.Deps = readFile(deps)
+			}
+
+			var result spec.Function
+			err = tprClient.Post().
+				Resource("functions").
+				Namespace(ns).
+				Body(f).
+				Do().Into(&result)
+
+			if err != nil {
+				return err
+			}
 		}
-	}
-	cfg, err := fa.ClientConfig()
-	if err != nil {
-		return err
-	}
-	host := cfg.Host
-
-	f := &spec.Function{
-		TypeMeta: unversionedAPI.TypeMeta{
-			Kind:       "Function",
-			APIVersion: "k8s.io/v1",
-		},
-		ObjectMeta: api.ObjectMeta{
-			Name:      funcName,
-			Namespace: ns,
-		},
-		Spec: spec.FunctionSpec{
-			Handler:  handler,
-			Runtime:  runtime,
-			Type:     funcType,
-			Function: readFile(file),
-			Topic:    topic,
-		},
+	} else {
+		//FIXME: improve the error message
+		return fmt.Errorf("Can't create the function")
 	}
 
-	// add dependencies file to func spec
-	if deps != "" {
-		f.Spec.Deps = readFile(deps)
-	}
-
-	funcJson, err := json.Marshal(f)
-	if err != nil {
-		return err
-	}
-
-	_, err = submitResource(host, ns, kClient.RESTClient.Client, bytes.NewBuffer(funcJson))
-	return err
+	return nil
 }
 
+// DeleteK8sCustomResource will delete custom function object
 func DeleteK8sCustomResource(funcName, ns string) error {
-	fa := GetFactory()
-	kClient, err := fa.Client()
+	var f spec.Function
+
+	tprClient, err := GetTPRClientOutOfCluster()
 	if err != nil {
 		return err
 	}
-	if ns == "" {
-		ns, _, err = fa.DefaultNamespace()
-		if err != nil {
-			return err
+
+	err = tprClient.Get().
+		Resource("functions").
+		Namespace(ns).
+		Name(funcName).
+		Do().Into(&f)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return fmt.Errorf("The function doesn't exist")
 		}
 	}
 
-	cfg, err := fa.ClientConfig()
+	err = tprClient.Delete().
+		Resource("functions").
+		Namespace(ns).
+		Name(funcName).
+		Do().Into(&f)
+
 	if err != nil {
+		fmt.Println("error here")
 		return err
 	}
-	host := cfg.Host
 
-	_, err = deleteResource(host, ns, funcName, kClient.RESTClient.Client)
-	return err
+	return nil
 }
 
-func DeployKubeless(client *client.Client, ctlImage string, ctlNamespace string) error {
+// DeployKubeless deploys kubeless controller to k8s
+func DeployKubeless(client *kubernetes.Clientset, ctlImage string, ctlNamespace string) error {
 	//add deployment
 	labels := map[string]string{
 		"app": "kubeless-controller",
 	}
-	dpm := &extensions.Deployment{
-		ObjectMeta: api.ObjectMeta{
+	dpm := &v1beta1.Deployment{
+		ObjectMeta: v1.ObjectMeta{
 			Name:   "kubeless-controller",
 			Labels: labels,
 		},
-		Spec: extensions.DeploymentSpec{
-			Replicas: 1,
-			Template: api.PodTemplateSpec{
-				ObjectMeta: api.ObjectMeta{
+		Spec: v1beta1.DeploymentSpec{
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: v1.ObjectMeta{
 					Labels: labels,
 				},
-				Spec: api.PodSpec{
-					Containers: []api.Container{
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
 						{
 							Name:            ctlNamespace,
 							Image:           getImage(ctlImage),
-							ImagePullPolicy: api.PullIfNotPresent,
-						},
-						{
-							Name:            "kubectl",
-							Image:           "kelseyhightower/kubectl:1.4.0",
-							Args:            []string{"proxy", "-p", "8080"},
-							ImagePullPolicy: api.PullIfNotPresent,
+							ImagePullPolicy: v1.PullIfNotPresent,
 						},
 					},
-					RestartPolicy: api.RestartPolicyAlways,
+					RestartPolicy: v1.RestartPolicyAlways,
 				},
 			},
 		},
 	}
 
 	//create Kubeless namespace if it's not exists
-	_, err := client.Namespaces().Get(ctlNamespace)
+	_, err := client.Core().Namespaces().Get(ctlNamespace)
 	if err != nil {
-		ns := &api.Namespace{
-			ObjectMeta: api.ObjectMeta{
+		ns := &v1.Namespace{
+			ObjectMeta: v1.ObjectMeta{
 				Name: ctlNamespace,
 			},
 		}
-		_, err = client.Namespaces().Create(ns)
+		_, err = client.Core().Namespaces().Create(ns)
 		if err != nil {
 			return err
 		}
 	}
 
 	//deploy Kubeless controller
-	_, err = client.Deployments(ctlNamespace).Create(dpm)
+	_, err = client.Extensions().Deployments(ctlNamespace).Create(dpm)
 	if err != nil {
 		return err
 	}
@@ -446,80 +478,80 @@ func DeployKubeless(client *client.Client, ctlImage string, ctlNamespace string)
 	return nil
 }
 
-func DeployMsgBroker(client *client.Client, kafkaVer string, ctlNamespace string) error {
+// DeployMsgBroker deploys kafka-controller
+func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace string) error {
 	labels := map[string]string{
 		"app": "kafka",
 	}
 
 	//add zookeeper svc
-	svc := &api.Service{
-		ObjectMeta: api.ObjectMeta{
+	svc := &v1.Service{
+		ObjectMeta: v1.ObjectMeta{
 			Name:   "zookeeper",
 			Labels: labels,
 		},
-		Spec: api.ServiceSpec{
-			Ports: []api.ServicePort{
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
 				{
 					Name:       "zookeeper-port",
 					Port:       2181,
 					TargetPort: intstr.FromInt(2181),
-					Protocol:   api.ProtocolTCP,
+					Protocol:   v1.ProtocolTCP,
 				},
 			},
 			Selector: labels,
-			Type:     api.ServiceTypeClusterIP,
+			Type:     v1.ServiceTypeClusterIP,
 		},
 	}
 
-	_, err := client.Services(ctlNamespace).Create(svc)
+	_, err := client.Core().Services(ctlNamespace).Create(svc)
 	if err != nil {
 		return err
 	}
 
 	//add kafka svc
-	svc = &api.Service{
-		ObjectMeta: api.ObjectMeta{
+	svc = &v1.Service{
+		ObjectMeta: v1.ObjectMeta{
 			Name:   "kafka",
 			Labels: labels,
 		},
-		Spec: api.ServiceSpec{
-			Ports: []api.ServicePort{
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
 				{
 					Name:       "kafka-port",
 					Port:       9092,
 					TargetPort: intstr.FromInt(9092),
-					Protocol:   api.ProtocolTCP,
+					Protocol:   v1.ProtocolTCP,
 				},
 			},
 			Selector: labels,
-			Type:     api.ServiceTypeClusterIP,
+			Type:     v1.ServiceTypeClusterIP,
 		},
 	}
 
-	_, err = client.Services(ctlNamespace).Create(svc)
+	_, err = client.Core().Services(ctlNamespace).Create(svc)
 	if err != nil {
 		return err
 	}
 
 	//add deployment
-	dpm := &extensions.Deployment{
-		ObjectMeta: api.ObjectMeta{
+	dpm := &v1beta1.Deployment{
+		ObjectMeta: v1.ObjectMeta{
 			Name:   "kafka-controller",
 			Labels: labels,
 		},
-		Spec: extensions.DeploymentSpec{
-			Replicas: 1,
-			Template: api.PodTemplateSpec{
-				ObjectMeta: api.ObjectMeta{
+		Spec: v1beta1.DeploymentSpec{
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: v1.ObjectMeta{
 					Labels: labels,
 				},
-				Spec: api.PodSpec{
-					Containers: []api.Container{
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
 						{
 							Name:            "kafka",
 							Image:           getKafkaImage(kafkaVer),
-							ImagePullPolicy: api.PullIfNotPresent,
-							Env: []api.EnvVar{
+							ImagePullPolicy: v1.PullIfNotPresent,
+							Env: []v1.EnvVar{
 								{
 									Name:  "KAFKA_ADVERTISED_HOST_NAME",
 									Value: "kafka." + ctlNamespace,
@@ -537,7 +569,7 @@ func DeployMsgBroker(client *client.Client, kafkaVer string, ctlNamespace string
 									Value: "zookeeper." + ctlNamespace + ":2181",
 								},
 							},
-							Ports: []api.ContainerPort{
+							Ports: []v1.ContainerPort{
 								{
 									ContainerPort: 9092,
 								},
@@ -546,21 +578,21 @@ func DeployMsgBroker(client *client.Client, kafkaVer string, ctlNamespace string
 						{
 							Name:            "zookeeper",
 							Image:           "wurstmeister/zookeeper",
-							ImagePullPolicy: api.PullIfNotPresent,
-							Ports: []api.ContainerPort{
+							ImagePullPolicy: v1.PullIfNotPresent,
+							Ports: []v1.ContainerPort{
 								{
 									ContainerPort: 2181,
 								},
 							},
 						},
 					},
-					RestartPolicy: api.RestartPolicyAlways,
+					RestartPolicy: v1.RestartPolicyAlways,
 				},
 			},
 		},
 	}
-	
-	_, err = client.Deployments(ctlNamespace).Create(dpm)
+
+	_, err = client.Extensions().Deployments(ctlNamespace).Create(dpm)
 	if err != nil {
 		return err
 	}
@@ -568,8 +600,9 @@ func DeployMsgBroker(client *client.Client, kafkaVer string, ctlNamespace string
 	return nil
 }
 
-func GetPodName(c *client.Client, ns, funcName string) (string, error) {
-	po, err := c.Pods(ns).List(api.ListOptions{})
+// GetPodName returns pod to which the function is deployed
+func GetPodName(c *kubernetes.Clientset, ns, funcName string) (string, error) {
+	po, err := c.Core().Pods(ns).List(v1.ListOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -583,21 +616,23 @@ func GetPodName(c *client.Client, ns, funcName string) (string, error) {
 	return "", errors.New("Can't find pod starting with the function name")
 }
 
+// getImage returns runtime image of the function
 func getImage(v string) string {
 	switch v {
 	case "":
-		return fmt.Sprintf("%s:%s", CONTROLLER_IMAGE, version.VERSION)
+		return fmt.Sprintf("%s:%s", controllerImage, version.VERSION)
 	default:
 		return v
 	}
 }
 
+// getKafkaImage returns corresponding kafka image
 func getKafkaImage(v string) string {
 	switch v {
 	case "":
-		return KAFKA_IMAGE
+		return kafkaImage
 	default:
-		return fmt.Sprintf("%s:%s", KAFKA_IMAGE, v)
+		return fmt.Sprintf("%s:%s", kafkaImage, v)
 	}
 }
 
@@ -626,10 +661,10 @@ func getCommand(runtime string) []string {
 }
 
 // specify volumes for the init container
-func getVolumeMounts(name, runtime string) []api.VolumeMount {
+func getVolumeMounts(name, runtime string) []v1.VolumeMount {
 	switch {
 	case strings.Contains(runtime, "python"):
-		return []api.VolumeMount{
+		return []v1.VolumeMount{
 			{
 				Name:      "pythonpath",
 				MountPath: "/pythonpath",
@@ -640,7 +675,7 @@ func getVolumeMounts(name, runtime string) []api.VolumeMount {
 			},
 		}
 	case strings.Contains(runtime, "nodejs"):
-		return []api.VolumeMount{
+		return []v1.VolumeMount{
 			{
 				Name:      "nodepath",
 				MountPath: "/nodepath",
@@ -651,50 +686,76 @@ func getVolumeMounts(name, runtime string) []api.VolumeMount {
 			},
 		}
 	default:
-		return []api.VolumeMount{}
+		return []v1.VolumeMount{}
 	}
 }
 
 func readFile(file string) string {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
-		log.Fatal("Can not read file: %s. The file may not exist", file)
+		log.Fatalf("Can not read file: %s. The file may not exist", file)
 	}
 	return string(data[:])
 }
 
 // update deployment object in case of custom runtime
-func updateDeployment(dpm *extensions.Deployment, runtime string) {
+func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
 	switch {
 	case strings.Contains(runtime, "python"):
-		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, api.EnvVar{
+		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "PYTHONPATH",
 			Value: "/opt/kubeless/pythonpath/lib/python2.7/site-packages",
 		})
-		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, api.VolumeMount{
+		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
 			Name:      "pythonpath",
 			MountPath: "/opt/kubeless/pythonpath",
 		})
-		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, api.Volume{
+		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
 			Name: "pythonpath",
-			VolumeSource: api.VolumeSource{
-				EmptyDir: &api.EmptyDirVolumeSource{},
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},
 		})
 	case strings.Contains(runtime, "nodejs"):
-		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, api.EnvVar{
+		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "NODE_PATH",
 			Value: "/opt/kubeless/nodepath/node_modules",
 		})
-		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, api.VolumeMount{
+		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
 			Name:      "nodepath",
 			MountPath: "/opt/kubeless/nodepath",
 		})
-		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, api.Volume{
+		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
 			Name: "nodepath",
-			VolumeSource: api.VolumeSource{
-				EmptyDir: &api.EmptyDirVolumeSource{},
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},
 		})
 	}
+}
+
+// configureClient configures tpr client
+func configureClient(config *rest.Config) {
+	groupversion := unversioned.GroupVersion{
+		Group:   "k8s.io",
+		Version: "v1",
+	}
+
+	config.GroupVersion = &groupversion
+	config.APIPath = "/apis"
+	config.ContentType = runtime.ContentTypeJSON
+	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
+
+	schemeBuilder := runtime.NewSchemeBuilder(
+		func(scheme *runtime.Scheme) error {
+			scheme.AddKnownTypes(
+				groupversion,
+				&spec.Function{},
+				&spec.FunctionList{},
+				&api.ListOptions{},
+				&api.DeleteOptions{},
+			)
+			return nil
+		})
+	schemeBuilder.AddToScheme(api.Scheme)
 }

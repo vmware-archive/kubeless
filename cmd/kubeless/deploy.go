@@ -20,6 +20,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/bitnami/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/pkg/api"
 )
 
 var deployCmd = &cobra.Command{
@@ -84,7 +85,7 @@ func init() {
 	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
 	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
-	deployCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
+	deployCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
 	deployCmd.Flags().StringP("trigger-topic", "", "kubeless", "Deploy a pubsub function to Kubeless")
 	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")

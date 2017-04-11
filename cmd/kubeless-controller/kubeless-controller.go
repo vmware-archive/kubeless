@@ -24,8 +24,10 @@ import (
 	"os"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/bitnami/kubeless/pkg/controller"
 	"github.com/spf13/cobra"
+
+	"github.com/bitnami/kubeless/pkg/controller"
+	"github.com/bitnami/kubeless/pkg/utils"
 )
 
 const globalUsage = `` //TODO: adding explanation
@@ -35,13 +37,11 @@ var rootCmd = &cobra.Command{
 	Short: "Kubeless controller",
 	Long:  globalUsage,
 	Run: func(cmd *cobra.Command, args []string) {
-		master, err := cmd.Flags().GetString("master")
-		if master == "" {
-			master = "localhost"
+		cfg := controller.Config{
+			KubeCli: utils.GetClient(),
 		}
-		cfg := controller.NewControllerConfig(master, "")
 		c := controller.New(cfg)
-		err = c.Run()
+		err := c.Run()
 		if err != nil {
 			logrus.Fatalf("Kubeless controller running failed: %s", err)
 		}
@@ -53,8 +53,4 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-}
-
-func init() {
-	rootCmd.Flags().StringP("master", "", "", "Apiserver address")
 }

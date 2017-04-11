@@ -38,10 +38,10 @@ var topicPublishCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-                ctlNamespace, err := cmd.Flags().GetString("kafka-namespace")
-                if err != nil {
-                        logrus.Fatal(err)
-                }
+		ctlNamespace, err := cmd.Flags().GetString("kafka-namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
 
 		body := fmt.Sprintf(`echo %s > msg.txt`, data)
 		command := []string{"bash", "-c", body}

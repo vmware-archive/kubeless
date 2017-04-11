@@ -29,10 +29,11 @@ var topicDeleteCmd = &cobra.Command{
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - topic name")
 		}
-                ctlNamespace, err := cmd.Flags().GetString("kafka-namespace")
-                if err != nil {
-                        logrus.Fatal(err)
-                }
+		ctlNamespace, err := cmd.Flags().GetString("kafka-namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		topicName := args[0]
 		command := []string{"bash", "/opt/kafka/bin/kafka-topics.sh", "--zookeeper", "zookeeper:2181", "--delete", "--topic", topicName}
 

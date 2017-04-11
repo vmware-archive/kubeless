@@ -22,9 +22,9 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/bitnami/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-	"k8s.io/kubernetes/pkg/api"
+
 	k8scmd "k8s.io/kubernetes/pkg/kubectl/cmd"
-	"k8s.io/kubernetes/pkg/util/term"
+	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 var topicCreateCmd = &cobra.Command{
@@ -35,10 +35,11 @@ var topicCreateCmd = &cobra.Command{
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - topic name")
 		}
-                ctlNamespace, err := cmd.Flags().GetString("kafka-namespace")
-                if err != nil {
-                        logrus.Fatal(err)
-                }
+		ctlNamespace, err := cmd.Flags().GetString("kafka-namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		topicName := args[0]
 		command := []string{"bash", "/opt/kafka/bin/kafka-topics.sh", "--zookeeper", "zookeeper:2181", "--replication-factor", "1", "--partitions", "1", "--create", "--topic", topicName}
 
@@ -46,27 +47,13 @@ var topicCreateCmd = &cobra.Command{
 	},
 }
 
-func setupTTY(params *k8scmd.ExecOptions) term.TTY {
-	t := term.TTY{
-		Parent: params.InterruptParent,
-		Out:    params.Out,
-	}
-
-	return t
-}
-
-// wrap kubectl exec
+// wrapper of kubectl exec
+// execCommand executes a command to kafka pod
 func execCommand(command []string, ctlNamespace string) {
-	f := utils.GetFactory()
-	kClient, err := f.Client()
-	if err != nil {
-		logrus.Fatalln(err)
-	}
-	kClientConfig, err := f.ClientConfig()
-	if err != nil {
-		logrus.Fatalln(err)
-	}
-	podName, _ := utils.GetPodName(kClient, ctlNamespace, "kafka-controller")
+	f := cmdutil.NewFactory(nil)
+
+	k8sClientSet := utils.GetClientOutOfCluster()
+	podName, _ := utils.GetPodName(k8sClientSet, ctlNamespace, "kafka-controller")
 	params := &k8scmd.ExecOptions{
 		StreamOptions: k8scmd.StreamOptions{
 			Namespace:     ctlNamespace,
@@ -79,33 +66,20 @@ func execCommand(command []string, ctlNamespace string) {
 		},
 		Executor: &k8scmd.DefaultRemoteExecutor{},
 		Command:  command,
-		Client:   kClient,
-		Config:   kClientConfig,
 	}
-
-	t := setupTTY(params)
-	var sizeQueue term.TerminalSizeQueue
-
-	fn := func() error {
-		req := params.Client.RESTClient.Post().
-			Resource("pods").
-			Name(podName).
-			Namespace(ctlNamespace).
-			SubResource("exec").
-			Param("container", "kafka")
-		req.VersionedParams(&api.PodExecOptions{
-			Container: "kafka",
-			Command:   params.Command,
-			Stdin:     params.Stdin,
-			Stdout:    params.Out != nil,
-			Stderr:    params.Err != nil,
-			TTY:       false,
-		}, api.ParameterCodec)
-
-		return params.Executor.Execute("POST", req.URL(), params.Config, params.In, params.Out, params.Err, t.Raw, sizeQueue)
+	config, err := f.ClientConfig()
+	if err != nil {
+		logrus.Fatalln(err)
 	}
+	params.Config = config
 
-	if err := t.Safe(fn); err != nil {
+	fClientset, err := f.ClientSet()
+	if err != nil {
+		logrus.Fatalln(err)
+	}
+	params.PodClient = fClientset.Core()
+
+	if err := params.Run(); err != nil {
 		logrus.Fatalln(err)
 	}
 }
