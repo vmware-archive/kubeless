@@ -141,7 +141,7 @@ func (c *Controller) Run() error {
 	}()
 
 	//monitor user-defined functions
-	eventCh, err := c.monitor(tprClient.Client, watchVersion)
+	eventCh := c.monitor(tprClient.Client, watchVersion)
 
 	go func() {
 		for event := range eventCh {
@@ -173,7 +173,8 @@ func (c *Controller) Run() error {
 			}
 		}
 	}()
-	return err
+
+	return nil
 }
 
 func (c *Controller) initResource() error {
@@ -221,39 +222,43 @@ func (c *Controller) FindResourceVersion(tprClient *rest.RESTClient) (string, er
 }
 
 // monitor continuously watches for changes to custom function objects
-func (c *Controller) monitor(httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {
+func (c *Controller) monitor(httpClient *http.Client, watchVersion string) <-chan *Event {
 	eventCh := make(chan *Event)
-	// keep the latest unexpected error only
-	var err error
 
 	go func() {
 		defer close(eventCh)
+
+		// per-watch loop: start watching resources and collecting functions (custom objects)
 		for {
 			resp, err := utils.WatchResources(httpClient, watchVersion)
 			if err != nil {
+				resp.Body.Close()
+				c.logger.Errorf("Fail to watch resources: %v. Try again", err)
 				// go to the next round
 				continue
 			}
 			if resp.StatusCode != http.StatusOK {
 				resp.Body.Close()
-				err = errors.New("Invalid status code: " + resp.Status)
+				c.logger.Errorf("Invalid status code: %s. Try again", resp.Status)
 				// go to the next round
 				continue
 			}
 			c.logger.Infof("Start watching at %v", watchVersion)
 			decoder := json.NewDecoder(resp.Body)
+
+			// per-event loop: pick up function and put to eventCh channel
 			for {
 				ev, st, err := pollEvent(decoder)
 
 				if err != nil {
 					if err == io.EOF { // apiserver will close stream periodically
-						c.logger.Debug("Apiserver closed stream")
-						// go to the next round
+						c.logger.Errorf("Apiserver closed stream. Try to watch resource again")
+						// go to the next watch loop
 						break
 					}
 
-					c.logger.Errorf("Received invalid event from API server: %v", err)
-					// keep polling next event
+					c.logger.Errorf("Received invalid event from API server: %v. Go to next event", err)
+					// polling next event
 					continue
 				}
 
@@ -264,7 +269,7 @@ func (c *Controller) monitor(httpClient *http.Client, watchVersion string) (<-ch
 						// keep polling next event
 						continue
 					}
-					c.logger.Fatalf("Unexpected status response from API server: %v", st.Message)
+					c.logger.Errorf("Unexpected status response from API server: %v", st.Message)
 				}
 
 				c.logger.Debugf("Function event: %v %v", ev.Type, ev.Object.Spec)
@@ -277,7 +282,7 @@ func (c *Controller) monitor(httpClient *http.Client, watchVersion string) (<-ch
 		}
 	}()
 
-	return eventCh, err
+	return eventCh
 }
 
 func pollEvent(decoder *json.Decoder) (*Event, *unversioned.Status, error) {
