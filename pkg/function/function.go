@@ -22,7 +22,8 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/bitnami/kubeless/pkg/spec"
 	"github.com/bitnami/kubeless/pkg/utils"
-	client "k8s.io/kubernetes/pkg/client/unversioned"
+
+	"k8s.io/client-go/kubernetes"
 )
 
 type functionEventType string
@@ -32,25 +33,27 @@ type functionEvent struct {
 	spec spec.FunctionSpec
 }
 
+// Function object
 type Function struct {
 	logger    *logrus.Entry
-	kclient   *client.Client
-	status    *Status
+	kclient   *kubernetes.Clientset
 	Spec      *spec.FunctionSpec
 	Name      string
 	Namespace string
 	eventCh   chan *functionEvent
 }
 
-func New(c *client.Client, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
+// New creates the custom function object
+func New(c *kubernetes.Clientset, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
 	return new(c, name, ns, spec, wg)
 }
 
-func Delete(c *client.Client, name, ns string, wg *sync.WaitGroup) error {
+// Delete removes the custom function object
+func Delete(c *kubernetes.Clientset, name, ns string, wg *sync.WaitGroup) error {
 	return delete(c, name, ns, wg)
 }
 
-func new(kclient *client.Client, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
+func new(kclient *kubernetes.Clientset, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
 	f := &Function{
 		logger:    logrus.WithField("pkg", "function").WithField("function-name", name),
 		kclient:   kclient,
@@ -58,7 +61,6 @@ func new(kclient *client.Client, name, ns string, spec *spec.FunctionSpec, wg *s
 		Namespace: ns,
 		eventCh:   make(chan *functionEvent, 100),
 		Spec:      spec,
-		status:    &Status{},
 	}
 
 	err := utils.CreateK8sResources(f.Namespace, f.Name, f.Spec, kclient)
@@ -71,7 +73,7 @@ func new(kclient *client.Client, name, ns string, spec *spec.FunctionSpec, wg *s
 	return nil
 }
 
-func delete(kclient *client.Client, name, ns string, wg *sync.WaitGroup) error {
+func delete(kclient *kubernetes.Clientset, name, ns string, wg *sync.WaitGroup) error {
 	err := utils.DeleteK8sResources(ns, name, kclient)
 	wg.Add(1)
 	return err

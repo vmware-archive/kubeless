@@ -42,17 +42,31 @@ const (
 	appArmor                  = "AppArmor"
 	dynamicKubeletConfig      = "DynamicKubeletConfig"
 	dynamicVolumeProvisioning = "DynamicVolumeProvisioning"
+	streamingProxyRedirects   = "StreamingProxyRedirects"
+
+	// experimentalHostUserNamespaceDefaulting Default userns=host for containers
+	// that are using other host namespaces, host mounts, the pod contains a privileged container,
+	// or specific non-namespaced capabilities
+	// (MKNOD, SYS_MODULE, SYS_TIME). This should only be enabled if user namespace remapping is enabled
+	// in the docker daemon.
+	experimentalHostUserNamespaceDefaultingGate = "ExperimentalHostUserNamespaceDefaulting"
+	// Ensures guaranteed scheduling of pods marked with a special pod annotation `scheduler.alpha.kubernetes.io/critical-pod`
+	// and also prevents them from being evicted from a node.
+	experimentalCriticalPodAnnotation = "ExperimentalCriticalPodAnnotation"
 )
 
 var (
 	// Default values for recorded features.  Every new feature gate should be
 	// represented here.
 	knownFeatures = map[string]featureSpec{
-		allAlphaGate:              {false, alpha},
-		externalTrafficLocalOnly:  {false, alpha},
-		appArmor:                  {true, beta},
-		dynamicKubeletConfig:      {false, alpha},
-		dynamicVolumeProvisioning: {true, alpha},
+		allAlphaGate:                                {false, alpha},
+		externalTrafficLocalOnly:                    {true, beta},
+		appArmor:                                    {true, beta},
+		dynamicKubeletConfig:                        {false, alpha},
+		dynamicVolumeProvisioning:                   {true, alpha},
+		streamingProxyRedirects:                     {false, alpha},
+		experimentalHostUserNamespaceDefaultingGate: {false, alpha},
+		experimentalCriticalPodAnnotation:           {false, alpha},
 	}
 
 	// Special handling for a few gates.
@@ -85,6 +99,8 @@ const (
 // a string like feature1=true,feature2=false,...
 type FeatureGate interface {
 	AddFlag(fs *pflag.FlagSet)
+	Set(value string) error
+	KnownFeatures() []string
 
 	// Every feature gate should add method here following this template:
 	//
@@ -104,9 +120,21 @@ type FeatureGate interface {
 	// alpha: v1.3
 	DynamicVolumeProvisioning() bool
 
-	// owner: mtaufen
+	// owner: @mtaufen
 	// alpha: v1.4
 	DynamicKubeletConfig() bool
+
+	// owner: timstclair
+	// alpha: v1.5
+	StreamingProxyRedirects() bool
+
+	// owner: @pweil-
+	// alpha: v1.5
+	ExperimentalHostUserNamespaceDefaulting() bool
+
+	// owner: @vishh
+	// alpha: v1.4
+	ExperimentalCriticalPodAnnotation() bool
 }
 
 // featureGate implements FeatureGate as well as pflag.Value for flag parsing.
@@ -195,6 +223,22 @@ func (f *featureGate) DynamicVolumeProvisioning() bool {
 	return f.lookup(dynamicVolumeProvisioning)
 }
 
+// StreamingProxyRedirects controls whether the apiserver should intercept (and follow)
+// redirects from the backend (Kubelet) for streaming requests (exec/attach/port-forward).
+func (f *featureGate) StreamingProxyRedirects() bool {
+	return f.lookup(streamingProxyRedirects)
+}
+
+// ExperimentalHostUserNamespaceDefaulting returns value for experimentalHostUserNamespaceDefaulting
+func (f *featureGate) ExperimentalHostUserNamespaceDefaulting() bool {
+	return f.lookup(experimentalHostUserNamespaceDefaultingGate)
+}
+
+// ExperimentalCriticalPodAnnotation returns true if experimentalCriticalPodAnnotation feature is enabled.
+func (f *featureGate) ExperimentalCriticalPodAnnotation() bool {
+	return f.lookup(experimentalCriticalPodAnnotation)
+}
+
 func (f *featureGate) lookup(key string) bool {
 	defaultValue := f.known[key].enabled
 	if f.enabled != nil {
@@ -208,6 +252,14 @@ func (f *featureGate) lookup(key string) bool {
 
 // AddFlag adds a flag for setting global feature gates to the specified FlagSet.
 func (f *featureGate) AddFlag(fs *pflag.FlagSet) {
+	known := f.KnownFeatures()
+	fs.Var(f, flagName, ""+
+		"A set of key=value pairs that describe feature gates for alpha/experimental features. "+
+		"Options are:\n"+strings.Join(known, "\n"))
+}
+
+// Returns a string describing the FeatureGate's known features.
+func (f *featureGate) KnownFeatures() []string {
 	var known []string
 	for k, v := range f.known {
 		pre := ""
@@ -217,7 +269,5 @@ func (f *featureGate) AddFlag(fs *pflag.FlagSet) {
 		known = append(known, fmt.Sprintf("%s=true|false (%sdefault=%t)", k, pre, v.enabled))
 	}
 	sort.Strings(known)
-	fs.Var(f, flagName, ""+
-		"A set of key=value pairs that describe feature gates for alpha/experimental features. "+
-		"Options are:\n"+strings.Join(known, "\n"))
+	return known
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/bitnami/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/pkg/api"
 )
 
 var deleteCmd = &cobra.Command{
@@ -45,5 +46,5 @@ var deleteCmd = &cobra.Command{
 }
 
 func init() {
-	deleteCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
+	deleteCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 }

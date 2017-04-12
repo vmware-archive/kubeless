@@ -32,14 +32,16 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/bitnami/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/pkg/api"
 	"k8s.io/kubernetes/pkg/client/unversioned/portforward"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	k8scmd "k8s.io/kubernetes/pkg/kubectl/cmd"
+	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 const (
-	MaxRetries       = 5
-	DefaultTimeSleep = 1 * time.Second
+	maxRetries       = 5
+	defaultTimeSleep = 1 * time.Second
 )
 
 type defaultPortForwarder struct {
@@ -74,33 +76,33 @@ var callCmd = &cobra.Command{
 		funcName := args[0]
 
 		data, err := cmd.Flags().GetString("data")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		ns, err := cmd.Flags().GetString("namespace")
 		if data == "" {
 			get = true
 		} else {
 			jsonStr = []byte(data)
 		}
 
-		f := utils.GetFactory()
-		if ns == "" {
-			ns, _, err = f.DefaultNamespace()
-			if err != nil {
-				logrus.Fatalf("Connection failed: %v", err)
-			}
+		if err != nil {
+			logrus.Fatal(err)
 		}
-		kClient, err := f.Client()
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		f := cmdutil.NewFactory(nil)
+		k8sClient, err := f.RESTClient()
 		if err != nil {
 			logrus.Fatalf("Connection failed: %v", err)
 		}
-		kClientConfig, err := f.ClientConfig()
+		k8sClientConfig, err := f.ClientConfig()
 		if err != nil {
 			logrus.Fatalf("Connection failed: %v", err)
 		}
 
-		podName, err := utils.GetPodName(kClient, ns, funcName)
+		//FIXME: we should only use restClient from client-go but now still have to use the old client for pf call
+		k8sClientSet := utils.GetClientOutOfCluster()
+		podName, err := utils.GetPodName(k8sClientSet, ns, funcName)
 		port, err := getLocalPort()
 		if err != nil {
 			logrus.Fatalf("Connection failed: %v", err)
@@ -109,11 +111,11 @@ var callCmd = &cobra.Command{
 
 		go func() {
 			pfo := k8scmd.PortForwardOptions{
-				Client:    kClient,
-				Namespace: ns,
-				Config:    kClientConfig,
-				PodName:   podName,
-				Ports:     portSlice,
+				RESTClient: k8sClient,
+				Namespace:  ns,
+				Config:     k8sClientConfig,
+				PodName:    podName,
+				Ports:      portSlice,
 				PortForwarder: &defaultPortForwarder{
 					cmdOut: os.Stdout,
 					cmdErr: os.Stderr,
@@ -154,11 +156,11 @@ var callCmd = &cobra.Command{
 				break
 			} else {
 				fmt.Println("Connecting to function...")
-				retries += 1
-				if retries == MaxRetries {
+				retries++
+				if retries == maxRetries {
 					logrus.Fatalf("Can not connect to function. Please check your network connection!!!")
 				}
-				time.Sleep(DefaultTimeSleep)
+				time.Sleep(defaultTimeSleep)
 			}
 		}
 	},
@@ -166,7 +168,7 @@ var callCmd = &cobra.Command{
 
 func init() {
 	callCmd.Flags().StringP("data", "", "", "Specify data for function")
-	callCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
+	callCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 
 }
 

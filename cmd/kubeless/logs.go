@@ -23,7 +23,8 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/bitnami/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 var logsCmd = &cobra.Command{
@@ -44,23 +45,16 @@ var logsCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		f := utils.GetFactory()
-		if ns == "" {
-			ns, _, err = f.DefaultNamespace()
-			if err != nil {
-				logrus.Fatalf("Getting log failed: %v", err)
-			}
-		}
-		kClient, err := f.Client()
+		k8sClient := utils.GetClientOutOfCluster()
 		if err != nil {
 			logrus.Fatalf("Getting log failed: %v", err)
 		}
-		podName, err := utils.GetPodName(kClient, ns, funcName)
-		podLog := &api.PodLogOptions{
+		podName, err := utils.GetPodName(k8sClient, ns, funcName)
+		podLog := &v1.PodLogOptions{
 			Container: funcName,
 			Follow:    follow,
 		}
-		req := kClient.Pods(ns).GetLogs(podName, podLog)
+		req := k8sClient.Pods(ns).GetLogs(podName, podLog)
 
 		readCloser, err := req.Stream()
 		if err != nil {
@@ -73,5 +67,5 @@ var logsCmd = &cobra.Command{
 
 func init() {
 	logsCmd.Flags().BoolP("follow", "f", false, "Specify if the logs should be streamed.")
-	logsCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
+	logsCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 }

@@ -4,16 +4,12 @@ import:
 - package: github.com/spf13/cobra
 - package: gopkg.in/yaml.v2
 - package: k8s.io/kubernetes
-  version: v1.4.0
+  version: v1.5.5
   subpackages:
-  - pkg/api
-  - pkg/api/errors
-  - pkg/api/unversioned
-  - pkg/apis/extensions
-  - pkg/client/unversioned
   - pkg/kubectl
   - pkg/kubectl/cmd/util
-  - pkg/util/intstr
+- package: k8s.io/client-go
+  version: v2.0.0
 - package: github.com/gosuri/uitable
 - package: github.com/docker/spdystream
 - package: github.com/renstrom/dedent

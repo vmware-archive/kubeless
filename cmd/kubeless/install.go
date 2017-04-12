@@ -21,6 +21,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/bitnami/kubeless/pkg/controller"
+	"github.com/bitnami/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -50,7 +51,6 @@ Use your own controller by specifying --controller-image flag.
 
 		// Additional user flags
 
-
 		ctlImage, err := cmd.Flags().GetString("controller-image")
 		if err != nil {
 			logrus.Fatal(err)
@@ -61,7 +61,9 @@ Use your own controller by specifying --controller-image flag.
 		}
 
 		if containsString(okayResponses, text) {
-			cfg := controller.NewControllerConfig("", "")
+			cfg := controller.Config{
+				KubeCli: utils.GetClientOutOfCluster(),
+			}
 			c := controller.New(cfg)
 			c.Init()
 			c.InstallKubeless(ctlImage, ctlNamespace)

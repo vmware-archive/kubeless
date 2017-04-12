@@ -19,13 +19,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
-	"github.com/bitnami/kubeless/pkg/controller"
-	"github.com/bitnami/kubeless/pkg/spec"
+	"github.com/Sirupsen/logrus"
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-	"strings"
+
+	"github.com/bitnami/kubeless/pkg/controller"
+	"github.com/bitnami/kubeless/pkg/spec"
+	"github.com/bitnami/kubeless/pkg/utils"
 )
 
 var listCmd = &cobra.Command{
@@ -35,16 +38,22 @@ var listCmd = &cobra.Command{
 	Long:    `list all functions deployed to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		output, err := cmd.Flags().GetString("out")
-		//ns, err := cmd.Flags().GetString("namespace")
-		cfg := controller.NewControllerConfig("", "")
+		cfg := controller.Config{
+			KubeCli: utils.GetClientOutOfCluster(),
+		}
 		c := controller.New(cfg)
-		_, err = c.FindResourceVersion()
+
+		tprClient, err := utils.GetTPRClientOutOfCluster()
 		if err != nil {
-			fmt.Errorf("Can not list functions: %v", err)
+			logrus.Fatalf("Can not list functions: %v", err)
+		}
+		_, err = c.FindResourceVersion(tprClient)
+		if err != nil {
+			logrus.Fatalf("Can not list functions: %v", err)
 		}
 
 		if len(args) == 0 {
-			for k, _ := range c.Functions {
+			for k := range c.Functions {
 				args = append(args, k)
 			}
 		}
@@ -59,6 +68,7 @@ func init() {
 	//listCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 }
 
+// printFunctions formats the output of function list
 func printFunctions(args []string, functions map[string]*spec.Function, output string) {
 	if output == "" {
 		table := uitable.New()
@@ -71,7 +81,7 @@ func printFunctions(args []string, functions map[string]*spec.Function, output s
 			r := fmt.Sprintf(functions[f].Spec.Runtime)
 			t := fmt.Sprintf(functions[f].Spec.Type)
 			tp := fmt.Sprintf(functions[f].Spec.Topic)
-			ns := fmt.Sprintf(functions[f].ObjectMeta.Namespace)
+			ns := fmt.Sprintf(functions[f].Metadata.Namespace)
 			table.AddRow(n, h, r, t, tp, ns)
 		}
 		fmt.Println(table.String())
@@ -85,7 +95,7 @@ func printFunctions(args []string, functions map[string]*spec.Function, output s
 				b, _ := yaml.Marshal(functions[f].Spec)
 				fmt.Println(string(b))
 			default:
-				fmt.Errorf("Wrong output format. Please use only json|yaml.")
+				fmt.Println("Wrong output format. Please use only json|yaml")
 			}
 		}
 	}
