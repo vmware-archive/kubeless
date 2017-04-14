@@ -20,6 +20,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/bitnami/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/pkg/api"
 )
 
 var updateCmd = &cobra.Command{
@@ -47,7 +48,12 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		err = utils.UpdateK8sCustomResource(handler, file, funcName, ns)
+		runtime, err := cmd.Flags().GetString("runtime")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		err = utils.UpdateK8sCustomResource(runtime, handler, file, funcName, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -55,7 +61,8 @@ var updateCmd = &cobra.Command{
 }
 
 func init() {
+	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	updateCmd.Flags().StringP("handler", "", "", "Specify handler")
 	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
-	updateCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
+	updateCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 }

@@ -94,7 +94,7 @@ func update(kclient *kubernetes.Clientset, name, ns string, spec *spec.FunctionS
 		Spec:      spec,
 	}
 
-	err := utils.UpdateK8sResources(f.Name, f.Spec)
+	err := utils.UpdateK8sResources(kclient, f.Name, f.Namespace, f.Spec)
 	if err != nil {
 		return err
 	}

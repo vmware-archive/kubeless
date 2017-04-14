@@ -33,7 +33,7 @@ import (
 	"github.com/bitnami/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned/portforward"
+	"k8s.io/client-go/tools/portforward"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	k8scmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -95,6 +95,10 @@ var callCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatalf("Connection failed: %v", err)
 		}
+		clientset, err := f.ClientSet()
+		if err != nil {
+			logrus.Fatalf("Connection failed: %v", err)
+		}
 		k8sClientConfig, err := f.ClientConfig()
 		if err != nil {
 			logrus.Fatalf("Connection failed: %v", err)
@@ -118,6 +122,7 @@ var callCmd = &cobra.Command{
 				Namespace:  ns,
 				Config:     k8sClientConfig,
 				PodName:    podName,
+				PodClient:  clientset.Core(),
 				Ports:      portSlice,
 				PortForwarder: &defaultPortForwarder{
 					cmdOut: os.Stdout,

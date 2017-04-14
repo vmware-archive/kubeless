@@ -31,11 +31,11 @@ import (
 	"github.com/bitnami/kubeless/pkg/utils"
 
 	"k8s.io/client-go/kubernetes"
-	k8sErrors "k8s.io/client-go/pkg/api/errors"
-	"k8s.io/client-go/pkg/api/unversioned"
-	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
+
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -188,11 +188,11 @@ func (c *Controller) Run() error {
 }
 
 func (c *Controller) initResource() error {
-	_, err := c.Config.KubeCli.Extensions().ThirdPartyResources().Get(tprName)
+	_, err := c.Config.KubeCli.Extensions().ThirdPartyResources().Get(tprName, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			tpr := &v1beta1.ThirdPartyResource{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: tprName,
 				},
 				Versions: []v1beta1.APIVersion{
@@ -293,7 +293,7 @@ func (c *Controller) monitor(httpClient *http.Client, watchVersion string) <-cha
 	return eventCh
 }
 
-func pollEvent(decoder *json.Decoder) (*Event, *unversioned.Status, error) {
+func pollEvent(decoder *json.Decoder) (*Event, *metav1.Status, error) {
 	re := &rawEvent{}
 	err := decoder.Decode(re)
 	if err != nil {
@@ -304,7 +304,7 @@ func pollEvent(decoder *json.Decoder) (*Event, *unversioned.Status, error) {
 	}
 
 	if re.Type == "ERROR" {
-		status := &unversioned.Status{}
+		status := &metav1.Status{}
 		err = json.Unmarshal(re.Object, status)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Fail to decode (%s) into unversioned.Status (%v)", re.Object, err)

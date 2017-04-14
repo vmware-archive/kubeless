@@ -17,6 +17,7 @@ limitations under the License.
 package utils
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,18 +32,21 @@ import (
 	"github.com/bitnami/kubeless/pkg/spec"
 	"github.com/bitnami/kubeless/version"
 
-	"bytes"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
-	kerrors "k8s.io/client-go/pkg/api/errors"
-	"k8s.io/client-go/pkg/api/unversioned"
 	"k8s.io/client-go/pkg/api/v1"
+
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/pkg/runtime"
-	"k8s.io/client-go/pkg/runtime/serializer"
-	"k8s.io/client-go/pkg/util/intstr"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/util/intstr"
+
 	"k8s.io/kubernetes/pkg/kubectl/cmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
@@ -212,7 +216,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 		depName:   spec.Deps,
 	}
 	configMap := &v1.ConfigMap{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: labels,
 		},
@@ -226,7 +230,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 
 	//add service
 	svc := &v1.Service{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: labels,
 		},
@@ -262,13 +266,13 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 
 	//add deployment
 	dpm := &v1beta1.Deployment{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: labels,
 		},
 		Spec: v1beta1.DeploymentSpec{
 			Template: v1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 				},
 				Spec: v1.PodSpec{
@@ -337,9 +341,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 
 // UpdateK8sResources applies function changes to the existing k8s configmap,
 // then the deployment rolling update will be triggered automately
-func UpdateK8sResources(name string, spec *spec.FunctionSpec) error {
-	fa := cmdutil.NewFactory(nil)
-
+func UpdateK8sResources(kclient *kubernetes.Clientset, name, ns string, spec *spec.FunctionSpec) error {
 	str := strings.Split(spec.Handler, ".")
 	if len(str) != 2 {
 		return errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
@@ -370,33 +372,26 @@ func UpdateK8sResources(name string, spec *spec.FunctionSpec) error {
 		depName:   spec.Deps,
 	}
 	configMap := &v1.ConfigMap{
-		ObjectMeta: v1.ObjectMeta{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ConfigMap",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: labels,
 		},
 		Data: data,
 	}
 
-	cmJSON, err := json.Marshal(configMap)
+	_, err := kclient.Core().ConfigMaps(ns).Update(configMap)
 	if err != nil {
 		return err
 	}
 
-	// TODO: looking for a way to not writing to temp file
-	err = ioutil.WriteFile(".cm.json", cmJSON, 0644)
-	if err != nil {
-		return err
-	}
-
-	buf := bytes.NewBuffer([]byte{})
-	applyCmd := cmd.NewCmdApply(fa, buf)
-
-	applyCmd.Flags().Set("filename", ".cm.json")
-	applyCmd.Flags().Set("output", "name")
-	applyCmd.Run(applyCmd, []string{})
-
-	// remove temp cm file
-	err = os.Remove(".cm.json")
+	// kick the function pod then it will be recreated
+	// with the new data mount from updated configmap
+	podName, err := GetPodName(kclient, ns, name)
+	err = kclient.Core().Pods(ns).Delete(podName, &metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
@@ -406,30 +401,30 @@ func UpdateK8sResources(name string, spec *spec.FunctionSpec) error {
 
 // DeleteK8sResources removes k8s objects of the function
 func DeleteK8sResources(ns, name string, client *kubernetes.Clientset) error {
-	replicas := int32(0)
-	// scale deployment to 0
-	oldScale, err := client.Scales(ns).Get("Deployment", name)
-	if err != nil {
-		return err
-	}
-
-	oldScale.Spec = v1beta1.ScaleSpec{Replicas: replicas}
-	_, err = client.Scales(ns).Update("Deployment", oldScale)
+	//replicas := int32(0)
+	//// scale deployment to 0
+	//oldScale, err := client.Scales(ns).Get("Deployment", name)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//oldScale.Spec = v1beta1.ScaleSpec{Replicas: replicas}
+	//_, err = client.Scales(ns).Update("Deployment", oldScale)
 
 	// and delete it
-	err = client.Extensions().Deployments(ns).Delete(name, &v1.DeleteOptions{})
+	err := client.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
 
 	// delete svc
-	err = client.Core().Services(ns).Delete(name, &v1.DeleteOptions{})
+	err = client.Core().Services(ns).Delete(name, &metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
 
 	// delete cm
-	err = client.Core().ConfigMaps(ns).Delete(name, &v1.DeleteOptions{})
+	err = client.Core().ConfigMaps(ns).Delete(name, &metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
@@ -452,13 +447,13 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, 
 		Name(funcName).
 		Do().Into(&f)
 	if err != nil {
-		if kerrors.IsNotFound(err) {
+		if k8sErrors.IsNotFound(err) {
 			f := &spec.Function{
-				TypeMeta: unversioned.TypeMeta{
+				TypeMeta: metav1.TypeMeta{
 					Kind:       "Function",
 					APIVersion: "k8s.io/v1",
 				},
-				Metadata: api.ObjectMeta{
+				Metadata: metav1.ObjectMeta{
 					Name:      funcName,
 					Namespace: ns,
 				},
@@ -495,7 +490,7 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, 
 }
 
 // UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(handler, file, funcName, ns string) error {
+func UpdateK8sCustomResource(runtime, handler, file, funcName, ns string) error {
 	fa := cmdutil.NewFactory(nil)
 
 	if ns == "" {
@@ -503,17 +498,18 @@ func UpdateK8sCustomResource(handler, file, funcName, ns string) error {
 	}
 
 	f := &spec.Function{
-		TypeMeta: unversioned.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
 			APIVersion: "k8s.io/v1",
 		},
-		Metadata: api.ObjectMeta{
+		Metadata: metav1.ObjectMeta{
 			Name:      funcName,
 			Namespace: ns,
 		},
 		Spec: spec.FunctionSpec{
 			Handler:  handler,
 			Function: readFile(file),
+			Runtime:  runtime,
 		},
 	}
 
@@ -529,7 +525,8 @@ func UpdateK8sCustomResource(handler, file, funcName, ns string) error {
 	}
 
 	buf := bytes.NewBuffer([]byte{})
-	applyCmd := cmd.NewCmdApply(fa, buf)
+	buferr := bytes.NewBuffer([]byte{})
+	applyCmd := cmd.NewCmdApply(fa, buf, buferr)
 
 	applyCmd.Flags().Set("filename", ".func.json")
 	applyCmd.Flags().Set("output", "name")
@@ -559,7 +556,7 @@ func DeleteK8sCustomResource(funcName, ns string) error {
 		Name(funcName).
 		Do().Into(&f)
 	if err != nil {
-		if kerrors.IsNotFound(err) {
+		if k8sErrors.IsNotFound(err) {
 			return fmt.Errorf("The function doesn't exist")
 		}
 	}
@@ -585,13 +582,13 @@ func DeployKubeless(client *kubernetes.Clientset, ctlImage string, ctlNamespace 
 		"app": "kubeless-controller",
 	}
 	dpm := &v1beta1.Deployment{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   "kubeless-controller",
 			Labels: labels,
 		},
 		Spec: v1beta1.DeploymentSpec{
 			Template: v1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 				},
 				Spec: v1.PodSpec{
@@ -609,10 +606,10 @@ func DeployKubeless(client *kubernetes.Clientset, ctlImage string, ctlNamespace 
 	}
 
 	//create Kubeless namespace if it's not exists
-	_, err := client.Core().Namespaces().Get(ctlNamespace)
+	_, err := client.Core().Namespaces().Get(ctlNamespace, metav1.GetOptions{})
 	if err != nil {
 		ns := &v1.Namespace{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name: ctlNamespace,
 			},
 		}
@@ -639,7 +636,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 
 	//add zookeeper svc
 	svc := &v1.Service{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   "zookeeper",
 			Labels: labels,
 		},
@@ -664,7 +661,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 
 	//add kafka svc
 	svc = &v1.Service{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   "kafka",
 			Labels: labels,
 		},
@@ -689,13 +686,13 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 
 	//add deployment
 	dpm := &v1beta1.Deployment{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:   "kafka-controller",
 			Labels: labels,
 		},
 		Spec: v1beta1.DeploymentSpec{
 			Template: v1.PodTemplateSpec{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 				},
 				Spec: v1.PodSpec{
@@ -755,7 +752,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 
 // GetPodName returns pod to which the function is deployed
 func GetPodName(c *kubernetes.Clientset, ns, funcName string) (string, error) {
-	po, err := c.Core().Pods(ns).List(v1.ListOptions{})
+	po, err := c.Core().Pods(ns).List(metav1.ListOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -889,7 +886,7 @@ func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
 
 // configureClient configures tpr client
 func configureClient(config *rest.Config) {
-	groupversion := unversioned.GroupVersion{
+	groupversion := schema.GroupVersion{
 		Group:   "k8s.io",
 		Version: "v1",
 	}
@@ -905,10 +902,9 @@ func configureClient(config *rest.Config) {
 				groupversion,
 				&spec.Function{},
 				&spec.FunctionList{},
-				&api.ListOptions{},
-				&api.DeleteOptions{},
 			)
 			return nil
 		})
+	metav1.AddToGroupVersion(api.Scheme, groupversion)
 	schemeBuilder.AddToScheme(api.Scheme)
 }

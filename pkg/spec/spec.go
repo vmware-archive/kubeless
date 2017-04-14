@@ -17,16 +17,15 @@ limitations under the License.
 package spec
 
 import (
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/meta"
-	"k8s.io/client-go/pkg/api/unversioned"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // Function object
 type Function struct {
-	unversioned.TypeMeta `json:",inline"`
-	Metadata             api.ObjectMeta `json:"metadata"`
-	Spec                 FunctionSpec   `json:"spec"`
+	metav1.TypeMeta `json:",inline"`
+	Metadata        metav1.ObjectMeta `json:"metadata"`
+	Spec            FunctionSpec      `json:"spec"`
 }
 
 // FunctionSpec contains func specification
@@ -41,29 +40,29 @@ type FunctionSpec struct {
 
 // FunctionList contains map of functions
 type FunctionList struct {
-	unversioned.TypeMeta `json:",inline"`
-	Metadata             unversioned.ListMeta `json:"metadata"`
+	metav1.TypeMeta `json:",inline"`
+	Metadata        metav1.ListMeta `json:"metadata"`
 
 	// Items is a list of third party objects
 	Items []*Function `json:"items"`
 }
 
 // GetObjectKind required to satisfy Object interface
-func (f *Function) GetObjectKind() unversioned.ObjectKind {
-	return &f.TypeMeta
+func (e *Function) GetObjectKind() schema.ObjectKind {
+	return &e.TypeMeta
 }
 
 // GetObjectMeta required to satisfy ObjectMetaAccessor interface
-func (f *Function) GetObjectMeta() meta.Object {
-	return &f.Metadata
+func (e *Function) GetObjectMeta() metav1.Object {
+	return &e.Metadata
 }
 
 // GetObjectKind required to satisfy Object interface
-func (fl *FunctionList) GetObjectKind() unversioned.ObjectKind {
-	return &fl.TypeMeta
+func (el *FunctionList) GetObjectKind() schema.ObjectKind {
+	return &el.TypeMeta
 }
 
 // GetListMeta required to satisfy ListMetaAccessor interface
-func (fl *FunctionList) GetListMeta() unversioned.List {
-	return &fl.Metadata
+func (el *FunctionList) GetListMeta() metav1.List {
+	return &el.Metadata
 }
