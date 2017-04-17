@@ -417,8 +417,18 @@ func UpdateK8sResources(kclient *kubernetes.Clientset, name, ns string, spec *sp
 
 // DeleteK8sResources removes k8s objects of the function
 func DeleteK8sResources(ns, name string, client *kubernetes.Clientset) error {
+	deploy, err := client.Extensions().Deployments(ns).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	//scale deployment to 0
+	replicas := int32(0)
+	deploy.Spec.Replicas = &replicas
+	deploy, err = client.Extensions().Deployments(ns).Update(deploy)
+
 	// delete deployment
-	err := client.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{})
+	err = client.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
