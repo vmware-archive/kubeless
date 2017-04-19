@@ -19,10 +19,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/gosuri/uitable"
+	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
@@ -71,10 +72,8 @@ func init() {
 // printFunctions formats the output of function list
 func printFunctions(args []string, functions map[string]*spec.Function, output string) {
 	if output == "" {
-		table := uitable.New()
-		table.MaxColWidth = 30
-		table.AddRow("NAME", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "NAMESPACE")
-
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetHeader([]string{"Name", "namespace", "handler", "runtime", "type", "topic", "dependencies"})
 		for _, f := range args {
 			n := strings.Split(fmt.Sprintf(f), ".")[0]
 			h := fmt.Sprintf(functions[f].Spec.Handler)
@@ -82,9 +81,10 @@ func printFunctions(args []string, functions map[string]*spec.Function, output s
 			t := fmt.Sprintf(functions[f].Spec.Type)
 			tp := fmt.Sprintf(functions[f].Spec.Topic)
 			ns := fmt.Sprintf(functions[f].Metadata.Namespace)
-			table.AddRow(n, h, r, t, tp, ns)
+			dep := fmt.Sprintf(functions[f].Spec.Deps)
+			table.Append([]string{n, ns, h, r, t, tp, dep})
 		}
-		fmt.Println(table.String())
+		table.Render()
 	} else {
 		for _, f := range args {
 			switch output {
