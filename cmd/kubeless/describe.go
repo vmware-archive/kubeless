@@ -71,13 +71,13 @@ func print(f spec.Function, name, output string) {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"Properties", "Value"})
 		data := [][]string{
-			[]string{"Name", name},
-			[]string{"Namespace", fmt.Sprintf(f.Metadata.Namespace)},
-			[]string{"Handler", fmt.Sprintf(f.Spec.Handler)},
-			[]string{"Runtime", fmt.Sprintf(f.Spec.Runtime)},
-			[]string{"Type", fmt.Sprintf(f.Spec.Type)},
-			[]string{"Topic", fmt.Sprintf(f.Spec.Topic)},
-			[]string{"Dependencies", fmt.Sprintf(f.Spec.Deps)},
+			{"Name", name},
+			{"Namespace", fmt.Sprintf(f.Metadata.Namespace)},
+			{"Handler", fmt.Sprintf(f.Spec.Handler)},
+			{"Runtime", fmt.Sprintf(f.Spec.Runtime)},
+			{"Type", fmt.Sprintf(f.Spec.Type)},
+			{"Topic", fmt.Sprintf(f.Spec.Topic)},
+			{"Dependencies", fmt.Sprintf(f.Spec.Deps)},
 		}
 
 		for _, v := range data {

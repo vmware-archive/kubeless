@@ -1,6 +1,4 @@
-The MIT License (MIT)
-
-Copyright (c) 2014 Mitchell Hashimoto
+Copyright (C) 2014 by Oleku Konko
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
