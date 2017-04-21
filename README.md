@@ -120,7 +120,7 @@ $ kubeless function call test --data '{"kube":"coodle"}'
 
 ### Building with go
 
-- you need go v1.5 or later.
+- you need go v1.7+
 - if your working copy is not in your `GOPATH`, you need to set it accordingly.
 - we provided Makefile.
 
