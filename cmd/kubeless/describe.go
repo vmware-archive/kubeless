@@ -67,7 +67,8 @@ func init() {
 }
 
 func print(f spec.Function, name, output string) {
-	if output == "" {
+	switch output {
+	case "":
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"Properties", "Value"})
 		data := [][]string{
@@ -84,16 +85,13 @@ func print(f spec.Function, name, output string) {
 			table.Append(v)
 		}
 		table.Render() // Send output
-	} else {
-		switch output {
-		case "json":
-			b, _ := json.MarshalIndent(f.Spec, "", "  ")
-			fmt.Println(string(b))
-		case "yaml":
-			b, _ := yaml.Marshal(f.Spec)
-			fmt.Println(string(b))
-		default:
-			fmt.Println("Wrong output format. Please use only json|yaml")
-		}
+	case "json":
+		b, _ := json.MarshalIndent(f.Spec, "", "  ")
+		fmt.Println(string(b))
+	case "yaml":
+		b, _ := yaml.Marshal(f.Spec)
+		fmt.Println(string(b))
+	default:
+		fmt.Println("Wrong output format. Please use only json|yaml")
 	}
 }
