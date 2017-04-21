@@ -263,8 +263,8 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 			ImagePullPolicy: v1.PullIfNotPresent,
 		})
 	}
-
 	//add deployment
+	maxUnavailable := intstr.FromInt(0)
 	dpm := &v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
@@ -321,6 +321,11 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 							},
 						},
 					},
+				},
+			},
+			Strategy: v1beta1.DeploymentStrategy{
+				RollingUpdate: &v1beta1.RollingUpdateDeployment{
+					MaxUnavailable: &maxUnavailable,
 				},
 			},
 		},
