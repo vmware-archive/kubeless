@@ -232,7 +232,6 @@ func (c *Controller) monitor(httpClient *http.Client, watchVersion string) <-cha
 		for {
 			resp, err := utils.WatchResources(httpClient, watchVersion)
 			if err != nil {
-				resp.Body.Close()
 				c.logger.Errorf("Fail to watch resources: %v. Try again", err)
 				// go to the next round
 				continue
@@ -263,7 +262,6 @@ func (c *Controller) monitor(httpClient *http.Client, watchVersion string) <-cha
 				}
 
 				if st != nil {
-					resp.Body.Close()
 					if st.Code == http.StatusGone { // event history is outdated
 						err = errVersionOutdated // go to recovery path
 						// keep polling next event
