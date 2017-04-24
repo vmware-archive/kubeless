@@ -128,6 +128,31 @@ func GetTPRClientOutOfCluster() (*rest.RESTClient, error) {
 	return tprclient, nil
 }
 
+// GetFunction returns specification of a function
+func GetFunction(funcName, ns string) (spec.Function, error) {
+	var f spec.Function
+
+	tprClient, err := GetTPRClientOutOfCluster()
+	if err != nil {
+		return spec.Function{}, err
+	}
+
+	err = tprClient.Get().
+		Resource("functions").
+		Namespace(ns).
+		Name(funcName).
+		Do().Into(&f)
+
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			logrus.Fatalf("Function %s is not found", funcName)
+		}
+		return spec.Function{}, err
+	}
+
+	return f, nil
+}
+
 // WatchResources looking for changes of custom function objects
 func WatchResources(httpClient *http.Client, resourceVersion string) (*http.Response, error) {
 	host, port := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")

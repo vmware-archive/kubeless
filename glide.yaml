@@ -10,7 +10,7 @@ import:
   - pkg/kubectl/cmd/util
 - package: k8s.io/client-go
   version: v2.0.0
-- package: github.com/gosuri/uitable
+- package: github.com/olekukonko/tablewriter
 - package: github.com/docker/spdystream
 - package: github.com/renstrom/dedent
 - package: k8s.io/heapster

@@ -35,4 +35,5 @@ func init() {
 	functionCmd.AddCommand(listCmd)
 	functionCmd.AddCommand(callCmd)
 	functionCmd.AddCommand(logsCmd)
+	functionCmd.AddCommand(describeCmd)
 }
