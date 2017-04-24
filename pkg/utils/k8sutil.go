@@ -307,6 +307,16 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 									MountPath: "/kubeless",
 								},
 							},
+							LivenessProbe: &v1.Probe{
+								InitialDelaySeconds: int32(3),
+								PeriodSeconds:       int32(1),
+								Handler: v1.Handler{
+									HTTPGet: &v1.HTTPGetAction{
+										Path: "/healthz",
+										Port: intstr.FromInt(8080),
+									},
+								},
+							},
 						},
 					},
 					Volumes: []v1.Volume{
@@ -395,28 +405,19 @@ func UpdateK8sResources(kclient *kubernetes.Clientset, name, ns string, spec *sp
 
 	// kick the function pod then it will be recreated
 	// with the new data mount from updated configmap
-	podName, err := GetPodName(kclient, ns, name)
-	err = kclient.Core().Pods(ns).Delete(podName, &metav1.DeleteOptions{})
-	if err != nil {
-		return err
+	pods, err := GetPods(kclient, ns, name)
+	for _, pod := range pods {
+		err = kclient.Core().Pods(ns).Delete(pod.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			return err
+		}
 	}
-
 	return nil
 }
 
 // DeleteK8sResources removes k8s objects of the function
 func DeleteK8sResources(ns, name string, client *kubernetes.Clientset) error {
-	//replicas := int32(0)
-	//// scale deployment to 0
-	//oldScale, err := client.Scales(ns).Get("Deployment", name)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//oldScale.Spec = v1beta1.ScaleSpec{Replicas: replicas}
-	//_, err = client.Scales(ns).Update("Deployment", oldScale)
-
-	// and delete it
+	// delete deployment
 	err := client.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{})
 	if err != nil {
 		return err
@@ -636,7 +637,7 @@ func DeployKubeless(client *kubernetes.Clientset, ctlImage string, ctlNamespace 
 // DeployMsgBroker deploys kafka-controller
 func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace string) error {
 	labels := map[string]string{
-		"app": "kafka",
+		"function": "kafka-controller",
 	}
 
 	//add zookeeper svc
@@ -755,20 +756,31 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 	return nil
 }
 
-// GetPodName returns pod to which the function is deployed
-func GetPodName(c *kubernetes.Clientset, ns, funcName string) (string, error) {
-	po, err := c.Core().Pods(ns).List(metav1.ListOptions{})
+// GetPods returns list of pods to which the function is deployed
+func GetPods(c *kubernetes.Clientset, ns, funcName string) ([]v1.Pod, error) {
+	funcPods := []v1.Pod{}
+	pods, err := c.Core().Pods(ns).List(metav1.ListOptions{})
 	if err != nil {
-		return "", err
+		return funcPods, err
 	}
 
-	for _, item := range po.Items {
-		if strings.Index(item.Name, funcName) == 0 {
-			return item.Name, nil
+	// finding the pod with label[function]=funcName
+	for _, item := range pods.Items {
+		if item.ObjectMeta.Labels["function"] == funcName {
+			funcPods = append(funcPods, item)
 		}
 	}
+	return funcPods, nil
+}
 
-	return "", errors.New("Can't find pod starting with the function name")
+// GetReadyPod returns the first pod has passed the liveness probe check
+func GetReadyPod(pods []v1.Pod) v1.Pod {
+	for _, pod := range pods {
+		if pod.Status.ContainerStatuses[0].Ready {
+			return pod
+		}
+	}
+	return v1.Pod{}
 }
 
 // getImage returns runtime image of the function
