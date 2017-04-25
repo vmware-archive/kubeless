@@ -106,13 +106,13 @@ var callCmd = &cobra.Command{
 
 		//FIXME: we should only use restClient from client-go but now still have to use the old client for pf call
 		k8sClientSet := utils.GetClientOutOfCluster()
-		pods, err := utils.GetPods(k8sClientSet, ns, funcName)
+		pods, err := utils.GetPodsByLabel(k8sClientSet, ns, "function", funcName)
 		if err != nil {
 			logrus.Fatalf("Can't find the function pod: %v", err)
 		}
-		readyPod := utils.GetReadyPod(pods)
-		if readyPod.Name == "" {
-			logrus.Fatalf("Can't find the function pod. It hasn't been ready yet")
+		readyPod, err := utils.GetReadyPod(pods)
+		if err != nil {
+			logrus.Fatalf("Can't find the function pod: %v", err)
 		}
 
 		port, err := getLocalPort()

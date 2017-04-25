@@ -49,13 +49,13 @@ var logsCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatalf("Getting log failed: %v", err)
 		}
-		pods, err := utils.GetPods(k8sClient, ns, funcName)
+		pods, err := utils.GetPodsByLabel(k8sClient, ns, "function", funcName)
 		if err != nil {
 			logrus.Fatalf("Can't find the function pod: %v", err)
 		}
-		readyPod := utils.GetReadyPod(pods)
-		if readyPod.Name == "" {
-			logrus.Fatal("Can't find the function pod. It hasn't been ready yet")
+		readyPod, err := utils.GetReadyPod(pods)
+		if err != nil {
+			logrus.Fatalf("Can't find the function pod: %v", err)
 		}
 		podLog := &v1.PodLogOptions{
 			Container: funcName,

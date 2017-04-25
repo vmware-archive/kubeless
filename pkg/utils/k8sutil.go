@@ -152,7 +152,7 @@ func GetFunction(funcName, ns string) (spec.Function, error) {
 		Do().Into(&f)
 
 	if err != nil {
-		if kerrors.IsNotFound(err) {
+		if k8sErrors.IsNotFound(err) {
 			logrus.Fatalf("Function %s is not found", funcName)
 		}
 		return spec.Function{}, err
@@ -309,7 +309,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 							},
 							LivenessProbe: &v1.Probe{
 								InitialDelaySeconds: int32(3),
-								PeriodSeconds:       int32(1),
+								PeriodSeconds:       int32(3),
 								Handler: v1.Handler{
 									HTTPGet: &v1.HTTPGetAction{
 										Path: "/healthz",
@@ -405,8 +405,8 @@ func UpdateK8sResources(kclient *kubernetes.Clientset, name, ns string, spec *sp
 
 	// kick the function pod then it will be recreated
 	// with the new data mount from updated configmap
-	pods, err := GetPods(kclient, ns, name)
-	for _, pod := range pods {
+	pods, err := GetPodsByLabel(kclient, ns, "function", name)
+	for _, pod := range pods.Items {
 		err = kclient.Core().Pods(ns).Delete(pod.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return err
@@ -585,7 +585,7 @@ func DeleteK8sCustomResource(funcName, ns string) error {
 func DeployKubeless(client *kubernetes.Clientset, ctlImage string, ctlNamespace string) error {
 	//add deployment
 	labels := map[string]string{
-		"app": "kubeless-controller",
+		"controller": "kubeless-controller",
 	}
 	dpm := &v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -637,7 +637,7 @@ func DeployKubeless(client *kubernetes.Clientset, ctlImage string, ctlNamespace 
 // DeployMsgBroker deploys kafka-controller
 func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace string) error {
 	labels := map[string]string{
-		"function": "kafka-controller",
+		"controller": "kafka-controller",
 	}
 
 	//add zookeeper svc
@@ -756,31 +756,27 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 	return nil
 }
 
-// GetPods returns list of pods to which the function is deployed
-func GetPods(c *kubernetes.Clientset, ns, funcName string) ([]v1.Pod, error) {
-	funcPods := []v1.Pod{}
-	pods, err := c.Core().Pods(ns).List(metav1.ListOptions{})
+// GetPodsByLabel returns list of pods which match the label
+// We use this to returns pods to which the function is deployed or pods running controllers
+func GetPodsByLabel(c *kubernetes.Clientset, ns, k, v string) (*v1.PodList, error) {
+	pods, err := c.Core().Pods(ns).List(metav1.ListOptions{
+		LabelSelector: k + "=" + v,
+	})
 	if err != nil {
-		return funcPods, err
+		return nil, err
 	}
 
-	// finding the pod with label[function]=funcName
-	for _, item := range pods.Items {
-		if item.ObjectMeta.Labels["function"] == funcName {
-			funcPods = append(funcPods, item)
-		}
-	}
-	return funcPods, nil
+	return pods, nil
 }
 
 // GetReadyPod returns the first pod has passed the liveness probe check
-func GetReadyPod(pods []v1.Pod) v1.Pod {
-	for _, pod := range pods {
+func GetReadyPod(pods *v1.PodList) (v1.Pod, error) {
+	for _, pod := range pods.Items {
 		if pod.Status.ContainerStatuses[0].Ready {
-			return pod
+			return pod, nil
 		}
 	}
-	return v1.Pod{}
+	return v1.Pod{}, errors.New("There is no pod ready")
 }
 
 // getImage returns runtime image of the function
