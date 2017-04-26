@@ -141,7 +141,7 @@ func (c *Controller) Run() error {
 	}()
 
 	//monitor user-defined functions
-	eventCh := c.monitor(tprClient.Client, watchVersion)
+	eventCh, errCh := c.monitor(tprClient.Client, watchVersion)
 
 	go func() {
 		for event := range eventCh {
@@ -184,7 +184,7 @@ func (c *Controller) Run() error {
 		}
 	}()
 
-	return nil
+	return <-errCh
 }
 
 func (c *Controller) initResource() error {
@@ -232,8 +232,9 @@ func (c *Controller) FindResourceVersion(tprClient *rest.RESTClient) (string, er
 }
 
 // monitor continuously watches for changes to custom function objects
-func (c *Controller) monitor(httpClient *http.Client, watchVersion string) <-chan *Event {
+func (c *Controller) monitor(httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {
 	eventCh := make(chan *Event)
+	errCh := make(chan error, 1)
 
 	go func() {
 		defer close(eventCh)
@@ -243,13 +244,11 @@ func (c *Controller) monitor(httpClient *http.Client, watchVersion string) <-cha
 			resp, err := utils.WatchResources(httpClient, watchVersion)
 			if err != nil {
 				c.logger.Errorf("Fail to watch resources: %v. Try again", err)
-				// go to the next round
 				continue
 			}
-			if resp.StatusCode != http.StatusOK {
+			if resp.StatusCode != 200 {
 				resp.Body.Close()
 				c.logger.Errorf("Invalid status code: %s. Try again", resp.Status)
-				// go to the next round
 				continue
 			}
 			c.logger.Infof("Start watching at %v", watchVersion)
@@ -261,23 +260,20 @@ func (c *Controller) monitor(httpClient *http.Client, watchVersion string) <-cha
 
 				if err != nil {
 					if err == io.EOF { // apiserver will close stream periodically
-						c.logger.Errorf("Apiserver closed stream. Try to watch resource again")
-						// go to the next watch loop
+						c.logger.Debug("Apiserver closed stream")
 						break
 					}
 
-					c.logger.Errorf("Received invalid event from API server: %v. Go to next event", err)
-					// polling next event
+					c.logger.Errorf("Received invalid event from API server: %v", err)
 					continue
 				}
 
 				if st != nil {
 					if st.Code == http.StatusGone { // event history is outdated
-						err = errVersionOutdated // go to recovery path
-						// keep polling next event
+						errCh <- errVersionOutdated
 						continue
 					}
-					c.logger.Errorf("Unexpected status response from API server: %v", st.Message)
+					c.logger.Fatalf("Unexpected status response from API server: %v", st.Message)
 				}
 
 				c.logger.Debugf("Function event: %v %v", ev.Type, ev.Object.Spec)
@@ -290,7 +286,7 @@ func (c *Controller) monitor(httpClient *http.Client, watchVersion string) <-cha
 		}
 	}()
 
-	return eventCh
+	return eventCh, errCh
 }
 
 func pollEvent(decoder *json.Decoder) (*Event, *metav1.Status, error) {
