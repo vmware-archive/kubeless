@@ -53,6 +53,11 @@ func Delete(c *kubernetes.Clientset, name, ns string, wg *sync.WaitGroup) error 
 	return delete(c, name, ns, wg)
 }
 
+// Update apply changes to the custom function object
+func Update(c *kubernetes.Clientset, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
+	return update(c, name, ns, spec, wg)
+}
+
 func new(kclient *kubernetes.Clientset, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
 	f := &Function{
 		logger:    logrus.WithField("pkg", "function").WithField("function-name", name),
@@ -77,4 +82,23 @@ func delete(kclient *kubernetes.Clientset, name, ns string, wg *sync.WaitGroup) 
 	err := utils.DeleteK8sResources(ns, name, kclient)
 	wg.Add(1)
 	return err
+}
+
+func update(kclient *kubernetes.Clientset, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
+	f := &Function{
+		logger:    logrus.WithField("pkg", "function").WithField("function-name", name),
+		kclient:   kclient,
+		Name:      name,
+		Namespace: ns,
+		eventCh:   make(chan *functionEvent, 100),
+		Spec:      spec,
+	}
+
+	err := utils.UpdateK8sResources(kclient, f.Name, f.Namespace, f.Spec)
+	if err != nil {
+		return err
+	}
+
+	wg.Add(1)
+	return nil
 }

@@ -33,7 +33,7 @@ import (
 	"github.com/bitnami/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/kubernetes/pkg/client/unversioned/portforward"
+	"k8s.io/client-go/tools/portforward"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	k8scmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
@@ -95,6 +95,10 @@ var callCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatalf("Connection failed: %v", err)
 		}
+		clientset, err := f.ClientSet()
+		if err != nil {
+			logrus.Fatalf("Connection failed: %v", err)
+		}
 		k8sClientConfig, err := f.ClientConfig()
 		if err != nil {
 			logrus.Fatalf("Connection failed: %v", err)
@@ -102,10 +106,15 @@ var callCmd = &cobra.Command{
 
 		//FIXME: we should only use restClient from client-go but now still have to use the old client for pf call
 		k8sClientSet := utils.GetClientOutOfCluster()
-		podName, err := utils.GetPodName(k8sClientSet, ns, funcName)
+		pods, err := utils.GetPodsByLabel(k8sClientSet, ns, "function", funcName)
 		if err != nil {
-			logrus.Fatalf("Couldn't get the pod name: %v", err)
+			logrus.Fatalf("Can't find the function pod: %v", err)
 		}
+		readyPod, err := utils.GetReadyPod(pods)
+		if err != nil {
+			logrus.Fatalf("Can't find the function pod: %v", err)
+		}
+
 		port, err := getLocalPort()
 		if err != nil {
 			logrus.Fatalf("Connection failed: %v", err)
@@ -117,7 +126,8 @@ var callCmd = &cobra.Command{
 				RESTClient: k8sClient,
 				Namespace:  ns,
 				Config:     k8sClientConfig,
-				PodName:    podName,
+				PodName:    readyPod.Name,
+				PodClient:  clientset.Core(),
 				Ports:      portSlice,
 				PortForwarder: &defaultPortForwarder{
 					cmdOut: os.Stdout,

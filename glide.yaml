@@ -4,15 +4,15 @@ import:
 - package: github.com/spf13/cobra
 - package: gopkg.in/yaml.v2
 - package: k8s.io/kubernetes
-  version: v1.5.5
+  version: v1.6.0
   subpackages:
-  - pkg/kubectl
+  - pkg/kubectl/cmd
   - pkg/kubectl/cmd/util
 - package: k8s.io/client-go
   version: v2.0.0
 - package: github.com/olekukonko/tablewriter
 - package: github.com/docker/spdystream
 - package: github.com/renstrom/dedent
-- package: k8s.io/heapster
-  subpackages:
-  - metrics/apis/metrics/v1alpha1
+# - package: k8s.io/heapster
+#   subpackages:
+#   - metrics/apis/metrics/v1alpha1

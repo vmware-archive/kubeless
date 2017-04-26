@@ -53,11 +53,11 @@ func execCommand(command []string, ctlNamespace string) {
 	f := cmdutil.NewFactory(nil)
 
 	k8sClientSet := utils.GetClientOutOfCluster()
-	podName, _ := utils.GetPodName(k8sClientSet, ctlNamespace, "kafka-controller")
+	pods, _ := utils.GetPodsByLabel(k8sClientSet, ctlNamespace, "controller", "kafka-controller")
 	params := &k8scmd.ExecOptions{
 		StreamOptions: k8scmd.StreamOptions{
 			Namespace:     ctlNamespace,
-			PodName:       podName,
+			PodName:       pods.Items[0].Name,
 			ContainerName: "kafka",
 			In:            nil,
 			Out:           os.Stdout,
