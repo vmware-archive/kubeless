@@ -1,0 +1,15 @@
+name: ocr-pipeline
+version: 0.1.0
+description: An OCR pipeline with kubeless providing glue for Minio and Apache Tika
+keywords:
+- ocr
+- tesseract
+- apache tika
+- minio 
+home: http://www.bitnami.com/
+sources:
+- https://github.com/bitnami/kubeless
+maintainers:
+- name: Bitnami
+  email: containers@bitnami.com
+engine: gotpl
