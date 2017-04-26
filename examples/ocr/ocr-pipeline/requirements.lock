@@ -1,0 +1,12 @@
+dependencies:
+- name: minio
+  repository: https://kubernetes-charts.storage.googleapis.com/
+  version: 0.1.0
+- name: tika-server
+  repository: http://127.0.0.1:8879
+  version: 0.1.0
+- name: mongodb
+  repository: https://kubernetes-charts.storage.googleapis.com/
+  version: 0.4.9
+digest: sha256:54bd076786fa079db2e54e93b8a8c99a764e38f4e8ee89c95ff53a5ceb4e6e61
+generated: 2017-04-24T13:44:43.630358344+02:00
