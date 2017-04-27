@@ -650,33 +650,8 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 		"controller": "kafka-controller",
 	}
 
-	//add zookeeper svc
-	svc := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   "zookeeper",
-			Labels: labels,
-		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
-				{
-					Name:       "zookeeper-port",
-					Port:       2181,
-					TargetPort: intstr.FromInt(2181),
-					Protocol:   v1.ProtocolTCP,
-				},
-			},
-			Selector: labels,
-			Type:     v1.ServiceTypeClusterIP,
-		},
-	}
-
-	_, err := client.Core().Services(ctlNamespace).Create(svc)
-	if err != nil {
-		return err
-	}
-
 	//add kafka svc
-	svc = &v1.Service{
+	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "kafka",
 			Labels: labels,
@@ -695,7 +670,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 		},
 	}
 
-	_, err = client.Core().Services(ctlNamespace).Create(svc)
+	_, err := client.Core().Services(ctlNamespace).Create(svc)
 	if err != nil {
 		return err
 	}
@@ -732,7 +707,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 								},
 								{
 									Name:  "KAFKA_ZOOKEEPER_CONNECT",
-									Value: "zookeeper." + ctlNamespace + ":2181",
+									Value: "localhost:2181",
 								},
 							},
 							Ports: []v1.ContainerPort{
