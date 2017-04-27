@@ -1,4 +1,4 @@
-<p style="text-align: center;">
+<p align="center">
   <img src="https://cloud.githubusercontent.com/assets/4056725/25480209/1d5bf83c-2b48-11e7-8db8-bcd650f31297.png" alt="Kubeless logo" width="600">
 </p>
 
