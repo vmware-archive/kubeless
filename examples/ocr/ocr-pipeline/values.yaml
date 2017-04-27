@@ -72,7 +72,7 @@ minio:
       brokers: "null"
       topic: ""
     webhook:
-      enable: true
+      enable: false
       endpoint: "http://minio-ocr:8080"
 
 mongodb:  

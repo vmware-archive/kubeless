@@ -4,5 +4,12 @@ minio-ocr:
 clean: 
 	kubeless function delete minio-ocr 
 
+setup:
+	yes | kubeless install
+	helm init ; sleep 30
+	helm ls 
+	helm install -n ocr ./ocr-pipeline --replace
+	make all
+
 all: clean minio-ocr
 

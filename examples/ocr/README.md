@@ -1,7 +1,6 @@
 # Set up the demo environment
-ok:
-      enable: true
-            endpoint: "http://slack:8080"
+
+This demo needs at least Helm 2.3.0 
 
 First, we need to pack the code that we can locate at https://github.com/bitnami/charts/tree/tika-server/incubator/tika-server (tika-server branch). Clone the repo, checkout to the tika-server branch a and execute helm package tika-server. This will create a tika-server-0.10.tgz file.
 
@@ -24,11 +23,12 @@ Install latest Kubeless version from https://github.com/bitnami/kubeless/release
 Install helm and initializar Tiller into the cluster with: 
  $ helm init
 
-Execute `make all` to populate the function on kubeless
-  $ make all 
 
 Deploy the helm chart with: 
   $ helm install ./ocr-pipeline -n ocr
+
+Execute `make all` to populate the function on kubeless
+  $ make all 
 
 Install minio-mc  and configure it as needed:
 You can obtain the endpoint of  the service `ocr-minio-svc` by this command:

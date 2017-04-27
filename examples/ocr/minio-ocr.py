@@ -3,7 +3,9 @@ import tempfile
 
 #pip install kubernetes
 from kubernetes import client, config
-import request
+
+# pip install requests
+import requests
 
 # pip install minio
 from minio import Minio
@@ -18,14 +20,15 @@ for secrets in v1.list_secret_for_all_namespaces().items:
         access_key =  base64.b64decode(secrets.data['accesskey'])
         secret_key =  base64.b64decode(secrets.data['secretkey'])
 
-# Replace the DNS below with the minio service name (defaults to ocr-minio-svc)
 client = Minio('ocr-minio-svc:9000', 
-                  access_key=accesskey,
-                  secret_key=secretkey, 
+                  access_key=access_key,
+                  secret_key=secret_key, 
                   secure=False)
+
+
 #events = client.listen_bucket_notification('ocr', 'input/', '.pdf', ['s3:ObjectCreated:*', 's3:ObjectRemoved:*', 's3:ObjectAccessed:*']) 
 
-def ocr(context):
+def handler(context):
     if context['EventType'] == "s3:ObjectCreated:Put": 
 
         tf = tempfile.NamedTemporaryFile(delete=False)
@@ -39,7 +42,7 @@ def ocr(context):
 
 
         try:
-            files = {'file': open(tf.name), 'rb'}
+            files = {'file': open(tf.name, 'rb')}
             r = requests.post('http://ocr-tika-server/tika', files=files )
             if r.stauts_code == '200':
                ocr_output = r.text
