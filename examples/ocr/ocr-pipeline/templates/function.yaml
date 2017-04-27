@@ -1,0 +1,73 @@
+apiVersion: k8s.io/v1
+kind: Function
+metadata:
+  name: {{ template  "fullname" . }}
+spec:
+  handler: minio-ocr.handler
+  runtime: python2.7
+  type: HTTP
+  deps: |
+    minio
+    tika
+    kubernetes
+  function: |
+      import base64
+      import tempfile
+      import json
+      import tika
+      tika.TikaClientOnly = True
+      from tika import parser
+      from kubernetes import client, config
+      from minio import Minio
+      from minio.error import ResponseError
+      
+      config.load_incluster_config()
+      
+      v1=client.CoreV1Api()
+      
+      for secrets in v1.list_secret_for_all_namespaces().items:
+          if secrets.metadata.name == 'ocr-minio-user':
+              access_key =  base64.b64decode(secrets.data['accesskey'])
+              secret_key =  base64.b64decode(secrets.data['secretkey'])
+      
+      client = Minio('ocr-minio-svc:9000', 
+                        access_key=access_key,
+                        secret_key=secret_key, 
+                        secure=False)
+      
+      
+      
+      def handler(context):
+          print context.json
+          if context['EventType'] == "s3:ObjectCreated:Put" : 
+      
+              tf = tempfile.NamedTemporaryFile(delete=False)
+              bucket = context['Key'].split('/')[0]
+              filename = context['Key'].split('/')[1]
+      
+              try:
+                  client.fget_object(bucket, filename, tf.name)
+              except ResponseError as err:
+                  print err
+
+
+              parsed = parser.from_file(tf.name)
+              parsed = parser.from_file(tf.name, 'http://ocr-tika-server/tika')
+              string_parsed = parser.from_buffer('http://ocr-tika-server/tika')
+
+      
+              # puts the same file in a done OCR bucket
+              ocr_name = filename + '.ocr'
+              file = open(ocr_name,'w')
+              file.write(ocr_output)
+              file.close()
+      
+              try:
+                  client.fput_object('done',ocr_name,tf.name)
+              except ResponseError as err:
+                  print err
+      
+          else:
+              print "Minio file deletion event"
+      
+          return "OCR called"
