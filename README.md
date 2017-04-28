@@ -1,22 +1,20 @@
-<p align="center">
-  <img src="https://cloud.githubusercontent.com/assets/4056725/25480209/1d5bf83c-2b48-11e7-8db8-bcd650f31297.png" alt="Kubeless logo" width="600">
-</p>
+# <img src="https://cloud.githubusercontent.com/assets/4056725/25480209/1d5bf83c-2b48-11e7-8db8-bcd650f31297.png" alt="Kubeless logo" width="400">
 
-# Kubeless
+`kubeless` is a Kubernetes-native serverless framework. It is currently under active development, the most up-to-date version is `HEAD`. If you experience any problems during this growing phase please file an [issue](https://github.com/bitnami/kubeless/issues) and we will get back to you as quickly as we can.
 
-`kubeless` is a proof of concept to develop a serverless framework for Kubernetes.
+There are other solutions, like [fission](http://fission.io) from Platform9, [funktion](https://github.com/fabric8io/funktion) from Fabric8. There is also an incubating project at the ASF: [OpenWhisk](https://github.com/openwhisk/openwhisk). We believe however, that Kubeless is the most Kubernetes native of all.
 
-There are other solutions, like [fission](http://fission.io) from Platform9, [funktion](https://github.com/fabric8io/funktion) from Fabric8. There is also an incubating project at the ASF: [OpenWhisk](https://github.com/openwhisk/openwhisk).
+Kubeless stands out as we use a **ThirdPartyResource** to be able to create functions as custom resources. We then run an in-cluster controller that watches these custom resources and launches _runtimes_ on-demand. These runtimes, dynamically inject the functions and make them available over HTTP or via a PubSub mechanism.
 
-Kubeless stands out as we use a ThirdPartyResource to be able to create functions as custom resources. We then run an in-cluster controller that watches these custom resources and launches _runtimes_ on-demand. These runtimes, dynamically inject the functions and make them available over HTTP or via a PubSub mechanism.
-
-For PubSub we use [Kafka](https://kafka.apache.org). Currently we start Kafka and Zookeeper in a non-persistent setup. With `kubeless` you can create topics, and publish events that get consumed by the runtime.
+For PubSub we use [Kafka](https://kafka.apache.org). Currently we start Kafka and Zookeeper in a non-persistent setup. With `kubeless` you can create topics, and publish events that get consumed by the runtime and your even triggered functions.
 
 ## Screencasts
 
-From the December 8th 2016 Kubernetes Community meeting
+Demo of event based function triggers with Minio.
 
-[![screencast](https://img.youtube.com/vi/gRVuFupq1Y4/0.jpg)](https://www.youtube.com/watch?v=gRVuFupq1Y4)
+[![screencast](https://img.youtube.com/vi/AxZuQIJUX4s/0.jpg)](https://www.youtube.com/watch?v=AxZuQIJUX4s)
+
+Also check our [UI](https://github.com/bitnami/kubeless-ui) project
 
 ## Usage
 
@@ -24,13 +22,7 @@ Download `kubeless` from the release page. Then launch the controller. It will a
 
 ```console
 $ kubeless install
-We are going to install the controller in the kubeless namespace. Are you OK with this: [Y/N]
-Y
-INFO[0002] Initializing Kubeless controller...           pkg=controller
-INFO[0002] Installing Kubeless controller into Kubernetes deployment...  pkg=controller
-INFO[0002] Kubeless controller installation finished!    pkg=controller
-INFO[0002] Installing Message Broker into Kubernetes deployment...  pkg=controller
-INFO[0002] Message Broker installation finished!         pkg=controller
+We are going to install the controller in the kubeless namespace. Are you OK with this: [Y/n]
 
 $ kubectl get pods --namespace=kubeless
 NAME                                   READY     STATUS              RESTARTS   AGE
@@ -44,7 +36,7 @@ function.k8s.io   Kubeless: Serverless framework for Kubernetes   v1
 $ kubectl get functions
 ```
 
-**Note** We provide `--kafka-version` flag for specifying the kafka version will be installed and `--controller-image` in case you are willing to install your customized Kubeless controller. Without the flags, we will install the newest release of `bitnami/kubeless-controller` and the latest `wurstmeister/kafka`. Check `kubeless install --help` for more detail.
+**Note** We provide `--kafka-version` flag for specifying the kafka version will be installed and `--controller-image` in case you are willing to install your customized Kubeless controller. Without the flags, we will install the newest release of `bitnami/kubeless-controller`. Check `kubeless install --help` for more detail.
 
 You are now ready to create functions. Then you can use the CLI to create a function. Functions have two possible types:
 
@@ -64,18 +56,18 @@ def foobar(context):
 You create it with:
 
 ```
-$ kubeless function deploy test --runtime python27 \
-                              --handler test.foobar \
-                              --from-file test.py \
-                              --trigger-http
+$ kubeless function deploy get-python --runtime python27 \
+                                --handler test.foobar \
+                                --from-file test.py \
+                                --trigger-http
 ```
 
 You will see the function custom resource created:
 
 ```console
 $ kubectl get functions
-NAME      LABELS    DATA
-test      <none>    {"apiVersion":"k8s.io/v1","kind":"Function","metadat...
+NAME          KIND
+get-python    Function.v1.k8s.io
 ```
 
 ### PubSub function
@@ -84,17 +76,17 @@ Messages need to be JSON messages. A function can be as simple as:
 
 ```python
 def foobar(context):
-   print context.json
-   return context.json
+    print context.json
+    return context.json
 ```
 
 You create it the same way than an _HTTP_ function except that you specify a `--trigger-topic`.
 
 ```
 $ kubeless function deploy test --runtime python27 \
-                              --handler test.foobar \
-                              --from-file test.py \
-                              --trigger-topic <topic_name>
+                                --handler test.foobar \
+                                --from-file test.py \
+                                --trigger-topic <topic_name>
 ```
 
 ### Other commands
@@ -114,11 +106,9 @@ $ kubeless topic delete <topic_name>
 $ kubeless topic ls
 ```
 
-To test your endpoints you can call the function directly with the `kubeless` CLI:
+## Examples
 
-```
-$ kubeless function call test --data '{"kube":"coodle"}'
-```
+See the [examples](./examples) directory for a list of various examples. Minio, SLACK, Twitter etc ...
 
 ## Building
 
@@ -138,7 +128,7 @@ You can build kubeless for multiple platforms with:
 $ make binary-cross
 ```
 
-## Download kubeless package
+### Download kubeless package
 
 ```
 $ go get -u github.com/bitnami/kubeless
@@ -148,6 +138,8 @@ $ go get -u github.com/bitnami/kubeless
 
 This is still currently a POC, feel free to land a hand. We need to implement the following high level features:
 
-* Add other runtimes, currently only Python and NodeJS is supported
+* Add other runtimes, currently only Python and NodeJS are supported
 * Deploy Kafka and Zookeeper using StatefulSets for persistency
+* Investigate other messaging bus
 * Instrument the runtimes via Prometheus to be able to create pod autoscalers automatically
+* Optimize for functions startup time
