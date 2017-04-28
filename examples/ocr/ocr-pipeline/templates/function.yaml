@@ -9,14 +9,18 @@ spec:
   deps: |
     minio
     tika
+    pymongo
     kubernetes
   function: |
+      # -*- coding: UTF-8 -*-
       import base64
       import tempfile
       import json
       import tika
+      import pymongo
       tika.TikaClientOnly = True
       from tika import parser
+      from pymongo import MongoClient
       from kubernetes import client, config
       from minio import Minio
       from minio.error import ResponseError
@@ -29,45 +33,55 @@ spec:
           if secrets.metadata.name == 'ocr-minio-user':
               access_key =  base64.b64decode(secrets.data['accesskey'])
               secret_key =  base64.b64decode(secrets.data['secretkey'])
-      
+
+      mongo = MongoClient('ocr-mongodb', 27017)
+
       client = Minio('ocr-minio-svc:9000', 
                         access_key=access_key,
                         secret_key=secret_key, 
                         secure=False)
-      
-      
+
+      print 'Loading function...'
       
       def handler(context):
-          print context.json
-          if context['EventType'] == "s3:ObjectCreated:Put" : 
+        data = context.json
+        if data['EventType'] == "s3:ObjectCreated:Put" : 
       
               tf = tempfile.NamedTemporaryFile(delete=False)
-              bucket = context['Key'].split('/')[0]
-              filename = context['Key'].split('/')[1]
+              bucket = data['Key'].split('/')[0]
+              filename = data['Key'].split('/')[1]
       
               try:
+                  print 'Fetching file'
                   client.fget_object(bucket, filename, tf.name)
               except ResponseError as err:
+                  print 'Error fetching file'
                   print err
 
 
-              parsed = parser.from_file(tf.name)
-              parsed = parser.from_file(tf.name, 'http://ocr-tika-server/tika')
-              string_parsed = parser.from_buffer('http://ocr-tika-server/tika')
+              print 'Sending file to Tika'
+              parsed = parser.from_file(tf.name, serverEndpoint='http://ocr-tika-server:80/tika')
+              ocrdata = json.dumps(parsed, ensure_ascii=True)
+
+              db = mongo['ocr']
+              result = db.processed.insert_one(parsed)
+              print 'Document Saved!'
+              print('Document proccessed: {0}'.format(result.inserted_id))
+
 
       
               # puts the same file in a done OCR bucket
-              ocr_name = filename + '.ocr'
-              file = open(ocr_name,'w')
-              file.write(ocr_output)
-              file.close()
+              #        ocr_name = '/tmp/' +  filename + '.ocr'
+              #        file = open(ocr_name,'w')
+              #        file.write(parsed)
+              #        file.close()
       
-              try:
-                  client.fput_object('done',ocr_name,tf.name)
-              except ResponseError as err:
-                  print err
+              #        try:
+              #            client.fput_object('done',ocr_name,tf.name)
+              #        except ResponseError as err:
+              #            print err
       
-          else:
+        else:
               print "Minio file deletion event"
       
-          return "OCR called"
+        return "OCR Finished"

@@ -72,8 +72,8 @@ minio:
       brokers: "null"
       topic: ""
     webhook:
-      enable: false
-      endpoint: "http://minio-ocr:8080"
+      enable: true 
+      endpoint: "http://ocr-ocr-pipeline:8080"
 
 mongodb:  
   image: bitnami/mongodb:3.4.3-r0
