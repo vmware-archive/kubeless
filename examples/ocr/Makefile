@@ -1,8 +1,7 @@
 install: 
 	
 	helm install -n ocr ./ocr-pipeline 
-	@echo "IMPORTANT: "
-	@echo "Remove livenessProve section  from kubectl edit deployment ocr-ocr-pipeline"
+	kubectl patch deployment ocr-ocr-pipeline --type json   -p='[{"op": "remove", "path": "/spec/template/spec/containers/0/livenessProbe"}]'
 
 clean: 
 	-helm delete ocr --purge 
@@ -25,9 +24,10 @@ test:
 	curl -O http://www.tra.org.bh/media/document/sample10.pdf
 	mc cp sample10.pdf  ocr/input
 	rm sample10.pdf
-	@echo "Wait a minute and then execute: kubectl exec -it ocr-mongodb-XXXX-XXXXX  --  mongo --eval \"printjson(db.processed.findOne())\" localhost/ocr"
-	@echo "Find the mongodb pod name with: kubectl get pods -l app=ocr-mongodb  | awk '/ocr-mongo/{print \$$1}'"
+	@echo "Find the mongodb pod name with: MONGO=\`kubectl get pods -l app=ocr-mongodb  | awk '/ocr-mongo/{print \$$1}'"\`
+	@echo "Wait a minute and then execute: kubectl exec -it \$$MONGO --  mongo --eval \"printjson(db.processed.findOne())\" localhost/ocr"
 
 
 all: clean install
+
 

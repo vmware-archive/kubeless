@@ -51,6 +51,7 @@ spec:
               bucket = data['Key'].split('/')[0]
               filename = data['Key'].split('/')[1]
       
+              # Fetching source file from Minio
               try:
                   print 'Fetching file'
                   client.fget_object(bucket, filename, tf.name)
@@ -59,27 +60,27 @@ spec:
                   print err
 
 
+              # OCR text extraction performed by Tika
               print 'Sending file to Tika'
               parsed = parser.from_file(tf.name, serverEndpoint='http://ocr-tika-server:80/tika')
               ocrdata = json.dumps(parsed, ensure_ascii=True)
 
+              # MongoDB document insertion 
               db = mongo['ocr']
               result = db.processed.insert_one(parsed)
               print 'Document Saved!'
               print('Document proccessed: {0}'.format(result.inserted_id))
 
-
       
-              # puts the same file in a done OCR bucket
-              #        ocr_name = '/tmp/' +  filename + '.ocr'
-              #        file = open(ocr_name,'w')
-              #        file.write(parsed)
-              #        file.close()
-      
-              #        try:
-              #            client.fput_object('done',ocr_name,tf.name)
-              #        except ResponseError as err:
-              #            print err
+              # move OCRd file to done bucket 
+              try:
+                  # Copy from input bucket to done bucket
+                  fullpath = 'input/' + filename 
+                  client.copy_object('done', filename, fullpath)
+                  # Remove from input bucket
+                  client.remove_object('input', filename)
+              except ResponseError as err:
+                  print err
       
         else:
               print "Minio file deletion event"
