@@ -1,31 +1,34 @@
 #!/usr/bin/env python
 
-import sys
 import os
 import imp
 
-from bottle import route, run, request
+import bottle
 
-mod_name = os.getenv('MOD_NAME')
-func_handler = os.getenv('FUNC_HANDLER')
+mod = imp.load_source('function',
+                      '/kubeless/%s.py' % os.getenv('MOD_NAME'))
+func = getattr(mod, os.getenv('FUNC_HANDLER'))
 
-mod_path = '/kubeless/' + mod_name + '.py'
+app = application = bottle.app()
 
-try:
-    mod = imp.load_source('function', mod_path)
-except ImportError:
-    print("No valid module found for the name: function, Failed to import module")
-
-@route('/', method="GET")
+@app.get('/')
 def handler():
-    return getattr(mod, func_handler)()
+    return func()
 
-@route('/', method="POST")
+@app.post('/')
 def post_handler():
-    return getattr(mod, func_handler)(request)
+    return func(bottle.request)
 
-@route('/healthz', method="GET")
+@app.get('/healthz')
 def healthz():
-    return "OK"
+    return 'OK'
 
-run(host='0.0.0.0', port=8080)
+if __name__ == '__main__':
+    import logging
+    import sys
+    import requestlogger
+    loggedapp = requestlogger.WSGILogger(
+        app,
+        [logging.StreamHandler(stream=sys.stdout)],
+        requestlogger.ApacheFormatter())
+    bottle.run(loggedapp, server='cherrypy', host='0.0.0.0', port=8080)
