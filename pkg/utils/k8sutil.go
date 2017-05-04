@@ -210,6 +210,16 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 	labels := map[string]string{
 		"function": name,
 	}
+	podAnnotations := map[string]string{
+		// Attempt to attract the attention of prometheus.
+		// For runtimes that don't support /metrics,
+		// prometheus will get a 404 and mostly silently
+		// ignore the pod (still displayed in the list of
+		// "targets")
+		"prometheus.io/scrape": "true",
+		"prometheus.io/path":   "/metrics",
+		"prometheus.io/port":   "8080",
+	}
 	data := map[string]string{
 		"handler": spec.Handler,
 		fileName:  spec.Function,
@@ -273,7 +283,8 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 		Spec: v1beta1.DeploymentSpec{
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
+					Labels:      labels,
+					Annotations: podAnnotations,
 				},
 				Spec: v1.PodSpec{
 					InitContainers: initContainer,

@@ -16,6 +16,9 @@ data:
     scrape_configs:
     - job_name: 'kubernetes-cluster'
       scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
       kubernetes_sd_configs:
       - api_servers:
         - 'https://kubernetes.default.svc'
@@ -23,6 +26,9 @@ data:
         role: apiserver
     - job_name: 'kubernetes-nodes'
       scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        insecure_skip_verify: true
       kubernetes_sd_configs:
       - api_servers:
         - 'https://kubernetes.default.svc'
@@ -32,7 +38,7 @@ data:
       - action: labelmap
         regex: __meta_kubernetes_node_label_(.+)
     - job_name: 'kubernetes-service-endpoints'
-      scheme: https
+      scheme: http
       kubernetes_sd_configs:
       - api_servers:
         - 'https://kubernetes.default.svc'
@@ -49,7 +55,7 @@ data:
         action: replace
         target_label: kubernetes_name
     - job_name: 'kubernetes-services'
-      scheme: https
+      scheme: http
       kubernetes_sd_configs:
       - api_servers:
         - 'https://kubernetes.default.svc'
@@ -64,7 +70,7 @@ data:
       - source_labels: [__meta_kubernetes_service_name]
         target_label: kubernetes_name
     - job_name: 'kubernetes-pods'
-      scheme: https
+      scheme: http
       kubernetes_sd_configs:
       - api_servers:
         - 'https://kubernetes.default.svc'
@@ -74,6 +80,17 @@ data:
       - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
         action: keep
         regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: (.+):(?:\\d+);(\\d+)
+        replacement: ${1}:${2}
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
       - source_labels: [__meta_kubernetes_pod_namespace]
         action: replace
         target_label: kubernetes_namespace
@@ -83,16 +100,6 @@ data:
       - source_labels: [__meta_kubernetes_pod_node_name]
         action: replace
         target_label: kubernetes_pod_node_name
-    - job-name: 'kubeless functions'
-      kubernetes_sd_configs:
-      - api_servers:
-        - 'https://kubernetes.default.svc'
-        in_cluster: true
-        role: pod
-      relabel_configs:
-      - source_labels: [__meta_kubernetes_pod_label_app]
-        regex: kubeless
-        action: keep
 ---
 apiVersion: v1
 kind: Service
