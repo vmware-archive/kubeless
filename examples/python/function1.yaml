@@ -7,6 +7,11 @@ spec:
   handler: hello.foobar
   runtime: python2.7
   function: |
-      import json
+      import time
+      import random
       def foobar():
-              return "hello world"
+        # NB: delay will be negative and sleep will raise an error
+        # occasionally.  This is a feature for demoing errors.
+        delay = random.normalvariate(0.3, 0.2)
+        time.sleep(delay)
+        return "hello world - with a %0.2fs artificial delay" % delay
