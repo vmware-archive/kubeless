@@ -73,6 +73,24 @@ NAME          KIND
 get-python    Function.v1.k8s.io
 ```
 
+You can then call the function with:
+
+```
+$ kubeless function call get-python --data '{"echo": "echo echo"}'
+Connecting to function...
+Forwarding from 127.0.0.1:30000 -> 8080
+Forwarding from [::1]:30000 -> 8080
+Handling connection for 30000
+{"echo": "echo echo"}
+```
+
+Or you can curl directly, for example (using minikube):
+
+```
+$ curl --data '{"Another": "Echo"}' $(minikube service get-python --url) --header "Content-Type:application/json"
+{"Another": "Echo"}
+```
+
 ### PubSub function
 
 Messages need to be JSON messages. A function can be as simple as:
