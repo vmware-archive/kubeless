@@ -6,12 +6,17 @@ metadata:
 spec:
   handler: hello.foobar
   runtime: python2.7
+  deps: |
+    cowpy
   function: |
       import time
       import random
+      from cowpy import cow
       def foobar():
         # NB: delay will be negative and sleep will raise an error
         # occasionally.  This is a feature for demoing errors.
         delay = random.normalvariate(0.3, 0.2)
         time.sleep(delay)
-        return "hello world - with a %0.2fs artificial delay" % delay
+        msg = "hello world - with a %0.2fs artificial delay" % delay
+        c = cow.get_cow()
+        return c().milk(msg)
