@@ -183,7 +183,6 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 	modName := str[0]
 	fileName := modName
 
-	//TODO: Only python and nodejs supported. Add more...
 	imageName := ""
 	depName := ""
 	switch {
@@ -344,6 +343,8 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 	// update deployment for custom runtime
 	if spec.Deps != "" {
 		updateDeployment(dpm, spec.Runtime)
+		//TODO: remove this when init containers becomes a stable feature
+		addInitContainerAnnotation(dpm)
 	}
 
 	_, err = client.Extensions().Deployments(ns).Create(dpm)
@@ -905,4 +906,20 @@ func configureClient(config *rest.Config) {
 		})
 	metav1.AddToGroupVersion(api.Scheme, groupversion)
 	schemeBuilder.AddToScheme(api.Scheme)
+}
+
+// addInitContainerAnnotation is a hot fix to add annotation to deployment for init container to run
+func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
+	if len(dpm.Spec.Template.Spec.InitContainers) > 0 {
+		value, err := json.Marshal(dpm.Spec.Template.Spec.InitContainers)
+		if err != nil {
+			return err
+		}
+		if dpm.Spec.Template.Annotations == nil {
+			dpm.Spec.Template.Annotations = make(map[string]string)
+		}
+		dpm.Spec.Template.Annotations[v1.PodInitContainersAnnotationKey] = string(value)
+		dpm.Spec.Template.Annotations[v1.PodInitContainersBetaAnnotationKey] = string(value)
+	}
+	return nil
 }
