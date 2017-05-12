@@ -53,9 +53,10 @@ import (
 
 const (
 	controllerImage = "bitnami/kubeless-controller"
-	kafkaImage      = "wurstmeister/kafka"
 	pythonRuntime   = "bitnami/kubeless-python@sha256:2d0412e982a8e831dee056aee49089e1d5edd65470e479dcbc7d60bb56ea2b71"
 	pubsubRuntime   = "bitnami/kubeless-event-consumer@sha256:9c29b8ec6023040492226a55b19781bc3a8911d535327c773ee985895515e905"
+	kafkaImage      = "bitnami/kafka"
+	zookeeperImage  = "bitnami/zookeeper"
 	nodejsRuntime   = "rosskukulinski/kubeless-nodejs:0.0.0"
 	rubyRuntime     = "jbianquettibitnami/kubeless-ruby:0.0.0"
 	pubsubFunc      = "PubSub"
@@ -724,7 +725,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 								},
 								{
 									Name:  "KAFKA_ZOOKEEPER_CONNECT",
-									Value: "localhost:2181",
+									Value: "zookeeper." + ctlNamespace + ":2181",
 								},
 							},
 							Ports: []v1.ContainerPort{
@@ -733,9 +734,61 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 								},
 							},
 						},
+					},
+					RestartPolicy: v1.RestartPolicyAlways,
+				},
+			},
+		},
+	}
+	_, err = client.Extensions().Deployments(ctlNamespace).Create(dpm)
+	if err != nil {
+		return err
+	}
+
+	labels = map[string]string{
+		"controller": "zookeeper-controller",
+	}
+
+	//add zookeeper svc
+	svc = &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "zookeeper",
+			Labels: labels,
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Name:       "zookeeper-port",
+					Port:       2181,
+					TargetPort: intstr.FromInt(2181),
+					Protocol:   v1.ProtocolTCP,
+				},
+			},
+			Selector: labels,
+			Type:     v1.ServiceTypeClusterIP,
+		},
+	}
+	_, err = client.Core().Services(ctlNamespace).Create(svc)
+	if err != nil {
+		return err
+	}
+
+	//add deployment
+	dpm = &v1beta1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "zookeeper-controller",
+			Labels: labels,
+		},
+		Spec: v1beta1.DeploymentSpec{
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
 						{
 							Name:            "zookeeper",
-							Image:           "wurstmeister/zookeeper",
+							Image:           zookeeperImage,
 							ImagePullPolicy: v1.PullIfNotPresent,
 							Ports: []v1.ContainerPort{
 								{
@@ -749,7 +802,6 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 			},
 		},
 	}
-
 	_, err = client.Extensions().Deployments(ctlNamespace).Create(dpm)
 	if err != nil {
 		return err

@@ -31,7 +31,7 @@ var topicListCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		command := []string{"bash", "/opt/kafka/bin/kafka-topics.sh", "--zookeeper", "localhost:2181", "--list"}
+		command := []string{"bash", "/opt/bitnami/kafka/bin/kafka-topics.sh", "--zookeeper", "zookeeper." + ctlNamespace + ":2181", "--list"}
 		execCommand(command, ctlNamespace)
 	},
 }

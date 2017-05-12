@@ -35,7 +35,7 @@ var topicDeleteCmd = &cobra.Command{
 		}
 
 		topicName := args[0]
-		command := []string{"bash", "/opt/kafka/bin/kafka-topics.sh", "--zookeeper", "localhost:2181", "--delete", "--topic", topicName}
+		command := []string{"bash", "/opt/bitnami/kafka/bin/kafka-topics.sh", "--zookeeper", "zookeeper." + ctlNamespace + ":2181", "--delete", "--topic", topicName}
 
 		execCommand(command, ctlNamespace)
 	},
