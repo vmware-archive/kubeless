@@ -55,8 +55,8 @@ const (
 	controllerImage = "bitnami/kubeless-controller"
 	pythonRuntime   = "bitnami/kubeless-python@sha256:2d0412e982a8e831dee056aee49089e1d5edd65470e479dcbc7d60bb56ea2b71"
 	pubsubRuntime   = "bitnami/kubeless-event-consumer@sha256:9c29b8ec6023040492226a55b19781bc3a8911d535327c773ee985895515e905"
-	kafkaImage      = "bitnami/kafka"
-	zookeeperImage  = "bitnami/zookeeper"
+	kafkaImage      = "bitnami/kafka@sha256:9ef14a3a2348ae24072c73caa4d4db06c77a8c0383a726d02244ea0e43723355"
+	zookeeperImage  = "bitnami/zookeeper@sha256:0bbf6503e45fc7d5236513987702b0533d2c777144dfd5022feed9ad89dc6318"
 	nodejsRuntime   = "rosskukulinski/kubeless-nodejs:0.0.0"
 	rubyRuntime     = "jbianquettibitnami/kubeless-ruby:0.0.0"
 	pubsubFunc      = "PubSub"
@@ -610,7 +610,7 @@ func DeleteK8sCustomResource(funcName, ns string) error {
 }
 
 // DeployKubeless deploys kubeless controller to k8s
-func DeployKubeless(client *kubernetes.Clientset, ctlImage string, ctlNamespace string) error {
+func DeployKubeless(client *kubernetes.Clientset, ctlNamespace string) error {
 	//add deployment
 	labels := map[string]string{
 		"controller": "kubeless-controller",
@@ -629,7 +629,7 @@ func DeployKubeless(client *kubernetes.Clientset, ctlImage string, ctlNamespace 
 					Containers: []v1.Container{
 						{
 							Name:            ctlNamespace,
-							Image:           getImage(ctlImage),
+							Image:           getImage("kubeless"),
 							ImagePullPolicy: v1.PullIfNotPresent,
 						},
 					},
@@ -663,7 +663,7 @@ func DeployKubeless(client *kubernetes.Clientset, ctlImage string, ctlNamespace 
 }
 
 // DeployMsgBroker deploys kafka-controller
-func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace string) error {
+func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
 	labels := map[string]string{
 		"controller": "kafka-controller",
 	}
@@ -708,7 +708,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 					Containers: []v1.Container{
 						{
 							Name:            "kafka",
-							Image:           getKafkaImage(kafkaVer),
+							Image:           getImage("kafka"),
 							ImagePullPolicy: v1.PullIfNotPresent,
 							Env: []v1.EnvVar{
 								{
@@ -788,7 +788,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 					Containers: []v1.Container{
 						{
 							Name:            "zookeeper",
-							Image:           zookeeperImage,
+							Image:           getImage("zookeeper"),
 							ImagePullPolicy: v1.PullIfNotPresent,
 							Ports: []v1.ContainerPort{
 								{
@@ -833,23 +833,32 @@ func GetReadyPod(pods *v1.PodList) (v1.Pod, error) {
 	return v1.Pod{}, errors.New("There is no pod ready")
 }
 
-// getImage returns runtime image of the function
+// getImage returns corresponding controller image
 func getImage(v string) string {
 	switch v {
-	case "":
-		return fmt.Sprintf("%s:%s", controllerImage, version.VERSION)
+	case "kafka":
+		img := os.Getenv("KAFKA_CONTROLLER")
+		if img != "" {
+			return img
+		} else {
+			return kafkaImage
+		}
+	case "zookeeper":
+		img := os.Getenv("ZOOKEEPER_CONTROLLER")
+		if img != "" {
+			return img
+		} else {
+			return zookeeperImage
+		}
+	case "kubeless":
+		img := os.Getenv("KUBELESS_CONTROLLER")
+		if img != "" {
+			return img
+		} else {
+			return fmt.Sprintf("%s:%s", controllerImage, version.VERSION)
+		}
 	default:
-		return v
-	}
-}
-
-// getKafkaImage returns corresponding kafka image
-func getKafkaImage(v string) string {
-	switch v {
-	case "":
-		return kafkaImage
-	default:
-		return fmt.Sprintf("%s:%s", kafkaImage, v)
+		return ""
 	}
 }
 
