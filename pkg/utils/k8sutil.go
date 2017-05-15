@@ -58,6 +58,7 @@ const (
 	pubsubRuntime   = "skippbox/kubeless-event-consumer:0.0.5"
 	nodejsRuntime   = "rosskukulinski/kubeless-nodejs:0.0.0"
 	rubyRuntime     = "jbianquettibitnami/kubeless-ruby:0.0.0"
+	pubsubFunc      = "PubSub"
 )
 
 // GetClient returns a k8s clientset to the request from inside of cluster
@@ -306,16 +307,6 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 									MountPath: "/kubeless",
 								},
 							},
-							LivenessProbe: &v1.Probe{
-								InitialDelaySeconds: int32(3),
-								PeriodSeconds:       int32(3),
-								Handler: v1.Handler{
-									HTTPGet: &v1.HTTPGetAction{
-										Path: "/healthz",
-										Port: intstr.FromInt(8080),
-									},
-								},
-							},
 						},
 					},
 					Volumes: []v1.Volume{
@@ -345,6 +336,20 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 		updateDeployment(dpm, spec.Runtime)
 		//TODO: remove this when init containers becomes a stable feature
 		addInitContainerAnnotation(dpm)
+	}
+
+	if spec.Type != pubsubFunc {
+		livenessProbe := &v1.Probe{
+			InitialDelaySeconds: int32(3),
+			PeriodSeconds:       int32(3),
+			Handler: v1.Handler{
+				HTTPGet: &v1.HTTPGetAction{
+					Path: "/healthz",
+					Port: intstr.FromInt(8080),
+				},
+			},
+		}
+		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
 	}
 
 	_, err = client.Extensions().Deployments(ns).Create(dpm)
