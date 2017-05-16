@@ -837,26 +837,23 @@ func GetReadyPod(pods *v1.PodList) (v1.Pod, error) {
 func getImage(v string) string {
 	switch v {
 	case "kafka":
-		img := os.Getenv("KAFKA_CONTROLLER")
+		img := os.Getenv("KAFKA_IMAGE")
 		if img != "" {
 			return img
-		} else {
-			return kafkaImage
 		}
+		return kafkaImage
 	case "zookeeper":
-		img := os.Getenv("ZOOKEEPER_CONTROLLER")
+		img := os.Getenv("ZOOKEEPER_IMAGE")
 		if img != "" {
 			return img
-		} else {
-			return zookeeperImage
 		}
+		return zookeeperImage
 	case "kubeless":
-		img := os.Getenv("KUBELESS_CONTROLLER")
+		img := os.Getenv("KUBELESS_CONTROLLER_IMAGE")
 		if img != "" {
 			return img
-		} else {
-			return fmt.Sprintf("%s:%s", controllerImage, version.VERSION)
 		}
+		return fmt.Sprintf("%s:%s", controllerImage, version.VERSION)
 	default:
 		return ""
 	}
