@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    controller: kafka-controller
+  name: kafka
+  namespace: kubeless
+spec:
+  ports:
+  - name: kafka-port
+    port: 9092
+    protocol: TCP
+    targetPort: 9092
+  selector:
+    controller: kafka-controller
+  sessionAffinity: None
+  type: ClusterIP
