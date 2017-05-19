@@ -54,8 +54,8 @@ import (
 const (
 	controllerImage = "bitnami/kubeless-controller"
 	kafkaImage      = "wurstmeister/kafka"
-	pythonRuntime   = "skippbox/kubeless-python:0.0.5"
-	pubsubRuntime   = "skippbox/kubeless-event-consumer:0.0.5"
+	pythonRuntime   = "bitnami/kubeless-python@sha256:2d0412e982a8e831dee056aee49089e1d5edd65470e479dcbc7d60bb56ea2b71"
+	pubsubRuntime   = "bitnami/kubeless-event-consumer@sha256:9c29b8ec6023040492226a55b19781bc3a8911d535327c773ee985895515e905"
 	nodejsRuntime   = "rosskukulinski/kubeless-nodejs:0.0.0"
 	rubyRuntime     = "jbianquettibitnami/kubeless-ruby:0.0.0"
 	pubsubFunc      = "PubSub"
@@ -210,6 +210,16 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 	labels := map[string]string{
 		"function": name,
 	}
+	podAnnotations := map[string]string{
+		// Attempt to attract the attention of prometheus.
+		// For runtimes that don't support /metrics,
+		// prometheus will get a 404 and mostly silently
+		// ignore the pod (still displayed in the list of
+		// "targets")
+		"prometheus.io/scrape": "true",
+		"prometheus.io/path":   "/metrics",
+		"prometheus.io/port":   "8080",
+	}
 	data := map[string]string{
 		"handler": spec.Handler,
 		fileName:  spec.Function,
@@ -273,7 +283,8 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 		Spec: v1beta1.DeploymentSpec{
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
+					Labels:      labels,
+					Annotations: podAnnotations,
 				},
 				Spec: v1.PodSpec{
 					InitContainers: initContainer,
