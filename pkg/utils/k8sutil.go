@@ -54,8 +54,8 @@ import (
 const (
 	controllerImage = "bitnami/kubeless-controller"
 	kafkaImage      = "wurstmeister/kafka"
-	pythonRuntime   = "skippbox/kubeless-python:0.0.5"
-	pubsubRuntime   = "skippbox/kubeless-event-consumer:0.0.5"
+	pythonRuntime   = "bitnami/kubeless-python@sha256:2d0412e982a8e831dee056aee49089e1d5edd65470e479dcbc7d60bb56ea2b71"
+	pubsubRuntime   = "bitnami/kubeless-event-consumer@sha256:9c29b8ec6023040492226a55b19781bc3a8911d535327c773ee985895515e905"
 	nodejsRuntime   = "rosskukulinski/kubeless-nodejs:0.0.0"
 	rubyRuntime     = "jbianquettibitnami/kubeless-ruby:0.0.0"
 	pubsubFunc      = "PubSub"
