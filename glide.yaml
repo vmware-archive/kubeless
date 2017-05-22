@@ -1,4 +1,4 @@
-package: github.com/bitnami/kubeless
+package: github.com/kubeless/kubeless
 import:
 - package: github.com/Sirupsen/logrus
 - package: github.com/spf13/cobra
@@ -13,6 +13,3 @@ import:
 - package: github.com/olekukonko/tablewriter
 - package: github.com/docker/spdystream
 - package: github.com/renstrom/dedent
-# - package: k8s.io/heapster
-#   subpackages:
-#   - metrics/apis/metrics/v1alpha1

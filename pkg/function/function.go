@@ -20,8 +20,8 @@ import (
 	"sync"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/bitnami/kubeless/pkg/spec"
-	"github.com/bitnami/kubeless/pkg/utils"
+	"github.com/kubeless/kubeless/pkg/spec"
+	"github.com/kubeless/kubeless/pkg/utils"
 
 	"k8s.io/client-go/kubernetes"
 )

@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/bitnami/kubeless.svg?branch=master)](https://travis-ci.org/bitnami/kubeless)
 [![Slack](http://slack.oss.bitnami.com/badge.svg)](http://slack.oss.bitnami.com)
 
-`kubeless` is a Kubernetes-native serverless framework. It is currently under active development, the most up-to-date version is `HEAD`. If you experience any problems during this growing phase please file an [issue](https://github.com/bitnami/kubeless/issues) and we will get back to you as quickly as we can.
+`kubeless` is a Kubernetes-native serverless framework. It is currently under active development, the most up-to-date version is `HEAD`. If you experience any problems during this growing phase please file an [issue](https://github.com/kubeless/kubeless/issues) and we will get back to you as quickly as we can.
 
 There are other solutions, like [fission](http://fission.io) from Platform9, [funktion](https://github.com/fabric8io/funktion) from Fabric8. There is also an incubating project at the ASF: [OpenWhisk](https://github.com/openwhisk/openwhisk). We believe however, that Kubeless is the most Kubernetes native of all.
 
@@ -17,7 +17,7 @@ Demo of event based function triggers with Minio.
 
 [![screencast](https://img.youtube.com/vi/AxZuQIJUX4s/0.jpg)](https://www.youtube.com/watch?v=AxZuQIJUX4s)
 
-Also check our [UI](https://github.com/bitnami/kubeless-ui) project
+Also check our [UI](https://github.com/kubeless/kubeless-ui) project
 
 ## Usage
 
@@ -152,7 +152,7 @@ $ make binary-cross
 ### Download kubeless package
 
 ```
-$ go get -u github.com/bitnami/kubeless
+$ go get -u github.com/kubeless/kubeless
 ```
 
 ## _Roadmap_

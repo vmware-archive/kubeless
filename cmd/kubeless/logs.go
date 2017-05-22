@@ -21,7 +21,7 @@ import (
 	"os"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/bitnami/kubeless/pkg/utils"
+	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"

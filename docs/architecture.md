@@ -92,9 +92,9 @@ Diving into these above commands for more details.
 
 ## Implementation
 
-Kubeless controller is written in Go programming language, and uses the Kubernetes go client to interact with the Kubernetes API server. Detailed implementation of the controller could be found at https://github.com/bitnami/kubeless/blob/master/pkg/controller/controller.go#L113
+Kubeless controller is written in Go programming language, and uses the Kubernetes go client to interact with the Kubernetes API server. Detailed implementation of the controller could be found at https://github.com/kubeless/kubeless/blob/master/pkg/controller/controller.go#L113
 
-Kubeless CLI is written in Go as well, using the popular cli library `github.com/spf13/cobra`. Basically it is a bundle of HTTP requests and kubectl commands. We send http requests to the Kubernetes API server in order to 'crud' TPR objects. Other actions are just wrapping up `kubectl port-forward`, `kubectl exec` and `kubectl logs` in order to make direct call to function, inject message to Kafka controller or get function log. Checkout https://github.com/bitnami/kubeless/tree/master/cmd/kubeless for more details.
+Kubeless CLI is written in Go as well, using the popular cli library `github.com/spf13/cobra`. Basically it is a bundle of HTTP requests and kubectl commands. We send http requests to the Kubernetes API server in order to 'crud' TPR objects. Other actions are just wrapping up `kubectl port-forward`, `kubectl exec` and `kubectl logs` in order to make direct call to function, inject message to Kafka controller or get function log. Checkout https://github.com/kubeless/kubeless/tree/master/cmd/kubeless for more details.
 
 ## Directory structure
 

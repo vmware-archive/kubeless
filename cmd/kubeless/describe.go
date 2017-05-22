@@ -25,8 +25,8 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 
-	"github.com/bitnami/kubeless/pkg/spec"
-	"github.com/bitnami/kubeless/pkg/utils"
+	"github.com/kubeless/kubeless/pkg/spec"
+	"github.com/kubeless/kubeless/pkg/utils"
 	"k8s.io/client-go/pkg/api"
 	"os"
 )

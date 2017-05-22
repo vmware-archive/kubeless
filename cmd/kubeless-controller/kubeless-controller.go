@@ -16,7 +16,7 @@ limitations under the License.
 
 // Kubeless controller binary.
 //
-// See github.com/bitnami/kubeless/pkg/controller
+// See github.com/kubeless/kubeless/pkg/controller
 package main
 
 import (
@@ -26,8 +26,8 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/bitnami/kubeless/pkg/controller"
-	"github.com/bitnami/kubeless/pkg/utils"
+	"github.com/kubeless/kubeless/pkg/controller"
+	"github.com/kubeless/kubeless/pkg/utils"
 )
 
 const globalUsage = `` //TODO: adding explanation

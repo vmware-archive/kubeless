@@ -29,8 +29,8 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/bitnami/kubeless/pkg/spec"
-	"github.com/bitnami/kubeless/version"
+	"github.com/kubeless/kubeless/pkg/spec"
+	"github.com/kubeless/kubeless/version"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"

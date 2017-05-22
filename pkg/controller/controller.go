@@ -26,9 +26,9 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/bitnami/kubeless/pkg/function"
-	"github.com/bitnami/kubeless/pkg/spec"
-	"github.com/bitnami/kubeless/pkg/utils"
+	"github.com/kubeless/kubeless/pkg/function"
+	"github.com/kubeless/kubeless/pkg/spec"
+	"github.com/kubeless/kubeless/pkg/utils"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"

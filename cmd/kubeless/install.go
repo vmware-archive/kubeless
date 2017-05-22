@@ -20,8 +20,8 @@ import (
 	"fmt"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/bitnami/kubeless/pkg/controller"
-	"github.com/bitnami/kubeless/pkg/utils"
+	"github.com/kubeless/kubeless/pkg/controller"
+	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 )
 

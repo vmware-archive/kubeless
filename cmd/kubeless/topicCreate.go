@@ -20,7 +20,7 @@ import (
 	"os"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/bitnami/kubeless/pkg/utils"
+	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 
 	k8scmd "k8s.io/kubernetes/pkg/kubectl/cmd"

@@ -27,9 +27,9 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"github.com/bitnami/kubeless/pkg/controller"
-	"github.com/bitnami/kubeless/pkg/spec"
-	"github.com/bitnami/kubeless/pkg/utils"
+	"github.com/kubeless/kubeless/pkg/controller"
+	"github.com/kubeless/kubeless/pkg/spec"
+	"github.com/kubeless/kubeless/pkg/utils"
 )
 
 var listCmd = &cobra.Command{

@@ -24,7 +24,7 @@ rm -f ${GOPATH%%:*}/bin/kubeless*
 # Build binary
 go install \
     "${BUILD_FLAGS[@]}" \
-    github.com/bitnami/kubeless/cmd/...
+    github.com/kubeless/kubeless/cmd/...
 
 if [ $? -eq 0 ]; then
   echo "Build successful. Program saved at ${GOPATH%%:*}/bin"

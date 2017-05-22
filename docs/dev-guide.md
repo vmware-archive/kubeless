@@ -5,7 +5,7 @@ This will cover the steps need to be done in order to build your local developem
 ## Workflow
 
 ### Fork the repo
-1. Visit the repo: https://github.com/bitnami/kubeless
+1. Visit the repo: https://github.com/kubeless/kubeless
 2. Click `Fork` button (top right) to establish a cloud-based fork.
 
 ### Setup the local directory
@@ -28,7 +28,7 @@ $ mkdir -p working_dir
 $ cd $working_dir
 $ git clone https://github.com/$your_github_username/kubeless.git
 $ cd $working_dir/kubeless
-$ git remote add upstream https://github.com/bitnami/kubeless.git
+$ git remote add upstream https://github.com/kubeless/kubeless.git
 
 # Never push to upstream master
 $ git remote set-url --push upstream no_push
@@ -140,6 +140,6 @@ $ kubeless function logs <function_name> -f
 
 ## Manage dependencies
 
-We use [Glide](https://github.com/Masterminds/glide) to vendor the dependencies. Take a quick look on README to understand how it works. Packages that Kubeless relying on is listed at [glide.yaml](https://github.com/bitnami/kubeless/blob/master/glide.yaml)
+We use [Glide](https://github.com/Masterminds/glide) to vendor the dependencies. Take a quick look on README to understand how it works. Packages that Kubeless relying on is listed at [glide.yaml](https://github.com/kubeless/kubeless/blob/master/glide.yaml)
 
 Happy hacking!
