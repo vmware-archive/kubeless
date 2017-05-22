@@ -12,7 +12,7 @@ This will cover the steps need to be done in order to build your local developem
 First setting your $GOPATH accordingly. Then following the [Golang workspace instruction](https://golang.org/doc/code.html#Workspaces) to make sure your local Kubeless directory is set correctly. It should be located at:
 
 ```
-working_dir = $GOPATH/src/github.com/bitnami/
+working_dir = $GOPATH/src/github.com/kubeless/
 ```
 
 Your $PATH should also be updated:

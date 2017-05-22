@@ -34,7 +34,7 @@ deploy:
   skip_cleanup: true
   on:
     tags: true
-    repo: bitnami/kubeless
+    repo: kubeless/kubeless
     go: 1.8
     os: linux
     condition: $CGO_ENABLED = 0
