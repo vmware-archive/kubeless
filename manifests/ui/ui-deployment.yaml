@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: ui
-        image: bitnami/kubeless-ui
+        image: bitnami/kubeless-ui:deployment
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
