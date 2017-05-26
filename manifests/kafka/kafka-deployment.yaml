@@ -1,23 +1,19 @@
-apiVersion: extensions/v1beta1
-kind: Deployment
+apiVersion: apps/v1beta1
+kind: StatefulSet
 metadata:
-  labels:
-   controller: kafka-controller
-  namespace: kubeless
-  name: kafka-controller
+  name: kafka
   namespace: kubeless
 spec:
+  serviceName: "broker"
   replicas: 1
-  selector:
-    matchLabels:
-     controller: kafka-controller
   template:
     metadata:
       labels:
-        controller: kafka-controller
+        app: kafka
     spec:
+      terminationGracePeriodSeconds: 10
       containers:
-      - name: kafka
+      - name: broker
         image: bitnami/kafka@sha256:9ef14a3a2348ae24072c73caa4d4db06c77a8c0383a726d02244ea0e43723355
         imagePullPolicy: IfNotPresent
         env:
@@ -31,5 +27,15 @@ spec:
           value: zookeeper.kubeless:2181
         ports:
         - containerPort: 9092
-          protocol: TCP
         resources: {}
+        volumeMounts:
+        - name: datadir
+          mountPath: /opt/bitnami/kafka/data
+  volumeClaimTemplates:
+  - metadata:
+      name: datadir
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
