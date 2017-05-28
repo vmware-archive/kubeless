@@ -5,7 +5,6 @@ metadata:
    controller: ui
   namespace: kubeless
   name: ui
-  namespace: kubeless
 spec:
   replicas: 1
   selector:
@@ -18,7 +17,7 @@ spec:
     spec:
       containers:
       - name: ui
-        image: bitnami/kubeless-ui:deployment
+        image: bitnami/kubeless-ui:development
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
