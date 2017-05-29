@@ -47,7 +47,7 @@ var topicPublishCmd = &cobra.Command{
 		command := []string{"bash", "-c", body}
 		execCommand(command, ctlNamespace)
 
-		body = fmt.Sprintf(`/opt/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic %s < msg.txt`, topic)
+		body = fmt.Sprintf(`/opt/bitnami/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic %s < msg.txt`, topic)
 		command = []string{"bash", "-c", body}
 		execCommand(command, ctlNamespace)
 	},

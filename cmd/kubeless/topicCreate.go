@@ -41,7 +41,7 @@ var topicCreateCmd = &cobra.Command{
 		}
 
 		topicName := args[0]
-		command := []string{"bash", "/opt/kafka/bin/kafka-topics.sh", "--zookeeper", "localhost:2181", "--replication-factor", "1", "--partitions", "1", "--create", "--topic", topicName}
+		command := []string{"bash", "/opt/bitnami/kafka/bin/kafka-topics.sh", "--zookeeper", "zookeeper." + ctlNamespace + ":2181", "--replication-factor", "1", "--partitions", "1", "--create", "--topic", topicName}
 
 		execCommand(command, ctlNamespace)
 	},
@@ -53,12 +53,12 @@ func execCommand(command []string, ctlNamespace string) {
 	f := cmdutil.NewFactory(nil)
 
 	k8sClientSet := utils.GetClientOutOfCluster()
-	pods, _ := utils.GetPodsByLabel(k8sClientSet, ctlNamespace, "controller", "kafka-controller")
+	pods, _ := utils.GetPodsByLabel(k8sClientSet, ctlNamespace, "app", "kafka")
 	params := &k8scmd.ExecOptions{
 		StreamOptions: k8scmd.StreamOptions{
 			Namespace:     ctlNamespace,
 			PodName:       pods.Items[0].Name,
-			ContainerName: "kafka",
+			ContainerName: "broker",
 			In:            nil,
 			Out:           os.Stdout,
 			Err:           os.Stderr,

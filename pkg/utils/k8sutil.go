@@ -36,11 +36,13 @@ import (
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
 
+	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -53,9 +55,10 @@ import (
 
 const (
 	controllerImage = "bitnami/kubeless-controller"
-	kafkaImage      = "wurstmeister/kafka"
 	pythonRuntime   = "bitnami/kubeless-python@sha256:2d0412e982a8e831dee056aee49089e1d5edd65470e479dcbc7d60bb56ea2b71"
 	pubsubRuntime   = "bitnami/kubeless-event-consumer@sha256:9c29b8ec6023040492226a55b19781bc3a8911d535327c773ee985895515e905"
+	kafkaImage      = "bitnami/kafka@sha256:9ef14a3a2348ae24072c73caa4d4db06c77a8c0383a726d02244ea0e43723355"
+	zookeeperImage  = "bitnami/zookeeper@sha256:0bbf6503e45fc7d5236513987702b0533d2c777144dfd5022feed9ad89dc6318"
 	nodejsRuntime   = "rosskukulinski/kubeless-nodejs:0.0.0"
 	rubyRuntime     = "jbianquettibitnami/kubeless-ruby:0.0.0"
 	pubsubFunc      = "PubSub"
@@ -609,7 +612,7 @@ func DeleteK8sCustomResource(funcName, ns string) error {
 }
 
 // DeployKubeless deploys kubeless controller to k8s
-func DeployKubeless(client *kubernetes.Clientset, ctlImage string, ctlNamespace string) error {
+func DeployKubeless(client *kubernetes.Clientset, ctlNamespace string) error {
 	//add deployment
 	labels := map[string]string{
 		"controller": "kubeless-controller",
@@ -628,7 +631,7 @@ func DeployKubeless(client *kubernetes.Clientset, ctlImage string, ctlNamespace 
 					Containers: []v1.Container{
 						{
 							Name:            ctlNamespace,
-							Image:           getImage(ctlImage),
+							Image:           getImage("kubeless"),
 							ImagePullPolicy: v1.PullIfNotPresent,
 						},
 					},
@@ -661,17 +664,23 @@ func DeployKubeless(client *kubernetes.Clientset, ctlImage string, ctlNamespace 
 	return nil
 }
 
+func getResource() v1.ResourceList {
+	r := make(map[v1.ResourceName]resource.Quantity)
+	r[v1.ResourceStorage], _ = resource.ParseQuantity("1Gi")
+	return r
+}
+
 // DeployMsgBroker deploys kafka-controller
-func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace string) error {
+func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
 	labels := map[string]string{
-		"controller": "kafka-controller",
+		"app": "kafka",
 	}
 
 	//add kafka svc
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "kafka",
-			Labels: labels,
+			Name: "kafka",
+			//Labels: labels,
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
@@ -692,13 +701,40 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 		return err
 	}
 
-	//add deployment
-	dpm := &v1beta1.Deployment{
+	//add kafka headless svc
+	svc = &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "kafka-controller",
-			Labels: labels,
+			Name: "broker",
+			//Labels: labels,
 		},
-		Spec: v1beta1.DeploymentSpec{
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Name:       "kafka-port",
+					Port:       9092,
+					TargetPort: intstr.FromInt(9092),
+					Protocol:   v1.ProtocolTCP,
+				},
+			},
+			Selector:  labels,
+			Type:      v1.ServiceTypeClusterIP,
+			ClusterIP: "None",
+		},
+	}
+
+	_, err = client.Core().Services(ctlNamespace).Create(svc)
+	if err != nil {
+		return err
+	}
+
+	//add kafka statefulset
+	sts := &appsv1beta1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "kafka",
+			//Labels: labels,
+		},
+		Spec: appsv1beta1.StatefulSetSpec{
+			ServiceName: "broker",
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
@@ -706,8 +742,8 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
 						{
-							Name:            "kafka",
-							Image:           getKafkaImage(kafkaVer),
+							Name:            "broker",
+							Image:           getImage("kafka"),
 							ImagePullPolicy: v1.PullIfNotPresent,
 							Env: []v1.EnvVar{
 								{
@@ -724,7 +760,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 								},
 								{
 									Name:  "KAFKA_ZOOKEEPER_CONNECT",
-									Value: "localhost:2181",
+									Value: "zookeeper." + ctlNamespace + ":2181",
 								},
 							},
 							Ports: []v1.ContainerPort{
@@ -732,14 +768,10 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 									ContainerPort: 9092,
 								},
 							},
-						},
-						{
-							Name:            "zookeeper",
-							Image:           "wurstmeister/zookeeper",
-							ImagePullPolicy: v1.PullIfNotPresent,
-							Ports: []v1.ContainerPort{
+							VolumeMounts: []v1.VolumeMount{
 								{
-									ContainerPort: 2181,
+									Name:      "datadir",
+									MountPath: "/opt/bitnami/kafka/data",
 								},
 							},
 						},
@@ -747,10 +779,148 @@ func DeployMsgBroker(client *kubernetes.Clientset, kafkaVer string, ctlNamespace
 					RestartPolicy: v1.RestartPolicyAlways,
 				},
 			},
+			VolumeClaimTemplates: []v1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "datadir",
+					},
+					Spec: v1.PersistentVolumeClaimSpec{
+						AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
+						Resources: v1.ResourceRequirements{
+							Requests: getResource(),
+						},
+					},
+				},
+			},
 		},
 	}
 
-	_, err = client.Extensions().Deployments(ctlNamespace).Create(dpm)
+	_, err = client.Apps().StatefulSets(ctlNamespace).Create(sts)
+	if err != nil {
+		return err
+	}
+
+	labels = map[string]string{
+		"app": "zookeeper",
+	}
+
+	//add zookeeper svc
+	svc = &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "zookeeper",
+			//Labels: labels,
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Name:       "client",
+					Port:       2181,
+					TargetPort: intstr.FromInt(2181),
+					Protocol:   v1.ProtocolTCP,
+				},
+			},
+			Selector: labels,
+			Type:     v1.ServiceTypeClusterIP,
+		},
+	}
+	_, err = client.Core().Services(ctlNamespace).Create(svc)
+	if err != nil {
+		return err
+	}
+
+	//add zookeeper headless svc
+	svc = &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "zoo",
+			//Labels: labels,
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Name:       "peer",
+					Port:       2888,
+					TargetPort: intstr.FromInt(2888),
+					Protocol:   v1.ProtocolTCP,
+				},
+				{
+					Name:       "leader-election",
+					Port:       3888,
+					TargetPort: intstr.FromInt(3888),
+					Protocol:   v1.ProtocolTCP,
+				},
+			},
+			Selector:  labels,
+			Type:      v1.ServiceTypeClusterIP,
+			ClusterIP: "None",
+		},
+	}
+
+	_, err = client.Core().Services(ctlNamespace).Create(svc)
+	if err != nil {
+		return err
+	}
+
+	//add zookeeper statefulset
+	sts = &appsv1beta1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "zoo",
+			//Labels: labels,
+		},
+		Spec: appsv1beta1.StatefulSetSpec{
+			ServiceName: "zoo",
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name:            "zoo",
+							Image:           getImage("zookeeper"),
+							ImagePullPolicy: v1.PullIfNotPresent,
+							Env: []v1.EnvVar{
+								{
+									Name:  "ZOO_SERVERS",
+									Value: "server.1=zoo-0.zoo:2888:3888:participant server.2=zoo-1.zoo:2888:3888:participant server.3=zoo-2.zoo:2888:3888:participant server.4=zoo-3.zoo:2888:3888:participant server.5=zoo-4.zoo:2888:3888:participant",
+								},
+							},
+							Ports: []v1.ContainerPort{
+								{
+									ContainerPort: 2181,
+									Name:          "client",
+								},
+								{
+									ContainerPort: 2888,
+									Name:          "peer",
+								},
+								{
+									ContainerPort: 3888,
+									Name:          "leader-election",
+								},
+							},
+							VolumeMounts: []v1.VolumeMount{
+								{
+									Name:      "zookeeper",
+									MountPath: "/bitnami/zookeeper",
+								},
+							},
+						},
+					},
+					RestartPolicy: v1.RestartPolicyAlways,
+					Volumes: []v1.Volume{
+						{
+							Name: "zookeeper",
+							VolumeSource: v1.VolumeSource{
+								EmptyDir: &v1.EmptyDirVolumeSource{},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, err = client.Apps().StatefulSets(ctlNamespace).Create(sts)
 	if err != nil {
 		return err
 	}
@@ -781,23 +951,29 @@ func GetReadyPod(pods *v1.PodList) (v1.Pod, error) {
 	return v1.Pod{}, errors.New("There is no pod ready")
 }
 
-// getImage returns runtime image of the function
+// getImage returns corresponding controller image
 func getImage(v string) string {
 	switch v {
-	case "":
+	case "kafka":
+		img := os.Getenv("KAFKA_IMAGE")
+		if img != "" {
+			return img
+		}
+		return kafkaImage
+	case "zookeeper":
+		img := os.Getenv("ZOOKEEPER_IMAGE")
+		if img != "" {
+			return img
+		}
+		return zookeeperImage
+	case "kubeless":
+		img := os.Getenv("KUBELESS_CONTROLLER_IMAGE")
+		if img != "" {
+			return img
+		}
 		return fmt.Sprintf("%s:%s", controllerImage, version.VERSION)
 	default:
-		return v
-	}
-}
-
-// getKafkaImage returns corresponding kafka image
-func getKafkaImage(v string) string {
-	switch v {
-	case "":
-		return kafkaImage
-	default:
-		return fmt.Sprintf("%s:%s", kafkaImage, v)
+		return ""
 	}
 }
 

@@ -49,25 +49,14 @@ Use your own controller by specifying --controller-image flag.
 			text = "Y"
 		}
 
-		// Additional user flags
-
-		ctlImage, err := cmd.Flags().GetString("controller-image")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		kafkaVer, err := cmd.Flags().GetString("kafka-version")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
 		if containsString(okayResponses, text) {
 			cfg := controller.Config{
 				KubeCli: utils.GetClientOutOfCluster(),
 			}
 			c := controller.New(cfg)
 			c.Init()
-			c.InstallKubeless(ctlImage, ctlNamespace)
-			c.InstallMsgBroker(kafkaVer, ctlNamespace)
+			c.InstallKubeless(ctlNamespace)
+			c.InstallMsgBroker(ctlNamespace)
 		} else {
 			fmt.Println("Kubeless wasn't installed, exiting.")
 			return
@@ -90,6 +79,4 @@ func posString(slice []string, element string) int {
 
 func init() {
 	installCmd.Flags().StringP("controller-namespace", "", "kubeless", "Install Kubeless to a specific namespace. It will default to 'kubeless'")
-	installCmd.Flags().StringP("controller-image", "", "", "Install a specific image of Kubeless controller")
-	installCmd.Flags().StringP("kafka-version", "", "", "Install a specific version of Kafka")
 }
