@@ -36,11 +36,13 @@ import (
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
 
+	appsv1beta1 "k8s.io/client-go/pkg/apis/apps/v1beta1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -662,17 +664,23 @@ func DeployKubeless(client *kubernetes.Clientset, ctlNamespace string) error {
 	return nil
 }
 
+func getResource() v1.ResourceList {
+	r := make(map[v1.ResourceName]resource.Quantity)
+	r[v1.ResourceStorage], _ = resource.ParseQuantity("1Gi")
+	return r
+}
+
 // DeployMsgBroker deploys kafka-controller
 func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
 	labels := map[string]string{
-		"controller": "kafka-controller",
+		"app": "kafka",
 	}
 
 	//add kafka svc
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "kafka",
-			Labels: labels,
+			Name: "kafka",
+			//Labels: labels,
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
@@ -693,13 +701,40 @@ func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
 		return err
 	}
 
-	//add deployment
-	dpm := &v1beta1.Deployment{
+	//add kafka headless svc
+	svc = &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "kafka-controller",
-			Labels: labels,
+			Name: "broker",
+			//Labels: labels,
 		},
-		Spec: v1beta1.DeploymentSpec{
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Name:       "kafka-port",
+					Port:       9092,
+					TargetPort: intstr.FromInt(9092),
+					Protocol:   v1.ProtocolTCP,
+				},
+			},
+			Selector:  labels,
+			Type:      v1.ServiceTypeClusterIP,
+			ClusterIP: "None",
+		},
+	}
+
+	_, err = client.Core().Services(ctlNamespace).Create(svc)
+	if err != nil {
+		return err
+	}
+
+	//add kafka statefulset
+	sts := &appsv1beta1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "kafka",
+			//Labels: labels,
+		},
+		Spec: appsv1beta1.StatefulSetSpec{
+			ServiceName: "broker",
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
@@ -707,7 +742,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
 						{
-							Name:            "kafka",
+							Name:            "broker",
 							Image:           getImage("kafka"),
 							ImagePullPolicy: v1.PullIfNotPresent,
 							Env: []v1.EnvVar{
@@ -733,32 +768,52 @@ func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
 									ContainerPort: 9092,
 								},
 							},
+							VolumeMounts: []v1.VolumeMount{
+								{
+									Name:      "datadir",
+									MountPath: "/opt/bitnami/kafka/data",
+								},
+							},
 						},
 					},
 					RestartPolicy: v1.RestartPolicyAlways,
 				},
 			},
+			VolumeClaimTemplates: []v1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "datadir",
+					},
+					Spec: v1.PersistentVolumeClaimSpec{
+						AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
+						Resources: v1.ResourceRequirements{
+							Requests: getResource(),
+						},
+					},
+				},
+			},
 		},
 	}
-	_, err = client.Extensions().Deployments(ctlNamespace).Create(dpm)
+
+	_, err = client.Apps().StatefulSets(ctlNamespace).Create(sts)
 	if err != nil {
 		return err
 	}
 
 	labels = map[string]string{
-		"controller": "zookeeper-controller",
+		"app": "zookeeper",
 	}
 
 	//add zookeeper svc
 	svc = &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "zookeeper",
-			Labels: labels,
+			Name: "zookeeper",
+			//Labels: labels,
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
 				{
-					Name:       "zookeeper-port",
+					Name:       "client",
 					Port:       2181,
 					TargetPort: intstr.FromInt(2181),
 					Protocol:   v1.ProtocolTCP,
@@ -773,13 +828,46 @@ func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
 		return err
 	}
 
-	//add deployment
-	dpm = &v1beta1.Deployment{
+	//add zookeeper headless svc
+	svc = &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "zookeeper-controller",
-			Labels: labels,
+			Name: "zoo",
+			//Labels: labels,
 		},
-		Spec: v1beta1.DeploymentSpec{
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Name:       "peer",
+					Port:       2888,
+					TargetPort: intstr.FromInt(2888),
+					Protocol:   v1.ProtocolTCP,
+				},
+				{
+					Name:       "leader-election",
+					Port:       3888,
+					TargetPort: intstr.FromInt(3888),
+					Protocol:   v1.ProtocolTCP,
+				},
+			},
+			Selector:  labels,
+			Type:      v1.ServiceTypeClusterIP,
+			ClusterIP: "None",
+		},
+	}
+
+	_, err = client.Core().Services(ctlNamespace).Create(svc)
+	if err != nil {
+		return err
+	}
+
+	//add zookeeper statefulset
+	sts = &appsv1beta1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "zoo",
+			//Labels: labels,
+		},
+		Spec: appsv1beta1.StatefulSetSpec{
+			ServiceName: "zoo",
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
@@ -787,22 +875,52 @@ func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
 						{
-							Name:            "zookeeper",
+							Name:            "zoo",
 							Image:           getImage("zookeeper"),
 							ImagePullPolicy: v1.PullIfNotPresent,
+							Env: []v1.EnvVar{
+								{
+									Name:  "ZOO_SERVERS",
+									Value: "server.1=zoo-0.zoo:2888:3888:participant server.2=zoo-1.zoo:2888:3888:participant server.3=zoo-2.zoo:2888:3888:participant server.4=zoo-3.zoo:2888:3888:participant server.5=zoo-4.zoo:2888:3888:participant",
+								},
+							},
 							Ports: []v1.ContainerPort{
 								{
 									ContainerPort: 2181,
+									Name:          "client",
+								},
+								{
+									ContainerPort: 2888,
+									Name:          "peer",
+								},
+								{
+									ContainerPort: 3888,
+									Name:          "leader-election",
+								},
+							},
+							VolumeMounts: []v1.VolumeMount{
+								{
+									Name:      "zookeeper",
+									MountPath: "/bitnami/zookeeper",
 								},
 							},
 						},
 					},
 					RestartPolicy: v1.RestartPolicyAlways,
+					Volumes: []v1.Volume{
+						{
+							Name: "zookeeper",
+							VolumeSource: v1.VolumeSource{
+								EmptyDir: &v1.EmptyDirVolumeSource{},
+							},
+						},
+					},
 				},
 			},
 		},
 	}
-	_, err = client.Extensions().Deployments(ctlNamespace).Create(dpm)
+
+	_, err = client.Apps().StatefulSets(ctlNamespace).Create(sts)
 	if err != nil {
 		return err
 	}
