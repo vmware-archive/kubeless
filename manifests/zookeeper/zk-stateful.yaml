@@ -17,7 +17,7 @@ spec:
           image: bitnami/zookeeper:3.4.10
           env:
             - name: ZOO_SERVERS
-              value: server.1=zoo-0.zoo:2888:3888:participant server.2=zoo-1.zoo:2888:3888:participant server.3=zoo-2.zoo:2888:3888:participant server.4=zoo-3.zoo:2888:3888:participant server.5=zoo-4.zoo:2888:3888:participant
+              value: server.1=zoo-0.zoo:2888:3888:participant
           ports:
             - containerPort: 2181
               name: client
