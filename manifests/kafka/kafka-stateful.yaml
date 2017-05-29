@@ -18,7 +18,7 @@ spec:
         imagePullPolicy: IfNotPresent
         env:
         - name: KAFKA_ADVERTISED_HOST_NAME
-          value: kafka.kubeless
+          value: broker.kubeless
         - name: KAFKA_ADVERTISED_PORT
           value: "9092"
         - name: KAFKA_PORT

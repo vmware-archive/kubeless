@@ -748,7 +748,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
 							Env: []v1.EnvVar{
 								{
 									Name:  "KAFKA_ADVERTISED_HOST_NAME",
-									Value: "kafka." + ctlNamespace,
+									Value: "broker." + ctlNamespace,
 								},
 								{
 									Name:  "KAFKA_ADVERTISED_PORT",
@@ -881,7 +881,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
 							Env: []v1.EnvVar{
 								{
 									Name:  "ZOO_SERVERS",
-									Value: "server.1=zoo-0.zoo:2888:3888:participant server.2=zoo-1.zoo:2888:3888:participant server.3=zoo-2.zoo:2888:3888:participant server.4=zoo-3.zoo:2888:3888:participant server.5=zoo-4.zoo:2888:3888:participant",
+									Value: "server.1=zoo-0.zoo:2888:3888:participant",
 								},
 							},
 							Ports: []v1.ContainerPort{
