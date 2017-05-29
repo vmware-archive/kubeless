@@ -120,8 +120,7 @@ func (c *Controller) InstallMsgBroker(ctlNamespace string) {
 // Run starts the kubeless controller
 func (c *Controller) Run() error {
 	var (
-		watchVersion string
-		err          error
+		err error
 	)
 
 	// make a new config for the extension's API group, using the first config as a baseline
@@ -130,18 +129,12 @@ func (c *Controller) Run() error {
 		return err
 	}
 
-	watchVersion, err = c.FindResourceVersion(tprClient)
-	if err != nil {
-		return err
-	}
-
-	c.logger.Infof("Start running Kubeless controller from watch version: %s", watchVersion)
 	defer func() {
 		c.waitFunction.Wait()
 	}()
 
 	//monitor user-defined functions
-	eventCh, errCh := c.monitor(tprClient.Client, watchVersion)
+	eventCh, errCh := c.monitor(tprClient)
 
 	go func() {
 		for event := range eventCh {
@@ -175,7 +168,7 @@ func (c *Controller) Run() error {
 				functionSpec := &event.Object.Spec
 				err := function.Update(c.Config.KubeCli, functionName, ns, functionSpec, &c.waitFunction)
 				if err != nil {
-					c.logger.Error("Function can not be updated: ", err)
+					c.logger.Errorf("Function can not be updated: %v", err)
 					break
 				}
 				c.Functions[functionName+"."+ns] = event.Object
@@ -232,7 +225,11 @@ func (c *Controller) FindResourceVersion(tprClient *rest.RESTClient) (string, er
 }
 
 // monitor continuously watches for changes to custom function objects
-func (c *Controller) monitor(httpClient *http.Client, watchVersion string) (<-chan *Event, <-chan error) {
+func (c *Controller) monitor(tprClient *rest.RESTClient) (<-chan *Event, <-chan error) {
+	var (
+		watchVersion string
+		err          error
+	)
 	eventCh := make(chan *Event)
 	errCh := make(chan error, 1)
 
@@ -241,9 +238,16 @@ func (c *Controller) monitor(httpClient *http.Client, watchVersion string) (<-ch
 
 		// per-watch loop: start watching resources and collecting functions (custom objects)
 		for {
-			resp, err := utils.WatchResources(httpClient, watchVersion)
+			watchVersion, err = c.FindResourceVersion(tprClient)
+			if err != nil {
+				c.logger.Errorf("Fail to find resources version: %v. Try again", err)
+				continue
+			}
+
+			resp, err := utils.WatchResources(tprClient.Client, watchVersion)
 			if err != nil {
 				c.logger.Errorf("Fail to watch resources: %v. Try again", err)
+				resp.Body.Close()
 				continue
 			}
 			if resp.StatusCode != 200 {
@@ -260,7 +264,8 @@ func (c *Controller) monitor(httpClient *http.Client, watchVersion string) (<-ch
 
 				if err != nil {
 					if err == io.EOF { // apiserver will close stream periodically
-						c.logger.Debug("Apiserver closed stream")
+						c.logger.Errorf("Apiserver closed stream: %v", err)
+						resp.Body.Close()
 						break
 					}
 
@@ -273,7 +278,7 @@ func (c *Controller) monitor(httpClient *http.Client, watchVersion string) (<-ch
 						errCh <- errVersionOutdated
 						continue
 					}
-					c.logger.Fatalf("Unexpected status response from API server: %v", st.Message)
+					c.logger.Warningf("Unexpected status response from API server: %v", st.Message)
 				}
 
 				c.logger.Debugf("Function event: %v %v", ev.Type, ev.Object.Spec)
@@ -281,8 +286,6 @@ func (c *Controller) monitor(httpClient *http.Client, watchVersion string) (<-ch
 				watchVersion = ev.Object.Metadata.ResourceVersion
 				eventCh <- ev
 			}
-
-			resp.Body.Close()
 		}
 	}()
 
