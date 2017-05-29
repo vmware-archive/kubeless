@@ -615,7 +615,7 @@ func DeleteK8sCustomResource(funcName, ns string) error {
 func DeployKubeless(client *kubernetes.Clientset, ctlNamespace string) error {
 	//add deployment
 	labels := map[string]string{
-		"controller": "kubeless-controller",
+		"kubeless": "controller",
 	}
 	dpm := &v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -673,7 +673,7 @@ func getResource() v1.ResourceList {
 // DeployMsgBroker deploys kafka-controller
 func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
 	labels := map[string]string{
-		"app": "kafka",
+		"kubeless": "kafka",
 	}
 
 	//add kafka svc
@@ -801,7 +801,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
 	}
 
 	labels = map[string]string{
-		"app": "zookeeper",
+		"kubeless": "zookeeper",
 	}
 
 	//add zookeeper svc
