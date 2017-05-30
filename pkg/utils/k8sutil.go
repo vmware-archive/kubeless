@@ -30,7 +30,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/spec"
-	"github.com/kubeless/kubeless/version"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
@@ -54,7 +53,7 @@ import (
 )
 
 const (
-	controllerImage = "bitnami/kubeless-controller"
+	controllerImage = "bitnami/kubeless-controller@sha256:941ce6733db8133e6aa88c8adc37c33f7719ea548bb17d4b23481890ba2a009f"
 	pythonRuntime   = "bitnami/kubeless-python@sha256:2d0412e982a8e831dee056aee49089e1d5edd65470e479dcbc7d60bb56ea2b71"
 	pubsubRuntime   = "bitnami/kubeless-event-consumer@sha256:9c29b8ec6023040492226a55b19781bc3a8911d535327c773ee985895515e905"
 	kafkaImage      = "bitnami/kafka@sha256:9ef14a3a2348ae24072c73caa4d4db06c77a8c0383a726d02244ea0e43723355"
@@ -971,7 +970,7 @@ func getImage(v string) string {
 		if img != "" {
 			return img
 		}
-		return fmt.Sprintf("%s:%s", controllerImage, version.VERSION)
+		return controllerImage
 	default:
 		return ""
 	}
