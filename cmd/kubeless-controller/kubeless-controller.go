@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -32,7 +33,10 @@ import (
 	"github.com/kubeless/kubeless/pkg/utils"
 )
 
-const globalUsage = `` //TODO: adding explanation
+const (
+	globalUsage = `` //TODO: adding explanation
+	gcInterval  = 1 * time.Minute
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "kubeless-controller",
@@ -48,7 +52,6 @@ var rootCmd = &cobra.Command{
 			TprClient: tprClient,
 		}
 		c := controller.New(cfg)
-
 		stopCh := make(chan struct{})
 		defer close(stopCh)
 
@@ -58,6 +61,7 @@ var rootCmd = &cobra.Command{
 		signal.Notify(sigterm, syscall.SIGTERM)
 		signal.Notify(sigterm, syscall.SIGINT)
 		<-sigterm
+		go c.RunGC(gcInterval)
 	},
 }
 

@@ -1066,3 +1066,19 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 	}
 	return nil
 }
+
+//IsKubernetesResourceNotFoundError returns true if resource is not found
+func IsKubernetesResourceNotFoundError(err error) bool {
+	return k8sErrors.IsNotFound(err)
+}
+
+//CascadeDeleteOptions returns option for cascade deletion
+func CascadeDeleteOptions(gracePeriodSeconds int64) *metav1.DeleteOptions {
+	return &metav1.DeleteOptions{
+		GracePeriodSeconds: func(t int64) *int64 { return &t }(gracePeriodSeconds),
+		PropagationPolicy: func() *metav1.DeletionPropagation {
+			foreground := metav1.DeletePropagationForeground
+			return &foreground
+		}(),
+	}
+}
