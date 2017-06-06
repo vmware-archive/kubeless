@@ -56,12 +56,12 @@ var rootCmd = &cobra.Command{
 		defer close(stopCh)
 
 		go c.Run(stopCh)
+		go c.RunGC(gcInterval)
 
 		sigterm := make(chan os.Signal, 1)
 		signal.Notify(sigterm, syscall.SIGTERM)
 		signal.Notify(sigterm, syscall.SIGINT)
 		<-sigterm
-		go c.RunGC(gcInterval)
 	},
 }
 

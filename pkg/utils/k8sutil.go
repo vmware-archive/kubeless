@@ -46,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/kubectl/cmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
@@ -171,7 +172,7 @@ func GetFunction(funcName, ns string) (spec.Function, error) {
 }
 
 // EnsureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
-func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kubernetes.Interface) error {
+func EnsureK8sResources(ns, name string, uid types.UID, spec *spec.FunctionSpec, client kubernetes.Interface) error {
 	str := strings.Split(spec.Handler, ".")
 	if len(str) != 2 {
 		return errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
@@ -206,6 +207,18 @@ func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 	labels := map[string]string{
 		"function": name,
 	}
+
+	t := bool(true)
+	or := []metav1.OwnerReference{
+		{
+			Kind:               "Function",
+			APIVersion:         "k8s.io",
+			Name:               name,
+			UID:                uid,
+			BlockOwnerDeletion: &t,
+		},
+	}
+
 	podAnnotations := map[string]string{
 		// Attempt to attract the attention of prometheus.
 		// For runtimes that don't support /metrics,
@@ -218,8 +231,9 @@ func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 	}
 	configMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: labels,
+			Name:            name,
+			Labels:          labels,
+			OwnerReferences: or,
 		},
 		Data: map[string]string{
 			"handler": spec.Handler,
@@ -239,8 +253,9 @@ func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 	//add service
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: labels,
+			Name:            name,
+			Labels:          labels,
+			OwnerReferences: or,
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
@@ -278,8 +293,9 @@ func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 	maxUnavailable := intstr.FromInt(0)
 	dpm := &v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: labels,
+			Name:            name,
+			Labels:          labels,
+			OwnerReferences: or,
 		},
 		Spec: v1beta1.DeploymentSpec{
 			Template: v1.PodTemplateSpec{
@@ -379,7 +395,6 @@ func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", ns, pod.Name, err)
 			}
 		}
-
 	}
 	if err != nil {
 		return err

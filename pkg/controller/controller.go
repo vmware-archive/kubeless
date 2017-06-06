@@ -37,10 +37,7 @@ import (
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/staging/src/k8s.io/client-go/pkg/api"
 )
 
 const (
@@ -230,8 +227,9 @@ func (c *Controller) processItem(key string) error {
 	}
 
 	funcObj := obj.(*spec.Function)
+	fUID := funcObj.Metadata.UID
 
-	err = utils.EnsureK8sResources(ns, name, &funcObj.Spec, c.clientset)
+	err = utils.EnsureK8sResources(ns, name, fUID, &funcObj.Spec, c.clientset)
 	if err != nil {
 		c.logger.Errorf("Function can not be created/updated: %v", err)
 		return err
@@ -292,20 +290,20 @@ func (c *Controller) garbageCollect() error {
 		functionUIDSet[f.Metadata.UID] = true
 	}
 
-	if err = collectServices(c.Config.KubeCli, functionUIDSet); err != nil {
+	if err = collectServices(c.clientset, functionUIDSet); err != nil {
 		return err
 	}
-	if err = collectDeployment(c.Config.KubeCli, functionUIDSet); err != nil {
+	if err = collectDeployment(c.clientset, functionUIDSet); err != nil {
 		return err
 	}
-	if err = collectConfigMap(c.Config.KubeCli, functionUIDSet); err != nil {
+	if err = collectConfigMap(c.clientset, functionUIDSet); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func collectServices(c *kubernetes.Clientset, functionUIDSet map[types.UID]bool) error {
+func collectServices(c kubernetes.Interface, functionUIDSet map[types.UID]bool) error {
 	srvs, err := c.CoreV1().Services(api.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -316,7 +314,7 @@ func collectServices(c *kubernetes.Clientset, functionUIDSet map[types.UID]bool)
 			continue
 		}
 		if !functionUIDSet[srv.OwnerReferences[0].UID] {
-			err = c.CoreV1().Services(api.NamespaceAll).Delete(srv.GetName(), nil)
+			err = c.CoreV1().Services(srv.GetNamespace()).Delete(srv.GetName(), nil)
 			if err != nil && !utils.IsKubernetesResourceNotFoundError(err) {
 				return err
 			}
@@ -326,7 +324,7 @@ func collectServices(c *kubernetes.Clientset, functionUIDSet map[types.UID]bool)
 	return nil
 }
 
-func collectDeployment(c *kubernetes.Clientset, functionUIDSet map[types.UID]bool) error {
+func collectDeployment(c kubernetes.Interface, functionUIDSet map[types.UID]bool) error {
 	ds, err := c.AppsV1beta1().Deployments(api.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -337,7 +335,7 @@ func collectDeployment(c *kubernetes.Clientset, functionUIDSet map[types.UID]boo
 			continue
 		}
 		if !functionUIDSet[d.OwnerReferences[0].UID] {
-			err = c.AppsV1beta1().Deployments(api.NamespaceAll).Delete(d.GetName(), utils.CascadeDeleteOptions(0))
+			err = c.AppsV1beta1().Deployments(d.GetNamespace()).Delete(d.GetName(), utils.CascadeDeleteOptions(0))
 			if err != nil {
 				if !utils.IsKubernetesResourceNotFoundError(err) {
 					return err
@@ -349,7 +347,7 @@ func collectDeployment(c *kubernetes.Clientset, functionUIDSet map[types.UID]boo
 	return nil
 }
 
-func collectConfigMap(c *kubernetes.Clientset, functionUIDSet map[types.UID]bool) error {
+func collectConfigMap(c kubernetes.Interface, functionUIDSet map[types.UID]bool) error {
 	cm, err := c.CoreV1().ConfigMaps(api.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -360,7 +358,7 @@ func collectConfigMap(c *kubernetes.Clientset, functionUIDSet map[types.UID]bool
 			continue
 		}
 		if !functionUIDSet[m.OwnerReferences[0].UID] {
-			err = c.CoreV1().ConfigMaps(api.NamespaceAll).Delete(m.GetName(), nil)
+			err = c.CoreV1().ConfigMaps(m.GetNamespace()).Delete(m.GetName(), nil)
 			if err != nil {
 				if !utils.IsKubernetesResourceNotFoundError(err) {
 					return err
