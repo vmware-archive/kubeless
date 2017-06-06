@@ -19,7 +19,6 @@ package function
 import (
 	"sync"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 
@@ -33,42 +32,23 @@ type functionEvent struct {
 	spec spec.FunctionSpec
 }
 
-// Function object
-type Function struct {
-	logger    *logrus.Entry
-	kclient   *kubernetes.Clientset
-	Spec      *spec.FunctionSpec
-	Name      string
-	Namespace string
-	eventCh   chan *functionEvent
-}
-
 // New creates the custom function object
-func New(c *kubernetes.Clientset, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
+func New(c kubernetes.Interface, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
 	return new(c, name, ns, spec, wg)
 }
 
 // Delete removes the custom function object
-func Delete(c *kubernetes.Clientset, name, ns string, wg *sync.WaitGroup) error {
+func Delete(c kubernetes.Interface, name, ns string, wg *sync.WaitGroup) error {
 	return delete(c, name, ns, wg)
 }
 
 // Update apply changes to the custom function object
-func Update(c *kubernetes.Clientset, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
+func Update(c kubernetes.Interface, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
 	return update(c, name, ns, spec, wg)
 }
 
-func new(kclient *kubernetes.Clientset, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
-	f := &Function{
-		logger:    logrus.WithField("pkg", "function").WithField("function-name", name),
-		kclient:   kclient,
-		Name:      name,
-		Namespace: ns,
-		eventCh:   make(chan *functionEvent, 100),
-		Spec:      spec,
-	}
-
-	err := utils.CreateK8sResources(f.Namespace, f.Name, f.Spec, kclient)
+func new(kclient kubernetes.Interface, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
+	err := utils.CreateK8sResources(ns, name, spec, kclient)
 	if err != nil {
 		return err
 	}
@@ -78,23 +58,14 @@ func new(kclient *kubernetes.Clientset, name, ns string, spec *spec.FunctionSpec
 	return nil
 }
 
-func delete(kclient *kubernetes.Clientset, name, ns string, wg *sync.WaitGroup) error {
+func delete(kclient kubernetes.Interface, name, ns string, wg *sync.WaitGroup) error {
 	err := utils.DeleteK8sResources(ns, name, kclient)
 	wg.Add(1)
 	return err
 }
 
-func update(kclient *kubernetes.Clientset, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
-	f := &Function{
-		logger:    logrus.WithField("pkg", "function").WithField("function-name", name),
-		kclient:   kclient,
-		Name:      name,
-		Namespace: ns,
-		eventCh:   make(chan *functionEvent, 100),
-		Spec:      spec,
-	}
-
-	err := utils.UpdateK8sResources(kclient, f.Name, f.Namespace, f.Spec)
+func update(kclient kubernetes.Interface, name, ns string, spec *spec.FunctionSpec, wg *sync.WaitGroup) error {
+	err := utils.UpdateK8sResources(kclient, name, ns, spec)
 	if err != nil {
 		return err
 	}

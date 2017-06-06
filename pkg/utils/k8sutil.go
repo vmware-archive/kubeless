@@ -64,7 +64,7 @@ const (
 )
 
 // GetClient returns a k8s clientset to the request from inside of cluster
-func GetClient() *kubernetes.Clientset {
+func GetClient() kubernetes.Interface {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		logrus.Fatalf("Can not get kubernetes config: %v", err)
@@ -79,7 +79,7 @@ func GetClient() *kubernetes.Clientset {
 }
 
 // GetClientOutOfCluster returns a k8s clientset to the request from outside of cluster
-func GetClientOutOfCluster() *kubernetes.Clientset {
+func GetClientOutOfCluster() kubernetes.Interface {
 	config, err := clientcmd.BuildConfigFromFlags("", os.Getenv("HOME")+"/.kube/config")
 	if err != nil {
 		logrus.Fatalf("Can not get kubernetes config: %v", err)
@@ -177,7 +177,7 @@ func WatchResources(httpClient *http.Client, resourceVersion string) (*http.Resp
 }
 
 // CreateK8sResources deploys k8s objects (deploy, svc, configmap) for the function
-func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubernetes.Clientset) error {
+func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client kubernetes.Interface) error {
 	str := strings.Split(spec.Handler, ".")
 	if len(str) != 2 {
 		return errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
@@ -375,7 +375,7 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 
 // UpdateK8sResources applies function changes to the existing k8s configmap,
 // then the deployment rolling update will be triggered automately
-func UpdateK8sResources(kclient *kubernetes.Clientset, name, ns string, spec *spec.FunctionSpec) error {
+func UpdateK8sResources(kclient kubernetes.Interface, name, ns string, spec *spec.FunctionSpec) error {
 	str := strings.Split(spec.Handler, ".")
 	if len(str) != 2 {
 		return errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
@@ -435,7 +435,7 @@ func UpdateK8sResources(kclient *kubernetes.Clientset, name, ns string, spec *sp
 }
 
 // DeleteK8sResources removes k8s objects of the function
-func DeleteK8sResources(ns, name string, client *kubernetes.Clientset) error {
+func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
 	deploy, err := client.Extensions().Deployments(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -611,7 +611,7 @@ func DeleteK8sCustomResource(funcName, ns string) error {
 }
 
 // DeployKubeless deploys kubeless controller to k8s
-func DeployKubeless(client *kubernetes.Clientset, ctlNamespace string) error {
+func DeployKubeless(client kubernetes.Interface, ctlNamespace string) error {
 	//add deployment
 	labels := map[string]string{
 		"kubeless": "controller",
@@ -670,7 +670,7 @@ func getResource() v1.ResourceList {
 }
 
 // DeployMsgBroker deploys kafka-controller
-func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
+func DeployMsgBroker(client kubernetes.Interface, ctlNamespace string) error {
 	labels := map[string]string{
 		"kubeless": "kafka",
 	}
@@ -929,7 +929,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
 
 // GetPodsByLabel returns list of pods which match the label
 // We use this to returns pods to which the function is deployed or pods running controllers
-func GetPodsByLabel(c *kubernetes.Clientset, ns, k, v string) (*v1.PodList, error) {
+func GetPodsByLabel(c kubernetes.Interface, ns, k, v string) (*v1.PodList, error) {
 	pods, err := c.Core().Pods(ns).List(metav1.ListOptions{
 		LabelSelector: k + "=" + v,
 	})

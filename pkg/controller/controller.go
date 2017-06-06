@@ -61,21 +61,21 @@ type Event struct {
 // Controller object
 type Controller struct {
 	logger       *logrus.Entry
-	Config       Config
+	clientset    kubernetes.Interface
 	waitFunction sync.WaitGroup
 	Functions    map[string]*spec.Function
 }
 
 // Config contains k8s client of a controller
 type Config struct {
-	KubeCli *kubernetes.Clientset
+	KubeCli kubernetes.Interface
 }
 
 // New initializes a controller object
 func New(cfg Config) *Controller {
 	return &Controller{
 		logger:    logrus.WithField("pkg", "controller"),
-		Config:    cfg,
+		clientset: cfg.KubeCli,
 		Functions: make(map[string]*spec.Function),
 	}
 }
@@ -98,7 +98,7 @@ func (c *Controller) Init() {
 // InstallKubeless deploys kubeless-controller
 func (c *Controller) InstallKubeless(ctlNamespace string) {
 	c.logger.Infof("Installing Kubeless controller into Kubernetes deployment...")
-	err := utils.DeployKubeless(c.Config.KubeCli, ctlNamespace)
+	err := utils.DeployKubeless(c.clientset, ctlNamespace)
 	if err != nil {
 		c.logger.Errorf("Kubeless controller installation failed: %v", err)
 	} else {
@@ -109,7 +109,7 @@ func (c *Controller) InstallKubeless(ctlNamespace string) {
 // InstallMsgBroker deploys kafka-controller
 func (c *Controller) InstallMsgBroker(ctlNamespace string) {
 	c.logger.Infof("Installing Message Broker into Kubernetes deployment...")
-	err := utils.DeployMsgBroker(c.Config.KubeCli, ctlNamespace)
+	err := utils.DeployMsgBroker(c.clientset, ctlNamespace)
 	if err != nil {
 		c.logger.Errorf("Message Broker installation failed: %v", err)
 	} else {
@@ -143,7 +143,7 @@ func (c *Controller) Run() error {
 			switch event.Type {
 			case "ADDED":
 				functionSpec := &event.Object.Spec
-				err := function.New(c.Config.KubeCli, functionName, ns, functionSpec, &c.waitFunction)
+				err := function.New(c.clientset, functionName, ns, functionSpec, &c.waitFunction)
 				if err != nil {
 					c.logger.Errorf("A new function is detected but can't be added: %v", err)
 					break
@@ -157,7 +157,7 @@ func (c *Controller) Run() error {
 					break
 				}
 				delete(c.Functions, functionName)
-				err := function.Delete(c.Config.KubeCli, functionName, ns, &c.waitFunction)
+				err := function.Delete(c.clientset, functionName, ns, &c.waitFunction)
 				if err != nil {
 					c.logger.Errorf("Can't delete function: %v", err)
 					break
@@ -166,7 +166,7 @@ func (c *Controller) Run() error {
 
 			case "MODIFIED":
 				functionSpec := &event.Object.Spec
-				err := function.Update(c.Config.KubeCli, functionName, ns, functionSpec, &c.waitFunction)
+				err := function.Update(c.clientset, functionName, ns, functionSpec, &c.waitFunction)
 				if err != nil {
 					c.logger.Errorf("Function can not be updated: %v", err)
 					break
@@ -181,7 +181,7 @@ func (c *Controller) Run() error {
 }
 
 func (c *Controller) initResource() error {
-	_, err := c.Config.KubeCli.Extensions().ThirdPartyResources().Get(tprName, metav1.GetOptions{})
+	_, err := c.clientset.Extensions().ThirdPartyResources().Get(tprName, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			tpr := &v1beta1.ThirdPartyResource{
@@ -194,7 +194,7 @@ func (c *Controller) initResource() error {
 				Description: "Kubeless: Serverless framework for Kubernetes",
 			}
 
-			_, err := c.Config.KubeCli.Extensions().ThirdPartyResources().Create(tpr)
+			_, err := c.clientset.Extensions().ThirdPartyResources().Create(tpr)
 			if err != nil {
 				return err
 			}

@@ -61,7 +61,7 @@ var logsCmd = &cobra.Command{
 			Container: funcName,
 			Follow:    follow,
 		}
-		req := k8sClient.Pods(ns).GetLogs(readyPod.Name, podLog)
+		req := k8sClient.Core().Pods(ns).GetLogs(readyPod.Name, podLog)
 
 		readCloser, err := req.Stream()
 		if err != nil {
