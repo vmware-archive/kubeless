@@ -85,7 +85,7 @@ func (c *Controller) Init() {
 	c.logger.Infof("Initializing Kubeless controller...")
 	for {
 		//create TPR if it's not exists
-		err := c.initResource()
+		err := initResource(c.clientset)
 		if err == nil {
 			break
 		}
@@ -180,29 +180,23 @@ func (c *Controller) Run() error {
 	return <-errCh
 }
 
-func (c *Controller) initResource() error {
-	_, err := c.clientset.Extensions().ThirdPartyResources().Get(tprName, metav1.GetOptions{})
-	if err != nil {
-		if k8sErrors.IsNotFound(err) {
-			tpr := &v1beta1.ThirdPartyResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: tprName,
-				},
-				Versions: []v1beta1.APIVersion{
-					{Name: "v1"},
-				},
-				Description: "Kubeless: Serverless framework for Kubernetes",
-			}
+func initResource(clientset kubernetes.Interface) error {
+	tpr := &v1beta1.ThirdPartyResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: tprName,
+		},
+		Versions: []v1beta1.APIVersion{
+			{Name: "v1"},
+		},
+		Description: "Kubeless: Serverless framework for Kubernetes",
+	}
 
-			_, err := c.clientset.Extensions().ThirdPartyResources().Create(tpr)
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	} else {
-		fmt.Println("The functions.k8s.io tpr already exists")
+	_, err := clientset.Extensions().ThirdPartyResources().Create(tpr)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		_, err = clientset.Extensions().ThirdPartyResources().Update(tpr)
+	}
+	if err != nil {
+		return err
 	}
 
 	return nil
