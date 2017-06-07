@@ -19,15 +19,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"strings"
+	"io"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/rest"
 
-	"github.com/kubeless/kubeless/pkg/controller"
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 )
@@ -39,64 +39,92 @@ var listCmd = &cobra.Command{
 	Long:    `list all functions deployed to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		output, err := cmd.Flags().GetString("out")
-		cfg := controller.Config{
-			KubeCli: utils.GetClientOutOfCluster(),
+		if err != nil {
+			logrus.Fatal(err.Error())
 		}
-		c := controller.New(cfg)
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			logrus.Fatal(err.Error())
+		}
 
 		tprClient, err := utils.GetTPRClientOutOfCluster()
 		if err != nil {
 			logrus.Fatalf("Can not list functions: %v", err)
 		}
-		_, err = c.FindResourceVersion(tprClient)
-		if err != nil {
-			logrus.Fatalf("Can not list functions: %v", err)
-		}
 
-		if len(args) == 0 {
-			for k := range c.Functions {
-				args = append(args, k)
-			}
+		if err := doList(cmd.OutOrStdout(), tprClient, ns, output, args); err != nil {
+			logrus.Fatal(err.Error())
 		}
-
-		printFunctions(args, c.Functions, output)
 	},
 }
 
 func init() {
 	listCmd.Flags().StringP("out", "o", "", "Output format. One of: json|yaml")
-	// TODO: list all namespaces now. Will add specific ns later
-	//listCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
+	listCmd.Flags().StringP("namespace", "n", api.NamespaceDefault, "Specify namespace for the function")
+}
+
+func doList(w io.Writer, tprClient rest.Interface, ns, output string, args []string) error {
+	var list []*spec.Function
+	if len(args) == 0 {
+		funcList := spec.FunctionList{}
+		err := tprClient.Get().
+			Resource("functions").
+			Namespace(ns).
+			Do().
+			Into(&funcList)
+		if err != nil {
+			return err
+		}
+		list = funcList.Items
+	} else {
+		list = make([]*spec.Function, 0, len(args))
+		for _, arg := range args {
+			f := spec.Function{}
+			err := tprClient.Get().
+				Resource("functions").
+				Namespace(ns).
+				Name(arg).
+				Do().
+				Into(&f)
+			if err != nil {
+				return fmt.Errorf("Error listing function %s: %v", arg, err)
+			}
+			list = append(list, &f)
+		}
+	}
+
+	return printFunctions(w, list, output)
 }
 
 // printFunctions formats the output of function list
-func printFunctions(args []string, functions map[string]*spec.Function, output string) {
+func printFunctions(w io.Writer, functions []*spec.Function, output string) error {
 	if output == "" {
-		table := tablewriter.NewWriter(os.Stdout)
+		table := tablewriter.NewWriter(w)
 		table.SetHeader([]string{"Name", "namespace", "handler", "runtime", "type", "topic", "dependencies"})
-		for _, f := range args {
-			n := strings.Split(fmt.Sprintf(f), ".")[0]
-			h := fmt.Sprintf(functions[f].Spec.Handler)
-			r := fmt.Sprintf(functions[f].Spec.Runtime)
-			t := fmt.Sprintf(functions[f].Spec.Type)
-			tp := fmt.Sprintf(functions[f].Spec.Topic)
-			ns := fmt.Sprintf(functions[f].Metadata.Namespace)
-			dep := fmt.Sprintf(functions[f].Spec.Deps)
+		for _, f := range functions {
+			n := f.Metadata.Name
+			h := f.Spec.Handler
+			r := f.Spec.Runtime
+			t := f.Spec.Type
+			tp := f.Spec.Topic
+			ns := f.Metadata.Namespace
+			dep := f.Spec.Deps
 			table.Append([]string{n, ns, h, r, t, tp, dep})
 		}
 		table.Render()
 	} else {
-		for _, f := range args {
+		for _, f := range functions {
 			switch output {
 			case "json":
-				b, _ := json.MarshalIndent(functions[f].Spec, "", "  ")
-				fmt.Println(string(b))
+				b, _ := json.MarshalIndent(f.Spec, "", "  ")
+				fmt.Fprintln(w, string(b))
 			case "yaml":
-				b, _ := yaml.Marshal(functions[f].Spec)
-				fmt.Println(string(b))
+				b, _ := yaml.Marshal(f.Spec)
+				fmt.Fprintln(w, string(b))
 			default:
-				fmt.Println("Wrong output format. Please use only json|yaml")
+				return fmt.Errorf("Wrong output format. Please use only json|yaml")
 			}
 		}
 	}
+	return nil
 }
