@@ -39,8 +39,6 @@ function.k8s.io   Kubeless: Serverless framework for Kubernetes   v1
 $ kubectl get functions
 ```
 
-**Note** We provide `--kafka-version` flag for specifying the kafka version will be installed and `--controller-image` in case you are willing to install your customized Kubeless controller. Without the flags, we will install the newest release of `bitnami/kubeless-controller`. Check `kubeless install --help` for more detail.
-
 You are now ready to create functions. Then you can use the CLI to create a function. Functions have two possible types:
 
 * http trigger (function will expose an HTTP endpoint)

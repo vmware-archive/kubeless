@@ -22,6 +22,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -37,14 +39,25 @@ var rootCmd = &cobra.Command{
 	Short: "Kubeless controller",
 	Long:  globalUsage,
 	Run: func(cmd *cobra.Command, args []string) {
+		tprClient, err := utils.GetTPRClient()
+		if err != nil {
+			logrus.Fatalf("Cannot get TPR client: %v", err)
+		}
 		cfg := controller.Config{
-			KubeCli: utils.GetClient(),
+			KubeCli:   utils.GetClient(),
+			TprClient: tprClient,
 		}
 		c := controller.New(cfg)
-		err := c.Run()
-		if err != nil {
-			logrus.Fatalf("Kubeless controller running failed: %s", err)
-		}
+
+		stopCh := make(chan struct{})
+		defer close(stopCh)
+
+		go c.Run(stopCh)
+
+		sigterm := make(chan os.Signal, 1)
+		signal.Notify(sigterm, syscall.SIGTERM)
+		signal.Notify(sigterm, syscall.SIGINT)
+		<-sigterm
 	},
 }
 

@@ -23,8 +23,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
-	"net/http"
 	"os"
 	"strings"
 
@@ -64,7 +62,7 @@ const (
 )
 
 // GetClient returns a k8s clientset to the request from inside of cluster
-func GetClient() *kubernetes.Clientset {
+func GetClient() kubernetes.Interface {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		logrus.Fatalf("Can not get kubernetes config: %v", err)
@@ -79,7 +77,7 @@ func GetClient() *kubernetes.Clientset {
 }
 
 // GetClientOutOfCluster returns a k8s clientset to the request from outside of cluster
-func GetClientOutOfCluster() *kubernetes.Clientset {
+func GetClientOutOfCluster() kubernetes.Interface {
 	config, err := clientcmd.BuildConfigFromFlags("", os.Getenv("HOME")+"/.kube/config")
 	if err != nil {
 		logrus.Fatalf("Can not get kubernetes config: %v", err)
@@ -164,20 +162,8 @@ func GetFunction(funcName, ns string) (spec.Function, error) {
 	return f, nil
 }
 
-// WatchResources looking for changes of custom function objects
-func WatchResources(httpClient *http.Client, resourceVersion string) (*http.Response, error) {
-	host, port := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
-	if len(host) == 0 || len(port) == 0 {
-		return nil, fmt.Errorf("unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined")
-	}
-
-	return httpClient.Get(fmt.Sprintf("https://%s/apis/k8s.io/v1/functions?watch=true&resourceVersion=%s",
-		net.JoinHostPort(host, port), resourceVersion))
-
-}
-
-// CreateK8sResources deploys k8s objects (deploy, svc, configmap) for the function
-func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubernetes.Clientset) error {
+// EnsureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
+func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kubernetes.Interface) error {
 	str := strings.Split(spec.Handler, ".")
 	if len(str) != 2 {
 		return errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
@@ -222,20 +208,22 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 		"prometheus.io/path":   "/metrics",
 		"prometheus.io/port":   "8080",
 	}
-	data := map[string]string{
-		"handler": spec.Handler,
-		fileName:  spec.Function,
-		depName:   spec.Deps,
-	}
 	configMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: labels,
 		},
-		Data: data,
+		Data: map[string]string{
+			"handler": spec.Handler,
+			fileName:  spec.Function,
+			depName:   spec.Deps,
+		},
 	}
 
 	_, err := client.Core().ConfigMaps(ns).Create(configMap)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		_, err = client.Core().ConfigMaps(ns).Update(configMap)
+	}
 	if err != nil {
 		return err
 	}
@@ -259,6 +247,9 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 		},
 	}
 	_, err = client.Core().Services(ns).Create(svc)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		_, err = client.Core().Services(ns).Update(svc)
+	}
 	if err != nil {
 		return err
 	}
@@ -366,101 +357,54 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client *kubern
 	}
 
 	_, err = client.Extensions().Deployments(ns).Create(dpm)
-	if err != nil {
-		return err
-	}
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		_, err = client.Extensions().Deployments(ns).Update(dpm)
 
-	return nil
-}
-
-// UpdateK8sResources applies function changes to the existing k8s configmap,
-// then the deployment rolling update will be triggered automately
-func UpdateK8sResources(kclient *kubernetes.Clientset, name, ns string, spec *spec.FunctionSpec) error {
-	str := strings.Split(spec.Handler, ".")
-	if len(str) != 2 {
-		return errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
-	}
-	modName := str[0]
-	fileName := modName
-
-	//TODO: Only python and nodejs supported. Add more...
-	depName := ""
-	switch {
-	case strings.Contains(spec.Runtime, "python"):
-		fileName = modName + ".py"
-		depName = "requirements.txt"
-	case strings.Contains(spec.Runtime, "go"):
-		fileName = modName + ".go"
-	case strings.Contains(spec.Runtime, "nodejs"):
-		fileName = modName + ".js"
-		depName = "package.json"
-	}
-
-	//update configmap
-	labels := map[string]string{
-		"function": name,
-	}
-	data := map[string]string{
-		"handler": spec.Handler,
-		fileName:  spec.Function,
-		depName:   spec.Deps,
-	}
-	configMap := &v1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ConfigMap",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: labels,
-		},
-		Data: data,
-	}
-
-	_, err := kclient.Core().ConfigMaps(ns).Update(configMap)
-	if err != nil {
-		return err
-	}
-
-	// kick the function pod then it will be recreated
-	// with the new data mount from updated configmap
-	pods, err := GetPodsByLabel(kclient, ns, "function", name)
-	for _, pod := range pods.Items {
-		err = kclient.Core().Pods(ns).Delete(pod.Name, &metav1.DeleteOptions{})
-		if err != nil {
-			return err
+		// kick existing function pods then it will be recreated
+		// with the new data mount from updated configmap.
+		// TODO: This is a workaround.  Do something better.
+		pods, err := GetPodsByLabel(client, ns, "function", name)
+		for _, pod := range pods.Items {
+			err = client.Core().Pods(ns).Delete(pod.Name, &metav1.DeleteOptions{})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				// non-fatal
+				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", ns, pod.Name, err)
+			}
 		}
+
 	}
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // DeleteK8sResources removes k8s objects of the function
-func DeleteK8sResources(ns, name string, client *kubernetes.Clientset) error {
+func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
 	deploy, err := client.Extensions().Deployments(ns).Get(name, metav1.GetOptions{})
-	if err != nil {
-		return err
+	if err == nil {
+		//scale deployment to 0
+		replicas := int32(0)
+		deploy.Spec.Replicas = &replicas
+		_, _ = client.Extensions().Deployments(ns).Update(deploy)
 	}
-
-	//scale deployment to 0
-	replicas := int32(0)
-	deploy.Spec.Replicas = &replicas
-	deploy, err = client.Extensions().Deployments(ns).Update(deploy)
 
 	// delete deployment
 	err = client.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil {
+	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
 
 	// delete svc
 	err = client.Core().Services(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil {
+	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
 
 	// delete cm
 	err = client.Core().ConfigMaps(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil {
+	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
 
@@ -611,7 +555,7 @@ func DeleteK8sCustomResource(funcName, ns string) error {
 }
 
 // DeployKubeless deploys kubeless controller to k8s
-func DeployKubeless(client *kubernetes.Clientset, ctlNamespace string) error {
+func DeployKubeless(client kubernetes.Interface, ctlNamespace string) error {
 	//add deployment
 	labels := map[string]string{
 		"kubeless": "controller",
@@ -670,7 +614,7 @@ func getResource() v1.ResourceList {
 }
 
 // DeployMsgBroker deploys kafka-controller
-func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
+func DeployMsgBroker(client kubernetes.Interface, ctlNamespace string) error {
 	labels := map[string]string{
 		"kubeless": "kafka",
 	}
@@ -929,7 +873,7 @@ func DeployMsgBroker(client *kubernetes.Clientset, ctlNamespace string) error {
 
 // GetPodsByLabel returns list of pods which match the label
 // We use this to returns pods to which the function is deployed or pods running controllers
-func GetPodsByLabel(c *kubernetes.Clientset, ns, k, v string) (*v1.PodList, error) {
+func GetPodsByLabel(c kubernetes.Interface, ns, k, v string) (*v1.PodList, error) {
 	pods, err := c.Core().Pods(ns).List(metav1.ListOptions{
 		LabelSelector: k + "=" + v,
 	})
