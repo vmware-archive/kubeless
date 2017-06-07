@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# TODO: Simplify once `./...` ignores `vendor/`
+
+go test \
+   github.com/kubeless/kubeless/cmd/... \
+   github.com/kubeless/kubeless/pkg/... \
+   github.com/kubeless/kubeless/version/...

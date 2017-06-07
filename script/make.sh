@@ -20,6 +20,7 @@ export KUBELESS_PKG='github.com/kubeless/kubeless'
 
 # List of bundles to create when no argument is passed
 DEFAULT_BUNDLES=(
+        validate-test
 	validate-gofmt
 	validate-git-marks
 	validate-lint
@@ -43,4 +44,3 @@ for bundle in ${bundles[@]}; do
     bundle "$bundle"
     echo
 done
-
