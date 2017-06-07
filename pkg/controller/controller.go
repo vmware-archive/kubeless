@@ -17,29 +17,30 @@ limitations under the License.
 package controller
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/kubeless/kubeless/pkg/function"
-	"github.com/kubeless/kubeless/pkg/spec"
-	"github.com/kubeless/kubeless/pkg/utils"
-
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/rest"
-
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
+
+	"github.com/kubeless/kubeless/pkg/spec"
+	"github.com/kubeless/kubeless/pkg/utils"
 )
 
 const (
-	tprName = "function.k8s.io"
+	tprName    = "function.k8s.io"
+	maxRetries = 5
 )
 
 var (
@@ -47,36 +48,60 @@ var (
 	initRetryWaitTime  = 30 * time.Second
 )
 
-type rawEvent struct {
-	Type   string
-	Object json.RawMessage
-}
-
-// Event object
-type Event struct {
-	Type   string
-	Object *spec.Function
-}
-
 // Controller object
 type Controller struct {
-	logger       *logrus.Entry
-	clientset    kubernetes.Interface
-	waitFunction sync.WaitGroup
-	Functions    map[string]*spec.Function
+	logger    *logrus.Entry
+	clientset kubernetes.Interface
+	Functions map[string]*spec.Function
+	queue     workqueue.RateLimitingInterface
+	informer  cache.SharedIndexInformer
 }
 
 // Config contains k8s client of a controller
 type Config struct {
-	KubeCli kubernetes.Interface
+	KubeCli   kubernetes.Interface
+	TprClient rest.Interface
 }
 
 // New initializes a controller object
 func New(cfg Config) *Controller {
+	lw := cache.NewListWatchFromClient(cfg.TprClient, "functions", api.NamespaceAll, fields.Everything())
+
+	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+
+	informer := cache.NewSharedIndexInformer(
+		lw,
+		&spec.Function{},
+		0,
+		cache.Indexers{},
+	)
+
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			key, err := cache.MetaNamespaceKeyFunc(obj)
+			if err == nil {
+				queue.Add(key)
+			}
+		},
+		UpdateFunc: func(old, new interface{}) {
+			key, err := cache.MetaNamespaceKeyFunc(new)
+			if err == nil {
+				queue.Add(key)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+			if err == nil {
+				queue.Add(key)
+			}
+		},
+	})
+
 	return &Controller{
 		logger:    logrus.WithField("pkg", "controller"),
 		clientset: cfg.KubeCli,
-		Functions: make(map[string]*spec.Function),
+		informer:  informer,
+		queue:     queue,
 	}
 }
 
@@ -118,66 +143,97 @@ func (c *Controller) InstallMsgBroker(ctlNamespace string) {
 }
 
 // Run starts the kubeless controller
-func (c *Controller) Run() error {
-	var (
-		err error
-	)
+func (c *Controller) Run(stopCh <-chan struct{}) {
+	defer utilruntime.HandleCrash()
+	defer c.queue.ShutDown()
 
-	// make a new config for the extension's API group, using the first config as a baseline
-	tprClient, err := utils.GetTPRClient()
+	c.logger.Info("Starting kubeless controller")
+
+	go c.informer.Run(stopCh)
+
+	if !cache.WaitForCacheSync(stopCh, c.HasSynced) {
+		utilruntime.HandleError(fmt.Errorf("Timed out waiting for caches to sync"))
+		return
+	}
+
+	c.logger.Info("Kubeless controller synced and ready")
+
+	wait.Until(c.runWorker, time.Second, stopCh)
+}
+
+// HasSynced is required for the cache.Controller interface.
+func (c *Controller) HasSynced() bool {
+	return c.informer.HasSynced()
+}
+
+// LastSyncResourceVersion is required for the cache.Controller interface.
+func (c *Controller) LastSyncResourceVersion() string {
+	return c.informer.LastSyncResourceVersion()
+}
+
+func (c *Controller) runWorker() {
+	for c.processNextItem() {
+		// continue looping
+	}
+}
+
+func (c *Controller) processNextItem() bool {
+	key, quit := c.queue.Get()
+	if quit {
+		return false
+	}
+	defer c.queue.Done(key)
+
+	err := c.processItem(key.(string))
+	if err == nil {
+		// No error, reset the ratelimit counters
+		c.queue.Forget(key)
+	} else if c.queue.NumRequeues(key) < maxRetries {
+		c.logger.Errorf("Error processing %s (will retry): %v", key, err)
+		c.queue.AddRateLimited(key)
+	} else {
+		// err != nil and too many retries
+		c.logger.Errorf("Error processing %s (giving up): %v", key, err)
+		c.queue.Forget(key)
+		utilruntime.HandleError(err)
+	}
+
+	return true
+}
+
+func (c *Controller) processItem(key string) error {
+	c.logger.Infof("Processing change to Function %s", key)
+
+	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return err
 	}
 
-	defer func() {
-		c.waitFunction.Wait()
-	}()
+	obj, exists, err := c.informer.GetIndexer().GetByKey(key)
+	if err != nil {
+		return fmt.Errorf("Error fetching object with key %s from store: %v", key, err)
+	}
 
-	//monitor user-defined functions
-	eventCh, errCh := c.monitor(tprClient)
-
-	go func() {
-		for event := range eventCh {
-			functionName := event.Object.Metadata.Name
-			ns := event.Object.Metadata.Namespace
-			switch event.Type {
-			case "ADDED":
-				functionSpec := &event.Object.Spec
-				err := function.New(c.clientset, functionName, ns, functionSpec, &c.waitFunction)
-				if err != nil {
-					c.logger.Errorf("A new function is detected but can't be added: %v", err)
-					break
-				}
-				c.Functions[functionName+"."+ns] = event.Object
-				c.logger.Infof("A new function was added: %s", functionName)
-
-			case "DELETED":
-				if c.Functions[functionName+"."+ns] == nil {
-					c.logger.Warningf("Ignore deletion: function %q not found", functionName)
-					break
-				}
-				delete(c.Functions, functionName)
-				err := function.Delete(c.clientset, functionName, ns, &c.waitFunction)
-				if err != nil {
-					c.logger.Errorf("Can't delete function: %v", err)
-					break
-				}
-				c.logger.Infof("A function was deleted: %s", functionName)
-
-			case "MODIFIED":
-				functionSpec := &event.Object.Spec
-				err := function.Update(c.clientset, functionName, ns, functionSpec, &c.waitFunction)
-				if err != nil {
-					c.logger.Errorf("Function can not be updated: %v", err)
-					break
-				}
-				c.Functions[functionName+"."+ns] = event.Object
-				c.logger.Infof("A function was updated: %s", functionName)
-			}
+	if !exists {
+		err := utils.DeleteK8sResources(ns, name, c.clientset)
+		if err != nil {
+			c.logger.Errorf("Can't delete function: %v", err)
+			return err
 		}
-	}()
+		c.logger.Infof("Deleted Function %s", key)
+		return nil
+	}
 
-	return <-errCh
+	funcObj := obj.(*spec.Function)
+
+	err = utils.EnsureK8sResources(ns, name, &funcObj.Spec, c.clientset)
+	if err != nil {
+		c.logger.Errorf("Function can not be created/updated: %v", err)
+		return err
+	}
+
+	c.logger.Infof("Updated Function %s", key)
+	return nil
 }
 
 func initResource(clientset kubernetes.Interface) error {
@@ -200,118 +256,4 @@ func initResource(clientset kubernetes.Interface) error {
 	}
 
 	return nil
-}
-
-// FindResourceVersion looks up the current resource version
-func (c *Controller) FindResourceVersion(tprClient *rest.RESTClient) (string, error) {
-	list := spec.FunctionList{}
-	err := tprClient.Get().Resource("functions").Do().Into(&list)
-	if err != nil {
-		return "", err
-	}
-
-	for _, item := range list.Items {
-		funcName := item.Metadata.Name + "." + item.Metadata.Namespace
-		c.Functions[funcName] = item
-	}
-
-	return list.Metadata.ResourceVersion, nil
-}
-
-// monitor continuously watches for changes to custom function objects
-func (c *Controller) monitor(tprClient *rest.RESTClient) (<-chan *Event, <-chan error) {
-	var (
-		watchVersion string
-		err          error
-	)
-	eventCh := make(chan *Event)
-	errCh := make(chan error, 1)
-
-	go func() {
-		defer close(eventCh)
-
-		// per-watch loop: start watching resources and collecting functions (custom objects)
-		for {
-			watchVersion, err = c.FindResourceVersion(tprClient)
-			if err != nil {
-				c.logger.Errorf("Fail to find resources version: %v. Try again", err)
-				continue
-			}
-
-			resp, err := utils.WatchResources(tprClient.Client, watchVersion)
-			if err != nil {
-				c.logger.Errorf("Fail to watch resources: %v. Try again", err)
-				resp.Body.Close()
-				continue
-			}
-			if resp.StatusCode != 200 {
-				resp.Body.Close()
-				c.logger.Errorf("Invalid status code: %s. Try again", resp.Status)
-				continue
-			}
-			c.logger.Infof("Start watching at %v", watchVersion)
-			decoder := json.NewDecoder(resp.Body)
-
-			// per-event loop: pick up function and put to eventCh channel
-			for {
-				ev, st, err := pollEvent(decoder)
-
-				if err != nil {
-					if err == io.EOF { // apiserver will close stream periodically
-						c.logger.Errorf("Apiserver closed stream: %v", err)
-						resp.Body.Close()
-						break
-					}
-
-					c.logger.Errorf("Received invalid event from API server: %v", err)
-					continue
-				}
-
-				if st != nil {
-					if st.Code == http.StatusGone { // event history is outdated
-						errCh <- errVersionOutdated
-						continue
-					}
-					c.logger.Warningf("Unexpected status response from API server: %v", st.Message)
-				}
-
-				c.logger.Debugf("Function event: %v %v", ev.Type, ev.Object.Spec)
-
-				watchVersion = ev.Object.Metadata.ResourceVersion
-				eventCh <- ev
-			}
-		}
-	}()
-
-	return eventCh, errCh
-}
-
-func pollEvent(decoder *json.Decoder) (*Event, *metav1.Status, error) {
-	re := &rawEvent{}
-	err := decoder.Decode(re)
-	if err != nil {
-		if err == io.EOF {
-			return nil, nil, err
-		}
-		return nil, nil, fmt.Errorf("Fail to decode raw event from apiserver (%v)", err)
-	}
-
-	if re.Type == "ERROR" {
-		status := &metav1.Status{}
-		err = json.Unmarshal(re.Object, status)
-		if err != nil {
-			return nil, nil, fmt.Errorf("Fail to decode (%s) into unversioned.Status (%v)", re.Object, err)
-		}
-		return nil, status, nil
-	}
-
-	ev := &Event{
-		Type:   re.Type,
-		Object: &spec.Function{},
-	}
-	err = json.Unmarshal(re.Object, ev.Object)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Fail to unmarshal function object from data (%s): %v", re.Object, err)
-	}
-	return ev, nil, nil
 }

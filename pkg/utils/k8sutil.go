@@ -176,8 +176,8 @@ func WatchResources(httpClient *http.Client, resourceVersion string) (*http.Resp
 
 }
 
-// CreateK8sResources deploys k8s objects (deploy, svc, configmap) for the function
-func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client kubernetes.Interface) error {
+// EnsureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
+func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kubernetes.Interface) error {
 	str := strings.Split(spec.Handler, ".")
 	if len(str) != 2 {
 		return errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
@@ -222,20 +222,22 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 		"prometheus.io/path":   "/metrics",
 		"prometheus.io/port":   "8080",
 	}
-	data := map[string]string{
-		"handler": spec.Handler,
-		fileName:  spec.Function,
-		depName:   spec.Deps,
-	}
 	configMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: labels,
 		},
-		Data: data,
+		Data: map[string]string{
+			"handler": spec.Handler,
+			fileName:  spec.Function,
+			depName:   spec.Deps,
+		},
 	}
 
 	_, err := client.Core().ConfigMaps(ns).Create(configMap)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		_, err = client.Core().ConfigMaps(ns).Update(configMap)
+	}
 	if err != nil {
 		return err
 	}
@@ -259,6 +261,9 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 		},
 	}
 	_, err = client.Core().Services(ns).Create(svc)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		_, err = client.Core().Services(ns).Update(svc)
+	}
 	if err != nil {
 		return err
 	}
@@ -366,71 +371,26 @@ func CreateK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 	}
 
 	_, err = client.Extensions().Deployments(ns).Create(dpm)
-	if err != nil {
-		return err
-	}
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		_, err = client.Extensions().Deployments(ns).Update(dpm)
 
-	return nil
-}
-
-// UpdateK8sResources applies function changes to the existing k8s configmap,
-// then the deployment rolling update will be triggered automately
-func UpdateK8sResources(kclient kubernetes.Interface, name, ns string, spec *spec.FunctionSpec) error {
-	str := strings.Split(spec.Handler, ".")
-	if len(str) != 2 {
-		return errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
-	}
-	modName := str[0]
-	fileName := modName
-
-	//TODO: Only python and nodejs supported. Add more...
-	depName := ""
-	switch {
-	case strings.Contains(spec.Runtime, "python"):
-		fileName = modName + ".py"
-		depName = "requirements.txt"
-	case strings.Contains(spec.Runtime, "go"):
-		fileName = modName + ".go"
-	case strings.Contains(spec.Runtime, "nodejs"):
-		fileName = modName + ".js"
-		depName = "package.json"
-	}
-
-	//update configmap
-	labels := map[string]string{
-		"function": name,
-	}
-	data := map[string]string{
-		"handler": spec.Handler,
-		fileName:  spec.Function,
-		depName:   spec.Deps,
-	}
-	configMap := &v1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ConfigMap",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: labels,
-		},
-		Data: data,
-	}
-
-	_, err := kclient.Core().ConfigMaps(ns).Update(configMap)
-	if err != nil {
-		return err
-	}
-
-	// kick the function pod then it will be recreated
-	// with the new data mount from updated configmap
-	pods, err := GetPodsByLabel(kclient, ns, "function", name)
-	for _, pod := range pods.Items {
-		err = kclient.Core().Pods(ns).Delete(pod.Name, &metav1.DeleteOptions{})
-		if err != nil {
-			return err
+		// kick existing function pods then it will be recreated
+		// with the new data mount from updated configmap.
+		// TODO: This is a workaround.  Do something better.
+		pods, err := GetPodsByLabel(client, ns, "function", name)
+		for _, pod := range pods.Items {
+			err = client.Core().Pods(ns).Delete(pod.Name, &metav1.DeleteOptions{})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				// non-fatal
+				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", ns, pod.Name, err)
+			}
 		}
+
 	}
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
