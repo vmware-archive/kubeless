@@ -23,8 +23,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
-	"net/http"
 	"os"
 	"strings"
 
@@ -162,18 +160,6 @@ func GetFunction(funcName, ns string) (spec.Function, error) {
 	}
 
 	return f, nil
-}
-
-// WatchResources looking for changes of custom function objects
-func WatchResources(httpClient *http.Client, resourceVersion string) (*http.Response, error) {
-	host, port := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
-	if len(host) == 0 || len(port) == 0 {
-		return nil, fmt.Errorf("unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined")
-	}
-
-	return httpClient.Get(fmt.Sprintf("https://%s/apis/k8s.io/v1/functions?watch=true&resourceVersion=%s",
-		net.JoinHostPort(host, port), resourceVersion))
-
 }
 
 // EnsureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
