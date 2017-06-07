@@ -28,11 +28,7 @@ import (
 var installCmd = &cobra.Command{
 	Use:   "install",
 	Short: "Install Kubeless controller",
-	Long: `This command helps to install the Kubeless controller and along with Apache Kafka to handle event-based functions.
-
-By default we will install the latest release of bitnami/kubeless-controller image.
-Use your own controller by specifying --controller-image flag.
-`,
+	Long:  `This command helps to install the Kubeless controller and along with Apache Kafka to handle event-based functions.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Default namespace
 		ctlNamespace, err := cmd.Flags().GetString("controller-namespace")
@@ -41,7 +37,7 @@ Use your own controller by specifying --controller-image flag.
 		}
 		okayResponses := []string{"y", "Y", "yes", "Yes", "YES"}
 		// ToDo martin: this fmt doesn't work
-		fmt.Println("We are going to install the controller into the '" + ctlNamespace + "' namespace. [Y/n]?")
+		fmt.Printf("We are going to install the controller into the '%s' namespace. [Y/n]?\n", ctlNamespace)
 		var text string
 		n, _ := fmt.Scanln(&text)
 		if n < 1 {
