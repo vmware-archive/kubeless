@@ -76,9 +76,17 @@ func GetClient() kubernetes.Interface {
 	return clientset
 }
 
+func buildOutOfClusterConfig() (*rest.Config, error) {
+	kubeconfigPath := os.Getenv("KUBECONFIG")
+	if kubeconfigPath == "" {
+		kubeconfigPath = os.Getenv("HOME") + "/.kube/config"
+	}
+	return clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+}
+
 // GetClientOutOfCluster returns a k8s clientset to the request from outside of cluster
 func GetClientOutOfCluster() kubernetes.Interface {
-	config, err := clientcmd.BuildConfigFromFlags("", os.Getenv("HOME")+"/.kube/config")
+	config, err := buildOutOfClusterConfig()
 	if err != nil {
 		logrus.Fatalf("Can not get kubernetes config: %v", err)
 	}
@@ -122,7 +130,7 @@ func GetTPRClient() (*rest.RESTClient, error) {
 
 // GetTPRClientOutOfCluster returns tpr client to the request from outside of cluster
 func GetTPRClientOutOfCluster() (*rest.RESTClient, error) {
-	tprconfig, err := clientcmd.BuildConfigFromFlags("", os.Getenv("HOME")+"/.kube/config")
+	tprconfig, err := buildOutOfClusterConfig()
 	if err != nil {
 		logrus.Fatalf("Can not get kubernetes config: %v", err)
 	}
