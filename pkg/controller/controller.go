@@ -41,8 +41,9 @@ import (
 )
 
 const (
-	tprName    = "function.k8s.io"
-	maxRetries = 5
+	tprName                  = "function.k8s.io"
+	maxRetries               = 5
+	gracePeriodSeconds int64 = 30
 )
 
 var (
@@ -54,6 +55,7 @@ var (
 type Controller struct {
 	logger    *logrus.Entry
 	clientset kubernetes.Interface
+	tprclient rest.Interface
 	Functions map[string]*spec.Function
 	queue     workqueue.RateLimitingInterface
 	informer  cache.SharedIndexInformer
@@ -102,6 +104,7 @@ func New(cfg Config) *Controller {
 	return &Controller{
 		logger:    logrus.WithField("pkg", "controller"),
 		clientset: cfg.KubeCli,
+		tprclient: cfg.TprClient,
 		informer:  informer,
 		queue:     queue,
 	}
@@ -227,9 +230,8 @@ func (c *Controller) processItem(key string) error {
 	}
 
 	funcObj := obj.(*spec.Function)
-	fUID := funcObj.Metadata.UID
 
-	err = utils.EnsureK8sResources(ns, name, fUID, &funcObj.Spec, c.clientset)
+	err = utils.EnsureK8sResources(ns, name, funcObj, c.clientset)
 	if err != nil {
 		c.logger.Errorf("Function can not be created/updated: %v", err)
 		return err
@@ -276,11 +278,7 @@ func (c *Controller) RunGC(d time.Duration) {
 
 func (c *Controller) garbageCollect() error {
 	functionList := spec.FunctionList{}
-	tprClient, err := utils.GetTPRClient()
-	if err != nil {
-		return err
-	}
-	err = tprClient.Get().Resource("functions").Do().Into(&functionList)
+	err := c.tprclient.Get().Resource("functions").Do().Into(&functionList)
 	if err != nil {
 		return err
 	}
@@ -315,7 +313,7 @@ func collectServices(c kubernetes.Interface, functionUIDSet map[types.UID]bool) 
 		}
 		if !functionUIDSet[srv.OwnerReferences[0].UID] {
 			err = c.CoreV1().Services(srv.GetNamespace()).Delete(srv.GetName(), nil)
-			if err != nil && !utils.IsKubernetesResourceNotFoundError(err) {
+			if err != nil && !k8sErrors.IsNotFound(err) {
 				return err
 			}
 		}
@@ -335,9 +333,9 @@ func collectDeployment(c kubernetes.Interface, functionUIDSet map[types.UID]bool
 			continue
 		}
 		if !functionUIDSet[d.OwnerReferences[0].UID] {
-			err = c.AppsV1beta1().Deployments(d.GetNamespace()).Delete(d.GetName(), utils.CascadeDeleteOptions(0))
+			err = c.AppsV1beta1().Deployments(d.GetNamespace()).Delete(d.GetName(), utils.CascadeDeleteOptions(gracePeriodSeconds))
 			if err != nil {
-				if !utils.IsKubernetesResourceNotFoundError(err) {
+				if !k8sErrors.IsNotFound(err) {
 					return err
 				}
 			}
@@ -360,7 +358,7 @@ func collectConfigMap(c kubernetes.Interface, functionUIDSet map[types.UID]bool)
 		if !functionUIDSet[m.OwnerReferences[0].UID] {
 			err = c.CoreV1().ConfigMaps(m.GetNamespace()).Delete(m.GetName(), nil)
 			if err != nil {
-				if !utils.IsKubernetesResourceNotFoundError(err) {
+				if !k8sErrors.IsNotFound(err) {
 					return err
 				}
 			}

@@ -46,7 +46,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/kubectl/cmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
@@ -172,8 +171,8 @@ func GetFunction(funcName, ns string) (spec.Function, error) {
 }
 
 // EnsureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
-func EnsureK8sResources(ns, name string, uid types.UID, spec *spec.FunctionSpec, client kubernetes.Interface) error {
-	str := strings.Split(spec.Handler, ".")
+func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernetes.Interface) error {
+	str := strings.Split(funcObj.Spec.Handler, ".")
 	if len(str) != 2 {
 		return errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
 	}
@@ -184,20 +183,20 @@ func EnsureK8sResources(ns, name string, uid types.UID, spec *spec.FunctionSpec,
 	imageName := ""
 	depName := ""
 	switch {
-	case strings.Contains(spec.Runtime, "python"):
+	case strings.Contains(funcObj.Spec.Runtime, "python"):
 		fileName = modName + ".py"
 		imageName = pythonRuntime
-		if spec.Type == "PubSub" {
+		if funcObj.Spec.Type == "PubSub" {
 			imageName = pubsubRuntime
 		}
 		depName = "requirements.txt"
-	case strings.Contains(spec.Runtime, "go"):
+	case strings.Contains(funcObj.Spec.Runtime, "go"):
 		fileName = modName + ".go"
-	case strings.Contains(spec.Runtime, "nodejs"):
+	case strings.Contains(funcObj.Spec.Runtime, "nodejs"):
 		fileName = modName + ".js"
 		imageName = nodejsRuntime
 		depName = "package.json"
-	case strings.Contains(spec.Runtime, "ruby"):
+	case strings.Contains(funcObj.Spec.Runtime, "ruby"):
 		fileName = modName + ".rb"
 		imageName = rubyRuntime
 		depName = "Gemfile"
@@ -208,13 +207,13 @@ func EnsureK8sResources(ns, name string, uid types.UID, spec *spec.FunctionSpec,
 		"function": name,
 	}
 
-	t := bool(true)
+	t := true
 	or := []metav1.OwnerReference{
 		{
 			Kind:               "Function",
 			APIVersion:         "k8s.io",
 			Name:               name,
-			UID:                uid,
+			UID:                funcObj.Metadata.UID,
 			BlockOwnerDeletion: &t,
 		},
 	}
@@ -236,9 +235,9 @@ func EnsureK8sResources(ns, name string, uid types.UID, spec *spec.FunctionSpec,
 			OwnerReferences: or,
 		},
 		Data: map[string]string{
-			"handler": spec.Handler,
-			fileName:  spec.Function,
-			depName:   spec.Deps,
+			"handler": funcObj.Spec.Handler,
+			fileName:  funcObj.Spec.Function,
+			depName:   funcObj.Spec.Deps,
 		},
 	}
 
@@ -279,12 +278,12 @@ func EnsureK8sResources(ns, name string, uid types.UID, spec *spec.FunctionSpec,
 
 	//prepare init-container for custom runtime
 	initContainer := []v1.Container{}
-	if spec.Deps != "" {
+	if funcObj.Spec.Deps != "" {
 		initContainer = append(initContainer, v1.Container{
 			Name:            "install",
-			Image:           getInitImage(spec.Runtime),
-			Command:         getCommand(spec.Runtime),
-			VolumeMounts:    getVolumeMounts(name, spec.Runtime),
+			Image:           getInitImage(funcObj.Spec.Runtime),
+			Command:         getCommand(funcObj.Spec.Runtime),
+			VolumeMounts:    getVolumeMounts(name, funcObj.Spec.Runtime),
 			WorkingDir:      "/requirements",
 			ImagePullPolicy: v1.PullIfNotPresent,
 		})
@@ -326,7 +325,7 @@ func EnsureK8sResources(ns, name string, uid types.UID, spec *spec.FunctionSpec,
 								},
 								{
 									Name:  "TOPIC_NAME",
-									Value: spec.Topic,
+									Value: funcObj.Spec.Topic,
 								},
 							},
 							VolumeMounts: []v1.VolumeMount{
@@ -360,13 +359,13 @@ func EnsureK8sResources(ns, name string, uid types.UID, spec *spec.FunctionSpec,
 	}
 
 	// update deployment for custom runtime
-	if spec.Deps != "" {
-		updateDeployment(dpm, spec.Runtime)
+	if funcObj.Spec.Deps != "" {
+		updateDeployment(dpm, funcObj.Spec.Runtime)
 		//TODO: remove this when init containers becomes a stable feature
 		addInitContainerAnnotation(dpm)
 	}
 
-	if spec.Type != pubsubFunc {
+	if funcObj.Spec.Type != pubsubFunc {
 		livenessProbe := &v1.Probe{
 			InitialDelaySeconds: int32(3),
 			PeriodSeconds:       int32(3),
@@ -1082,18 +1081,13 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 	return nil
 }
 
-//IsKubernetesResourceNotFoundError returns true if resource is not found
-func IsKubernetesResourceNotFoundError(err error) bool {
-	return k8sErrors.IsNotFound(err)
-}
-
 //CascadeDeleteOptions returns option for cascade deletion
 func CascadeDeleteOptions(gracePeriodSeconds int64) *metav1.DeleteOptions {
 	return &metav1.DeleteOptions{
-		GracePeriodSeconds: func(t int64) *int64 { return &t }(gracePeriodSeconds),
 		PropagationPolicy: func() *metav1.DeletionPropagation {
 			foreground := metav1.DeletePropagationForeground
 			return &foreground
 		}(),
+		GracePeriodSeconds: &gracePeriodSeconds,
 	}
 }
