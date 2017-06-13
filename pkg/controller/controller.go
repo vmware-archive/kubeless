@@ -41,9 +41,8 @@ import (
 )
 
 const (
-	tprName                  = "function.k8s.io"
-	maxRetries               = 5
-	gracePeriodSeconds int64 = 30
+	tprName    = "function.k8s.io"
+	maxRetries = 5
 )
 
 var (
@@ -163,6 +162,9 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 
 	c.logger.Info("Kubeless controller synced and ready")
 
+	// run one round of GC at startup to detect orphaned objects from the last time
+	c.garbageCollect()
+
 	wait.Until(c.runWorker, time.Second, stopCh)
 }
 
@@ -263,19 +265,6 @@ func initResource(clientset kubernetes.Interface) error {
 	return nil
 }
 
-//RunGC starts garbage collector
-func (c *Controller) RunGC(d time.Duration) {
-	timer := time.NewTimer(d)
-	defer timer.Stop()
-	for {
-		<-timer.C
-		err := c.garbageCollect()
-		if err != nil {
-			c.logger.Warningf("Failed to cleanup resources: %v", err)
-		}
-	}
-}
-
 func (c *Controller) garbageCollect() error {
 	functionList := spec.FunctionList{}
 	err := c.tprclient.Get().Resource("functions").Do().Into(&functionList)
@@ -288,21 +277,21 @@ func (c *Controller) garbageCollect() error {
 		functionUIDSet[f.Metadata.UID] = true
 	}
 
-	if err = collectServices(c.clientset, functionUIDSet); err != nil {
+	if err = c.collectServices(functionUIDSet); err != nil {
 		return err
 	}
-	if err = collectDeployment(c.clientset, functionUIDSet); err != nil {
+	if err = c.collectDeployment(functionUIDSet); err != nil {
 		return err
 	}
-	if err = collectConfigMap(c.clientset, functionUIDSet); err != nil {
+	if err = c.collectConfigMap(functionUIDSet); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func collectServices(c kubernetes.Interface, functionUIDSet map[types.UID]bool) error {
-	srvs, err := c.CoreV1().Services(api.NamespaceAll).List(metav1.ListOptions{})
+func (c *Controller) collectServices(functionUIDSet map[types.UID]bool) error {
+	srvs, err := c.clientset.CoreV1().Services(api.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -312,18 +301,18 @@ func collectServices(c kubernetes.Interface, functionUIDSet map[types.UID]bool) 
 			continue
 		}
 		if !functionUIDSet[srv.OwnerReferences[0].UID] {
-			err = c.CoreV1().Services(srv.GetNamespace()).Delete(srv.GetName(), nil)
-			if err != nil && !k8sErrors.IsNotFound(err) {
-				return err
-			}
+			//FIXME: service and its function are deployed in the same namespace
+			key := fmt.Sprintf("%s/%s", srv.Namespace, srv.OwnerReferences[0].Name)
+			//FIXME: should we check if the key is already exist in queue
+			c.queue.Add(key)
 		}
 	}
 
 	return nil
 }
 
-func collectDeployment(c kubernetes.Interface, functionUIDSet map[types.UID]bool) error {
-	ds, err := c.AppsV1beta1().Deployments(api.NamespaceAll).List(metav1.ListOptions{})
+func (c *Controller) collectDeployment(functionUIDSet map[types.UID]bool) error {
+	ds, err := c.clientset.AppsV1beta1().Deployments(api.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -333,20 +322,16 @@ func collectDeployment(c kubernetes.Interface, functionUIDSet map[types.UID]bool
 			continue
 		}
 		if !functionUIDSet[d.OwnerReferences[0].UID] {
-			err = c.AppsV1beta1().Deployments(d.GetNamespace()).Delete(d.GetName(), utils.CascadeDeleteOptions(gracePeriodSeconds))
-			if err != nil {
-				if !k8sErrors.IsNotFound(err) {
-					return err
-				}
-			}
+			key := fmt.Sprintf("%s/%s", d.Namespace, d.OwnerReferences[0].Name)
+			c.queue.Add(key)
 		}
 	}
 
 	return nil
 }
 
-func collectConfigMap(c kubernetes.Interface, functionUIDSet map[types.UID]bool) error {
-	cm, err := c.CoreV1().ConfigMaps(api.NamespaceAll).List(metav1.ListOptions{})
+func (c *Controller) collectConfigMap(functionUIDSet map[types.UID]bool) error {
+	cm, err := c.clientset.CoreV1().ConfigMaps(api.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -356,12 +341,8 @@ func collectConfigMap(c kubernetes.Interface, functionUIDSet map[types.UID]bool)
 			continue
 		}
 		if !functionUIDSet[m.OwnerReferences[0].UID] {
-			err = c.CoreV1().ConfigMaps(m.GetNamespace()).Delete(m.GetName(), nil)
-			if err != nil {
-				if !k8sErrors.IsNotFound(err) {
-					return err
-				}
-			}
+			key := fmt.Sprintf("%s/%s", m.Namespace, m.OwnerReferences[0].Name)
+			c.queue.Add(key)
 		}
 	}
 

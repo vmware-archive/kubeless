@@ -24,7 +24,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -35,7 +34,6 @@ import (
 
 const (
 	globalUsage = `` //TODO: adding explanation
-	gcInterval  = 1 * time.Minute
 )
 
 var rootCmd = &cobra.Command{
@@ -56,7 +54,6 @@ var rootCmd = &cobra.Command{
 		defer close(stopCh)
 
 		go c.Run(stopCh)
-		go c.RunGC(gcInterval)
 
 		sigterm := make(chan os.Signal, 1)
 		signal.Notify(sigterm, syscall.SIGTERM)

@@ -1080,14 +1080,3 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 	}
 	return nil
 }
-
-//CascadeDeleteOptions returns option for cascade deletion
-func CascadeDeleteOptions(gracePeriodSeconds int64) *metav1.DeleteOptions {
-	return &metav1.DeleteOptions{
-		PropagationPolicy: func() *metav1.DeletionPropagation {
-			foreground := metav1.DeletePropagationForeground
-			return &foreground
-		}(),
-		GracePeriodSeconds: &gracePeriodSeconds,
-	}
-}
