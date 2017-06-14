@@ -36,13 +36,13 @@ import (
 
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
-
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
 	tprName    = "function.k8s.io"
 	maxRetries = 5
+	funcKind   = "Function"
+	funcAPI    = "k8s.io"
 )
 
 var (
@@ -266,31 +266,20 @@ func initResource(clientset kubernetes.Interface) error {
 }
 
 func (c *Controller) garbageCollect() error {
-	functionList := spec.FunctionList{}
-	err := c.tprclient.Get().Resource("functions").Do().Into(&functionList)
-	if err != nil {
+	if err := c.collectServices(); err != nil {
 		return err
 	}
-
-	functionUIDSet := make(map[types.UID]bool)
-	for _, f := range functionList.Items {
-		functionUIDSet[f.Metadata.UID] = true
-	}
-
-	if err = c.collectServices(functionUIDSet); err != nil {
+	if err := c.collectDeployment(); err != nil {
 		return err
 	}
-	if err = c.collectDeployment(functionUIDSet); err != nil {
-		return err
-	}
-	if err = c.collectConfigMap(functionUIDSet); err != nil {
+	if err := c.collectConfigMap(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (c *Controller) collectServices(functionUIDSet map[types.UID]bool) error {
+func (c *Controller) collectServices() error {
 	srvs, err := c.clientset.CoreV1().Services(api.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -300,10 +289,14 @@ func (c *Controller) collectServices(functionUIDSet map[types.UID]bool) error {
 		if len(srv.OwnerReferences) == 0 {
 			continue
 		}
-		if !functionUIDSet[srv.OwnerReferences[0].UID] {
-			//FIXME: service and its function are deployed in the same namespace
+		// Include the derived key from existing svc owner reference to the workqueue
+		// This will make sure the controller can detect the non-existing function and
+		// react to delete its belonging objects
+		// Assumption: a service has ownerref Kind = "Function" and APIVersion = "k8s.io" is assumed
+		// to be created by kubeless controller
+		if (srv.OwnerReferences[0].Kind == funcKind) && (srv.OwnerReferences[0].APIVersion == funcAPI) {
+			//service and its function are deployed in the same namespace
 			key := fmt.Sprintf("%s/%s", srv.Namespace, srv.OwnerReferences[0].Name)
-			//FIXME: should we check if the key is already exist in queue
 			c.queue.Add(key)
 		}
 	}
@@ -311,7 +304,7 @@ func (c *Controller) collectServices(functionUIDSet map[types.UID]bool) error {
 	return nil
 }
 
-func (c *Controller) collectDeployment(functionUIDSet map[types.UID]bool) error {
+func (c *Controller) collectDeployment() error {
 	ds, err := c.clientset.AppsV1beta1().Deployments(api.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -321,7 +314,9 @@ func (c *Controller) collectDeployment(functionUIDSet map[types.UID]bool) error 
 		if len(d.OwnerReferences) == 0 {
 			continue
 		}
-		if !functionUIDSet[d.OwnerReferences[0].UID] {
+		// Assumption: a deployment has ownerref Kind = "Function" and APIVersion = "k8s.io" is assumed
+		// to be created by kubeless controller
+		if (d.OwnerReferences[0].Kind == funcKind) && (d.OwnerReferences[0].APIVersion == funcAPI) {
 			key := fmt.Sprintf("%s/%s", d.Namespace, d.OwnerReferences[0].Name)
 			c.queue.Add(key)
 		}
@@ -330,7 +325,7 @@ func (c *Controller) collectDeployment(functionUIDSet map[types.UID]bool) error 
 	return nil
 }
 
-func (c *Controller) collectConfigMap(functionUIDSet map[types.UID]bool) error {
+func (c *Controller) collectConfigMap() error {
 	cm, err := c.clientset.CoreV1().ConfigMaps(api.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -340,7 +335,9 @@ func (c *Controller) collectConfigMap(functionUIDSet map[types.UID]bool) error {
 		if len(m.OwnerReferences) == 0 {
 			continue
 		}
-		if !functionUIDSet[m.OwnerReferences[0].UID] {
+		// Assumption: a configmap has ownerref Kind = "Function" and APIVersion = "k8s.io" is assumed
+		// to be created by kubeless controller
+		if (m.OwnerReferences[0].Kind == funcKind) && (m.OwnerReferences[0].APIVersion == funcAPI) {
 			key := fmt.Sprintf("%s/%s", m.Namespace, m.OwnerReferences[0].Name)
 			c.queue.Add(key)
 		}
