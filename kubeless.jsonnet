@@ -1,5 +1,5 @@
-local k = import "../../ksonnet.beta.1/k.libsonnet";
-local util = import "../../ksonnet.beta.1/util.libsonnet";
+local k = import "ksonnet.beta.1/k.libsonnet";
+local util = import "ksonnet.beta.1/util.libsonnet";
 
 local objectMeta = k.core.v1.objectMeta;
 local deployment = k.apps.v1beta1.deployment;
