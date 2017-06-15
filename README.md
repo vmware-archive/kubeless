@@ -21,16 +21,26 @@ Also check our [UI](https://github.com/kubeless/kubeless-ui) project
 
 ## Usage
 
-Download `kubeless` from the release page. Then launch the controller. It will ask you if you are OK to do it. It will create a _kubeless_ namespace and a _function_ ThirdPartyResource. You will see a _kubeless_ controller and a _kafka_ controller running.
+Download `kubeless` from the release page. Then launch the controller. It will ask you if you are OK to do it. It will create a _kubeless_ namespace and a _function_ ThirdPartyResource. You will see a _kubeless_ controller, and _kafka_, _zookeeper_ statefulset running.
 
 ```console
 $ kubeless install
 We are going to install the controller in the kubeless namespace. Are you OK with this: [Y/n]
 
-$ kubectl get pods --namespace=kubeless
-NAME                                   READY     STATUS              RESTARTS   AGE
-kafka-controller-2158053540-a7n0v      0/2       ContainerCreating   0          12s
-kubeless-controller-1801423959-yow3t   0/2       ContainerCreating   0          12s
+$ kubectl get pods -n kubeless
+NAME                                   READY     STATUS    RESTARTS   AGE
+kafka-0                                1/1       Running   0          1m
+kubeless-controller-3331951411-d60km   1/1       Running   0          1m
+zoo-0                                  1/1       Running   0          1m
+
+$ kubectl get deployment -n kubeless
+NAME                  DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+kubeless-controller   1         1         1            1           1m
+
+$ kubectl get statefulset -n kubeless
+NAME      DESIRED   CURRENT   AGE
+kafka     1         1         1m
+zoo       1         1         1m
 
 $ kubectl get thirdpartyresource
 NAME             DESCRIPTION                                     VERSION(S)
@@ -158,7 +168,6 @@ $ go get -u github.com/kubeless/kubeless
 This is still currently a POC, feel free to land a hand. We need to implement the following high level features:
 
 * Add other runtimes, currently only Python and NodeJS are supported
-* Deploy Kafka and Zookeeper using StatefulSets for persistency
 * Investigate other messaging bus
 * Instrument the runtimes via Prometheus to be able to create pod autoscalers automatically
 * Optimize for functions startup time
