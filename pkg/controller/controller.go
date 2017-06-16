@@ -41,6 +41,8 @@ import (
 const (
 	tprName    = "function.k8s.io"
 	maxRetries = 5
+	funcKind   = "Function"
+	funcAPI    = "k8s.io"
 )
 
 var (
@@ -52,6 +54,7 @@ var (
 type Controller struct {
 	logger    *logrus.Entry
 	clientset kubernetes.Interface
+	tprclient rest.Interface
 	Functions map[string]*spec.Function
 	queue     workqueue.RateLimitingInterface
 	informer  cache.SharedIndexInformer
@@ -100,6 +103,7 @@ func New(cfg Config) *Controller {
 	return &Controller{
 		logger:    logrus.WithField("pkg", "controller"),
 		clientset: cfg.KubeCli,
+		tprclient: cfg.TprClient,
 		informer:  informer,
 		queue:     queue,
 	}
@@ -157,6 +161,9 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 	}
 
 	c.logger.Info("Kubeless controller synced and ready")
+
+	// run one round of GC at startup to detect orphaned objects from the last time
+	c.garbageCollect()
 
 	wait.Until(c.runWorker, time.Second, stopCh)
 }
@@ -226,7 +233,7 @@ func (c *Controller) processItem(key string) error {
 
 	funcObj := obj.(*spec.Function)
 
-	err = utils.EnsureK8sResources(ns, name, &funcObj.Spec, c.clientset)
+	err = utils.EnsureK8sResources(ns, name, funcObj, c.clientset)
 	if err != nil {
 		c.logger.Errorf("Function can not be created/updated: %v", err)
 		return err
@@ -253,6 +260,87 @@ func initResource(clientset kubernetes.Interface) error {
 	}
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (c *Controller) garbageCollect() error {
+	if err := c.collectServices(); err != nil {
+		return err
+	}
+	if err := c.collectDeployment(); err != nil {
+		return err
+	}
+	if err := c.collectConfigMap(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Controller) collectServices() error {
+	srvs, err := c.clientset.CoreV1().Services(api.NamespaceAll).List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, srv := range srvs.Items {
+		if len(srv.OwnerReferences) == 0 {
+			continue
+		}
+		// Include the derived key from existing svc owner reference to the workqueue
+		// This will make sure the controller can detect the non-existing function and
+		// react to delete its belonging objects
+		// Assumption: a service has ownerref Kind = "Function" and APIVersion = "k8s.io" is assumed
+		// to be created by kubeless controller
+		if (srv.OwnerReferences[0].Kind == funcKind) && (srv.OwnerReferences[0].APIVersion == funcAPI) {
+			//service and its function are deployed in the same namespace
+			key := fmt.Sprintf("%s/%s", srv.Namespace, srv.OwnerReferences[0].Name)
+			c.queue.Add(key)
+		}
+	}
+
+	return nil
+}
+
+func (c *Controller) collectDeployment() error {
+	ds, err := c.clientset.AppsV1beta1().Deployments(api.NamespaceAll).List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, d := range ds.Items {
+		if len(d.OwnerReferences) == 0 {
+			continue
+		}
+		// Assumption: a deployment has ownerref Kind = "Function" and APIVersion = "k8s.io" is assumed
+		// to be created by kubeless controller
+		if (d.OwnerReferences[0].Kind == funcKind) && (d.OwnerReferences[0].APIVersion == funcAPI) {
+			key := fmt.Sprintf("%s/%s", d.Namespace, d.OwnerReferences[0].Name)
+			c.queue.Add(key)
+		}
+	}
+
+	return nil
+}
+
+func (c *Controller) collectConfigMap() error {
+	cm, err := c.clientset.CoreV1().ConfigMaps(api.NamespaceAll).List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, m := range cm.Items {
+		if len(m.OwnerReferences) == 0 {
+			continue
+		}
+		// Assumption: a configmap has ownerref Kind = "Function" and APIVersion = "k8s.io" is assumed
+		// to be created by kubeless controller
+		if (m.OwnerReferences[0].Kind == funcKind) && (m.OwnerReferences[0].APIVersion == funcAPI) {
+			key := fmt.Sprintf("%s/%s", m.Namespace, m.OwnerReferences[0].Name)
+			c.queue.Add(key)
+		}
 	}
 
 	return nil

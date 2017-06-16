@@ -171,8 +171,8 @@ func GetFunction(funcName, ns string) (spec.Function, error) {
 }
 
 // EnsureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
-func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kubernetes.Interface) error {
-	str := strings.Split(spec.Handler, ".")
+func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernetes.Interface) error {
+	str := strings.Split(funcObj.Spec.Handler, ".")
 	if len(str) != 2 {
 		return errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
 	}
@@ -183,20 +183,20 @@ func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 	imageName := ""
 	depName := ""
 	switch {
-	case strings.Contains(spec.Runtime, "python"):
+	case strings.Contains(funcObj.Spec.Runtime, "python"):
 		fileName = modName + ".py"
 		imageName = pythonRuntime
-		if spec.Type == "PubSub" {
+		if funcObj.Spec.Type == "PubSub" {
 			imageName = pubsubRuntime
 		}
 		depName = "requirements.txt"
-	case strings.Contains(spec.Runtime, "go"):
+	case strings.Contains(funcObj.Spec.Runtime, "go"):
 		fileName = modName + ".go"
-	case strings.Contains(spec.Runtime, "nodejs"):
+	case strings.Contains(funcObj.Spec.Runtime, "nodejs"):
 		fileName = modName + ".js"
 		imageName = nodejsRuntime
 		depName = "package.json"
-	case strings.Contains(spec.Runtime, "ruby"):
+	case strings.Contains(funcObj.Spec.Runtime, "ruby"):
 		fileName = modName + ".rb"
 		imageName = rubyRuntime
 		depName = "Gemfile"
@@ -206,6 +206,18 @@ func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 	labels := map[string]string{
 		"function": name,
 	}
+
+	t := true
+	or := []metav1.OwnerReference{
+		{
+			Kind:               "Function",
+			APIVersion:         "k8s.io",
+			Name:               name,
+			UID:                funcObj.Metadata.UID,
+			BlockOwnerDeletion: &t,
+		},
+	}
+
 	podAnnotations := map[string]string{
 		// Attempt to attract the attention of prometheus.
 		// For runtimes that don't support /metrics,
@@ -218,13 +230,14 @@ func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 	}
 	configMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: labels,
+			Name:            name,
+			Labels:          labels,
+			OwnerReferences: or,
 		},
 		Data: map[string]string{
-			"handler": spec.Handler,
-			fileName:  spec.Function,
-			depName:   spec.Deps,
+			"handler": funcObj.Spec.Handler,
+			fileName:  funcObj.Spec.Function,
+			depName:   funcObj.Spec.Deps,
 		},
 	}
 
@@ -239,8 +252,9 @@ func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 	//add service
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: labels,
+			Name:            name,
+			Labels:          labels,
+			OwnerReferences: or,
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
@@ -264,12 +278,12 @@ func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 
 	//prepare init-container for custom runtime
 	initContainer := []v1.Container{}
-	if spec.Deps != "" {
+	if funcObj.Spec.Deps != "" {
 		initContainer = append(initContainer, v1.Container{
 			Name:            "install",
-			Image:           getInitImage(spec.Runtime),
-			Command:         getCommand(spec.Runtime),
-			VolumeMounts:    getVolumeMounts(name, spec.Runtime),
+			Image:           getInitImage(funcObj.Spec.Runtime),
+			Command:         getCommand(funcObj.Spec.Runtime),
+			VolumeMounts:    getVolumeMounts(name, funcObj.Spec.Runtime),
 			WorkingDir:      "/requirements",
 			ImagePullPolicy: v1.PullIfNotPresent,
 		})
@@ -278,8 +292,9 @@ func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 	maxUnavailable := intstr.FromInt(0)
 	dpm := &v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: labels,
+			Name:            name,
+			Labels:          labels,
+			OwnerReferences: or,
 		},
 		Spec: v1beta1.DeploymentSpec{
 			Template: v1.PodTemplateSpec{
@@ -310,7 +325,7 @@ func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 								},
 								{
 									Name:  "TOPIC_NAME",
-									Value: spec.Topic,
+									Value: funcObj.Spec.Topic,
 								},
 							},
 							VolumeMounts: []v1.VolumeMount{
@@ -344,13 +359,13 @@ func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 	}
 
 	// update deployment for custom runtime
-	if spec.Deps != "" {
-		updateDeployment(dpm, spec.Runtime)
+	if funcObj.Spec.Deps != "" {
+		updateDeployment(dpm, funcObj.Spec.Runtime)
 		//TODO: remove this when init containers becomes a stable feature
 		addInitContainerAnnotation(dpm)
 	}
 
-	if spec.Type != pubsubFunc {
+	if funcObj.Spec.Type != pubsubFunc {
 		livenessProbe := &v1.Probe{
 			InitialDelaySeconds: int32(3),
 			PeriodSeconds:       int32(3),
@@ -379,7 +394,6 @@ func EnsureK8sResources(ns, name string, spec *spec.FunctionSpec, client kuberne
 				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", ns, pod.Name, err)
 			}
 		}
-
 	}
 	if err != nil {
 		return err

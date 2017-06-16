@@ -1,10 +1,9 @@
 package controller
 
 import (
-	"testing"
-
 	"k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
+	"testing"
 )
 
 func findAction(fake *fake.Clientset, verb, resource string) ktesting.Action {

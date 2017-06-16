@@ -32,7 +32,9 @@ import (
 	"github.com/kubeless/kubeless/pkg/utils"
 )
 
-const globalUsage = `` //TODO: adding explanation
+const (
+	globalUsage = `` //TODO: adding explanation
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "kubeless-controller",
@@ -48,7 +50,6 @@ var rootCmd = &cobra.Command{
 			TprClient: tprClient,
 		}
 		c := controller.New(cfg)
-
 		stopCh := make(chan struct{})
 		defer close(stopCh)
 
