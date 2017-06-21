@@ -1,5 +1,4 @@
 local k = import "ksonnet.beta.1/k.libsonnet";
-local util = import "ksonnet.beta.1/util.libsonnet";
 
 local objectMeta = k.core.v1.objectMeta;
 local deployment = k.apps.v1beta1.deployment;
@@ -10,7 +9,7 @@ local service = k.core.v1.service;
 local namespace = "kubeless";
 
 local controllerContainer =
-  container.default("kubeless-controller", "bitnami/kubeless-controller:0.0.13") +
+  container.default("kubeless-controller", "bitnami/kubeless-controller@sha256:d07986d575a80179ae15205c6fa5eb3bf9f4f4f46235c79ad6b284e5d3df22d0") +
   container.imagePullPolicy("IfNotPresent");
 
 local kafkaEnv = [
@@ -84,6 +83,8 @@ local zookeeperLabel = {app: "zookeeper"};
 
 local controllerDeployment =
   deployment.default("kubeless-controller", controllerContainer, namespace) +
+  {metadata+:{labels: kubelessLabel}} +
+  {spec+: {selector: {matchLabels: kubelessLabel}}} +
   {spec+: {template+: {metadata: {labels: kubelessLabel}}}};
 
 local kafkaVolumeCT = [
@@ -107,34 +108,38 @@ local kafkaVolumeCT = [
 local kafkaSts =
   statefulset.default("kafka", namespace) +
   statefulset.spec({serviceName: "broker"}) +
-  {spec+: {template+: {metadata: {labels: kafkaLabel}}}} +
+  {spec+: {template: {metadata: {labels: kafkaLabel}}}} +
   {spec+: {volumeClaimTemplates: kafkaVolumeCT}} +
   {spec+: {template+: {spec: {containers: [kafkaContainer]}}}};
 
 local zookeeperSts =
-  statefulset.default("zookeeper", namespace) +
+  statefulset.default("zoo", namespace) +
   statefulset.spec({serviceName: "zoo"}) +
-  {spec+: {template+: {metadata: {labels: zookeeperLabel}}}} +
+  {spec+: {template: {metadata: {labels: zookeeperLabel}}}} +
   {spec+: {template+: {spec: {containers: [zookeeperContainer], volumes: [{name: "zookeeper", emptyDir: {}}]}}}};
 
 local kafkaSvc =
   service.default("kafka", namespace) +
+  service.spec(k.core.v1.serviceSpec.default()) +
   service.mixin.spec.ports({port: 9092}) +
   service.mixin.spec.selector({app: "kafka"});
 
 local kafkaHeadlessSvc =
   service.default("broker", namespace) +
+  service.spec(k.core.v1.serviceSpec.default()) +
   service.mixin.spec.ports({port: 9092}) +
   service.mixin.spec.selector({app: "kafka"}) +
   {spec+: {clusterIP: "None"}};
 
 local zookeeperSvc =
   service.default("zookeeper", namespace) +
+  service.spec(k.core.v1.serviceSpec.default()) +
   service.mixin.spec.ports({port: 2181, name: "client"}) +
   service.mixin.spec.selector({app: "zookeeper"});
 
 local zookeeperHeadlessSvc =
   service.default("zoo", namespace) +
+  service.spec(k.core.v1.serviceSpec.default()) +
   service.mixin.spec.ports([{port: 9092, name: "peer"},{port: 3888, name: "leader-election"}]) +
   service.mixin.spec.selector({app: "zookeeper"}) +
   {spec+: {clusterIP: "None"}};
@@ -148,12 +153,12 @@ local tpr = {
 };
 
 {
-  controller: util.prune(controllerDeployment),
-  kafkaSts: util.prune(kafkaSts),
-  zookeeperSts: util.prune(zookeeperSts),
-  kafkaSvc: util.prune(kafkaSvc),
-  kafkaHeadlessSvc: util.prune(kafkaHeadlessSvc),
-  zookeeperSvc: util.prune(zookeeperSvc),
-  zookeeperHeadlessSvc: util.prune(zookeeperHeadlessSvc),
-  tpr: util.prune(tpr),
+  controller: k.util.prune(controllerDeployment),
+  kafkaSts: k.util.prune(kafkaSts),
+  zookeeperSts: k.util.prune(zookeeperSts),
+  kafkaSvc: k.util.prune(kafkaSvc),
+  kafkaHeadlessSvc: k.util.prune(kafkaHeadlessSvc),
+  zookeeperSvc: k.util.prune(zookeeperSvc),
+  zookeeperHeadlessSvc: k.util.prune(zookeeperHeadlessSvc),
+  tpr: k.util.prune(tpr),
 }
