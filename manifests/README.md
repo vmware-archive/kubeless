@@ -18,7 +18,7 @@ kubectl create -f tpr/function.yaml
 Create Kafka broker
 
 ```
-kubectl create -f kafka/kafka-deployment.yaml
+kubectl create -f kafka/kafka-stateful.yaml
 kubectl create -f kafka/kafka-headless-svc.yaml
 kubectl create -f kafka/kafka-svc.yaml
 ```
