@@ -14,7 +14,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
         - name: zookeeper
-          image: bitnami/zookeeper:3.4.10
+          image: bitnami/zookeeper@sha256:2244fba9d7c35df85f078ffdbf77ec9f9b44dad40752f15dd619a85d70aec22d
           env:
             - name: ZOO_SERVERS
               value: server.1=zoo-0.zoo:2888:3888:participant

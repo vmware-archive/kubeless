@@ -14,7 +14,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: broker
-        image: bitnami/kafka@sha256:9ef14a3a2348ae24072c73caa4d4db06c77a8c0383a726d02244ea0e43723355
+        image: bitnami/kafka@sha256:0b7c8b790546ddb9dcd7e8ff4d50f030fc496176238f36789537620bb13fb54c
         imagePullPolicy: IfNotPresent
         env:
         - name: KAFKA_ADVERTISED_HOST_NAME
