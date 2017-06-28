@@ -54,7 +54,7 @@ local zookeeperPorts = [
 ];
 
 local kafkaContainer =
-  container.default("broker", "bitnami/kafka@sha256:9ef14a3a2348ae24072c73caa4d4db06c77a8c0383a726d02244ea0e43723355") +
+  container.default("broker", "bitnami/kafka@sha256:0b7c8b790546ddb9dcd7e8ff4d50f030fc496176238f36789537620bb13fb54c") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(kafkaEnv) +
   container.ports({containerPort: 9092}) +
@@ -66,7 +66,7 @@ local kafkaContainer =
   ]);
 
 local zookeeperContainer =
-  container.default("zookeeper", "bitnami/zookeeper@sha256:0bbf6503e45fc7d5236513987702b0533d2c777144dfd5022feed9ad89dc6318") +
+  container.default("zookeeper", "bitnami/zookeeper@sha256:2244fba9d7c35df85f078ffdbf77ec9f9b44dad40752f15dd619a85d70aec22d") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(zookeeperEnv) +
   container.ports(zookeeperPorts) +
