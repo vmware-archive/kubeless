@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -39,15 +38,15 @@ import (
 )
 
 const (
-	tprName    = "function.k8s.io"
-	maxRetries = 5
-	funcKind   = "Function"
-	funcAPI    = "k8s.io"
+	tprName      = "function.k8s.io"
+	maxRetries   = 5
+	funcKind     = "Function"
+	funcAPI      = "k8s.io"
+	resyncPeriod = 30 * time.Second
 )
 
 var (
-	errVersionOutdated = errors.New("Requested version is outdated in apiserver")
-	initRetryWaitTime  = 30 * time.Second
+	initRetryWaitTime = 30 * time.Second
 )
 
 // Controller object
@@ -75,7 +74,7 @@ func New(cfg Config) *Controller {
 	informer := cache.NewSharedIndexInformer(
 		lw,
 		&spec.Function{},
-		0,
+		resyncPeriod, //resync cache periodically
 		cache.Indexers{},
 	)
 
