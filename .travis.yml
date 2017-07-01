@@ -56,10 +56,10 @@ before_deploy:
     if [ "$TRAVIS_OS_NAME" = linux ]; then
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
       docker push $CONTROLLER_IMAGE
+      NEW_DIGEST=$(./script/find_digest.sh ${CONTROLLER_IMAGE_NAME} ${TRAVIS_TAG} | cut -d " " -f 2)
+      OLD_DIGEST=$(cat kubeless.yaml | grep ${CONTROLLER_IMAGE_NAME} |  cut -d "@" -f 2)
+      sed -i 's/'"$OLD_DIGEST"'/'"$NEW_DIGEST"'/g' kubeless.yaml
     fi
-  - NEW_DIGEST=$(./script/find_digest.sh $CONTROLLER_IMAGE $TRAVIS_TAG | cut -d " " -f 2)
-  - OLD_DIGEST=$(cat kubeless.yaml | grep ${CONTROLLER_IMAGE_NAME} |  cut -d "@" -f 2)
-  - sed -i 's/'"$OLD_DIGEST"'/'"$NEW_DIGEST"'/g' kubeless.yaml
 
 deploy:
   provider: releases
