@@ -109,43 +109,6 @@ func New(cfg Config) *Controller {
 	}
 }
 
-// Init creates tpr functions.k8s.io
-func (c *Controller) Init() {
-	c.logger.Infof("Initializing Kubeless controller...")
-	for {
-		//create TPR if it's not exists
-		err := initResource(c.clientset)
-		if err == nil {
-			break
-		}
-		c.logger.Errorf("Initialization failed: %v", err)
-		c.logger.Infof("Retry in %v...", initRetryWaitTime)
-		time.Sleep(initRetryWaitTime)
-	}
-}
-
-// InstallKubeless deploys kubeless-controller
-func (c *Controller) InstallKubeless(ctlNamespace string) {
-	c.logger.Infof("Installing Kubeless controller into Kubernetes deployment...")
-	err := utils.DeployKubeless(c.clientset, ctlNamespace)
-	if err != nil {
-		c.logger.Errorf("Kubeless controller installation failed: %v", err)
-	} else {
-		c.logger.Infof("Kubeless controller installation successful!")
-	}
-}
-
-// InstallMsgBroker deploys kafka-controller
-func (c *Controller) InstallMsgBroker(ctlNamespace string) {
-	c.logger.Infof("Installing Message Broker into Kubernetes deployment...")
-	err := utils.DeployMsgBroker(c.clientset, ctlNamespace)
-	if err != nil {
-		c.logger.Errorf("Message Broker installation failed: %v", err)
-	} else {
-		c.logger.Infof("Message Broker installation successful!")
-	}
-}
-
 // Run starts the kubeless controller
 func (c *Controller) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()

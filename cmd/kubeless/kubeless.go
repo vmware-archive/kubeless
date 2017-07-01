@@ -32,7 +32,7 @@ func newRootCmd() *cobra.Command {
 		Long:  globalUsage,
 	}
 
-	cmd.AddCommand(functionCmd, topicCmd, versionCmd, installCmd)
+	cmd.AddCommand(functionCmd, topicCmd, versionCmd)
 	return cmd
 }
 
