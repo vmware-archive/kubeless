@@ -51,7 +51,7 @@ after_success:
 
 before_deploy:
   - make binary-cross
-  - cd bundles && for d in kubeless_*; do zip -r9 $d.zip $d/; done
+  - for d in bundles/kubeless_*; do zip -r9 $d.zip $d/; done
   - |
     if [ "$TRAVIS_OS_NAME" = linux ]; then
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
