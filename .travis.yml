@@ -70,6 +70,7 @@ deploy:
     - kubeless.yaml
     - bundles/kubeless_*.zip
   skip_cleanup: true
+  overwrite: true
   on:
     tags: true
     repo: kubeless/kubeless
