@@ -58,16 +58,16 @@ before_deploy:
       docker push $CONTROLLER_IMAGE
       NEW_DIGEST=$(./script/find_digest.sh ${CONTROLLER_IMAGE_NAME} ${TRAVIS_TAG} | cut -d " " -f 2)
       OLD_DIGEST=$(cat kubeless.yaml | grep ${CONTROLLER_IMAGE_NAME} |  cut -d "@" -f 2)
-      sed -i 's/'"$OLD_DIGEST"'/'"$NEW_DIGEST"'/g' kubeless.yaml
+      sed 's/'"$OLD_DIGEST"'/'"$NEW_DIGEST"'/g' kubeless.yaml > kubeless-${TRAVIS_TAG}.yaml
     fi
 
 deploy:
   provider: releases
   api_key:
-    secure: tmGLe/aDko9VqGpc8bTxeKAOKxUKd+Yyt0VgE9aXH1CuXF9FB8qM1ZC+8f9PhiWAfEpHLLULQ0swMTDi/q4B1LvtK47O6jEp2lFOtOW3KEZKEvgvGNr47luwYDPOhZ1mk2rhIVhlH7YbWZjh7t+iK2KMw9Z7v7tzQzJi1tL9n5PplPoZ1RsUiy/nb+ChMz+ebE6eBa40WWjSaDdCaUithL16ZXDNjRFXfM9U3rWqNsKM0bExvtPfiWrWZdBW0Gu8oeUo040VzDURXWzxtwWs3emHJ4JhmwPLwvTnMk1Cr377LFuHQo4auoa4b4HSkza/2T+IceQE6A1P7qoyjU057u3U2vZIVvNbJvSLWQrayyo0P+zU5OxdeLKkanVEfmzIla3stN3PSXxYlxwBz2DhVuDtsS4UNOBJquvouNz+d7+z41g6UBstWc66us7gNzGcgcbcI2uXuO4g481wMK1YJPeBxUVHMccAWqJQtSMgCeBIUVopDRirRi8yklbwcCJbtoSDgKjMUIGSv/YV8pFu/OS803mFobq9A8RmLBTZGpK4STIFVxFMZy2GKV0xQ7ABbz/hjGzuosiv7jr6Ahm454Wt8KUdcThz9bGejKuh/LtBTEXZgPLCEtbSKL+whLl8nbhwOp/JTMX3u+agzeAKBWigHOEhprLF17KKyVaYRaU=
+    secure: "daSVcUjHGO5L1SlyX3+GOz/Hv4KqkC/ObdRAbr7n7bvZUQewN5ll9Q5z5gvOI9z+zY9nnYFVppaOLfdWGjSldxjepwdHFB0F/oBXVwD+l7WOWacpq8+0+Zm71gG31YMl9ImkgmFll9WwXcG/2MLSGUsyBInGLzyRT0l5OhG6PNWLO3p7YZBKr9ihF3nxeRucfwn2uMUuyVnlEyBCyqmpxeKMNK3J9FY9j3jTmTmRQCBc9UEGGcX2p7R+LtLEvg/nxllVZyHQYc6UhuXWC6imx1mo6NAsVNSvbgJ0ufWrwcd+43XmU5eO8IPMlkb/EVgzp40XWoMrsxQZLEhnkLuApLFMdgn3ioJynBmtYiP3mQZ67Dt5zQiA7+UW/D+1CVjb7hVTzk76Vm4oEEq1KUs2xnA+kaUKprTLrlW4EusiSqKPZWG+hrqlC6VGYTSpQBtx9Hgo5yHZ0r5zoNCrXy3ISsCf8ublH+eiQ5tQ4pFD42AlLKGOQEpL6cvu2zl7+KZfWDqXG8dnjni7aguuPEdXnUm/bsv7JWKwFFV8CHfmBuWruU+VG1iVvSOmATlwQgb72ZsE+bJw5nFWTbrsVeK+hXSBk1tiWWDJzYEC9e81hFKxw8ltPHnG+dos941FXjNVG81L6TcuCgc42Ca4Kf7ICirjdmCKT3e7FW60IFw8SLM="
   file_glob: true
   file:
-    - kubeless.yaml
+    - kubeless-${TRAVIS_TAG}.yaml
     - bundles/kubeless_*.zip
   skip_cleanup: true
   overwrite: true
