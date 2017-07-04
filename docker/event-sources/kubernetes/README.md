@@ -1,7 +1,5 @@
 # Container to feed k8s events to kafka
 
-`local-events.py` is a Python 3.6 script, that uses `asyncio` and the Kubernetes python client to watch for events in several k8s resources.
-
 `events.py` is a Python 3.4 script, that uses `asyncio` and the Kubernetes python client plus a Kafka client to watch for k8s events and send those events onto the kubeless Kafka _k8s_ topic.
 
 The Dockerfile just builds an image to start this as a deployment in a k8s cluster running kubeless.
