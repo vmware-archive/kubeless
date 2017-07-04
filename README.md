@@ -21,11 +21,11 @@ Also check our [UI](https://github.com/kubeless/kubeless-ui) project
 
 ## Usage
 
-Download `kubeless` from the release page. Then launch the controller. It will ask you if you are OK to do it. It will create a _kubeless_ namespace and a _function_ ThirdPartyResource. You will see a _kubeless_ controller, and _kafka_, _zookeeper_ statefulset running.
+Download `kubeless` from the release page. Then launch the controller. It will create a _kubeless_ namespace and a _function_ ThirdPartyResource. You will see a _kubeless_ controller, and _kafka_, _zookeeper_ statefulset running.
 
 ```console
-$ kubeless install
-We are going to install the controller in the kubeless namespace. Are you OK with this: [Y/n]
+$ kubectl create ns kubeless
+$ kubectl create -f $(curl -s https://api.github.com/repos/kubeless/kubeless/releases/latest | jq -r ".assets[] | select(.name | test(\"yaml\")) | .browser_download_url")
 
 $ kubectl get pods -n kubeless
 NAME                                   READY     STATUS    RESTARTS   AGE
