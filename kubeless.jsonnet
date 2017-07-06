@@ -148,7 +148,7 @@ local tpr = {
   apiVersion: "extensions/v1beta1",
   kind: "ThirdPartyResource",
   metadata: objectMeta.name("function.k8s.io"),
-  versions: [{name: "v1alpha1"}],
+  versions: [{name: "v1"}],
   description: "Kubernetes Native Serverless Framework",
 };
 
