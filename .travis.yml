@@ -31,7 +31,7 @@ install:
 script:
   - make test
   - make validation
-  - make binary
+  - make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
   - |
     if [ "$TRAVIS_OS_NAME" = linux ]; then
       make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
@@ -50,7 +50,7 @@ after_success:
     fi
 
 before_deploy:
-  - make binary-cross
+  - make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary-cross
   - for d in bundles/kubeless_*; do zip -r9 $d.zip $d/; done
   - |
     if [ "$TRAVIS_OS_NAME" = linux ]; then

@@ -1,6 +1,7 @@
 GO = go
 GO_FLAGS =
 GOFMT = gofmt
+VERSION = dev-$(shell date +%FT%T%z)
 
 KUBECFG = kubecfg
 DOCKER = docker
@@ -23,10 +24,10 @@ all:
 	CGO_ENABLED=1 ./script/make.sh
 
 binary:
-	CGO_ENABLED=1 ./script/make.sh binary
+	CGO_ENABLED=1 ./script/binary $(VERSION)
 
 binary-cross:
-	./script/make.sh binary-cli
+	./script/binary-cli $(VERSION)
 
 kubeless.yaml: kubeless.jsonnet
 	$(KUBECFG) show -o yaml $< > $@
