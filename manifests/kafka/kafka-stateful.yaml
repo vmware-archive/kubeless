@@ -9,7 +9,7 @@ spec:
   template:
     metadata:
       labels:
-        app: kafka
+        kubeless: kafka
     spec:
       terminationGracePeriodSeconds: 10
       containers:
