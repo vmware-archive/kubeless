@@ -16,7 +16,14 @@
 
 set -e
 
-source "$(dirname "$BASH_SOURCE")/.build"
+if [ -z "$1" ]; then
+    VERSION=dev-$(shell date +%FT%T%z)
+else
+    VERSION=$1
+fi
+
+GITCOMMIT=$(git rev-parse --short HEAD)
+BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/version.VERSION=${VERSION} -X github.com/kubeless/kubeless/version.GITCOMMIT=${GITCOMMIT}")
 
 # Get rid of existing binary
 rm -f ${GOPATH%%:*}/bin/kubeless*

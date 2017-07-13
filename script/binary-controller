@@ -16,8 +16,6 @@
 
 set -e
 
-source "$(dirname "$BASH_SOURCE")/.build"
-
 if [ -z "$1" ]; then
 #    TODO: Skip windows at this moment
     OS_PLATFORM_ARG=(-os="darwin linux")
@@ -32,6 +30,7 @@ else
 fi
 
 GITCOMMIT=$(git rev-parse --short HEAD)
+BUILD_FLAGS=(-ldflags="-w -X version.GITCOMMIT=${GITCOMMIT}")
 
 # Get rid of existing binaries
 rm -rf bundles/kubeless*
