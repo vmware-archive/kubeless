@@ -9,4 +9,4 @@ spec:
   - port: 2181
     name: client
   selector:
-    app: zookeeper
+    kubeless: zookeeper
