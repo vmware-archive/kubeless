@@ -11,4 +11,4 @@ spec:
     name: leader-election
   clusterIP: None
   selector:
-    app: zookeeper
+    kubeless: zookeeper

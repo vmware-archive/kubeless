@@ -78,8 +78,8 @@ local zookeeperContainer =
   ]);
 
 local kubelessLabel = {kubeless: "controller"};
-local kafkaLabel = {app: "kafka"};
-local zookeeperLabel = {app: "zookeeper"};
+local kafkaLabel = {kubeless: "kafka"};
+local zookeeperLabel = {kubeless: "zookeeper"};
 
 local controllerDeployment =
   deployment.default("kubeless-controller", controllerContainer, namespace) +

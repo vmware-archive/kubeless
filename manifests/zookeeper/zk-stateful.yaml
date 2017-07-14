@@ -9,7 +9,7 @@ spec:
   template:
     metadata:
       labels:
-        app: zookeeper
+        kubeless: zookeeper
     spec:
       terminationGracePeriodSeconds: 10
       containers:
