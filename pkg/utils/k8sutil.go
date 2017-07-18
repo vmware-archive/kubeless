@@ -52,8 +52,8 @@ import (
 const (
 	pythonRuntime = "bitnami/kubeless-python@sha256:2d0412e982a8e831dee056aee49089e1d5edd65470e479dcbc7d60bb56ea2b71"
 	pubsubRuntime = "bitnami/kubeless-event-consumer@sha256:9c29b8ec6023040492226a55b19781bc3a8911d535327c773ee985895515e905"
-	nodejsRuntime = "rosskukulinski/kubeless-nodejs:0.0.0"
-	rubyRuntime   = "jbianquettibitnami/kubeless-ruby:0.0.0"
+	nodejsRuntime = "rosskukulinski/kubeless-nodejs@sha256:8538660749e40847ac637d61caec5a609682b65727f8331ad5ef67e910b729cb"
+	rubyRuntime   = "jbianquettibitnami/kubeless-ruby@sha256:9ea43e4e1570b46ae272e9f81a0ea4736e4956ee2ee67d8def29287a1d7153fe"
 	pubsubFunc    = "PubSub"
 )
 
@@ -181,20 +181,28 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 	switch {
 	case strings.Contains(funcObj.Spec.Runtime, "python"):
 		fileName = modName + ".py"
-		imageName = pythonRuntime
-		if funcObj.Spec.Type == "PubSub" {
-			imageName = pubsubRuntime
+		if imageName = os.Getenv("PYTHON_RUNTIME"); imageName == "" {
+			imageName = pythonRuntime
+		}
+		if funcObj.Spec.Type == pubsubFunc {
+			if imageName = os.Getenv("PUBSUB_RUNTIME"); imageName == "" {
+				imageName = pubsubRuntime
+			}
 		}
 		depName = "requirements.txt"
 	case strings.Contains(funcObj.Spec.Runtime, "go"):
 		fileName = modName + ".go"
 	case strings.Contains(funcObj.Spec.Runtime, "nodejs"):
 		fileName = modName + ".js"
-		imageName = nodejsRuntime
+		if imageName = os.Getenv("NODEJS_RUNTIME"); imageName == "" {
+			imageName = nodejsRuntime
+		}
 		depName = "package.json"
 	case strings.Contains(funcObj.Spec.Runtime, "ruby"):
 		fileName = modName + ".rb"
-		imageName = rubyRuntime
+		if imageName = os.Getenv("RUBY_RUNTIME"); imageName == "" {
+			imageName = rubyRuntime
+		}
 		depName = "Gemfile"
 	}
 
