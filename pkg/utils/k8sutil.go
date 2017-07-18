@@ -372,7 +372,7 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 	if funcObj.Spec.Type != pubsubFunc {
 		livenessProbe := &v1.Probe{
 			InitialDelaySeconds: int32(3),
-			PeriodSeconds:       int32(3),
+			PeriodSeconds:       int32(30),
 			Handler: v1.Handler{
 				HTTPGet: &v1.HTTPGetAction{
 					Path: "/healthz",
