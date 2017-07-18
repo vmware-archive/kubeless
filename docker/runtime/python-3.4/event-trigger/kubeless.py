@@ -13,8 +13,6 @@ mod_name = os.getenv('MOD_NAME')
 func_handler = os.getenv('FUNC_HANDLER')
 topic_name = os.getenv('TOPIC_NAME')
 
-group = mod_name + func_handler
-
 if "KUBELESS_KAFKA_SVC" in os.environ:
     kafka_svc = os.getenv('KUBELESS_KAFKA_SVC')
 else:
@@ -23,9 +21,11 @@ else:
 if "KUBELESS_KAFKA_NAMESPACE" in os.environ:
     kafka_namespace = os.getenv('KUBELESS_KAFKA_NAMESPACE')
 else:
-    kafka_namespace = 'kubeless'
+    kafka_namespace = 'kubeless'    
 
 kafka_server = '%s.%s:9092' % kafka_svc, kafka_namespace
+
+group = mod_name + func_handler
 
 mod = imp.load_source('function', '/kubeless/%s.py' % mod_name)
 func = getattr(mod, func_handler)
