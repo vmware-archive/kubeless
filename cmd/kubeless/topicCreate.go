@@ -53,7 +53,12 @@ func execCommand(command []string, ctlNamespace string) {
 	f := cmdutil.NewFactory(nil)
 
 	k8sClientSet := utils.GetClientOutOfCluster()
-	pods, _ := utils.GetPodsByLabel(k8sClientSet, ctlNamespace, "kubeless", "kafka")
+	pods, err := utils.GetPodsByLabel(k8sClientSet, ctlNamespace, "kubeless", "kafka")
+	if err != nil {
+		logrus.Fatalf("Can't find the kafka pod: %v", err)
+	} else if len(pods.Items) == 0 {
+		logrus.Fatalln("Can't find any kafka pod")
+	}
 	params := &k8scmd.ExecOptions{
 		StreamOptions: k8scmd.StreamOptions{
 			Namespace:     ctlNamespace,
