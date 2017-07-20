@@ -20,7 +20,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/pkg/api"
 )
 
 var ingressDeleteCmd = &cobra.Command{
@@ -43,8 +42,4 @@ var ingressDeleteCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 	},
-}
-
-func init() {
-	deleteCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the route")
 }

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -49,7 +50,6 @@ import (
 
 	"k8s.io/kubernetes/pkg/kubectl/cmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"net/url"
 )
 
 const (
@@ -326,7 +326,7 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 				},
 			},
 			Selector: labels,
-			Type:     v1.ServiceTypeNodePort,
+			Type:     v1.ServiceTypeClusterIP,
 		},
 	}
 	_, err = client.Core().Services(ns).Create(svc)

@@ -18,9 +18,8 @@ package main
 
 import (
 	"github.com/Sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"k8s.io/client-go/pkg/api"
 	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/spf13/cobra"
 )
 
 var ingressCreateCmd = &cobra.Command{
@@ -56,5 +55,4 @@ var ingressCreateCmd = &cobra.Command{
 func init() {
 	ingressCreateCmd.Flags().StringP("domain", "", "", "Specify runtime")
 	ingressCreateCmd.Flags().StringP("function", "", "", "Specify handler")
-	ingressCreateCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 }

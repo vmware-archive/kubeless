@@ -24,12 +24,11 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 	"io"
-	"k8s.io/client-go/pkg/api"
 
 	"github.com/olekukonko/tablewriter"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 var ingressListCmd = &cobra.Command{
@@ -56,7 +55,6 @@ var ingressListCmd = &cobra.Command{
 
 func init() {
 	ingressListCmd.Flags().StringP("out", "o", "", "Output format. One of: json|yaml")
-	ingressListCmd.Flags().StringP("namespace", "n", api.NamespaceDefault, "Specify namespace for the ingress")
 }
 
 func doIngressList(w io.Writer, client kubernetes.Interface, ns, output string) error {
