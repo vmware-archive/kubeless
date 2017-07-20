@@ -49,6 +49,7 @@ import (
 
 	"k8s.io/kubernetes/pkg/kubectl/cmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"net/url"
 )
 
 const (
@@ -806,6 +807,82 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 		}
 		dpm.Spec.Template.Annotations[v1.PodInitContainersAnnotationKey] = string(value)
 		dpm.Spec.Template.Annotations[v1.PodInitContainersBetaAnnotationKey] = string(value)
+	}
+	return nil
+}
+
+// CreateIngress creates ingress rule for a specific function
+func CreateIngress(ingressName, function, domain, ns string) error {
+	if domain == "" {
+		var err error
+		domain, err = getLocalDomain()
+		if err != nil {
+			return err
+		}
+	}
+
+	client := GetClientOutOfCluster()
+
+	ingressAnnotations := map[string]string{
+		"kubernetes.io/ingress.class": "nginx",
+		"kubernetes.io/tls-acme":      "true",
+	}
+
+	ingress := &v1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        ingressName,
+			Namespace:   ns,
+			Annotations: ingressAnnotations,
+		},
+		Spec: v1beta1.IngressSpec{
+			Rules: []v1beta1.IngressRule{
+				{
+					Host: fmt.Sprintf("%s.%s", ingressName, domain),
+					IngressRuleValue: v1beta1.IngressRuleValue{
+						HTTP: &v1beta1.HTTPIngressRuleValue{
+							Paths: []v1beta1.HTTPIngressPath{
+								{
+									Path: "/",
+									Backend: v1beta1.IngressBackend{
+										ServiceName: function,
+										ServicePort: intstr.FromInt(8080),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, err := client.ExtensionsV1beta1().Ingresses(ns).Create(ingress)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// getLocalDomain returns hostname
+func getLocalDomain() (string, error) {
+	config, err := buildOutOfClusterConfig()
+	if err != nil {
+		return "", err
+	}
+	url, err := url.Parse(config.Host)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s.nip.io", url.Hostname()), nil
+}
+
+// DeleteIngress deletes an ingress rule
+func DeleteIngress(name, ns string) error {
+	client := GetClientOutOfCluster()
+	err := client.ExtensionsV1beta1().Ingresses(ns).Delete(name, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
 	}
 	return nil
 }

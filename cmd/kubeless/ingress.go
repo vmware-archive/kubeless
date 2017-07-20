@@ -14,31 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Serverless framework for Kubernetes.
 package main
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 )
 
-var globalUsage = `` //TODO: add explanation
-
-func newRootCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "kubeless",
-		Short: "Serverless framework for Kubernetes",
-		Long:  globalUsage,
-	}
-
-	cmd.AddCommand(functionCmd, topicCmd, versionCmd, ingressCmd)
-	return cmd
+var ingressCmd = &cobra.Command{
+	Use:   "ingress SUBCOMMAND",
+	Short: "manage route to function on Kubeless",
+	Long:  `ingress command allows user to list, create, delete ingress rule for function on Kubeless`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
 }
 
-func main() {
-	cmd := newRootCmd()
-	if err := cmd.Execute(); err != nil {
-		os.Exit(1)
+func init() {
+	cmds := []*cobra.Command{ingressCreateCmd, ingressListCmd, ingressDeleteCmd}
+
+	for _, cmd := range cmds {
+		ingressCmd.AddCommand(cmd)
 	}
 }
