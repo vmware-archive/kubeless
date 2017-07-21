@@ -32,9 +32,10 @@ import (
 )
 
 var ingressListCmd = &cobra.Command{
-	Use:   "list FLAG",
-	Short: "list all routes in Kubeless",
-	Long:  `list all routes in Kubeless`,
+	Use:     "list FLAG",
+	Aliases: []string{"ls"},
+	Short:   "list all routes in Kubeless",
+	Long:    `list all routes in Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		output, err := cmd.Flags().GetString("out")
 		if err != nil {

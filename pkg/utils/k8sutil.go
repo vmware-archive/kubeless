@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/url"
 	"os"
 	"regexp"
@@ -823,16 +824,17 @@ func CreateIngress(ingressName, function, domain, ns string) error {
 
 	client := GetClientOutOfCluster()
 
-	ingressAnnotations := map[string]string{
-		"kubernetes.io/ingress.class": "nginx",
-		"kubernetes.io/tls-acme":      "true",
-	}
+	//TODO: skip annotation. We can add it later
+	//ingressAnnotations := map[string]string{
+	//	"kubernetes.io/ingress.class": "nginx",
+	//	"kubernetes.io/tls-acme":      "true",
+	//}
 
 	ingress := &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        ingressName,
-			Namespace:   ns,
-			Annotations: ingressAnnotations,
+			Name:      ingressName,
+			Namespace: ns,
+			//Annotations: ingressAnnotations,
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
@@ -874,7 +876,9 @@ func getLocalDomain() (string, error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("%s.nip.io", url.Hostname()), nil
+	host, _, _ := net.SplitHostPort(url.Host)
+
+	return fmt.Sprintf("%s.nip.io", host), nil
 }
 
 // DeleteIngress deletes an ingress rule
