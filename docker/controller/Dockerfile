@@ -1,4 +1,7 @@
 FROM bitnami/minideb:jessie
-MAINTAINER Nguyen Anh Tu <tuna@skippbox.com>
+
+LABEL maintainer="Nguyen Anh Tu <tuna@bitnami.com>"
+
 ADD kubeless-controller /kubeless-controller
+
 ENTRYPOINT ["/kubeless-controller"]
