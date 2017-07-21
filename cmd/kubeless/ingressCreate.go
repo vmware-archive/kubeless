@@ -17,7 +17,10 @@ limitations under the License.
 package main
 
 import (
+	"errors"
+
 	"github.com/Sirupsen/logrus"
+	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 )
@@ -45,11 +48,40 @@ var ingressCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		err = validateInput(function, ns)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		err = utils.CreateIngress(ingressName, function, domain, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 	},
+}
+
+func validateInput(function, ns string) error {
+	tprClient, err := utils.GetTPRClientOutOfCluster()
+	if err != nil {
+		return err
+	}
+	funcList := spec.FunctionList{}
+	err = tprClient.Get().
+		Resource("functions").
+		Namespace(ns).
+		Do().
+		Into(&funcList)
+	if err != nil {
+		return err
+	}
+
+	for _, f := range funcList.Items {
+		if f.Metadata.Name == function {
+			return nil
+		}
+	}
+
+	return errors.New("function doesn't exist")
 }
 
 func init() {
