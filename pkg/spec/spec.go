@@ -30,12 +30,13 @@ type Function struct {
 
 // FunctionSpec contains func specification
 type FunctionSpec struct {
-	Handler  string `json:"handler"`
-	Function string `json:"function"`
-	Runtime  string `json:"runtime"`
-	Type     string `json:"type"`
-	Topic    string `json:"topic"`
-	Deps     string `json:"deps"`
+	Handler  string   `json:"handler"`
+	Function string   `json:"function"`
+	Runtime  string   `json:"runtime"`
+	Type     string   `json:"type"`
+	Topic    string   `json:"topic"`
+	Deps     string   `json:"deps"`
+	Env      []string `json:"env"`
 }
 
 // FunctionList contains map of functions

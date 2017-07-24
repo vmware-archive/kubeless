@@ -500,7 +500,7 @@ func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
 }
 
 // CreateK8sCustomResource will create a custom function object
-func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps string) error {
+func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps, description string, labels, envs []string) error {
 	var f spec.Function
 
 	tprClient, err := GetTPRClientOutOfCluster()
@@ -515,14 +515,25 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, 
 		Do().Into(&f)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
+			funcLabels := map[string]string{}
+			for _, label := range labels {
+				k, v := getKV(label)
+				funcLabels[k] = v
+			}
+
+			funcAnnotation := map[string]string{
+				"Description": description,
+			}
 			f := &spec.Function{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Function",
 					APIVersion: "k8s.io/v1",
 				},
 				Metadata: metav1.ObjectMeta{
-					Name:      funcName,
-					Namespace: ns,
+					Name:        funcName,
+					Namespace:   ns,
+					Labels:      funcLabels,
+					Annotations: funcAnnotation,
 				},
 				Spec: spec.FunctionSpec{
 					Handler:  handler,
@@ -530,6 +541,7 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, 
 					Type:     funcType,
 					Function: readFile(file),
 					Topic:    topic,
+					Env:      envs,
 				},
 			}
 			// add dependencies file to func spec
@@ -808,4 +820,34 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 		dpm.Spec.Template.Annotations[v1.PodInitContainersBetaAnnotationKey] = string(value)
 	}
 	return nil
+}
+
+func getKV(label string) (string, string) {
+	character := ""
+	equalPos := strings.Index(label, "=")
+	colonPos := strings.Index(label, ":")
+	switch {
+	case equalPos == -1 && colonPos == -1:
+		character = ""
+	case equalPos == -1 && colonPos != -1:
+		character = ":"
+	case equalPos != -1 && colonPos == -1:
+		character = "="
+	case equalPos != -1 && colonPos != -1:
+		if equalPos > colonPos {
+			character = ":"
+		} else {
+			character = "="
+		}
+	}
+
+	if character == "" {
+		return label, os.Getenv(label)
+	}
+	values := strings.SplitN(label, character, 2)
+	// try to get value from os env
+	if values[1] == "" {
+		values[1] = os.Getenv(values[0])
+	}
+	return values[0], values[1]
 }

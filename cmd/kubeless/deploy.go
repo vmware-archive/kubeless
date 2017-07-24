@@ -43,6 +43,21 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		description, err := cmd.Flags().GetString("description")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		labels, err := cmd.Flags().GetStringSlice("label")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		envs, err := cmd.Flags().GetStringSlice("env")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		runtime, err := cmd.Flags().GetString("runtime")
 		if err != nil {
 			logrus.Fatal(err)
@@ -74,7 +89,7 @@ var deployCmd = &cobra.Command{
 			topic = ""
 		}
 
-		err = utils.CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps)
+		err = utils.CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps, description, labels, envs)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -85,6 +100,9 @@ func init() {
 	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
 	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
+	deployCmd.Flags().StringP("description", "", "", "Specify description of the function")
+	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
+	deployCmd.Flags().StringSliceP("env", "", []string{}, "Specify environment variable of the function")
 	deployCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
 	deployCmd.Flags().StringP("trigger-topic", "", "kubeless", "Deploy a pubsub function to Kubeless")
