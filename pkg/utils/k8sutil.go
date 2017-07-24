@@ -43,6 +43,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"k8s.io/kubernetes/pkg/kubectl/cmd"
@@ -247,7 +248,8 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 
 	_, err := client.Core().ConfigMaps(ns).Create(configMap)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		_, err = client.Core().ConfigMaps(ns).Update(configMap)
+		data, _ := json.Marshal(configMap)
+		_, err = client.Core().ConfigMaps(ns).Patch(configMap.Name, types.StrategicMergePatchType, data)
 	}
 	if err != nil {
 		return err
@@ -274,7 +276,9 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 	}
 	_, err = client.Core().Services(ns).Create(svc)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		_, err = client.Core().Services(ns).Update(svc)
+		data, _ := json.Marshal(svc)
+		_, err = client.Core().Services(ns).Patch(svc.Name, types.StrategicMergePatchType, data)
+
 	}
 	if err != nil {
 		return err
@@ -385,7 +389,11 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 
 	_, err = client.Extensions().Deployments(ns).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		_, err = client.Extensions().Deployments(ns).Update(dpm)
+		data, _ := json.Marshal(dpm)
+		_, err = client.Extensions().Deployments(ns).Patch(dpm.Name, types.StrategicMergePatchType, data)
+		if err != nil {
+			return err
+		}
 
 		// kick existing function pods then it will be recreated
 		// with the new data mount from updated configmap.
