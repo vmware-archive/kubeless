@@ -1,14 +1,17 @@
 module.exports = {
-  handler: function (req, res) {
-    var body = []
-    req.on('error', function (err) {
-      console.error(err)
-    }).on('data', function (chunk) {
-      body.push(chunk)
-    }).on('end', function () {
-      body = Buffer.concat(body).toString()
-      console.log(body)
-      res.end(body)
-    })
-  }
-}
+  handler: (req, res) => {
+    let body = [];
+    return new Promise((resolve, reject) => {
+      req.on('error', (err) => {
+        reject(new Error(err));
+      }).on('data', (chunk) => {
+        body.push(chunk);
+      }).on('end', () => {
+        body = Buffer.concat(body).toString();
+        console.log(body);
+        res.end(body);
+        resolve();
+      });
+    });
+  },
+};
