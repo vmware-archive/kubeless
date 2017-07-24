@@ -5,8 +5,10 @@ local deployment = k.apps.v1beta1.deployment;
 local statefulset = k.apps.v1beta1.statefulSet;
 local container = k.core.v1.container;
 local service = k.core.v1.service;
+local serviceAccount = k.core.v1.serviceAccount;
 
 local namespace = "kubeless";
+local controller_account_name = "controller-acct";
 
 local controllerContainer =
   container.default("kubeless-controller", "bitnami/kubeless-controller@sha256:d07986d575a80179ae15205c6fa5eb3bf9f4f4f46235c79ad6b284e5d3df22d0") +
@@ -81,10 +83,14 @@ local kubelessLabel = {kubeless: "controller"};
 local kafkaLabel = {kubeless: "kafka"};
 local zookeeperLabel = {kubeless: "zookeeper"};
 
+local controllerAccount =
+  serviceAccount.default(controller_account_name, namespace);
+
 local controllerDeployment =
   deployment.default("kubeless-controller", controllerContainer, namespace) +
   {metadata+:{labels: kubelessLabel}} +
   {spec+: {selector: {matchLabels: kubelessLabel}}} +
+  {spec+: {template+: {spec+: {serviceAccountName: controllerAccount.metadata.name}}}} +
   {spec+: {template+: {metadata: {labels: kubelessLabel}}}};
 
 local kafkaVolumeCT = [
@@ -153,6 +159,7 @@ local tpr = {
 };
 
 {
+  controllerAccount: k.util.prune(controllerAccount),
   controller: k.util.prune(controllerDeployment),
   kafkaSts: k.util.prune(kafkaSts),
   zookeeperSts: k.util.prune(zookeeperSts),

@@ -29,8 +29,16 @@ binary:
 binary-cross:
 	./script/binary-cli $(VERSION)
 
+
+%.yaml: %.jsonnet
+	$(KUBECFG) show -o yaml $< > $@.tmp
+	mv $@.tmp $@
+
+all-yaml: kubeless.yaml kubeless-rbac.yaml
+
 kubeless.yaml: kubeless.jsonnet
-	$(KUBECFG) show -o yaml $< > $@
+
+kubeless-rbac.yaml: kubeless-rbac.jsonnet kubeless.jsonnet
 
 docker/controller: controller-build
 	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/kubeless-controller $@
