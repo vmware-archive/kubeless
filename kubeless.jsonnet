@@ -128,26 +128,26 @@ local kafkaSvc =
   service.default("kafka", namespace) +
   service.spec(k.core.v1.serviceSpec.default()) +
   service.mixin.spec.ports({port: 9092}) +
-  service.mixin.spec.selector({app: "kafka"});
+  service.mixin.spec.selector({kubeless: "kafka"});
 
 local kafkaHeadlessSvc =
   service.default("broker", namespace) +
   service.spec(k.core.v1.serviceSpec.default()) +
   service.mixin.spec.ports({port: 9092}) +
-  service.mixin.spec.selector({app: "kafka"}) +
+  service.mixin.spec.selector({kubeless: "kafka"}) +
   {spec+: {clusterIP: "None"}};
 
 local zookeeperSvc =
   service.default("zookeeper", namespace) +
   service.spec(k.core.v1.serviceSpec.default()) +
   service.mixin.spec.ports({port: 2181, name: "client"}) +
-  service.mixin.spec.selector({app: "zookeeper"});
+  service.mixin.spec.selector({kubeless: "zookeeper"});
 
 local zookeeperHeadlessSvc =
   service.default("zoo", namespace) +
   service.spec(k.core.v1.serviceSpec.default()) +
   service.mixin.spec.ports([{port: 9092, name: "peer"},{port: 3888, name: "leader-election"}]) +
-  service.mixin.spec.selector({app: "zookeeper"}) +
+  service.mixin.spec.selector({kubeless: "zookeeper"}) +
   {spec+: {clusterIP: "None"}};
 
 local tpr = {
