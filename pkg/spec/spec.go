@@ -36,6 +36,7 @@ type FunctionSpec struct {
 	Type     string   `json:"type"`
 	Topic    string   `json:"topic"`
 	Deps     string   `json:"deps"`
+	Memory   string   `json:"memory"`
 	Env      []string `json:"env"`
 }
 

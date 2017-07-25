@@ -430,6 +430,17 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		addInitContainerAnnotation(dpm)
 	}
 
+	// update deployment for memory request
+	if funcObj.Spec.Memory != "" {
+		//mem value has already been validated before
+		quantity, _ := resource.ParseQuantity(funcObj.Spec.Memory)
+		resource := map[v1.ResourceName]resource.Quantity{
+			v1.ResourceMemory: quantity,
+		}
+		dpm.Spec.Template.Spec.Containers[0].Resources.Requests = resource
+		dpm.Spec.Template.Spec.Containers[0].Resources.Limits = resource
+	}
+
 	// add liveness Probe to deployment
 	if funcObj.Spec.Type != pubsubFunc {
 		livenessProbe := &v1.Probe{
@@ -513,7 +524,7 @@ func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
 }
 
 // CreateK8sCustomResource will create a custom function object
-func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps, description string, labels, envs []string) error {
+func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps, description, mem string, labels, envs []string) error {
 	var f *spec.Function
 
 	tprClient, err := GetTPRClientOutOfCluster()
@@ -528,7 +539,7 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, 
 		Do().Into(f)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
-			f = constructFunction(runtime, handler, file, funcName, funcType, topic, ns, deps, description, labels, envs)
+			f = constructFunction(runtime, handler, file, funcName, funcType, topic, ns, deps, description, mem, labels, envs)
 			var result spec.Function
 			err = tprClient.Post().
 				Resource("functions").
@@ -549,14 +560,14 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, 
 }
 
 // UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(runtime, handler, file, funcName, funcType, ns, description string, labels, envs []string) error {
+func UpdateK8sCustomResource(runtime, handler, file, funcName, funcType, ns, description, mem string, labels, envs []string) error {
 	fa := cmdutil.NewFactory(nil)
 
 	if ns == "" {
 		ns, _, _ = fa.DefaultNamespace()
 	}
 
-	f := constructFunction(runtime, handler, file, funcName, funcType, "", ns, "", description, labels, envs)
+	f := constructFunction(runtime, handler, file, funcName, funcType, "", ns, "", description, mem, labels, envs)
 
 	funcJSON, err := json.Marshal(f)
 	if err != nil {
@@ -586,7 +597,7 @@ func UpdateK8sCustomResource(runtime, handler, file, funcName, funcType, ns, des
 	return err
 }
 
-func constructFunction(runtime, handler, file, funcName, funcType, topic, ns, deps, description string, labels, envs []string) *spec.Function {
+func constructFunction(runtime, handler, file, funcName, funcType, topic, ns, deps, description, mem string, labels, envs []string) *spec.Function {
 	funcLabels := map[string]string{}
 	for _, label := range labels {
 		k, v := getKV(label)
@@ -614,6 +625,7 @@ func constructFunction(runtime, handler, file, funcName, funcType, topic, ns, de
 			Function: readFile(file),
 			Topic:    topic,
 			Env:      envs,
+			Memory:   mem,
 		},
 	}
 	// add dependencies file to func spec

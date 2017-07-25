@@ -84,6 +84,7 @@ func print(f spec.Function, name, output string) {
 			{"Description", fmt.Sprintf(f.Metadata.Annotations["Description"])},
 			{"Labels", fmt.Sprintf(string(label))},
 			{"Environment variables", fmt.Sprintf(string(env))},
+			{"Memory", fmt.Sprintf(f.Spec.Memory)},
 		}
 
 		for _, v := range data {

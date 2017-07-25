@@ -68,8 +68,13 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		mem, err := cmd.Flags().GetString("memory")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		funcType := "HTTP"
-		err = utils.UpdateK8sCustomResource(runtime, handler, file, funcName, funcType, ns, description, labels, envs)
+		err = utils.UpdateK8sCustomResource(runtime, handler, file, funcName, funcType, ns, description, mem, labels, envs)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -81,6 +86,7 @@ func init() {
 	updateCmd.Flags().StringP("handler", "", "", "Specify handler")
 	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	updateCmd.Flags().StringP("description", "", "", "Specify description of the function")
+	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
 	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
 	updateCmd.Flags().StringSliceP("env", "", []string{}, "Specify environment variable of the function")
 	updateCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")

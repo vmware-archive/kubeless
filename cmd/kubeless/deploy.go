@@ -20,6 +20,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/pkg/api"
 )
 
@@ -83,13 +84,21 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		mem, err := cmd.Flags().GetString("memory")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		if mem != "" {
+			validateMemory(mem)
+		}
+
 		funcType := "PubSub"
 		if triggerHTTP {
 			funcType = "HTTP"
 			topic = ""
 		}
 
-		err = utils.CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps, description, labels, envs)
+		err = utils.CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps, description, mem, labels, envs)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -106,5 +115,13 @@ func init() {
 	deployCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
 	deployCmd.Flags().StringP("trigger-topic", "", "kubeless", "Deploy a pubsub function to Kubeless")
+	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
 	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
+}
+
+func validateMemory(mem string) {
+	_, err := resource.ParseQuantity(mem)
+	if err != nil {
+		logrus.Fatalf("Wrong format of memory value: %v", err)
+	}
 }
