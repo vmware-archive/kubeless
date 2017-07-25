@@ -140,10 +140,8 @@ test_kubeless_rbac() {
     [[ $current_context != "" ]] && \
         info "Saved context: '${current_context}'" && \
         ${KUBECTL_BIN} config use-context ${MINIKUBE_CONTEXT}
-    (
-        _test_must_fail_without_rbac_roles
-        _test_must_pass_with_rbac_roles
-    )
+    _test_must_fail_without_rbac_roles
+    _test_must_pass_with_rbac_roles
     # Restore current_context
     [[ $current_context != "" ]] && \
         info "Restoring context: '${current_context}'" && \
