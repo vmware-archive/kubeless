@@ -265,6 +265,9 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 	labels := map[string]string{
 		"function": name,
 	}
+	for k, v := range funcObj.Metadata.Labels {
+		labels[k] = v
+	}
 
 	t := true
 	or := []metav1.OwnerReference{
@@ -427,6 +430,7 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		addInitContainerAnnotation(dpm)
 	}
 
+	// add liveness Probe to deployment
 	if funcObj.Spec.Type != pubsubFunc {
 		livenessProbe := &v1.Probe{
 			InitialDelaySeconds: int32(3),
@@ -439,6 +443,15 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 			},
 		}
 		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
+	}
+
+	// update env var for deployment
+	for _, env := range funcObj.Spec.Env {
+		k, v := getKV(env)
+		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
+			Name:  k,
+			Value: v,
+		})
 	}
 
 	_, err = client.Extensions().Deployments(ns).Create(dpm)
@@ -501,7 +514,7 @@ func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
 
 // CreateK8sCustomResource will create a custom function object
 func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps, description string, labels, envs []string) error {
-	var f spec.Function
+	var f *spec.Function
 
 	tprClient, err := GetTPRClientOutOfCluster()
 	if err != nil {
@@ -512,43 +525,10 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, 
 		Resource("functions").
 		Namespace(ns).
 		Name(funcName).
-		Do().Into(&f)
+		Do().Into(f)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
-			funcLabels := map[string]string{}
-			for _, label := range labels {
-				k, v := getKV(label)
-				funcLabels[k] = v
-			}
-
-			funcAnnotation := map[string]string{
-				"Description": description,
-			}
-			f := &spec.Function{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Function",
-					APIVersion: "k8s.io/v1",
-				},
-				Metadata: metav1.ObjectMeta{
-					Name:        funcName,
-					Namespace:   ns,
-					Labels:      funcLabels,
-					Annotations: funcAnnotation,
-				},
-				Spec: spec.FunctionSpec{
-					Handler:  handler,
-					Runtime:  runtime,
-					Type:     funcType,
-					Function: readFile(file),
-					Topic:    topic,
-					Env:      envs,
-				},
-			}
-			// add dependencies file to func spec
-			if deps != "" {
-				f.Spec.Deps = readFile(deps)
-			}
-
+			f = constructFunction(runtime, handler, file, funcName, funcType, topic, ns, deps, description, labels, envs)
 			var result spec.Function
 			err = tprClient.Post().
 				Resource("functions").
@@ -569,28 +549,14 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, 
 }
 
 // UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(runtime, handler, file, funcName, ns string) error {
+func UpdateK8sCustomResource(runtime, handler, file, funcName, funcType, ns, description string, labels, envs []string) error {
 	fa := cmdutil.NewFactory(nil)
 
 	if ns == "" {
 		ns, _, _ = fa.DefaultNamespace()
 	}
 
-	f := &spec.Function{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Function",
-			APIVersion: "k8s.io/v1",
-		},
-		Metadata: metav1.ObjectMeta{
-			Name:      funcName,
-			Namespace: ns,
-		},
-		Spec: spec.FunctionSpec{
-			Handler:  handler,
-			Function: readFile(file),
-			Runtime:  runtime,
-		},
-	}
+	f := constructFunction(runtime, handler, file, funcName, funcType, "", ns, "", description, labels, envs)
 
 	funcJSON, err := json.Marshal(f)
 	if err != nil {
@@ -618,6 +584,44 @@ func UpdateK8sCustomResource(runtime, handler, file, funcName, ns string) error 
 	}
 
 	return err
+}
+
+func constructFunction(runtime, handler, file, funcName, funcType, topic, ns, deps, description string, labels, envs []string) *spec.Function {
+	funcLabels := map[string]string{}
+	for _, label := range labels {
+		k, v := getKV(label)
+		funcLabels[k] = v
+	}
+
+	funcAnnotation := map[string]string{
+		"Description": description,
+	}
+	f := &spec.Function{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "k8s.io/v1",
+		},
+		Metadata: metav1.ObjectMeta{
+			Name:        funcName,
+			Namespace:   ns,
+			Labels:      funcLabels,
+			Annotations: funcAnnotation,
+		},
+		Spec: spec.FunctionSpec{
+			Handler:  handler,
+			Runtime:  runtime,
+			Type:     funcType,
+			Function: readFile(file),
+			Topic:    topic,
+			Env:      envs,
+		},
+	}
+	// add dependencies file to func spec
+	if deps != "" {
+		f.Spec.Deps = readFile(deps)
+	}
+
+	return f
 }
 
 // DeleteK8sCustomResource will delete custom function object

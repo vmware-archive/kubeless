@@ -53,7 +53,23 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		err = utils.UpdateK8sCustomResource(runtime, handler, file, funcName, ns)
+		description, err := cmd.Flags().GetString("description")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		labels, err := cmd.Flags().GetStringSlice("label")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		envs, err := cmd.Flags().GetStringSlice("env")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		funcType := "HTTP"
+		err = utils.UpdateK8sCustomResource(runtime, handler, file, funcName, funcType, ns, description, labels, envs)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -64,5 +80,8 @@ func init() {
 	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	updateCmd.Flags().StringP("handler", "", "", "Specify handler")
 	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
+	updateCmd.Flags().StringP("description", "", "", "Specify description of the function")
+	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
+	updateCmd.Flags().StringSliceP("env", "", []string{}, "Specify environment variable of the function")
 	updateCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 }
