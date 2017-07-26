@@ -7,7 +7,7 @@ controller:
     replicaCount: 1
     image:
       repository: bitnami/kubeless-controller
-      tag: 0.0.12
+      tag: 0.0.18
       pullPolicy: IfNotPresent
 
 ## UI configuration
