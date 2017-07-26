@@ -58,5 +58,8 @@ validation:
 	./script/validate-gofmt
 	./script/validate-git-marks
 
+minikube-rbac-test:
+	./script/minikube-rbac-test
+
 fmt:
 	$(GOFMT) -s -w $(GO_FILES)
