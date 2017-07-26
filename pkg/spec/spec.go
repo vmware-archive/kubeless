@@ -17,6 +17,7 @@ limitations under the License.
 package spec
 
 import (
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -30,14 +31,14 @@ type Function struct {
 
 // FunctionSpec contains func specification
 type FunctionSpec struct {
-	Handler  string   `json:"handler"`
-	Function string   `json:"function"`
-	Runtime  string   `json:"runtime"`
-	Type     string   `json:"type"`
-	Topic    string   `json:"topic"`
-	Deps     string   `json:"deps"`
-	Memory   string   `json:"memory"`
-	Env      []string `json:"env"`
+	Handler  string            `json:"handler"`
+	Function string            `json:"function"`
+	Runtime  string            `json:"runtime"`
+	Type     string            `json:"type"`
+	Topic    string            `json:"topic"`
+	Deps     string            `json:"deps"`
+	Memory   resource.Quantity `json:"memory"`
+	Env      map[string]string `json:"env"`
 }
 
 // FunctionList contains map of functions

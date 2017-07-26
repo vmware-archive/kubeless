@@ -20,6 +20,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/pkg/api"
 )
 
@@ -72,9 +73,14 @@ var updateCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		funcMem := resource.Quantity{}
+		if mem != "" {
+			funcMem = parseMemory(mem)
+		}
 
 		funcType := "HTTP"
-		err = utils.UpdateK8sCustomResource(runtime, handler, file, funcName, funcType, ns, description, mem, labels, envs)
+		f := constructFunction(runtime, handler, file, funcName, funcType, "", ns, "", description, funcMem, labels, envs)
+		err = utils.UpdateK8sCustomResource(f)
 		if err != nil {
 			logrus.Fatal(err)
 		}

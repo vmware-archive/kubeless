@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -431,11 +430,9 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 	}
 
 	// update deployment for memory request
-	if funcObj.Spec.Memory != "" {
-		//mem value has already been validated before
-		quantity, _ := resource.ParseQuantity(funcObj.Spec.Memory)
+	if funcObj.Spec.Memory != (resource.Quantity{}) {
 		resource := map[v1.ResourceName]resource.Quantity{
-			v1.ResourceMemory: quantity,
+			v1.ResourceMemory: funcObj.Spec.Memory,
 		}
 		dpm.Spec.Template.Spec.Containers[0].Resources.Requests = resource
 		dpm.Spec.Template.Spec.Containers[0].Resources.Limits = resource
@@ -457,8 +454,7 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 	}
 
 	// update env var for deployment
-	for _, env := range funcObj.Spec.Env {
-		k, v := getKV(env)
+	for k, v := range funcObj.Spec.Env {
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  k,
 			Value: v,
@@ -524,9 +520,7 @@ func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
 }
 
 // CreateK8sCustomResource will create a custom function object
-func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps, description, mem string, labels, envs []string) error {
-	var f *spec.Function
-
+func CreateK8sCustomResource(f *spec.Function) error {
 	tprClient, err := GetTPRClientOutOfCluster()
 	if err != nil {
 		return err
@@ -534,16 +528,15 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, 
 
 	err = tprClient.Get().
 		Resource("functions").
-		Namespace(ns).
-		Name(funcName).
+		Namespace(f.Metadata.Namespace).
+		Name(f.Metadata.Name).
 		Do().Into(f)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
-			f = constructFunction(runtime, handler, file, funcName, funcType, topic, ns, deps, description, mem, labels, envs)
 			var result spec.Function
 			err = tprClient.Post().
 				Resource("functions").
-				Namespace(ns).
+				Namespace(f.Metadata.Namespace).
 				Body(f).
 				Do().Into(&result)
 
@@ -560,15 +553,8 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, 
 }
 
 // UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(runtime, handler, file, funcName, funcType, ns, description, mem string, labels, envs []string) error {
+func UpdateK8sCustomResource(f *spec.Function) error {
 	fa := cmdutil.NewFactory(nil)
-
-	if ns == "" {
-		ns, _, _ = fa.DefaultNamespace()
-	}
-
-	f := constructFunction(runtime, handler, file, funcName, funcType, "", ns, "", description, mem, labels, envs)
-
 	funcJSON, err := json.Marshal(f)
 	if err != nil {
 		return err
@@ -595,45 +581,6 @@ func UpdateK8sCustomResource(runtime, handler, file, funcName, funcType, ns, des
 	}
 
 	return err
-}
-
-func constructFunction(runtime, handler, file, funcName, funcType, topic, ns, deps, description, mem string, labels, envs []string) *spec.Function {
-	funcLabels := map[string]string{}
-	for _, label := range labels {
-		k, v := getKV(label)
-		funcLabels[k] = v
-	}
-
-	funcAnnotation := map[string]string{
-		"Description": description,
-	}
-	f := &spec.Function{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Function",
-			APIVersion: "k8s.io/v1",
-		},
-		Metadata: metav1.ObjectMeta{
-			Name:        funcName,
-			Namespace:   ns,
-			Labels:      funcLabels,
-			Annotations: funcAnnotation,
-		},
-		Spec: spec.FunctionSpec{
-			Handler:  handler,
-			Runtime:  runtime,
-			Type:     funcType,
-			Function: readFile(file),
-			Topic:    topic,
-			Env:      envs,
-			Memory:   mem,
-		},
-	}
-	// add dependencies file to func spec
-	if deps != "" {
-		f.Spec.Deps = readFile(deps)
-	}
-
-	return f
 }
 
 // DeleteK8sCustomResource will delete custom function object
@@ -753,14 +700,6 @@ func getVolumeMounts(name, runtime string) []v1.VolumeMount {
 	}
 }
 
-func readFile(file string) string {
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		log.Fatalf("Can not read file: %s. The file may not exist", file)
-	}
-	return string(data[:])
-}
-
 // update deployment object in case of custom runtime
 func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
 	switch {
@@ -836,34 +775,4 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 		dpm.Spec.Template.Annotations[v1.PodInitContainersBetaAnnotationKey] = string(value)
 	}
 	return nil
-}
-
-func getKV(label string) (string, string) {
-	character := ""
-	equalPos := strings.Index(label, "=")
-	colonPos := strings.Index(label, ":")
-	switch {
-	case equalPos == -1 && colonPos == -1:
-		character = ""
-	case equalPos == -1 && colonPos != -1:
-		character = ":"
-	case equalPos != -1 && colonPos == -1:
-		character = "="
-	case equalPos != -1 && colonPos != -1:
-		if equalPos > colonPos {
-			character = ":"
-		} else {
-			character = "="
-		}
-	}
-
-	if character == "" {
-		return label, os.Getenv(label)
-	}
-	values := strings.SplitN(label, character, 2)
-	// try to get value from os env
-	if values[1] == "" {
-		values[1] = os.Getenv(values[0])
-	}
-	return values[0], values[1]
 }

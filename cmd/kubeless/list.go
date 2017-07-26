@@ -109,7 +109,7 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 			tp := f.Spec.Topic
 			ns := f.Metadata.Namespace
 			dep := f.Spec.Deps
-			mem := f.Spec.Memory
+			mem := f.Spec.Memory.String()
 			env, _ := json.Marshal(f.Spec.Env)
 			table.Append([]string{n, ns, h, r, t, tp, dep, mem, string(env)})
 		}

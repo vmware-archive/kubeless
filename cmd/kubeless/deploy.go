@@ -88,8 +88,9 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		funcMem := resource.Quantity{}
 		if mem != "" {
-			validateMemory(mem)
+			funcMem = parseMemory(mem)
 		}
 
 		funcType := "PubSub"
@@ -98,7 +99,8 @@ var deployCmd = &cobra.Command{
 			topic = ""
 		}
 
-		err = utils.CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps, description, mem, labels, envs)
+		f := constructFunction(runtime, handler, file, funcName, funcType, topic, ns, deps, description, funcMem, labels, envs)
+		err = utils.CreateK8sCustomResource(f)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -110,18 +112,20 @@ func init() {
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
 	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	deployCmd.Flags().StringP("description", "", "", "Specify description of the function")
-	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
-	deployCmd.Flags().StringSliceP("env", "", []string{}, "Specify environment variable of the function")
+	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. For example: --label foo1=bar1,foo2=bar2")
+	deployCmd.Flags().StringSliceP("env", "", []string{}, "Specify environment variable of the function. For example: --env foo1=bar1, foo2=bar2")
 	deployCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
 	deployCmd.Flags().StringP("trigger-topic", "", "kubeless", "Deploy a pubsub function to Kubeless")
-	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
+	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory, which is measured in bytes, for the function. It is expressed as a plain interger or a fixed-point interger with one of these suffies: E, P, T, G, M, K, Ei, Pi, Ti, Gi, Mi, Ki")
 	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 }
 
-func validateMemory(mem string) {
-	_, err := resource.ParseQuantity(mem)
+func parseMemory(mem string) resource.Quantity {
+	quantity, err := resource.ParseQuantity(mem)
 	if err != nil {
-		logrus.Fatalf("Wrong format of memory value: %v", err)
+		logrus.Fatalf("Wrong format of the memory value: %v", err)
 	}
+
+	return quantity
 }
