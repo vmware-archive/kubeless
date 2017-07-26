@@ -23,7 +23,7 @@ if "KUBELESS_KAFKA_NAMESPACE" in os.environ:
 else:
     kafka_namespace = 'kubeless'    
 
-kafka_server = '%s.%s:9092' % kafka_svc, kafka_namespace
+kafka_server = '%s.%s:9092' % (kafka_svc, kafka_namespace)
 
 group = mod_name + func_handler
 

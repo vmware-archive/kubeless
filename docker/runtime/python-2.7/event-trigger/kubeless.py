@@ -25,7 +25,7 @@ if "KUBELESS_KAFKA_NAMESPACE" in os.environ:
 else:
     kafka_namespace = 'kubeless'
 
-kafka_server = '%s.%s:9092' % kafka_svc, kafka_namespace
+kafka_server = '%s.%s:9092' % (kafka_svc, kafka_namespace)
 
 mod = imp.load_source('function', '/kubeless/%s.py' % mod_name)
 func = getattr(mod, func_handler)
