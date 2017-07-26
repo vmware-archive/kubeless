@@ -5,8 +5,10 @@ const client = require('prom-client');
 const express = require('express');
 const helper = require('./lib/helper');
 const kafka = require('kafka-node');
+const morgan = require('morgan');
 
 const app = express();
+app.use(morgan('combined'));
 
 const modName = process.env.MOD_NAME;
 const funcHandler = process.env.FUNC_HANDLER;

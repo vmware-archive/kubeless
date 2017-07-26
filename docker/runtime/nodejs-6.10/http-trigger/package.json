@@ -10,6 +10,7 @@
   "homepage": "https://github.com/serverless/serverless-kubeless#readme",
   "dependencies": {
     "express": "^4.15.3",
+    "morgan": "^1.8.2",
     "prom-client": "^10.0.2"
   }
 }

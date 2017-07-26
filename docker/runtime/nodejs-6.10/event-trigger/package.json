@@ -11,6 +11,7 @@
   "dependencies": {
     "express": "^4.15.3",
     "kafka-node": "^2.0.1",
+    "morgan": "^1.8.2",
     "prom-client": "^10.0.2"
   }
 }
