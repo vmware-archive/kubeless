@@ -51,11 +51,12 @@ import (
 )
 
 const (
-	pythonRuntime = "bitnami/kubeless-python@sha256:6789266df0c97333f76e23efd58cf9c7efe24fa3e83b5fc826fd5cc317699b55"
-	pubsubRuntime = "bitnami/kubeless-event-consumer@sha256:5ce469529811acf49c4d20bcd8a675be7aa029b43cf5252a8c9375b170859d83"
-	nodejsRuntime = "bitnami/kubeless-nodejs@sha256:9304c50a408563d9f7782568d536ed198bdc830dc143be38472f57b2f61de104"
-	rubyRuntime   = "jbianquettibitnami/kubeless-ruby@sha256:9ea43e4e1570b46ae272e9f81a0ea4736e4956ee2ee67d8def29287a1d7153fe"
-	pubsubFunc    = "PubSub"
+	pythonRuntime       = "bitnami/kubeless-python@sha256:6789266df0c97333f76e23efd58cf9c7efe24fa3e83b5fc826fd5cc317699b55"
+	pythonPubsubRuntime = "bitnami/kubeless-event-consumer@sha256:5ce469529811acf49c4d20bcd8a675be7aa029b43cf5252a8c9375b170859d83"
+	nodejsRuntime       = "bitnami/kubeless-nodejs:latest"
+	nodejsPubsubRuntime = "bitnami/kubeless-nodejs-event-consumer:latest"
+	rubyRuntime         = "jbianquettibitnami/kubeless-ruby@sha256:9ea43e4e1570b46ae272e9f81a0ea4736e4956ee2ee67d8def29287a1d7153fe"
+	pubsubFunc          = "PubSub"
 )
 
 // GetClient returns a k8s clientset to the request from inside of cluster
@@ -186,8 +187,8 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 			imageName = pythonRuntime
 		}
 		if funcObj.Spec.Type == pubsubFunc {
-			if imageName = os.Getenv("PUBSUB_RUNTIME"); imageName == "" {
-				imageName = pubsubRuntime
+			if imageName = os.Getenv("PYTHON_PUBSUB_RUNTIME"); imageName == "" {
+				imageName = pythonPubsubRuntime
 			}
 		}
 		depName = "requirements.txt"
@@ -197,6 +198,11 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		fileName = modName + ".js"
 		if imageName = os.Getenv("NODEJS_RUNTIME"); imageName == "" {
 			imageName = nodejsRuntime
+		}
+		if funcObj.Spec.Type == pubsubFunc {
+			if imageName = os.Getenv("NODEJS_PUBSUB_RUNTIME"); imageName == "" {
+				imageName = nodejsPubsubRuntime
+			}
 		}
 		depName = "package.json"
 	case strings.Contains(funcObj.Spec.Runtime, "ruby"):
