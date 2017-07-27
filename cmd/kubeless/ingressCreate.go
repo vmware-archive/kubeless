@@ -17,12 +17,11 @@ limitations under the License.
 package main
 
 import (
-	"errors"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 var ingressCreateCmd = &cobra.Command{
@@ -48,10 +47,7 @@ var ingressCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		err = validateInput(function, ns)
-		if err != nil {
-			logrus.Fatal(err)
-		}
+		validateInput(function, ns)
 
 		client := utils.GetClientOutOfCluster()
 
@@ -62,31 +58,28 @@ var ingressCreateCmd = &cobra.Command{
 	},
 }
 
-func validateInput(function, ns string) error {
+func validateInput(function, ns string) {
 	tprClient, err := utils.GetTPRClientOutOfCluster()
 	if err != nil {
-		return err
+		logrus.Fatalf("error validate input %v", err)
 	}
-	funcList := spec.FunctionList{}
+	f := spec.Function{}
 	err = tprClient.Get().
 		Resource("functions").
 		Namespace(ns).
+		Name(function).
 		Do().
-		Into(&funcList)
+		Into(&f)
 	if err != nil {
-		return err
-	}
-
-	for _, f := range funcList.Items {
-		if f.Metadata.Name == function {
-			return nil
+		if k8sErrors.IsNotFound(err) {
+			logrus.Fatalf("function %s doesn't exist in namespace %s", function, ns)
+		} else {
+			logrus.Fatalf("error validate input %v", err)
 		}
 	}
-
-	return errors.New("function doesn't exist")
 }
 
 func init() {
-	ingressCreateCmd.Flags().StringP("domain", "", "", "Specify runtime")
-	ingressCreateCmd.Flags().StringP("function", "", "", "Specify handler")
+	ingressCreateCmd.Flags().StringP("domain", "", "", "Specify a valid domain for the function")
+	ingressCreateCmd.Flags().StringP("function", "", "", "Name of the function")
 }

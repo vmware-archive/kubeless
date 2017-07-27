@@ -64,11 +64,11 @@ func doIngressList(w io.Writer, client kubernetes.Interface, ns, output string) 
 		return err
 	}
 
-	return prinIngress(w, ingList.Items, output)
+	return printIngress(w, ingList.Items, output)
 }
 
-// prinIngress formats the output of ingress list
-func prinIngress(w io.Writer, ings []v1beta1.Ingress, output string) error {
+// printIngress formats the output of ingress list
+func printIngress(w io.Writer, ings []v1beta1.Ingress, output string) error {
 	if output == "" {
 		table := tablewriter.NewWriter(w)
 		table.SetHeader([]string{"Name", "namespace", "host", "path", "service name", "service port"})
