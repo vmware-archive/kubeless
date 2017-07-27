@@ -37,7 +37,9 @@ var ingressDeleteCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		err = utils.DeleteIngress(ingName, ns)
+		client := utils.GetClientOutOfCluster()
+
+		err = utils.DeleteIngress(client, ingName, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}

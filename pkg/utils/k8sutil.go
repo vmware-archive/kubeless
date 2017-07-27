@@ -813,7 +813,7 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 }
 
 // CreateIngress creates ingress rule for a specific function
-func CreateIngress(ingressName, function, domain, ns string) error {
+func CreateIngress(client kubernetes.Interface, ingressName, function, domain, ns string) error {
 	if domain == "" {
 		var err error
 		domain, err = getLocalDomain()
@@ -821,8 +821,6 @@ func CreateIngress(ingressName, function, domain, ns string) error {
 			return err
 		}
 	}
-
-	client := GetClientOutOfCluster()
 
 	//TODO: skip annotation. We can add it later
 	//ingressAnnotations := map[string]string{
@@ -882,10 +880,9 @@ func getLocalDomain() (string, error) {
 }
 
 // DeleteIngress deletes an ingress rule
-func DeleteIngress(name, ns string) error {
-	client := GetClientOutOfCluster()
+func DeleteIngress(client kubernetes.Interface, name, ns string) error {
 	err := client.ExtensionsV1beta1().Ingresses(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil {
+	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
 	return nil

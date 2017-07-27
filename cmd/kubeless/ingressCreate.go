@@ -53,7 +53,9 @@ var ingressCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		err = utils.CreateIngress(ingressName, function, domain, ns)
+		client := utils.GetClientOutOfCluster()
+
+		err = utils.CreateIngress(client, ingressName, function, domain, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}
