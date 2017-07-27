@@ -53,8 +53,8 @@ import (
 const (
 	pythonRuntime       = "bitnami/kubeless-python@sha256:6789266df0c97333f76e23efd58cf9c7efe24fa3e83b5fc826fd5cc317699b55"
 	pythonPubsubRuntime = "bitnami/kubeless-event-consumer@sha256:5ce469529811acf49c4d20bcd8a675be7aa029b43cf5252a8c9375b170859d83"
-	nodejsRuntime       = "bitnami/kubeless-nodejs:latest"
-	nodejsPubsubRuntime = "bitnami/kubeless-nodejs-event-consumer:latest"
+	nodejsRuntime       = "bitnami/kubeless-nodejs@sha256:6e86ed023f25cbe410d6085ca16ee14a9fb4b1df10034c05375d5e24e0c59acb"
+	nodejsPubsubRuntime = "bitnami/kubeless-nodejs-event-consumer@sha256:b027bfef5f99c3be68772155a1feaf1f771ab9a3c7bb49bef2e939d6b766abec"
 	rubyRuntime         = "jbianquettibitnami/kubeless-ruby@sha256:9ea43e4e1570b46ae272e9f81a0ea4736e4956ee2ee67d8def29287a1d7153fe"
 	pubsubFunc          = "PubSub"
 )
