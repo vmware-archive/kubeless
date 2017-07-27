@@ -45,7 +45,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-
 	"k8s.io/kubernetes/pkg/kubectl/cmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
@@ -430,13 +429,7 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 	}
 
 	// update deployment for memory request
-	if funcObj.Spec.Memory != (resource.Quantity{}) {
-		resource := map[v1.ResourceName]resource.Quantity{
-			v1.ResourceMemory: funcObj.Spec.Memory,
-		}
-		dpm.Spec.Template.Spec.Containers[0].Resources.Requests = resource
-		dpm.Spec.Template.Spec.Containers[0].Resources.Limits = resource
-	}
+	dpm.Spec.Template.Spec.Containers[0].Resources = funcObj.Spec.Template.Spec.Containers[0].Resources
 
 	// add liveness Probe to deployment
 	if funcObj.Spec.Type != pubsubFunc {
@@ -454,11 +447,8 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 	}
 
 	// update env var for deployment
-	for k, v := range funcObj.Spec.Env {
-		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-			Name:  k,
-			Value: v,
-		})
+	for _, env := range funcObj.Spec.Template.Spec.Containers[0].Env {
+		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, env)
 	}
 
 	_, err = client.Extensions().Deployments(ns).Create(dpm)
@@ -520,13 +510,8 @@ func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
 }
 
 // CreateK8sCustomResource will create a custom function object
-func CreateK8sCustomResource(f *spec.Function) error {
-	tprClient, err := GetTPRClientOutOfCluster()
-	if err != nil {
-		return err
-	}
-
-	err = tprClient.Get().
+func CreateK8sCustomResource(tprClient *rest.RESTClient, f *spec.Function) error {
+	err := tprClient.Get().
 		Resource("functions").
 		Namespace(f.Metadata.Namespace).
 		Name(f.Metadata.Name).
@@ -545,8 +530,7 @@ func CreateK8sCustomResource(f *spec.Function) error {
 			}
 		}
 	} else {
-		//FIXME: improve the error message
-		return fmt.Errorf("Can't create the function")
+		return fmt.Errorf("Function has already existed")
 	}
 
 	return nil
@@ -584,15 +568,9 @@ func UpdateK8sCustomResource(f *spec.Function) error {
 }
 
 // DeleteK8sCustomResource will delete custom function object
-func DeleteK8sCustomResource(funcName, ns string) error {
+func DeleteK8sCustomResource(tprClient *rest.RESTClient, funcName, ns string) error {
 	var f spec.Function
-
-	tprClient, err := GetTPRClientOutOfCluster()
-	if err != nil {
-		return err
-	}
-
-	err = tprClient.Get().
+	err := tprClient.Get().
 		Resource("functions").
 		Namespace(ns).
 		Name(funcName).
@@ -610,7 +588,6 @@ func DeleteK8sCustomResource(funcName, ns string) error {
 		Do().Into(&f)
 
 	if err != nil {
-		fmt.Println("error here")
 		return err
 	}
 

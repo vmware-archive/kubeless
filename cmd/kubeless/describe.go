@@ -19,7 +19,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/yaml.v2"
+	"github.com/ghodss/yaml"
 	"os"
 
 	"github.com/Sirupsen/logrus"
@@ -72,7 +72,7 @@ func print(f spec.Function, name, output string) {
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"Properties", "Value"})
 		label, _ := json.Marshal(f.Metadata.Labels)
-		env, _ := json.Marshal(f.Spec.Env)
+		env, _ := json.Marshal(f.Spec.Template.Spec.Containers[0].Env)
 		data := [][]string{
 			{"Name", name},
 			{"Namespace", fmt.Sprintf(f.Metadata.Namespace)},
@@ -84,7 +84,7 @@ func print(f spec.Function, name, output string) {
 			{"Description", fmt.Sprintf(f.Spec.Deps)},
 			{"Labels", fmt.Sprintf(string(label))},
 			{"Environment variables", fmt.Sprintf(string(env))},
-			{"Memory", fmt.Sprintf(f.Spec.Memory.String())},
+			{"Memory", fmt.Sprintf(f.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String())},
 		}
 
 		for _, v := range data {

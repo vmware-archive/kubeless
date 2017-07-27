@@ -9,9 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/rest/fake"
 
@@ -59,6 +61,19 @@ func TestList(t *testing.T) {
 					Type:     "ftype",
 					Topic:    "ftopic",
 					Deps:     "fdeps",
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{
+								{
+									Env: []v1.EnvVar{},
+									Resources: v1.ResourceRequirements{
+										Limits:   map[v1.ResourceName]resource.Quantity{},
+										Requests: map[v1.ResourceName]resource.Quantity{},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 			{
@@ -73,6 +88,19 @@ func TestList(t *testing.T) {
 					Type:     "btype",
 					Topic:    "btopic",
 					Deps:     "bdeps",
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{
+								{
+									Env: []v1.EnvVar{},
+									Resources: v1.ResourceRequirements{
+										Limits:   map[v1.ResourceName]resource.Quantity{},
+										Requests: map[v1.ResourceName]resource.Quantity{},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},

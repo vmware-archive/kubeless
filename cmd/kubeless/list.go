@@ -22,9 +22,9 @@ import (
 	"io"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/ghodss/yaml"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/rest"
 
@@ -110,8 +110,8 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 			tp := f.Spec.Topic
 			ns := f.Metadata.Namespace
 			dep := f.Spec.Deps
-			mem := f.Spec.Memory.String()
-			env, _ := json.Marshal(f.Spec.Env)
+			mem := f.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()
+			env, _ := json.Marshal(f.Spec.Template.Spec.Containers[0].Env)
 			table.Append([]string{n, desc, ns, h, r, t, tp, dep, mem, string(env)})
 		}
 		table.Render()
@@ -119,10 +119,10 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 		for _, f := range functions {
 			switch output {
 			case "json":
-				b, _ := json.MarshalIndent(f.Spec, "", "  ")
+				b, _ := json.MarshalIndent(f, "", "  ")
 				fmt.Fprintln(w, string(b))
 			case "yaml":
-				b, _ := yaml.Marshal(f.Spec)
+				b, _ := yaml.Marshal(f)
 				fmt.Fprintln(w, string(b))
 			default:
 				return fmt.Errorf("Wrong output format. Please use only json|yaml")

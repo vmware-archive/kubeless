@@ -18,10 +18,13 @@ package main
 
 import (
 	"github.com/Sirupsen/logrus"
+	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 var deployCmd = &cobra.Command{
@@ -88,10 +91,6 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		funcMem := resource.Quantity{}
-		if mem != "" {
-			funcMem = parseMemory(mem)
-		}
 
 		funcType := "PubSub"
 		if triggerHTTP {
@@ -99,8 +98,61 @@ var deployCmd = &cobra.Command{
 			topic = ""
 		}
 
-		f := constructFunction(runtime, handler, file, funcName, funcType, topic, ns, deps, description, funcMem, labels, envs)
-		err = utils.CreateK8sCustomResource(f)
+		funcLabels := parseLabel(labels)
+		funcEnv := parseEnv(envs)
+		funcMem := resource.Quantity{}
+		if mem != "" {
+			funcMem = parseMemory(mem)
+		}
+
+		resource := map[v1.ResourceName]resource.Quantity{
+			v1.ResourceMemory: funcMem,
+		}
+
+		f := &spec.Function{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Function",
+				APIVersion: "k8s.io/v1",
+			},
+			Metadata: metav1.ObjectMeta{
+				Name:      funcName,
+				Namespace: ns,
+				Labels:    funcLabels,
+			},
+			Spec: spec.FunctionSpec{
+				Handler:  handler,
+				Runtime:  runtime,
+				Type:     funcType,
+				Function: readFile(file),
+				Topic:    topic,
+				Desc:     description,
+				Template: v1.PodTemplateSpec{
+					Spec: v1.PodSpec{
+						Containers: []v1.Container{
+							{
+								Env: funcEnv,
+								Resources: v1.ResourceRequirements{
+									Limits:   resource,
+									Requests: resource,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		// add dependencies file to func spec
+		if deps != "" {
+			f.Spec.Deps = readFile(deps)
+		}
+
+		tprClient, err := utils.GetTPRClientOutOfCluster()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		err = utils.CreateK8sCustomResource(tprClient, f)
 		if err != nil {
 			logrus.Fatal(err)
 		}
