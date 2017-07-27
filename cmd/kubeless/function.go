@@ -59,20 +59,15 @@ func constructFunction(runtime, handler, file, funcName, funcType, topic, ns, de
 		funcEnv[k] = v
 	}
 
-	funcAnnotation := map[string]string{
-		"Description": description,
-	}
-
 	f := &spec.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
 			APIVersion: "k8s.io/v1",
 		},
 		Metadata: metav1.ObjectMeta{
-			Name:        funcName,
-			Namespace:   ns,
-			Labels:      funcLabels,
-			Annotations: funcAnnotation,
+			Name:      funcName,
+			Namespace: ns,
+			Labels:    funcLabels,
 		},
 		Spec: spec.FunctionSpec{
 			Handler:  handler,
@@ -82,6 +77,7 @@ func constructFunction(runtime, handler, file, funcName, funcType, topic, ns, de
 			Topic:    topic,
 			Env:      funcEnv,
 			Memory:   mem,
+			Desc:     description,
 		},
 	}
 	// add dependencies file to func spec

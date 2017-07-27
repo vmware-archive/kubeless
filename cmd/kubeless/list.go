@@ -100,9 +100,10 @@ func doList(w io.Writer, tprClient rest.Interface, ns, output string, args []str
 func printFunctions(w io.Writer, functions []*spec.Function, output string) error {
 	if output == "" {
 		table := tablewriter.NewWriter(w)
-		table.SetHeader([]string{"Name", "namespace", "handler", "runtime", "type", "topic", "dependencies", "memory", "env"})
+		table.SetHeader([]string{"Name", "description", "namespace", "handler", "runtime", "type", "topic", "dependencies", "memory", "env"})
 		for _, f := range functions {
 			n := f.Metadata.Name
+			desc := f.Spec.Desc
 			h := f.Spec.Handler
 			r := f.Spec.Runtime
 			t := f.Spec.Type
@@ -111,7 +112,7 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 			dep := f.Spec.Deps
 			mem := f.Spec.Memory.String()
 			env, _ := json.Marshal(f.Spec.Env)
-			table.Append([]string{n, ns, h, r, t, tp, dep, mem, string(env)})
+			table.Append([]string{n, desc, ns, h, r, t, tp, dep, mem, string(env)})
 		}
 		table.Render()
 	} else {

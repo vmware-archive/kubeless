@@ -39,6 +39,7 @@ type FunctionSpec struct {
 	Deps     string            `json:"deps"`
 	Memory   resource.Quantity `json:"memory"`
 	Env      map[string]string `json:"env"`
+	Desc     string            `json:"description"`
 }
 
 // FunctionList contains map of functions
