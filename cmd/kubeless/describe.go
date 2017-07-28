@@ -81,7 +81,7 @@ func print(f spec.Function, name, output string) {
 			{"Type", fmt.Sprintf(f.Spec.Type)},
 			{"Topic", fmt.Sprintf(f.Spec.Topic)},
 			{"Dependencies", fmt.Sprintf(f.Spec.Deps)},
-			{"Description", fmt.Sprintf(f.Spec.Deps)},
+			{"Description", fmt.Sprintf(f.Spec.Desc)},
 			{"Labels", fmt.Sprintf(string(label))},
 			{"Environment variables", fmt.Sprintf(string(env))},
 			{"Memory", fmt.Sprintf(f.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String())},

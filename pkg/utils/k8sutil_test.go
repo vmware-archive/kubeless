@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/kubeless/kubeless/pkg/spec"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
@@ -131,5 +133,52 @@ func TestGetFunctionData(t *testing.T) {
 		t.Fatalf("Expecting " + imageR + " to be set to " + expectedImageName)
 	}
 	os.Unsetenv("RUBY_PUBSUB_RUNTIME")
+}
 
+func TestEnsureK8sResources(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	ns := "myns"
+	funcName := "foo"
+
+	funcLabels := map[string]string{
+		"foo": "bar",
+	}
+
+	f := &spec.Function{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "k8s.io/v1",
+		},
+		Metadata: metav1.ObjectMeta{
+			Name:      funcName,
+			Namespace: ns,
+			Labels:    funcLabels,
+		},
+		Spec: spec.FunctionSpec{
+			Handler:  "foo.bar",
+			Runtime:  "",
+			Type:     "",
+			Function: "",
+			Topic:    "HTTP",
+			Deps:     "",
+			Desc:     "",
+			Template: v1.PodTemplateSpec{
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Env: []v1.EnvVar{},
+							Resources: v1.ResourceRequirements{
+								Limits:   map[v1.ResourceName]resource.Quantity{},
+								Requests: map[v1.ResourceName]resource.Quantity{},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if err := EnsureK8sResources(ns, funcName, f, clientset); err != nil {
+		t.Fatalf("Creating resources returned err: %v", err)
+	}
 }

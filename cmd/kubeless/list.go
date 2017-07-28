@@ -110,8 +110,12 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 			tp := f.Spec.Topic
 			ns := f.Metadata.Namespace
 			dep := f.Spec.Deps
-			mem := f.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()
-			env, _ := json.Marshal(f.Spec.Template.Spec.Containers[0].Env)
+			mem := ""
+			env := []byte{}
+			if len(f.Spec.Template.Spec.Containers) > 0 {
+				mem = f.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()
+				env, _ = json.Marshal(f.Spec.Template.Spec.Containers[0].Env)
+			}
 			table.Append([]string{n, desc, ns, h, r, t, tp, dep, mem, string(env)})
 		}
 		table.Render()

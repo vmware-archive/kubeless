@@ -82,7 +82,14 @@ var updateCmd = &cobra.Command{
 		funcEnv := parseEnv(envs)
 		funcMem := resource.Quantity{}
 		if mem != "" {
-			funcMem = parseMemory(mem)
+			funcMem, err = parseMemory(mem)
+			if err != nil {
+				logrus.Fatalf("Wrong format of the memory value: %v", err)
+			}
+		}
+		funcContent, err := readFile(file)
+		if err != nil {
+			logrus.Fatalf("Unable to read file %s: %v", file, err)
 		}
 
 		resource := map[v1.ResourceName]resource.Quantity{
@@ -103,7 +110,7 @@ var updateCmd = &cobra.Command{
 				Handler:  handler,
 				Runtime:  runtime,
 				Type:     funcType,
-				Function: readFile(file),
+				Function: funcContent,
 				Topic:    "",
 				Desc:     description,
 				Template: v1.PodTemplateSpec{

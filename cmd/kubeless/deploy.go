@@ -102,7 +102,14 @@ var deployCmd = &cobra.Command{
 		funcEnv := parseEnv(envs)
 		funcMem := resource.Quantity{}
 		if mem != "" {
-			funcMem = parseMemory(mem)
+			funcMem, err = parseMemory(mem)
+			if err != nil {
+				logrus.Fatalf("Wrong format of the memory value: %v", err)
+			}
+		}
+		funcContent, err := readFile(file)
+		if err != nil {
+			logrus.Fatalf("Unable to read file %s: %v", file, err)
 		}
 
 		resource := map[v1.ResourceName]resource.Quantity{
@@ -123,7 +130,7 @@ var deployCmd = &cobra.Command{
 				Handler:  handler,
 				Runtime:  runtime,
 				Type:     funcType,
-				Function: readFile(file),
+				Function: funcContent,
 				Topic:    topic,
 				Desc:     description,
 				Template: v1.PodTemplateSpec{
@@ -144,7 +151,11 @@ var deployCmd = &cobra.Command{
 
 		// add dependencies file to func spec
 		if deps != "" {
-			f.Spec.Deps = readFile(deps)
+			funcDeps, err := readFile(deps)
+			if err != nil {
+				logrus.Fatalf("Unable to read file %s: %v", deps, err)
+			}
+			f.Spec.Deps = funcDeps
 		}
 
 		tprClient, err := utils.GetTPRClientOutOfCluster()
@@ -169,15 +180,6 @@ func init() {
 	deployCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
 	deployCmd.Flags().StringP("trigger-topic", "", "kubeless", "Deploy a pubsub function to Kubeless")
-	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory, which is measured in bytes, for the function. It is expressed as a plain interger or a fixed-point interger with one of these suffies: E, P, T, G, M, K, Ei, Pi, Ti, Gi, Mi, Ki")
+	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory, which is measured in bytes, for the function. It is expressed as a plain integer or a fixed-point interger with one of these suffies: E, P, T, G, M, K, Ei, Pi, Ti, Gi, Mi, Ki")
 	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
-}
-
-func parseMemory(mem string) resource.Quantity {
-	quantity, err := resource.ParseQuantity(mem)
-	if err != nil {
-		logrus.Fatalf("Wrong format of the memory value: %v", err)
-	}
-
-	return quantity
 }

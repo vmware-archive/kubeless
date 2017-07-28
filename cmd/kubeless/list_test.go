@@ -47,6 +47,7 @@ func objBody(object interface{}) io.ReadCloser {
 }
 
 func TestList(t *testing.T) {
+	funcMem, _ := parseMemory("128Mi")
 	listObj := spec.FunctionList{
 		Items: []*spec.Function{
 			{
@@ -61,19 +62,6 @@ func TestList(t *testing.T) {
 					Type:     "ftype",
 					Topic:    "ftopic",
 					Deps:     "fdeps",
-					Template: v1.PodTemplateSpec{
-						Spec: v1.PodSpec{
-							Containers: []v1.Container{
-								{
-									Env: []v1.EnvVar{},
-									Resources: v1.ResourceRequirements{
-										Limits:   map[v1.ResourceName]resource.Quantity{},
-										Requests: map[v1.ResourceName]resource.Quantity{},
-									},
-								},
-							},
-						},
-					},
 				},
 			},
 			{
@@ -92,9 +80,16 @@ func TestList(t *testing.T) {
 						Spec: v1.PodSpec{
 							Containers: []v1.Container{
 								{
-									Env: []v1.EnvVar{},
+									Env: []v1.EnvVar{
+										{
+											Name:  "foo",
+											Value: "bar",
+										},
+									},
 									Resources: v1.ResourceRequirements{
-										Limits:   map[v1.ResourceName]resource.Quantity{},
+										Limits: map[v1.ResourceName]resource.Quantity{
+											v1.ResourceStorage: funcMem,
+										},
 										Requests: map[v1.ResourceName]resource.Quantity{},
 									},
 								},

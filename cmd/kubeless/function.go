@@ -20,8 +20,8 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -58,12 +58,12 @@ func getKV(input string) (string, string) {
 	return key, value
 }
 
-func readFile(file string) string {
+func readFile(file string) (string, error) {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
-		logrus.Errorf("Unable to read file %s: %v", file, err)
+		return "", err
 	}
-	return string(data[:])
+	return string(data[:]), nil
 }
 
 func parseLabel(labels []string) map[string]string {
@@ -85,4 +85,13 @@ func parseEnv(envs []string) []v1.EnvVar {
 		})
 	}
 	return funcEnv
+}
+
+func parseMemory(mem string) (resource.Quantity, error) {
+	quantity, err := resource.ParseQuantity(mem)
+	if err != nil {
+		return resource.Quantity{}, err
+	}
+
+	return quantity, nil
 }
