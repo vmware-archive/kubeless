@@ -4,7 +4,7 @@ metadata:
   name: {{ template "fullname" . }}-ui
   labels:
 {{ include "labels.standard" . | indent 4 }}
-   controller: {{ template "fullname" . }}-ui
+    controller: {{ template "fullname" . }}-ui
 spec:
   replicas: {{ .Values.controller.deployment.replicaCount }}
   template:
