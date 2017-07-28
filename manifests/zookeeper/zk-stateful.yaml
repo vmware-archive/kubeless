@@ -14,10 +14,12 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
         - name: zookeeper
-          image: bitnami/zookeeper@sha256:2244fba9d7c35df85f078ffdbf77ec9f9b44dad40752f15dd619a85d70aec22d
+          image: bitnami/zookeeper@sha256:f66625a8a25070bee18fddf42319ec58f0c49c376b19a5eb252e6a4814f07123
           env:
             - name: ZOO_SERVERS
               value: server.1=zoo-0.zoo:2888:3888:participant
+            - name: ALLOW_ANONYMOUS_LOGIN
+              value: "yes"
           ports:
             - containerPort: 2181
               name: client

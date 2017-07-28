@@ -20,6 +20,8 @@ spec:
           env:
             - name: ZOO_SERVERS
               value: server.1=zoo-0.zoo:2888:3888:participant
+            - name: ALLOW_ANONYMOUS_LOGIN
+              value: "yes"
           ports:
             - containerPort: 2181
               name: client
