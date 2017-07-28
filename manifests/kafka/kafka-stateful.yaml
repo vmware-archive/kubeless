@@ -14,7 +14,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: broker
-        image: bitnami/kafka@sha256:0b7c8b790546ddb9dcd7e8ff4d50f030fc496176238f36789537620bb13fb54c
+        image: bitnami/kafka@sha256:ef0b1332408c0361d457852622d3a180f3609b9d98f1a85a9a809adaecfe9b52
         imagePullPolicy: IfNotPresent
         env:
         - name: KAFKA_ADVERTISED_HOST_NAME
@@ -25,12 +25,14 @@ spec:
           value: "9092"
         - name: KAFKA_ZOOKEEPER_CONNECT
           value: zookeeper.kubeless:2181
+        - name: ALLOW_PLAINTEXT_LISTENER
+          value: "yes"
         ports:
         - containerPort: 9092
         resources: {}
         volumeMounts:
         - name: datadir
-          mountPath: /opt/bitnami/kafka/data
+          mountPath: /bitnami/kafka/data
   volumeClaimTemplates:
   - metadata:
       name: datadir

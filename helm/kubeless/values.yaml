@@ -2,7 +2,6 @@
 
 ## Controller configuration
 controller:
-
   deployment:
     replicaCount: 1
     image:
@@ -12,7 +11,6 @@ controller:
 
 ## UI configuration
 ui:
-
   deployment:
     replicaCount: 1
     ui:
@@ -33,20 +31,18 @@ ui:
 
 ## Zookeeper configuration
 zookeeper:
-
   statefulSet:
     replicaCount: 1
     image:
       repository: bitnami/zookeeper@sha256
-      tag: 2244fba9d7c35df85f078ffdbf77ec9f9b44dad40752f15dd619a85d70aec22d
+      tag: f66625a8a25070bee18fddf42319ec58f0c49c376b19a5eb252e6a4814
       pullPolicy: IfNotPresent
 
 ## Kafka configuration
 kafka:
-
   statefulSet:
     replicaCount: 1
     image:
       repository: bitnami/kafka@sha256
-      tag: 0b7c8b790546ddb9dcd7e8ff4d50f030fc496176238f36789537620bb13fb54c
+      tag: ef0b1332408c0361d457852622d3a180f3609b9d98f1a85a9a809adaecfe9b52
       pullPolicy: IfNotPresent
