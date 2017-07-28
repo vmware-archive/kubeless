@@ -30,6 +30,10 @@ local kafkaEnv = [
   {
     name: "KAFKA_ZOOKEEPER_CONNECT",
     value: "zookeeper.kubeless:2181"
+  },
+  {
+    name: "ALLOW_PLAINTEXT_LISTENER",
+    value: "yes"
   }
 ];
 
@@ -37,6 +41,10 @@ local zookeeperEnv = [
   {
     name: "ZOO_SERVERS",
     value: "server.1=zoo-0.zoo:2888:3888:participant"
+  },
+  {
+    name: "ALLOW_ANONYMOUS_LOGIN",
+    value: "yes"
   }
 ];
 
@@ -56,19 +64,19 @@ local zookeeperPorts = [
 ];
 
 local kafkaContainer =
-  container.default("broker", "bitnami/kafka@sha256:0b7c8b790546ddb9dcd7e8ff4d50f030fc496176238f36789537620bb13fb54c") +
+  container.default("broker", "bitnami/kafka@sha256:ef0b1332408c0361d457852622d3a180f3609b9d98f1a85a9a809adaecfe9b52") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(kafkaEnv) +
   container.ports({containerPort: 9092}) +
   container.volumeMounts([
     {
       name: "datadir",
-      mountPath: "/opt/bitnami/kafka/data"
+      mountPath: "/bitnami/kafka/data"
     }
   ]);
 
 local zookeeperContainer =
-  container.default("zookeeper", "bitnami/zookeeper@sha256:2244fba9d7c35df85f078ffdbf77ec9f9b44dad40752f15dd619a85d70aec22d") +
+  container.default("zookeeper", "bitnami/zookeeper@sha256:f66625a8a25070bee18fddf42319ec58f0c49c376b19a5eb252e6a4814f07123") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(zookeeperEnv) +
   container.ports(zookeeperPorts) +
