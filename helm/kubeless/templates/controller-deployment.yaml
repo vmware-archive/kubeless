@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-controller
+  labels:
+{{ include "labels.standard" . | indent 4 }}
+    kubeless: {{ template "fullname" . }}-controller
+spec:
+  replicas: {{ .Values.controller.deployment.replicaCount }}
+  template:
+    metadata:
+      labels:
+        kubeless: {{ template "fullname" . }}-controller
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: controller
+        image: "{{ .Values.controller.deployment.image.repository }}:{{ .Values.controller.deployment.image.tag }}"
+        imagePullPolicy: {{ .Values.controller.deployment.image.pullPolicy }}

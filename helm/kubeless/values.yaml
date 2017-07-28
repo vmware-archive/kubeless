@@ -1,0 +1,52 @@
+# Default values for kubeless.
+
+## Controller configuration
+controller:
+
+  deployment:
+    replicaCount: 1
+    image:
+      repository: bitnami/kubeless-controller
+      tag: 0.0.18
+      pullPolicy: IfNotPresent
+
+## UI configuration
+ui:
+
+  deployment:
+    replicaCount: 1
+    ui:
+      image:
+        repository: bitnami/kubeless-ui
+        tag: development
+        pullPolicy: IfNotPresent
+    proxy:
+      image:
+        repository: kelseyhightower/kubectl
+        tag: 1.4.0
+        pullPolicy: IfNotPresent
+
+  service:
+    name: ui-port
+    type: NodePort
+    externalPort: 3000
+
+## Zookeeper configuration
+zookeeper:
+
+  statefulSet:
+    replicaCount: 1
+    image:
+      repository: bitnami/zookeeper@sha256
+      tag: 2244fba9d7c35df85f078ffdbf77ec9f9b44dad40752f15dd619a85d70aec22d
+      pullPolicy: IfNotPresent
+
+## Kafka configuration
+kafka:
+
+  statefulSet:
+    replicaCount: 1
+    image:
+      repository: bitnami/kafka@sha256
+      tag: 0b7c8b790546ddb9dcd7e8ff4d50f030fc496176238f36789537620bb13fb54c
+      pullPolicy: IfNotPresent

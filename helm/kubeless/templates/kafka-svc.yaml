@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "fullname" . }}-kafka
+  labels:
+{{ include "labels.standard" . | indent 4 }}
+spec:
+  ports:
+  - port: 9092
+  selector:
+    app: {{ template "fullname" . }}-kafka
