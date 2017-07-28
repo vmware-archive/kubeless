@@ -25,5 +25,5 @@ The standard labels are frequently used in metadata.
 app: {{ template "name" . }}
 heritage: {{ .Release.Service | quote }}
 release: {{ .Release.Name | quote }}
-chart: {{ template "chartref" . }}
+chart: {{ .Chart.Name }}-{{ .Chart.Version }}
 {{- end -}}
