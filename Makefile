@@ -34,11 +34,13 @@ binary-cross:
 	$(KUBECFG) show -o yaml $< > $@.tmp
 	mv $@.tmp $@
 
-all-yaml: kubeless.yaml kubeless-rbac.yaml
+all-yaml: kubeless.yaml kubeless-rbac.yaml kubeless-openshift.yaml
 
 kubeless.yaml: kubeless.jsonnet
 
 kubeless-rbac.yaml: kubeless-rbac.jsonnet kubeless.jsonnet
+
+kubeless-openshift.yaml: kubeless-openshift.jsonnet kubeless-rbac.jsonnet
 
 docker/controller: controller-build
 	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/kubeless-controller $@

@@ -36,7 +36,7 @@ script:
     if [ "$TRAVIS_OS_NAME" = linux ]; then
       make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
     fi
-  - make kubeless.yaml kubeless-rbac.yaml
+  - make all-yaml
 
 after_success:
   - |
@@ -60,6 +60,7 @@ before_deploy:
       OLD_DIGEST=$(cat kubeless.yaml | grep ${CONTROLLER_IMAGE_NAME} |  cut -d "@" -f 2)
       sed 's/'"$OLD_DIGEST"'/'"$NEW_DIGEST"'/g' kubeless.yaml > kubeless-${TRAVIS_TAG}.yaml
       sed 's/'"$OLD_DIGEST"'/'"$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
+      sed 's/'"$OLD_DIGEST"'/'"$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
     fi
 
 deploy:
@@ -70,6 +71,7 @@ deploy:
   file:
     - kubeless-${TRAVIS_TAG}.yaml
     - kubeless-rbac-${TRAVIS_TAG}.yaml
+    - kubeless-openshift-${TRAVIS_TAG}.yaml
     - bundles/kubeless_*.zip
   skip_cleanup: true
   overwrite: true
