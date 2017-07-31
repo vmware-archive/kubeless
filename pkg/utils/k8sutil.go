@@ -813,10 +813,10 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 }
 
 // CreateIngress creates ingress rule for a specific function
-func CreateIngress(client kubernetes.Interface, ingressName, function, domain, ns string) error {
+func CreateIngress(client kubernetes.Interface, ingressName, funcName, domain, ns string) error {
 	if domain == "" {
 		var err error
-		domain, err = getLocalDomain()
+		domain, err = getLocalDomain(funcName)
 		if err != nil {
 			return err
 		}
@@ -837,14 +837,14 @@ func CreateIngress(client kubernetes.Interface, ingressName, function, domain, n
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
 				{
-					Host: fmt.Sprintf("%s.%s", ingressName, domain),
+					Host: domain,
 					IngressRuleValue: v1beta1.IngressRuleValue{
 						HTTP: &v1beta1.HTTPIngressRuleValue{
 							Paths: []v1beta1.HTTPIngressPath{
 								{
 									Path: "/",
 									Backend: v1beta1.IngressBackend{
-										ServiceName: function,
+										ServiceName: funcName,
 										ServicePort: intstr.FromInt(8080),
 									},
 								},
@@ -864,7 +864,7 @@ func CreateIngress(client kubernetes.Interface, ingressName, function, domain, n
 }
 
 // getLocalDomain returns hostname
-func getLocalDomain() (string, error) {
+func getLocalDomain(funcName string) (string, error) {
 	config, err := buildOutOfClusterConfig()
 	if err != nil {
 		return "", err
@@ -876,7 +876,7 @@ func getLocalDomain() (string, error) {
 
 	host, _, _ := net.SplitHostPort(url.Host)
 
-	return fmt.Sprintf("%s.nip.io", host), nil
+	return fmt.Sprintf("%s.%s.nip.io", funcName, host), nil
 }
 
 // DeleteIngress deletes an ingress rule

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -32,7 +31,7 @@ func TestIngressList(t *testing.T) {
 		Spec: xv1beta1.IngressSpec{
 			Rules: []xv1beta1.IngressRule{
 				{
-					Host: fmt.Sprintf("%s.%s", "foo", "example.com"),
+					Host: "foobar.192.168.99.100.nip.io",
 					IngressRuleValue: xv1beta1.IngressRuleValue{
 						HTTP: &xv1beta1.HTTPIngressRuleValue{
 							Paths: []xv1beta1.HTTPIngressPath{
@@ -59,7 +58,7 @@ func TestIngressList(t *testing.T) {
 		Spec: xv1beta1.IngressSpec{
 			Rules: []xv1beta1.IngressRule{
 				{
-					Host: fmt.Sprintf("%s.%s", "bar", "example.com"),
+					Host: "example.com",
 					IngressRuleValue: xv1beta1.IngressRuleValue{
 						HTTP: &xv1beta1.HTTPIngressRuleValue{
 							Paths: []xv1beta1.HTTPIngressPath{
