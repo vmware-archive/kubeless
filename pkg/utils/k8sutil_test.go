@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
@@ -90,6 +91,7 @@ func check(runtime, ftype, fname string, values []string, t *testing.T) {
 		t.Fatalf("Retrieving the image returned a wrong file name. Received " + fileName + " while expecting " + values[1])
 	}
 }
+
 func TestGetFunctionData(t *testing.T) {
 
 	expectedValues := []string{"requirements.txt", "test.py"}
@@ -131,5 +133,39 @@ func TestGetFunctionData(t *testing.T) {
 		t.Fatalf("Expecting " + imageR + " to be set to " + expectedImageName)
 	}
 	os.Unsetenv("RUBY_PUBSUB_RUNTIME")
+}
 
+func TestCreateIngressResource(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	if err := CreateIngress(clientset, "foo", "bar", "foo.bar", "myns"); err != nil {
+		t.Fatalf("Creating ingress returned err: %v", err)
+	}
+	if err := CreateIngress(clientset, "foo", "bar", "foo.bar", "myns"); err != nil {
+		if !k8sErrors.IsAlreadyExists(err) {
+			t.Fatalf("Expect object is already exists, got %v", err)
+		}
+	}
+}
+
+func TestDeleteIngressResource(t *testing.T) {
+	myNsFoo := metav1.ObjectMeta{
+		Namespace: "myns",
+		Name:      "foo",
+	}
+
+	ing := xv1beta1.Ingress{
+		ObjectMeta: myNsFoo,
+	}
+
+	clientset := fake.NewSimpleClientset(&ing)
+	if err := DeleteIngress(clientset, "foo", "myns"); err != nil {
+		t.Fatalf("Deleting ingress returned err: %v", err)
+	}
+	a := clientset.Actions()
+	if ns := a[0].GetNamespace(); ns != "myns" {
+		t.Errorf("deleted ingress from wrong namespace (%s)", ns)
+	}
+	if name := a[0].(ktesting.DeleteAction).GetName(); name != "foo" {
+		t.Errorf("deleted ingress with wrong name (%s)", name)
+	}
 }

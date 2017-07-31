@@ -14,31 +14,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Serverless framework for Kubernetes.
 package main
 
 import (
-	"os"
-
+	"github.com/Sirupsen/logrus"
+	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
-var globalUsage = `` //TODO: add explanation
+var ingressDeleteCmd = &cobra.Command{
+	Use:   "delete <name>",
+	Short: "delete a route from Kubeless",
+	Long:  `delete a route from Kubeless`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) != 1 {
+			logrus.Fatal("Need exactly one argument - route name")
+		}
+		ingName := args[0]
 
-func newRootCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "kubeless",
-		Short: "Serverless framework for Kubernetes",
-		Long:  globalUsage,
-	}
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
 
-	cmd.AddCommand(functionCmd, topicCmd, versionCmd, ingressCmd)
-	return cmd
-}
+		client := utils.GetClientOutOfCluster()
 
-func main() {
-	cmd := newRootCmd()
-	if err := cmd.Execute(); err != nil {
-		os.Exit(1)
-	}
+		err = utils.DeleteIngress(client, ingName, ns)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+	},
 }
