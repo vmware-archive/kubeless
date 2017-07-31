@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -51,12 +52,14 @@ import (
 )
 
 const (
-	pythonRuntime       = "bitnami/kubeless-python@sha256:6789266df0c97333f76e23efd58cf9c7efe24fa3e83b5fc826fd5cc317699b55"
-	pythonPubsubRuntime = "bitnami/kubeless-event-consumer@sha256:5ce469529811acf49c4d20bcd8a675be7aa029b43cf5252a8c9375b170859d83"
-	nodejsRuntime       = "bitnami/kubeless-nodejs@sha256:6e86ed023f25cbe410d6085ca16ee14a9fb4b1df10034c05375d5e24e0c59acb"
-	nodejsPubsubRuntime = "bitnami/kubeless-nodejs-event-consumer@sha256:b027bfef5f99c3be68772155a1feaf1f771ab9a3c7bb49bef2e939d6b766abec"
-	rubyRuntime         = "jbianquettibitnami/kubeless-ruby@sha256:9ea43e4e1570b46ae272e9f81a0ea4736e4956ee2ee67d8def29287a1d7153fe"
-	pubsubFunc          = "PubSub"
+	python27Http   = "bitnami/kubeless-python@sha256:6789266df0c97333f76e23efd58cf9c7efe24fa3e83b5fc826fd5cc317699b55"
+	python27Pubsub = "bitnami/kubeless-event-consumer@sha256:5ce469529811acf49c4d20bcd8a675be7aa029b43cf5252a8c9375b170859d83"
+	node6Http      = "bitnami/kubeless-nodejs@sha256:6e86ed023f25cbe410d6085ca16ee14a9fb4b1df10034c05375d5e24e0c59acb"
+	node6Pubsub    = "bitnami/kubeless-nodejs-event-consumer@sha256:b027bfef5f99c3be68772155a1feaf1f771ab9a3c7bb49bef2e939d6b766abec"
+	node8Http      = "bitnami/kubeless-nodejs@sha256:29077c5131ab63c557507596958510e9d2011dc0e88b968371c531ba3b41c47f"
+	node8Pubsub    = "bitnami/kubeless-nodejs-event-consumer@sha256:4d005c9c0b462750d9ab7f1305897e7a01143fe869d3b722ed3330560f9c7fb5"
+	ruby24Http     = "jbianquettibitnami/kubeless-ruby@sha256:9ea43e4e1570b46ae272e9f81a0ea4736e4956ee2ee67d8def29287a1d7153fe"
+	pubsubFunc     = "PubSub"
 )
 
 // GetClient returns a k8s clientset to the request from inside of cluster
@@ -168,6 +171,81 @@ func GetFunction(funcName, ns string) (spec.Function, error) {
 	return f, nil
 }
 
+// GetFunctionData given a runtime returns an Image ID, the dependencies filename and the function filename
+func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileName string, err error) {
+	err = nil
+	imageName = ""
+	depName = ""
+	fileName = ""
+
+	type runtimeVersion struct {
+		version     string
+		httpImage   string
+		pubsubImage string
+	}
+
+	python27 := runtimeVersion{version: "2.7", httpImage: python27Http, pubsubImage: python27Pubsub}
+	python := []runtimeVersion{python27}
+
+	node6 := runtimeVersion{version: "6", httpImage: node6Http, pubsubImage: node6Pubsub}
+	node8 := runtimeVersion{version: "8", httpImage: node8Http, pubsubImage: node8Pubsub}
+	node := []runtimeVersion{node6, node8}
+
+	ruby24 := runtimeVersion{version: "2.4", httpImage: ruby24Http, pubsubImage: ""}
+	ruby := []runtimeVersion{ruby24}
+
+	runtimeID := regexp.MustCompile("[a-zA-Z]+").FindString(runtime)
+	version := regexp.MustCompile("[0-9.]+").FindString(runtime)
+
+	var versionsDef []runtimeVersion
+	switch {
+	case runtimeID == "python":
+		fileName = modName + ".py"
+		versionsDef = python
+		depName = "requirements.txt"
+	case runtimeID == "nodejs":
+		fileName = modName + ".js"
+		versionsDef = node
+		depName = "package.json"
+	case runtimeID == "ruby":
+		fileName = modName + ".rb"
+		versionsDef = ruby
+		depName = "Gemfile"
+	default:
+		err = errors.New("The given runtime is not valid")
+		return
+	}
+	imageNameEnvVar := ""
+	if ftype == pubsubFunc {
+		imageNameEnvVar = strings.ToUpper(runtime) + "_PUBSUB_RUNTIME"
+	} else {
+		imageNameEnvVar = strings.ToUpper(runtime) + "_RUNTIME"
+	}
+	if imageName = os.Getenv(imageNameEnvVar); imageName == "" {
+		rVersion := runtimeVersion{"", "", ""}
+		for i := range versionsDef {
+			if versionsDef[i].version == version {
+				rVersion = versionsDef[i]
+				break
+			}
+		}
+		if ftype == pubsubFunc {
+			if rVersion.pubsubImage == "" {
+				err = errors.New("The given runtime and version does not have a valid image for event based functions")
+			} else {
+				imageName = rVersion.pubsubImage
+			}
+		} else {
+			if rVersion.httpImage == "" {
+				err = errors.New("The given runtime and version does not have a valid image for http based functions")
+			} else {
+				imageName = rVersion.httpImage
+			}
+		}
+	}
+	return
+}
+
 // EnsureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
 func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernetes.Interface) error {
 	str := strings.Split(funcObj.Spec.Handler, ".")
@@ -177,40 +255,10 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 	funcHandler := str[1]
 	modName := str[0]
 	fileName := modName
+	imageName, depName, fileName, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
 
-	imageName := ""
-	depName := ""
-	switch {
-	case strings.Contains(funcObj.Spec.Runtime, "python"):
-		fileName = modName + ".py"
-		if imageName = os.Getenv("PYTHON_RUNTIME"); imageName == "" {
-			imageName = pythonRuntime
-		}
-		if funcObj.Spec.Type == pubsubFunc {
-			if imageName = os.Getenv("PYTHON_PUBSUB_RUNTIME"); imageName == "" {
-				imageName = pythonPubsubRuntime
-			}
-		}
-		depName = "requirements.txt"
-	case strings.Contains(funcObj.Spec.Runtime, "go"):
-		fileName = modName + ".go"
-	case strings.Contains(funcObj.Spec.Runtime, "nodejs"):
-		fileName = modName + ".js"
-		if imageName = os.Getenv("NODEJS_RUNTIME"); imageName == "" {
-			imageName = nodejsRuntime
-		}
-		if funcObj.Spec.Type == pubsubFunc {
-			if imageName = os.Getenv("NODEJS_PUBSUB_RUNTIME"); imageName == "" {
-				imageName = nodejsPubsubRuntime
-			}
-		}
-		depName = "package.json"
-	case strings.Contains(funcObj.Spec.Runtime, "ruby"):
-		fileName = modName + ".rb"
-		if imageName = os.Getenv("RUBY_RUNTIME"); imageName == "" {
-			imageName = rubyRuntime
-		}
-		depName = "Gemfile"
+	if err != nil {
+		return err
 	}
 
 	//add configmap
@@ -252,7 +300,7 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		},
 	}
 
-	_, err := client.Core().ConfigMaps(ns).Create(configMap)
+	_, err = client.Core().ConfigMaps(ns).Create(configMap)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		data, _ := json.Marshal(configMap)
 		_, err = client.Core().ConfigMaps(ns).Patch(configMap.Name, types.StrategicMergePatchType, data)

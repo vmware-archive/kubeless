@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"os"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -72,4 +73,63 @@ func TestDeleteK8sResources(t *testing.T) {
 	if !hasAction(clientset, "delete", "services") {
 		t.Errorf("failed to delete service")
 	}
+}
+
+func check(runtime, ftype, fname string, values []string, t *testing.T) {
+	imageName, depName, fileName, err := GetFunctionData(runtime, ftype, fname)
+	if err != nil {
+		t.Fatalf("Retrieving the image returned err: %v", err)
+	}
+	if imageName == "" {
+		t.Fatalf("Retrieving the image returned an empty Image ID")
+	}
+	if depName != values[0] {
+		t.Fatalf("Retrieving the image returned a wrong dependencies file. Received " + depName + " while expecting " + values[0])
+	}
+	if fileName != values[1] {
+		t.Fatalf("Retrieving the image returned a wrong file name. Received " + fileName + " while expecting " + values[1])
+	}
+}
+func TestGetFunctionData(t *testing.T) {
+
+	expectedValues := []string{"requirements.txt", "test.py"}
+	check("python2.7", "HTTP", "test", expectedValues, t)
+	check("python2.7", "PubSub", "test", expectedValues, t)
+
+	expectedValues = []string{"package.json", "test.js"}
+	check("nodejs6", "HTTP", "test", expectedValues, t)
+	check("nodejs6", "PubSub", "test", expectedValues, t)
+	check("nodejs8", "HTTP", "test", expectedValues, t)
+	check("nodejs8", "PubSub", "test", expectedValues, t)
+
+	expectedValues = []string{"Gemfile", "test.rb"}
+	check("ruby2.4", "HTTP", "test", expectedValues, t)
+
+	_, _, _, err := GetFunctionData("unexistent", "HTTP", "test")
+	if err == nil {
+		t.Fatalf("Retrieving data for 'unexistent' should return an error")
+	}
+
+	expectedImageName := "ruby-test-image"
+	os.Setenv("RUBY_RUNTIME", expectedImageName)
+	imageR, _, _, errR := GetFunctionData("ruby", "HTTP", "test")
+	if errR != nil {
+		t.Fatalf("Retrieving the image returned err: %v", err)
+	}
+	if imageR != expectedImageName {
+		t.Fatalf("Expecting " + imageR + " to be set to " + expectedImageName)
+	}
+	os.Unsetenv("RUBY_RUNTIME")
+
+	expectedImageName = "ruby-pubsub-test-image"
+	os.Setenv("RUBY_PUBSUB_RUNTIME", "ruby-pubsub-test-image")
+	imageR, _, _, errR = GetFunctionData("ruby", "PubSub", "test")
+	if errR != nil {
+		t.Fatalf("Retrieving the image returned err: %v", err)
+	}
+	if imageR != expectedImageName {
+		t.Fatalf("Expecting " + imageR + " to be set to " + expectedImageName)
+	}
+	os.Unsetenv("RUBY_PUBSUB_RUNTIME")
+
 }
