@@ -37,7 +37,6 @@ type FunctionSpec struct {
 	Type     string             `json:"type"`
 	Topic    string             `json:"topic"`
 	Deps     string             `json:"deps"`
-	Desc     string             `json:"description"`
 	Template v1.PodTemplateSpec `json:"template" protobuf:"bytes,3,opt,name=template"`
 }
 

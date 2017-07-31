@@ -428,9 +428,6 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		addInitContainerAnnotation(dpm)
 	}
 
-	// update deployment for memory request
-	dpm.Spec.Template.Spec.Containers[0].Resources = funcObj.Spec.Template.Spec.Containers[0].Resources
-
 	// add liveness Probe to deployment
 	if funcObj.Spec.Type != pubsubFunc {
 		livenessProbe := &v1.Probe{
@@ -446,9 +443,13 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
 	}
 
-	// update env var for deployment
-	for _, env := range funcObj.Spec.Template.Spec.Containers[0].Env {
-		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, env)
+	if len(funcObj.Spec.Template.Spec.Containers) > 0 {
+		// update deployment for memory request
+		dpm.Spec.Template.Spec.Containers[0].Resources = funcObj.Spec.Template.Spec.Containers[0].Resources
+		// update env var for deployment
+		for _, env := range funcObj.Spec.Template.Spec.Containers[0].Env {
+			dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, env)
+		}
 	}
 
 	_, err = client.Extensions().Deployments(ns).Create(dpm)

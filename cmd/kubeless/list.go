@@ -100,10 +100,24 @@ func doList(w io.Writer, tprClient rest.Interface, ns, output string, args []str
 func printFunctions(w io.Writer, functions []*spec.Function, output string) error {
 	if output == "" {
 		table := tablewriter.NewWriter(w)
-		table.SetHeader([]string{"Name", "description", "namespace", "handler", "runtime", "type", "topic", "dependencies", "memory", "env"})
+		table.SetHeader([]string{"Name", "namespace", "handler", "runtime", "type", "topic", "dependencies"})
 		for _, f := range functions {
 			n := f.Metadata.Name
-			desc := f.Spec.Desc
+			h := f.Spec.Handler
+			r := f.Spec.Runtime
+			t := f.Spec.Type
+			tp := f.Spec.Topic
+			ns := f.Metadata.Namespace
+			dep := f.Spec.Deps
+			table.Append([]string{n, ns, h, r, t, tp, dep})
+		}
+		table.Render()
+	} else if output == "wide" {
+		table := tablewriter.NewWriter(w)
+		table.SetHeader([]string{"Name", "description", "namespace", "handler", "runtime", "type", "topic", "dependencies", "memory", "env", "label"})
+		for _, f := range functions {
+			n := f.Metadata.Name
+			desc := f.Metadata.Annotations["kubeless.io/description"]
 			h := f.Spec.Handler
 			r := f.Spec.Runtime
 			t := f.Spec.Type
@@ -116,7 +130,11 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 				mem = f.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()
 				env, _ = json.Marshal(f.Spec.Template.Spec.Containers[0].Env)
 			}
-			table.Append([]string{n, desc, ns, h, r, t, tp, dep, mem, string(env)})
+			label := []byte{}
+			if len(f.Metadata.Labels) > 0 {
+				label, _ = json.Marshal(f.Metadata.Labels)
+			}
+			table.Append([]string{n, desc, ns, h, r, t, tp, dep, mem, string(env), string(label)})
 		}
 		table.Render()
 	} else {

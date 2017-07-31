@@ -115,6 +115,9 @@ var deployCmd = &cobra.Command{
 		resource := map[v1.ResourceName]resource.Quantity{
 			v1.ResourceMemory: funcMem,
 		}
+		annotation := map[string]string{
+			"kubeless.io/description": description,
+		}
 
 		f := &spec.Function{
 			TypeMeta: metav1.TypeMeta{
@@ -122,9 +125,10 @@ var deployCmd = &cobra.Command{
 				APIVersion: "k8s.io/v1",
 			},
 			Metadata: metav1.ObjectMeta{
-				Name:      funcName,
-				Namespace: ns,
-				Labels:    funcLabels,
+				Name:        funcName,
+				Namespace:   ns,
+				Labels:      funcLabels,
+				Annotations: annotation,
 			},
 			Spec: spec.FunctionSpec{
 				Handler:  handler,
@@ -132,7 +136,6 @@ var deployCmd = &cobra.Command{
 				Type:     funcType,
 				Function: funcContent,
 				Topic:    topic,
-				Desc:     description,
 				Template: v1.PodTemplateSpec{
 					Spec: v1.PodSpec{
 						Containers: []v1.Container{

@@ -96,15 +96,20 @@ var updateCmd = &cobra.Command{
 			v1.ResourceMemory: funcMem,
 		}
 
+		annotation := map[string]string{
+			"kubeless.io/description": description,
+		}
+
 		f := &spec.Function{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Function",
 				APIVersion: "k8s.io/v1",
 			},
 			Metadata: metav1.ObjectMeta{
-				Name:      funcName,
-				Namespace: ns,
-				Labels:    funcLabels,
+				Name:        funcName,
+				Namespace:   ns,
+				Labels:      funcLabels,
+				Annotations: annotation,
 			},
 			Spec: spec.FunctionSpec{
 				Handler:  handler,
@@ -112,7 +117,6 @@ var updateCmd = &cobra.Command{
 				Type:     funcType,
 				Function: funcContent,
 				Topic:    "",
-				Desc:     description,
 				Template: v1.PodTemplateSpec{
 					Spec: v1.PodSpec{
 						Containers: []v1.Container{

@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/kubeless/kubeless/pkg/spec"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
@@ -161,20 +160,6 @@ func TestEnsureK8sResources(t *testing.T) {
 			Function: "",
 			Topic:    "HTTP",
 			Deps:     "",
-			Desc:     "",
-			Template: v1.PodTemplateSpec{
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						{
-							Env: []v1.EnvVar{},
-							Resources: v1.ResourceRequirements{
-								Limits:   map[v1.ResourceName]resource.Quantity{},
-								Requests: map[v1.ResourceName]resource.Quantity{},
-							},
-						},
-					},
-				},
-			},
 		},
 	}
 

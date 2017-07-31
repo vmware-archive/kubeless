@@ -68,6 +68,12 @@ func TestList(t *testing.T) {
 				Metadata: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "myns",
+					Annotations: map[string]string{
+						"kubeless.io/description": "fdescription",
+					},
+					Labels: map[string]string{
+						"foo": "bar",
+					},
 				},
 				Spec: spec.FunctionSpec{
 					Handler:  "bhandler",
@@ -88,9 +94,11 @@ func TestList(t *testing.T) {
 									},
 									Resources: v1.ResourceRequirements{
 										Limits: map[v1.ResourceName]resource.Quantity{
-											v1.ResourceStorage: funcMem,
+											v1.ResourceMemory: funcMem,
 										},
-										Requests: map[v1.ResourceName]resource.Quantity{},
+										Requests: map[v1.ResourceName]resource.Quantity{
+											v1.ResourceMemory: funcMem,
+										},
 									},
 								},
 							},
@@ -151,5 +159,9 @@ func TestList(t *testing.T) {
 
 	// yaml output
 	output = listOutput(t, client, "myns", "yaml", []string{})
+	t.Log("output is", output)
+
+	// wide output
+	output = listOutput(t, client, "myns", "wide", []string{})
 	t.Log("output is", output)
 }
