@@ -23,8 +23,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
-	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -327,7 +325,7 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 				},
 			},
 			Selector: labels,
-			Type:     v1.ServiceTypeClusterIP,
+			Type:     v1.ServiceTypeNodePort,
 		},
 	}
 	_, err = client.Core().Services(ns).Create(svc)
@@ -808,82 +806,6 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 		}
 		dpm.Spec.Template.Annotations[v1.PodInitContainersAnnotationKey] = string(value)
 		dpm.Spec.Template.Annotations[v1.PodInitContainersBetaAnnotationKey] = string(value)
-	}
-	return nil
-}
-
-// CreateIngress creates ingress rule for a specific function
-func CreateIngress(client kubernetes.Interface, ingressName, funcName, domain, ns string) error {
-	if domain == "" {
-		var err error
-		domain, err = getLocalDomain(funcName)
-		if err != nil {
-			return err
-		}
-	}
-
-	//TODO: skip annotation. We can add it later
-	//ingressAnnotations := map[string]string{
-	//	"kubernetes.io/ingress.class": "nginx",
-	//	"kubernetes.io/tls-acme":      "true",
-	//}
-
-	ingress := &v1beta1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ingressName,
-			Namespace: ns,
-			//Annotations: ingressAnnotations,
-		},
-		Spec: v1beta1.IngressSpec{
-			Rules: []v1beta1.IngressRule{
-				{
-					Host: domain,
-					IngressRuleValue: v1beta1.IngressRuleValue{
-						HTTP: &v1beta1.HTTPIngressRuleValue{
-							Paths: []v1beta1.HTTPIngressPath{
-								{
-									Path: "/",
-									Backend: v1beta1.IngressBackend{
-										ServiceName: funcName,
-										ServicePort: intstr.FromInt(8080),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	_, err := client.ExtensionsV1beta1().Ingresses(ns).Create(ingress)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// getLocalDomain returns hostname
-func getLocalDomain(funcName string) (string, error) {
-	config, err := buildOutOfClusterConfig()
-	if err != nil {
-		return "", err
-	}
-	url, err := url.Parse(config.Host)
-	if err != nil {
-		return "", err
-	}
-
-	host, _, _ := net.SplitHostPort(url.Host)
-
-	return fmt.Sprintf("%s.%s.nip.io", funcName, host), nil
-}
-
-// DeleteIngress deletes an ingress rule
-func DeleteIngress(client kubernetes.Interface, name, ns string) error {
-	err := client.ExtensionsV1beta1().Ingresses(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
 	}
 	return nil
 }
