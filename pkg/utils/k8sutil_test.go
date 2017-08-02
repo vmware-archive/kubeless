@@ -2,6 +2,7 @@ package utils
 
 import (
 	"os"
+	"regexp"
 	"testing"
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -107,8 +108,16 @@ func TestGetFunctionData(t *testing.T) {
 	expectedValues = []string{"Gemfile", "test.rb"}
 	check("ruby2.4", "HTTP", "test", expectedValues, t)
 
+	// Throws an error if the runtime doesn't exist
 	_, _, _, err := GetFunctionData("unexistent", "HTTP", "test")
 	if err == nil {
+		t.Fatalf("Retrieving data for 'unexistent' should return an error")
+	}
+
+	// Throws an error if the runtime version doesn't exist
+	_, _, _, err = GetFunctionData("nodejs3", "HTTP", "test")
+	expectedErrMsg := regexp.MustCompile("The given runtime and version 'nodejs3' does not have a valid image for HTTP based functions. Available runtimes are: python2.7, node6, node8, ruby2.4")
+	if expectedErrMsg.FindString(err.Error()) == "" {
 		t.Fatalf("Retrieving data for 'unexistent' should return an error")
 	}
 
