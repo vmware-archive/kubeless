@@ -114,10 +114,9 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 		table.Render()
 	} else if output == "wide" {
 		table := tablewriter.NewWriter(w)
-		table.SetHeader([]string{"Name", "description", "namespace", "handler", "runtime", "type", "topic", "dependencies", "memory", "env", "label"})
+		table.SetHeader([]string{"Name", "namespace", "handler", "runtime", "type", "topic", "dependencies", "memory", "env", "label"})
 		for _, f := range functions {
 			n := f.Metadata.Name
-			desc := f.Metadata.Annotations["kubeless.io/description"]
 			h := f.Spec.Handler
 			r := f.Spec.Runtime
 			t := f.Spec.Type
@@ -134,7 +133,7 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 			if len(f.Metadata.Labels) > 0 {
 				label, _ = json.Marshal(f.Metadata.Labels)
 			}
-			table.Append([]string{n, desc, ns, h, r, t, tp, dep, mem, string(env), string(label)})
+			table.Append([]string{n, ns, h, r, t, tp, dep, mem, string(env), string(label)})
 		}
 		table.Render()
 	} else {

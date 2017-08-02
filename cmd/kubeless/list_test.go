@@ -68,9 +68,6 @@ func TestList(t *testing.T) {
 				Metadata: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "myns",
-					Annotations: map[string]string{
-						"kubeless.io/description": "fdescription",
-					},
 					Labels: map[string]string{
 						"foo": "bar",
 					},

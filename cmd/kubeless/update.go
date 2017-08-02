@@ -57,11 +57,6 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		description, err := cmd.Flags().GetString("description")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
 		labels, err := cmd.Flags().GetStringSlice("label")
 		if err != nil {
 			logrus.Fatal(err)
@@ -96,20 +91,15 @@ var updateCmd = &cobra.Command{
 			v1.ResourceMemory: funcMem,
 		}
 
-		annotation := map[string]string{
-			"kubeless.io/description": description,
-		}
-
 		f := &spec.Function{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Function",
 				APIVersion: "k8s.io/v1",
 			},
 			Metadata: metav1.ObjectMeta{
-				Name:        funcName,
-				Namespace:   ns,
-				Labels:      funcLabels,
-				Annotations: annotation,
+				Name:      funcName,
+				Namespace: ns,
+				Labels:    funcLabels,
 			},
 			Spec: spec.FunctionSpec{
 				Handler:  handler,
@@ -144,7 +134,6 @@ func init() {
 	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	updateCmd.Flags().StringP("handler", "", "", "Specify handler")
 	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
-	updateCmd.Flags().StringP("description", "", "", "Specify description of the function")
 	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
 	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
 	updateCmd.Flags().StringSliceP("env", "", []string{}, "Specify environment variable of the function")

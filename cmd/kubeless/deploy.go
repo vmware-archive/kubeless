@@ -47,11 +47,6 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		description, err := cmd.Flags().GetString("description")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
 		labels, err := cmd.Flags().GetStringSlice("label")
 		if err != nil {
 			logrus.Fatal(err)
@@ -115,9 +110,6 @@ var deployCmd = &cobra.Command{
 		resource := map[v1.ResourceName]resource.Quantity{
 			v1.ResourceMemory: funcMem,
 		}
-		annotation := map[string]string{
-			"kubeless.io/description": description,
-		}
 
 		f := &spec.Function{
 			TypeMeta: metav1.TypeMeta{
@@ -125,10 +117,9 @@ var deployCmd = &cobra.Command{
 				APIVersion: "k8s.io/v1",
 			},
 			Metadata: metav1.ObjectMeta{
-				Name:        funcName,
-				Namespace:   ns,
-				Labels:      funcLabels,
-				Annotations: annotation,
+				Name:      funcName,
+				Namespace: ns,
+				Labels:    funcLabels,
 			},
 			Spec: spec.FunctionSpec{
 				Handler:  handler,
@@ -177,7 +168,6 @@ func init() {
 	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
 	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
-	deployCmd.Flags().StringP("description", "", "", "Specify description of the function")
 	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringSliceP("env", "", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")

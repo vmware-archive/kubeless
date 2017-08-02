@@ -154,12 +154,8 @@ func TestEnsureK8sResources(t *testing.T) {
 			Labels:    funcLabels,
 		},
 		Spec: spec.FunctionSpec{
-			Handler:  "foo.bar",
-			Runtime:  "",
-			Type:     "",
-			Function: "",
-			Topic:    "HTTP",
-			Deps:     "",
+			Handler: "foo.bar",
+			Runtime: "python2.7",
 		},
 	}
 
