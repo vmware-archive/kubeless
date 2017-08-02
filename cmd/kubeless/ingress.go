@@ -1,12 +1,9 @@
 /*
 Copyright 2016 Skippbox, Ltd.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,31 +11,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Serverless framework for Kubernetes.
 package main
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/pkg/api"
 )
 
-var globalUsage = `` //TODO: add explanation
-
-func newRootCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "kubeless",
-		Short: "Serverless framework for Kubernetes",
-		Long:  globalUsage,
-	}
-
-	cmd.AddCommand(functionCmd, topicCmd, versionCmd, ingressCmd)
-	return cmd
+var ingressCmd = &cobra.Command{
+	Use:   "ingress SUBCOMMAND",
+	Short: "manage route to function on Kubeless",
+	Long:  `ingress command allows user to list, create, delete ingress rule for function on Kubeless`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
 }
 
-func main() {
-	cmd := newRootCmd()
-	if err := cmd.Execute(); err != nil {
-		os.Exit(1)
+func init() {
+	cmds := []*cobra.Command{ingressCreateCmd, ingressListCmd, ingressDeleteCmd}
+
+	for _, cmd := range cmds {
+		ingressCmd.AddCommand(cmd)
+		cmd.Flags().StringP("namespace", "n", api.NamespaceDefault, "Specify namespace for the ingress")
+
 	}
 }
