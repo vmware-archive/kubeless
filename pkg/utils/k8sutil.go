@@ -62,6 +62,27 @@ const (
 	pubsubFunc     = "PubSub"
 )
 
+type runtimeVersion struct {
+	runtimeID   string
+	version     string
+	httpImage   string
+	pubsubImage string
+}
+
+var python, node, ruby []runtimeVersion
+
+func init() {
+	python27 := runtimeVersion{runtimeID: "python", version: "2.7", httpImage: python27Http, pubsubImage: python27Pubsub}
+	python = []runtimeVersion{python27}
+
+	node6 := runtimeVersion{runtimeID: "node", version: "6", httpImage: node6Http, pubsubImage: node6Pubsub}
+	node8 := runtimeVersion{runtimeID: "node", version: "8", httpImage: node8Http, pubsubImage: node8Pubsub}
+	node = []runtimeVersion{node6, node8}
+
+	ruby24 := runtimeVersion{runtimeID: "ruby", version: "2.4", httpImage: ruby24Http, pubsubImage: ""}
+	ruby = []runtimeVersion{ruby24}
+}
+
 // GetClient returns a k8s clientset to the request from inside of cluster
 func GetClient() kubernetes.Interface {
 	config, err := rest.InClusterConfig()
@@ -171,28 +192,25 @@ func GetFunction(funcName, ns string) (spec.Function, error) {
 	return f, nil
 }
 
+func getAvailableRuntimes(imageType string) []string {
+	runtimeObjList := [][]runtimeVersion{python, node, ruby}
+	var runtimeList []string
+	for i := range runtimeObjList {
+		for j := range runtimeObjList[i] {
+			if (imageType == "PubSub" && runtimeObjList[i][j].pubsubImage != "") || (imageType == "HTTP" && runtimeObjList[i][j].httpImage != "") {
+				runtimeList = append(runtimeList, runtimeObjList[i][j].runtimeID+runtimeObjList[i][j].version)
+			}
+		}
+	}
+	return runtimeList
+}
+
 // GetFunctionData given a runtime returns an Image ID, the dependencies filename and the function filename
 func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileName string, err error) {
 	err = nil
 	imageName = ""
 	depName = ""
 	fileName = ""
-
-	type runtimeVersion struct {
-		version     string
-		httpImage   string
-		pubsubImage string
-	}
-
-	python27 := runtimeVersion{version: "2.7", httpImage: python27Http, pubsubImage: python27Pubsub}
-	python := []runtimeVersion{python27}
-
-	node6 := runtimeVersion{version: "6", httpImage: node6Http, pubsubImage: node6Pubsub}
-	node8 := runtimeVersion{version: "8", httpImage: node8Http, pubsubImage: node8Pubsub}
-	node := []runtimeVersion{node6, node8}
-
-	ruby24 := runtimeVersion{version: "2.4", httpImage: ruby24Http, pubsubImage: ""}
-	ruby := []runtimeVersion{ruby24}
 
 	runtimeID := regexp.MustCompile("[a-zA-Z]+").FindString(runtime)
 	version := regexp.MustCompile("[0-9.]+").FindString(runtime)
@@ -222,7 +240,7 @@ func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileNa
 		imageNameEnvVar = strings.ToUpper(runtime) + "_RUNTIME"
 	}
 	if imageName = os.Getenv(imageNameEnvVar); imageName == "" {
-		rVersion := runtimeVersion{"", "", ""}
+		rVersion := runtimeVersion{"", "", "", ""}
 		for i := range versionsDef {
 			if versionsDef[i].version == version {
 				rVersion = versionsDef[i]
@@ -231,13 +249,13 @@ func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileNa
 		}
 		if ftype == pubsubFunc {
 			if rVersion.pubsubImage == "" {
-				err = errors.New("The given runtime and version does not have a valid image for event based functions")
+				err = errors.New("The given runtime and version '" + runtime + "does not have a valid image for event based functions. Available runtimes are: " + strings.Join(getAvailableRuntimes("PubSub")[:], ", "))
 			} else {
 				imageName = rVersion.pubsubImage
 			}
 		} else {
 			if rVersion.httpImage == "" {
-				err = errors.New("The given runtime and version does not have a valid image for http based functions")
+				err = errors.New("The given runtime and version '" + runtime + "' does not have a valid image for HTTP based functions. Available runtimes are: " + strings.Join(getAvailableRuntimes("HTTP")[:], ", "))
 			} else {
 				imageName = rVersion.httpImage
 			}
