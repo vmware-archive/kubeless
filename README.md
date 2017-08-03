@@ -21,11 +21,14 @@ Also check our [UI](https://github.com/kubeless/kubeless-ui) project
 
 ## Usage
 
-Download `kubeless` from the release page. Then launch the controller. It will create a _kubeless_ namespace and a _function_ ThirdPartyResource. You will see a _kubeless_ controller, and _kafka_, _zookeeper_ statefulset running.
+Download `kubeless` cli from the release page. Then using one of yaml manifests found in the release package to deploy kubeless. It will create a _kubeless_ namespace and a _function_ ThirdPartyResource. You will see a _kubeless_ controller, and _kafka_, _zookeeper_ statefulset running.
+
+There are several kubeless manifests being shipped for multiple k8s environments (non-rbac, rbac and openshift), please consider to pick up the correct one.
 
 ```console
+$ export RELEASE=0.0.19
 $ kubectl create ns kubeless
-$ kubectl create -f $(curl -s https://api.github.com/repos/kubeless/kubeless/releases/latest | jq -r ".assets[] | select(.name | test(\"yaml\")) | .browser_download_url")
+$ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 
 $ kubectl get pods -n kubeless
 NAME                                   READY     STATUS    RESTARTS   AGE
@@ -155,12 +158,6 @@ You can build kubeless for multiple platforms with:
 
 ```
 $ make binary-cross
-```
-
-### Download kubeless package
-
-```
-$ go get -u github.com/kubeless/kubeless
 ```
 
 ## _Roadmap_
