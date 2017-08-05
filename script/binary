@@ -17,7 +17,7 @@
 set -e
 
 if [ -z "$1" ]; then
-    VERSION=dev-$(shell date +%FT%T%z)
+    VERSION=dev-$(date +%FT%T%z)
 else
     VERSION=$1
 fi

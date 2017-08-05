@@ -1,0 +1,22 @@
+#!/bin/bash
+
+TEST_CONTEXT=${1:?missing k8s context, e.g.: minikube}
+
+DIR=${0%/*}
+source ${DIR}/libtest.sh || exit 1
+
+FUNCTIONS=(get-python get-nodejs post-python post-nodejs)
+
+test_reset ${TEST_CONTEXT}
+k8s_context_save
+for func in ${FUNCTIONS[*]}; do
+    echo "TEST: $func"
+    kubeless_function_delete ${func}
+    make -sC examples ${func}
+    k8s_wait_for_pod_ready -l function=${func}
+    make -sC examples ${func}-verify
+    pass_or_fail $? 0 "Verify ${func}"
+done
+k8s_context_restore
+test_report "TEST-FUNC"
+exit $?

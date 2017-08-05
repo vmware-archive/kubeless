@@ -1,0 +1,33 @@
+#!/bin/bash
+# Special case: if ./ksonnet-lib exists, set KUBECFG_JPATH
+test -d $PWD/ksonnet-lib && export KUBECFG_JPATH=$PWD/ksonnet-lib
+
+# We require below env
+: ${GOPATH:?} ${KUBECFG_JPATH:?}
+
+# Default to "dind" for testing
+INTEGRATION_TESTS_CTX=${1:-dind}
+
+set -xu
+
+k8s_create_dind() {
+    # Bring up kubeadm-dind-cluster (docker-in-docker k8s cluster)
+    DIND_CLUSTER_SH=dind-cluster-v1.7.sh
+    DIND_URL=https://cdn.rawgit.com/Mirantis/kubeadm-dind-cluster/master/fixed/${DIND_CLUSTER_SH}
+    rm -f ${DIND_CLUSTER_SH}
+    wget ${DIND_URL}
+    chmod +x ${DIND_CLUSTER_SH}
+    ./${DIND_CLUSTER_SH} up
+    export PATH="$HOME/.kubeadm-dind-cluster:$PATH"
+    sleep 5
+}
+
+kubectl get nodes --context=${INTEGRATION_TESTS_CTX} || k8s_create_${INTEGRATION_TESTS_CTX}
+kubectl create namespace kubeless
+# TEST: kubeless and RBAC (will leave setup ready for next tests)
+./script/integration-test-rbac      ${INTEGRATION_TESTS_CTX} || exit 1
+# TEST: some simple function calls
+./script/integration-test-functions ${INTEGRATION_TESTS_CTX} || exit 1
+
+# Just showing remaining k8s objects
+kubectl get all --all-namespaces

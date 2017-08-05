@@ -1,0 +1,76 @@
+#!/bin/bash
+# Instrument basic smoke RBAC test against minikube:
+# - _test_must_fail_without_rbac_roles for failure
+# - _test_must_pass_with_rbac_roles    for success
+#
+# Assumes already setup clster RBAC'd environment
+
+TEST_CONTEXT=${1:?missing k8s context, e.g.: minikube}
+KUBELESS_JSONNET=kubeless.jsonnet
+KUBELESS_JSONNET_RBAC=kubeless-rbac-novols.jsonnet
+
+DIR=${0%/*}
+source ${DIR}/libtest.sh || exit 1
+
+set -u
+## k8s specific Helper functions
+_wait_for_kubeless_controller_ready() {
+    info "Waiting for kubeless controller to be ready ... "
+    k8s_wait_for_pod_ready -n kubeless -l kubeless=controller
+    sleep 10
+}
+_wait_for_controller_logline() {
+    local string="${1:?}"
+    k8s_wait_for_pod_logline "${string}" -n kubeless -l kubeless=controller
+}
+
+## Functions
+_wait_for_function_pod_ready() {
+    k8s_wait_for_pod_ready -l function=get-python
+}
+_deploy_function() {
+    kubeless_function_deploy get-python --runtime python27 --handler hellowithdata.handler --from-file examples/python/hellowithdata.py --trigger-http 
+}
+_call_function() {
+    kubeless_function_exp_regex_call ${1:?} "it.*alive" get-python --data '{"it-s": "alive"}'
+}
+_delete_function() {
+    kubeless_function_delete get-python
+}
+_test_must_fail_without_rbac_roles() {
+    info "RBAC TEST: function deploy/call must fail without RBAC roles"
+    _delete_function
+    kubeless_recreate $KUBELESS_JSONNET_RBAC $KUBELESS_JSONNET
+    _wait_for_kubeless_controller_ready
+    _deploy_function
+    _wait_for_controller_logline "User.*cannot"
+    _call_function 1
+}
+_test_must_pass_with_rbac_roles() {
+    info "RBAC TEST: function deploy/call must succeed with RBAC roles"
+    _delete_function
+    kubeless_recreate $KUBELESS_JSONNET_RBAC $KUBELESS_JSONNET_RBAC
+    _wait_for_kubeless_controller_ready
+    _deploy_function
+    _wait_for_controller_logline "controller synced and ready"
+    _wait_for_function_pod_ready
+    _call_function 0
+}
+test_kubeless_rbac() {
+    _test_must_fail_without_rbac_roles
+    _test_must_pass_with_rbac_roles
+}
+
+test_reset ${TEST_CONTEXT}
+k8s_context_save
+
+verify_k8s_tools        || exit 255
+verify_minikube_running || exit 255
+verify_rbac_mode        || exit 255
+test_kubeless_rbac
+
+k8s_context_restore
+test_report "TEST-RBAC"
+exit $?
+
+# vim: sw=4 ts=4 et si

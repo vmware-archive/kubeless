@@ -28,6 +28,16 @@ install:
   - git clone --depth=1 https://github.com/ksonnet/ksonnet-lib.git
   - export KUBECFG_JPATH=$PWD/ksonnet-lib
 
+before_script:
+  - |
+    # Hack to always build from github.com/kubeless/kubeless,
+    # to allow travis runs pushed from your own <user>/kubeless repo
+    test -d ../../kubeless || {
+        mkdir -p ../../kubeless
+        git clone . ../../kubeless/kubeless/
+        cd ../../kubeless/kubeless || exit 1
+    }
+
 script:
   - make test
   - make validation
@@ -37,6 +47,10 @@ script:
       make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
     fi
   - make all-yaml
+  - |
+    if [ "$TRAVIS_OS_NAME" = linux ]; then
+      make integration-tests
+    fi
 
 after_success:
   - |

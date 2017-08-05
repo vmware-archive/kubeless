@@ -60,8 +60,11 @@ validation:
 	./script/validate-gofmt
 	./script/validate-git-marks
 
+integration-tests:
+	./script/integration-tests
+
 minikube-rbac-test:
-	./script/minikube-rbac-test
+	./script/integration-test-rbac minikube
 
 fmt:
 	$(GOFMT) -s -w $(GO_FILES)
