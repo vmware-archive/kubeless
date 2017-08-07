@@ -21,9 +21,15 @@ Also check our [UI](https://github.com/kubeless/kubeless-ui) project
 
 ## Usage
 
-Download `kubeless` cli from the release page. Then using one of yaml manifests found in the release package to deploy kubeless. It will create a _kubeless_ namespace and a _function_ ThirdPartyResource. You will see a _kubeless_ controller, and _kafka_, _zookeeper_ statefulset running.
+Download `kubeless` cli from the [release page](https://github.com/kubeless/kubeless/releases). Then using one of yaml manifests found in the release package to deploy kubeless. It will create a _kubeless_ namespace and a _function_ ThirdPartyResource. You will see a _kubeless_ controller, and _kafka_, _zookeeper_ statefulset running.
 
-There are several kubeless manifests being shipped for multiple k8s environments (non-rbac, rbac and openshift), please consider to pick up the correct one.
+There are several kubeless manifests being shipped for multiple k8s environments (non-rbac, rbac and openshift), please consider to pick up the correct one:
+
+- kubeless-$RELEASE.yaml is used for non-RBAC Kubernetes cluster.
+- kubeless-rbac-$RELEASE.yaml is used for RBAC-enabled Kubernetes cluster.
+- kubeless-openshift-$RELEASE.yaml is used to deploy Kubeless to OpenShift (1.5+).
+
+For example, this below is a show case of deploying kubeless to a non-RBAC Kubernetes cluster.
 
 ```console
 $ export RELEASE=0.0.19
