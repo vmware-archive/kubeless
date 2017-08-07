@@ -340,16 +340,16 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 	}
 
 	//prepare init-container for custom runtime
-	initContainer := []v1.Container{}
+	initContainer := v1.Container{}
 	if funcObj.Spec.Deps != "" {
-		initContainer = append(initContainer, v1.Container{
+		initContainer = v1.Container{
 			Name:            "install",
 			Image:           getInitImage(funcObj.Spec.Runtime),
 			Command:         getCommand(funcObj.Spec.Runtime),
 			VolumeMounts:    getVolumeMounts(name, funcObj.Spec.Runtime),
 			WorkingDir:      "/requirements",
 			ImagePullPolicy: v1.PullIfNotPresent,
-		})
+		}
 	}
 
 	//add deployment
@@ -369,12 +369,6 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		},
 	}
 
-	if len(funcObj.Spec.Template.Spec.Containers) == 0 {
-		funcObj.Spec.Template.Spec.Containers = append(funcObj.Spec.Template.Spec.Containers, v1.Container{
-			Name:  name,
-			Image: imageName,
-		})
-	}
 	//copy all func's Spec.Template to the deployment
 	tmplCopy, err := api.Scheme.DeepCopy(funcObj.Spec.Template)
 	if err != nil {
@@ -387,7 +381,14 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		Labels:      labels,
 		Annotations: podAnnotations,
 	}
-	dpm.Spec.Template.Spec.InitContainers = initContainer
+	for k, v := range labels {
+		dpm.Spec.Template.ObjectMeta.Labels[k] = v
+	}
+	for k, v := range podAnnotations {
+		dpm.Spec.Template.ObjectMeta.Annotations[k] = v
+	}
+
+	dpm.Spec.Template.Spec.InitContainers = append(dpm.Spec.Template.Spec.InitContainers, initContainer)
 	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
 		Name: name,
 		VolumeSource: v1.VolumeSource{
@@ -398,6 +399,9 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 			},
 		},
 	})
+	if len(dpm.Spec.Template.Spec.Containers) == 0 {
+		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
+	}
 	dpm.Spec.Template.Spec.Containers[0].Image = imageName
 	dpm.Spec.Template.Spec.Containers[0].Name = name
 	dpm.Spec.Template.Spec.Containers[0].Ports = append(dpm.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{

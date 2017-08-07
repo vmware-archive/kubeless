@@ -137,7 +137,8 @@ func TestGetFunctionData(t *testing.T) {
 func TestEnsureK8sResources(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	ns := "myns"
-	funcName := "foo"
+	func1 := "foo1"
+	func2 := "foo2"
 
 	funcLabels := map[string]string{
 		"foo": "bar",
@@ -149,7 +150,7 @@ func TestEnsureK8sResources(t *testing.T) {
 			APIVersion: "k8s.io/v1",
 		},
 		Metadata: metav1.ObjectMeta{
-			Name:      funcName,
+			Name:      func1,
 			Namespace: ns,
 			Labels:    funcLabels,
 		},
@@ -165,7 +166,7 @@ func TestEnsureK8sResources(t *testing.T) {
 			APIVersion: "k8s.io/v1",
 		},
 		Metadata: metav1.ObjectMeta{
-			Name:      funcName,
+			Name:      func2,
 			Namespace: ns,
 			Labels:    funcLabels,
 		},
@@ -189,11 +190,70 @@ func TestEnsureK8sResources(t *testing.T) {
 		},
 	}
 
-	if err := EnsureK8sResources(ns, funcName, f1, clientset); err != nil {
+	if err := EnsureK8sResources(ns, func1, f1, clientset); err != nil {
 		t.Fatalf("Creating resources returned err: %v", err)
 	}
 
-	if err := EnsureK8sResources(ns, funcName, f2, clientset); err != nil {
+	svc, err := clientset.CoreV1().Services(ns).Get(func1, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create svc object: %v", err)
+	}
+	if svc.ObjectMeta.Name != func1 {
+		t.Errorf("Create wrong svc object. Expect svc name is %s but got %s", func1, svc.ObjectMeta.Name)
+	}
+
+	cm, err := clientset.CoreV1().ConfigMaps(ns).Get(func1, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create configmap object: %v", err)
+	}
+	if cm.Data["handler"] != "foo.bar" {
+		t.Errorf("Create wrong configmap object. Expect configmap data handler is foo.bar but got %s", cm.Data["handler"])
+	}
+
+	dpm, err := clientset.ExtensionsV1beta1().Deployments(ns).Get(func1, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create deployment object: %v", err)
+	}
+	if dpm.Spec.Template.Labels["foo"] != "bar" {
+		t.Errorf("Create wrong deployment object. Expect deployment labels foo=bar but got %s", dpm.Spec.Template.Labels["foo"])
+	}
+
+	if err := EnsureK8sResources(ns, func2, f2, clientset); err != nil {
 		t.Fatalf("Creating resources returned err: %v", err)
 	}
+	svc, err = clientset.CoreV1().Services(ns).Get(func2, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create svc object: %v", err)
+	}
+	if svc.ObjectMeta.Name != func2 {
+		t.Errorf("Create wrong svc object. Expect svc name is %s but got %s", func2, svc.ObjectMeta.Name)
+	}
+
+	cm, err = clientset.CoreV1().ConfigMaps(ns).Get(func2, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create configmap object: %v", err)
+	}
+
+	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get(func2, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create deployment object: %v", err)
+	}
+	if len(dpm.Spec.Template.Spec.Containers[0].Env) == 0 {
+		t.Errorf("There is no environment variable in the deployment")
+	}
+	if doesNotContain(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
+		Name:  "foo",
+		Value: "bar",
+	}) {
+		t.Errorf("Deployment env doesn't contain foo=bar")
+	}
+}
+
+func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
+	for _, e := range envs {
+		if e == env {
+			return false
+		}
+	}
+	return true
 }
