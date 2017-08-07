@@ -153,12 +153,21 @@ func TestList(t *testing.T) {
 	// json output
 	output = listOutput(t, client, "myns", "json", []string{})
 	t.Log("output is", output)
+	if !strings.Contains(output, "foo") || !strings.Contains(output, "bar") {
+		t.Errorf("table output didn't mention both functions")
+	}
 
 	// yaml output
 	output = listOutput(t, client, "myns", "yaml", []string{})
 	t.Log("output is", output)
+	if !strings.Contains(output, "128Mi") {
+		t.Errorf("table output didn't mention proper memory of function")
+	}
 
 	// wide output
 	output = listOutput(t, client, "myns", "wide", []string{})
 	t.Log("output is", output)
+	if !strings.Contains(output, "[{\"name\":\"foo\",\"value\":\"bar\"}]") {
+		t.Errorf("table output didn't mention proper env of function")
+	}
 }
