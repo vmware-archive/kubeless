@@ -143,7 +143,7 @@ func TestEnsureK8sResources(t *testing.T) {
 		"foo": "bar",
 	}
 
-	f := &spec.Function{
+	f1 := &spec.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
 			APIVersion: "k8s.io/v1",
@@ -159,7 +159,41 @@ func TestEnsureK8sResources(t *testing.T) {
 		},
 	}
 
-	if err := EnsureK8sResources(ns, funcName, f, clientset); err != nil {
+	f2 := &spec.Function{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "k8s.io/v1",
+		},
+		Metadata: metav1.ObjectMeta{
+			Name:      funcName,
+			Namespace: ns,
+			Labels:    funcLabels,
+		},
+		Spec: spec.FunctionSpec{
+			Handler: "foo.bar",
+			Runtime: "python2.7",
+			Template: v1.PodTemplateSpec{
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Env: []v1.EnvVar{
+								{
+									Name:  "foo",
+									Value: "bar",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if err := EnsureK8sResources(ns, funcName, f1, clientset); err != nil {
+		t.Fatalf("Creating resources returned err: %v", err)
+	}
+
+	if err := EnsureK8sResources(ns, funcName, f2, clientset); err != nil {
 		t.Fatalf("Creating resources returned err: %v", err)
 	}
 }
