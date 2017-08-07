@@ -4,12 +4,12 @@ import:
 - package: github.com/spf13/cobra
 - package: gopkg.in/yaml.v2
 - package: k8s.io/kubernetes
-  version: v1.6.0
+  version: fff5156092b56e6bd60fff75aad4dc9de6b6ef37
   subpackages:
   - pkg/kubectl/cmd
   - pkg/kubectl/cmd/util
 - package: k8s.io/client-go
-  version: v2.0.0
+  version: v3.0.0-beta.0
 - package: github.com/olekukonko/tablewriter
 - package: github.com/docker/spdystream
 - package: github.com/renstrom/dedent
