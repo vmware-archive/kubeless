@@ -19,7 +19,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/yaml.v2"
+	"github.com/ghodss/yaml"
+	"os"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/olekukonko/tablewriter"
@@ -28,7 +29,6 @@ import (
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"k8s.io/client-go/pkg/api"
-	"os"
 )
 
 var describeCmd = &cobra.Command{
@@ -71,6 +71,8 @@ func print(f spec.Function, name, output string) {
 	case "":
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"Properties", "Value"})
+		label, _ := json.Marshal(f.Metadata.Labels)
+		env, _ := json.Marshal(f.Spec.Template.Spec.Containers[0].Env)
 		data := [][]string{
 			{"Name", name},
 			{"Namespace", fmt.Sprintf(f.Metadata.Namespace)},
@@ -79,6 +81,9 @@ func print(f spec.Function, name, output string) {
 			{"Type", fmt.Sprintf(f.Spec.Type)},
 			{"Topic", fmt.Sprintf(f.Spec.Topic)},
 			{"Dependencies", fmt.Sprintf(f.Spec.Deps)},
+			{"Labels", fmt.Sprintf(string(label))},
+			{"Environment variables", fmt.Sprintf(string(env))},
+			{"Memory", fmt.Sprintf(f.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String())},
 		}
 
 		for _, v := range data {
@@ -86,9 +91,10 @@ func print(f spec.Function, name, output string) {
 		}
 		table.Render() // Send output
 	case "json":
-		b, _ := json.MarshalIndent(f.Spec, "", "  ")
+		b, _ := json.MarshalIndent(f, "", "  ")
 		fmt.Println(string(b))
 	case "yaml":
+		//will fix later: there is a panic here with yaml.Marshal(f)
 		b, _ := yaml.Marshal(f.Spec)
 		fmt.Println(string(b))
 	default:

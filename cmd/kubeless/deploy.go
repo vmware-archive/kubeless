@@ -18,9 +18,13 @@ package main
 
 import (
 	"github.com/Sirupsen/logrus"
+	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 var deployCmd = &cobra.Command{
@@ -39,6 +43,16 @@ var deployCmd = &cobra.Command{
 		}
 
 		topic, err := cmd.Flags().GetString("trigger-topic")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		labels, err := cmd.Flags().GetStringSlice("label")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		envs, err := cmd.Flags().GetStringSlice("env")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -68,13 +82,82 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		mem, err := cmd.Flags().GetString("memory")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		funcType := "PubSub"
 		if triggerHTTP {
 			funcType = "HTTP"
 			topic = ""
 		}
 
-		err = utils.CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps)
+		funcLabels := parseLabel(labels)
+		funcEnv := parseEnv(envs)
+		funcMem := resource.Quantity{}
+		if mem != "" {
+			funcMem, err = parseMemory(mem)
+			if err != nil {
+				logrus.Fatalf("Wrong format of the memory value: %v", err)
+			}
+		}
+		funcContent, err := readFile(file)
+		if err != nil {
+			logrus.Fatalf("Unable to read file %s: %v", file, err)
+		}
+
+		resource := map[v1.ResourceName]resource.Quantity{
+			v1.ResourceMemory: funcMem,
+		}
+
+		f := &spec.Function{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Function",
+				APIVersion: "k8s.io/v1",
+			},
+			Metadata: metav1.ObjectMeta{
+				Name:      funcName,
+				Namespace: ns,
+				Labels:    funcLabels,
+			},
+			Spec: spec.FunctionSpec{
+				Handler:  handler,
+				Runtime:  runtime,
+				Type:     funcType,
+				Function: funcContent,
+				Topic:    topic,
+				Template: v1.PodTemplateSpec{
+					Spec: v1.PodSpec{
+						Containers: []v1.Container{
+							{
+								Env: funcEnv,
+								Resources: v1.ResourceRequirements{
+									Limits:   resource,
+									Requests: resource,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		// add dependencies file to func spec
+		if deps != "" {
+			funcDeps, err := readFile(deps)
+			if err != nil {
+				logrus.Fatalf("Unable to read file %s: %v", deps, err)
+			}
+			f.Spec.Deps = funcDeps
+		}
+
+		tprClient, err := utils.GetTPRClientOutOfCluster()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		err = utils.CreateK8sCustomResource(tprClient, f)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -85,8 +168,11 @@ func init() {
 	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
 	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
+	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
+	deployCmd.Flags().StringSliceP("env", "", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
 	deployCmd.Flags().StringP("trigger-topic", "", "kubeless", "Deploy a pubsub function to Kubeless")
+	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory, which is measured in bytes, for the function. It is expressed as a plain integer or a fixed-point interger with one of these suffies: E, P, T, G, M, K, Ei, Pi, Ti, Gi, Mi, Ki")
 	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 }

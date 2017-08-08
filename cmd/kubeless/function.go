@@ -17,7 +17,12 @@ limitations under the License.
 package main
 
 import (
+	"io/ioutil"
+	"strings"
+
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 var functionCmd = &cobra.Command{
@@ -37,4 +42,56 @@ func init() {
 	functionCmd.AddCommand(logsCmd)
 	functionCmd.AddCommand(describeCmd)
 	functionCmd.AddCommand(updateCmd)
+}
+
+func getKV(input string) (string, string) {
+	var key, value string
+	if pos := strings.IndexAny(input, "=:"); pos != -1 {
+		key = input[:pos]
+		value = input[pos+1:]
+	} else {
+		// no separator found
+		key = input
+		value = ""
+	}
+
+	return key, value
+}
+
+func readFile(file string) (string, error) {
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		return "", err
+	}
+	return string(data[:]), nil
+}
+
+func parseLabel(labels []string) map[string]string {
+	funcLabels := map[string]string{}
+	for _, label := range labels {
+		k, v := getKV(label)
+		funcLabels[k] = v
+	}
+	return funcLabels
+}
+
+func parseEnv(envs []string) []v1.EnvVar {
+	funcEnv := []v1.EnvVar{}
+	for _, env := range envs {
+		k, v := getKV(env)
+		funcEnv = append(funcEnv, v1.EnvVar{
+			Name:  k,
+			Value: v,
+		})
+	}
+	return funcEnv
+}
+
+func parseMemory(mem string) (resource.Quantity, error) {
+	quantity, err := resource.ParseQuantity(mem)
+	if err != nil {
+		return resource.Quantity{}, err
+	}
+
+	return quantity, nil
 }

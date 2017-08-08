@@ -9,9 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/rest/fake"
 
@@ -45,6 +47,7 @@ func objBody(object interface{}) io.ReadCloser {
 }
 
 func TestList(t *testing.T) {
+	funcMem, _ := parseMemory("128Mi")
 	listObj := spec.FunctionList{
 		Items: []*spec.Function{
 			{
@@ -65,6 +68,9 @@ func TestList(t *testing.T) {
 				Metadata: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "myns",
+					Labels: map[string]string{
+						"foo": "bar",
+					},
 				},
 				Spec: spec.FunctionSpec{
 					Handler:  "bhandler",
@@ -73,6 +79,28 @@ func TestList(t *testing.T) {
 					Type:     "btype",
 					Topic:    "btopic",
 					Deps:     "bdeps",
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{
+								{
+									Env: []v1.EnvVar{
+										{
+											Name:  "foo",
+											Value: "bar",
+										},
+									},
+									Resources: v1.ResourceRequirements{
+										Limits: map[v1.ResourceName]resource.Quantity{
+											v1.ResourceMemory: funcMem,
+										},
+										Requests: map[v1.ResourceName]resource.Quantity{
+											v1.ResourceMemory: funcMem,
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -125,8 +153,21 @@ func TestList(t *testing.T) {
 	// json output
 	output = listOutput(t, client, "myns", "json", []string{})
 	t.Log("output is", output)
+	if !strings.Contains(output, "foo") || !strings.Contains(output, "bar") {
+		t.Errorf("table output didn't mention both functions")
+	}
 
 	// yaml output
 	output = listOutput(t, client, "myns", "yaml", []string{})
 	t.Log("output is", output)
+	if !strings.Contains(output, "128Mi") {
+		t.Errorf("table output didn't mention proper memory of function")
+	}
+
+	// wide output
+	output = listOutput(t, client, "myns", "wide", []string{})
+	t.Log("output is", output)
+	if !strings.Contains(output, "[{\"name\":\"foo\",\"value\":\"bar\"}]") {
+		t.Errorf("table output didn't mention proper env of function")
+	}
 }

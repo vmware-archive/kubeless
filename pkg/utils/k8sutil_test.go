@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/kubeless/kubeless/pkg/spec"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
@@ -140,5 +141,141 @@ func TestGetFunctionData(t *testing.T) {
 		t.Fatalf("Expecting " + imageR + " to be set to " + expectedImageName)
 	}
 	os.Unsetenv("RUBY_PUBSUB_RUNTIME")
+}
 
+func TestEnsureK8sResources(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	ns := "myns"
+	func1 := "foo1"
+	func2 := "foo2"
+
+	funcLabels := map[string]string{
+		"foo": "bar",
+	}
+	funcAnno := map[string]string{
+		"bar": "foo",
+	}
+
+	f1 := &spec.Function{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "k8s.io/v1",
+		},
+		Metadata: metav1.ObjectMeta{
+			Name:      func1,
+			Namespace: ns,
+			Labels:    funcLabels,
+		},
+		Spec: spec.FunctionSpec{
+			Handler: "foo.bar",
+			Runtime: "python2.7",
+		},
+	}
+
+	f2 := &spec.Function{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "k8s.io/v1",
+		},
+		Metadata: metav1.ObjectMeta{
+			Name:      func2,
+			Namespace: ns,
+			Labels:    funcLabels,
+		},
+		Spec: spec.FunctionSpec{
+			Handler: "foo.bar",
+			Runtime: "python2.7",
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: funcAnno,
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Env: []v1.EnvVar{
+								{
+									Name:  "foo",
+									Value: "bar",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if err := EnsureK8sResources(ns, func1, f1, clientset); err != nil {
+		t.Fatalf("Creating resources returned err: %v", err)
+	}
+
+	svc, err := clientset.CoreV1().Services(ns).Get(func1, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create svc object: %v", err)
+	}
+	if svc.ObjectMeta.Name != func1 {
+		t.Errorf("Create wrong svc object. Expect svc name is %s but got %s", func1, svc.ObjectMeta.Name)
+	}
+
+	cm, err := clientset.CoreV1().ConfigMaps(ns).Get(func1, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create configmap object: %v", err)
+	}
+	if cm.Data["handler"] != "foo.bar" {
+		t.Errorf("Create wrong configmap object. Expect configmap data handler is foo.bar but got %s", cm.Data["handler"])
+	}
+
+	dpm, err := clientset.ExtensionsV1beta1().Deployments(ns).Get(func1, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create deployment object: %v", err)
+	}
+	if dpm.Spec.Template.Labels["foo"] != "bar" {
+		t.Errorf("Create wrong deployment object. Expect deployment labels foo=bar but got %s", dpm.Spec.Template.Labels["foo"])
+	}
+
+	if err := EnsureK8sResources(ns, func2, f2, clientset); err != nil {
+		t.Fatalf("Creating resources returned err: %v", err)
+	}
+	svc, err = clientset.CoreV1().Services(ns).Get(func2, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create svc object: %v", err)
+	}
+	if svc.ObjectMeta.Name != func2 {
+		t.Errorf("Create wrong svc object. Expect svc name is %s but got %s", func2, svc.ObjectMeta.Name)
+	}
+
+	cm, err = clientset.CoreV1().ConfigMaps(ns).Get(func2, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create configmap object: %v", err)
+	}
+
+	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get(func2, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create deployment object: %v", err)
+	}
+	if len(dpm.Spec.Template.Spec.Containers[0].Env) == 0 {
+		t.Errorf("There is no environment variable in the deployment")
+	}
+	if doesNotContain(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
+		Name:  "foo",
+		Value: "bar",
+	}) {
+		t.Errorf("Deployment env doesn't contain foo=bar")
+	}
+	if v, ok := dpm.Spec.Template.ObjectMeta.Annotations["bar"]; ok {
+		if v != "foo" {
+			t.Errorf("Deployment annotation doesn't contain bar=foo")
+		}
+	} else {
+		t.Errorf("Deployment annotation doesn't contain key bar")
+	}
+}
+
+func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
+	for _, e := range envs {
+		if e == env {
+			return false
+		}
+	}
+	return true
 }

@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -46,7 +45,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-
 	"k8s.io/kubernetes/pkg/kubectl/cmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
@@ -283,6 +281,9 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 	labels := map[string]string{
 		"function": name,
 	}
+	for k, v := range funcObj.Metadata.Labels {
+		labels[k] = v
+	}
 
 	t := true
 	or := []metav1.OwnerReference{
@@ -305,6 +306,7 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		"prometheus.io/path":   "/metrics",
 		"prometheus.io/port":   "8080",
 	}
+
 	configMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
@@ -357,17 +359,18 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 	}
 
 	//prepare init-container for custom runtime
-	initContainer := []v1.Container{}
+	initContainer := v1.Container{}
 	if funcObj.Spec.Deps != "" {
-		initContainer = append(initContainer, v1.Container{
+		initContainer = v1.Container{
 			Name:            "install",
 			Image:           getInitImage(funcObj.Spec.Runtime),
 			Command:         getCommand(funcObj.Spec.Runtime),
 			VolumeMounts:    getVolumeMounts(name, funcObj.Spec.Runtime),
 			WorkingDir:      "/requirements",
 			ImagePullPolicy: v1.PullIfNotPresent,
-		})
+		}
 	}
+
 	//add deployment
 	maxUnavailable := intstr.FromInt(0)
 	dpm := &v1beta1.Deployment{
@@ -377,59 +380,6 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 			OwnerReferences: or,
 		},
 		Spec: v1beta1.DeploymentSpec{
-			Template: v1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels:      labels,
-					Annotations: podAnnotations,
-				},
-				Spec: v1.PodSpec{
-					InitContainers: initContainer,
-					Containers: []v1.Container{
-						{
-							Name:            name,
-							Image:           imageName,
-							ImagePullPolicy: v1.PullIfNotPresent,
-							Ports: []v1.ContainerPort{
-								{
-									ContainerPort: 8080,
-								},
-							},
-							Env: []v1.EnvVar{
-								{
-									Name:  "FUNC_HANDLER",
-									Value: funcHandler,
-								},
-								{
-									Name:  "MOD_NAME",
-									Value: modName,
-								},
-								{
-									Name:  "TOPIC_NAME",
-									Value: funcObj.Spec.Topic,
-								},
-							},
-							VolumeMounts: []v1.VolumeMount{
-								{
-									Name:      name,
-									MountPath: "/kubeless",
-								},
-							},
-						},
-					},
-					Volumes: []v1.Volume{
-						{
-							Name: name,
-							VolumeSource: v1.VolumeSource{
-								ConfigMap: &v1.ConfigMapVolumeSource{
-									LocalObjectReference: v1.LocalObjectReference{
-										Name: name,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
 			Strategy: v1beta1.DeploymentStrategy{
 				RollingUpdate: &v1beta1.RollingUpdateDeployment{
 					MaxUnavailable: &maxUnavailable,
@@ -438,6 +388,67 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		},
 	}
 
+	//copy all func's Spec.Template to the deployment
+	tmplCopy, err := api.Scheme.DeepCopy(funcObj.Spec.Template)
+	if err != nil {
+		return err
+	}
+	dpm.Spec.Template = tmplCopy.(v1.PodTemplateSpec)
+
+	//append data to dpm spec
+	if len(dpm.Spec.Template.ObjectMeta.Labels) == 0 {
+		dpm.Spec.Template.ObjectMeta.Labels = make(map[string]string)
+	}
+	for k, v := range labels {
+		dpm.Spec.Template.ObjectMeta.Labels[k] = v
+	}
+	if len(dpm.Spec.Template.ObjectMeta.Annotations) == 0 {
+		dpm.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	}
+	for k, v := range podAnnotations {
+		//only append k-v from podAnnotations if it doesn't exist in deployment podTemplateSpec annotation
+		if _, ok := dpm.Spec.Template.ObjectMeta.Annotations[k]; !ok {
+			dpm.Spec.Template.ObjectMeta.Annotations[k] = v
+		}
+	}
+
+	dpm.Spec.Template.Spec.InitContainers = append(dpm.Spec.Template.Spec.InitContainers, initContainer)
+	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
+		Name: name,
+		VolumeSource: v1.VolumeSource{
+			ConfigMap: &v1.ConfigMapVolumeSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: name,
+				},
+			},
+		},
+	})
+	if len(dpm.Spec.Template.Spec.Containers) == 0 {
+		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
+	}
+	dpm.Spec.Template.Spec.Containers[0].Image = imageName
+	dpm.Spec.Template.Spec.Containers[0].Name = name
+	dpm.Spec.Template.Spec.Containers[0].Ports = append(dpm.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{
+		ContainerPort: 8080,
+	})
+	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
+		v1.EnvVar{
+			Name:  "FUNC_HANDLER",
+			Value: funcHandler,
+		},
+		v1.EnvVar{
+			Name:  "MOD_NAME",
+			Value: modName,
+		},
+		v1.EnvVar{
+			Name:  "TOPIC_NAME",
+			Value: funcObj.Spec.Topic,
+		})
+	dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
+		Name:      name,
+		MountPath: "/kubeless",
+	})
+
 	// update deployment for custom runtime
 	if funcObj.Spec.Deps != "" {
 		updateDeployment(dpm, funcObj.Spec.Runtime)
@@ -445,6 +456,7 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		addInitContainerAnnotation(dpm)
 	}
 
+	// add liveness Probe to deployment
 	if funcObj.Spec.Type != pubsubFunc {
 		livenessProbe := &v1.Probe{
 			InitialDelaySeconds: int32(3),
@@ -458,7 +470,6 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		}
 		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
 	}
-
 	_, err = client.Extensions().Deployments(ns).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		data, _ := json.Marshal(dpm)
@@ -518,47 +529,18 @@ func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
 }
 
 // CreateK8sCustomResource will create a custom function object
-func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, ns, deps string) error {
-	var f spec.Function
-
-	tprClient, err := GetTPRClientOutOfCluster()
-	if err != nil {
-		return err
-	}
-
-	err = tprClient.Get().
+func CreateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
+	err := tprClient.Get().
 		Resource("functions").
-		Namespace(ns).
-		Name(funcName).
-		Do().Into(&f)
+		Namespace(f.Metadata.Namespace).
+		Name(f.Metadata.Name).
+		Do().Into(f)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
-			f := &spec.Function{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Function",
-					APIVersion: "k8s.io/v1",
-				},
-				Metadata: metav1.ObjectMeta{
-					Name:      funcName,
-					Namespace: ns,
-				},
-				Spec: spec.FunctionSpec{
-					Handler:  handler,
-					Runtime:  runtime,
-					Type:     funcType,
-					Function: readFile(file),
-					Topic:    topic,
-				},
-			}
-			// add dependencies file to func spec
-			if deps != "" {
-				f.Spec.Deps = readFile(deps)
-			}
-
 			var result spec.Function
 			err = tprClient.Post().
 				Resource("functions").
-				Namespace(ns).
+				Namespace(f.Metadata.Namespace).
 				Body(f).
 				Do().Into(&result)
 
@@ -567,37 +549,15 @@ func CreateK8sCustomResource(runtime, handler, file, funcName, funcType, topic, 
 			}
 		}
 	} else {
-		//FIXME: improve the error message
-		return fmt.Errorf("Can't create the function")
+		return fmt.Errorf("Function has already existed")
 	}
 
 	return nil
 }
 
 // UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(runtime, handler, file, funcName, ns string) error {
+func UpdateK8sCustomResource(f *spec.Function) error {
 	fa := cmdutil.NewFactory(nil)
-
-	if ns == "" {
-		ns, _, _ = fa.DefaultNamespace()
-	}
-
-	f := &spec.Function{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Function",
-			APIVersion: "k8s.io/v1",
-		},
-		Metadata: metav1.ObjectMeta{
-			Name:      funcName,
-			Namespace: ns,
-		},
-		Spec: spec.FunctionSpec{
-			Handler:  handler,
-			Function: readFile(file),
-			Runtime:  runtime,
-		},
-	}
-
 	funcJSON, err := json.Marshal(f)
 	if err != nil {
 		return err
@@ -627,15 +587,9 @@ func UpdateK8sCustomResource(runtime, handler, file, funcName, ns string) error 
 }
 
 // DeleteK8sCustomResource will delete custom function object
-func DeleteK8sCustomResource(funcName, ns string) error {
+func DeleteK8sCustomResource(tprClient *rest.RESTClient, funcName, ns string) error {
 	var f spec.Function
-
-	tprClient, err := GetTPRClientOutOfCluster()
-	if err != nil {
-		return err
-	}
-
-	err = tprClient.Get().
+	err := tprClient.Get().
 		Resource("functions").
 		Namespace(ns).
 		Name(funcName).
@@ -653,7 +607,6 @@ func DeleteK8sCustomResource(funcName, ns string) error {
 		Do().Into(&f)
 
 	if err != nil {
-		fmt.Println("error here")
 		return err
 	}
 
@@ -741,14 +694,6 @@ func getVolumeMounts(name, runtime string) []v1.VolumeMount {
 	default:
 		return []v1.VolumeMount{}
 	}
-}
-
-func readFile(file string) string {
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		log.Fatalf("Can not read file: %s. The file may not exist", file)
-	}
-	return string(data[:])
 }
 
 // update deployment object in case of custom runtime

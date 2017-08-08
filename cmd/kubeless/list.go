@@ -22,9 +22,9 @@ import (
 	"io"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/ghodss/yaml"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/rest"
 
@@ -112,14 +112,38 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 			table.Append([]string{n, ns, h, r, t, tp, dep})
 		}
 		table.Render()
+	} else if output == "wide" {
+		table := tablewriter.NewWriter(w)
+		table.SetHeader([]string{"Name", "namespace", "handler", "runtime", "type", "topic", "dependencies", "memory", "env", "label"})
+		for _, f := range functions {
+			n := f.Metadata.Name
+			h := f.Spec.Handler
+			r := f.Spec.Runtime
+			t := f.Spec.Type
+			tp := f.Spec.Topic
+			ns := f.Metadata.Namespace
+			dep := f.Spec.Deps
+			mem := ""
+			env := []byte{}
+			if len(f.Spec.Template.Spec.Containers) > 0 {
+				mem = f.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()
+				env, _ = json.Marshal(f.Spec.Template.Spec.Containers[0].Env)
+			}
+			label := []byte{}
+			if len(f.Metadata.Labels) > 0 {
+				label, _ = json.Marshal(f.Metadata.Labels)
+			}
+			table.Append([]string{n, ns, h, r, t, tp, dep, mem, string(env), string(label)})
+		}
+		table.Render()
 	} else {
 		for _, f := range functions {
 			switch output {
 			case "json":
-				b, _ := json.MarshalIndent(f.Spec, "", "  ")
+				b, _ := json.MarshalIndent(f, "", "  ")
 				fmt.Fprintln(w, string(b))
 			case "yaml":
-				b, _ := yaml.Marshal(f.Spec)
+				b, _ := yaml.Marshal(f)
 				fmt.Fprintln(w, string(b))
 			default:
 				return fmt.Errorf("Wrong output format. Please use only json|yaml")

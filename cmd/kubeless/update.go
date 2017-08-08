@@ -18,9 +18,13 @@ package main
 
 import (
 	"github.com/Sirupsen/logrus"
+	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 var updateCmd = &cobra.Command{
@@ -53,7 +57,73 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		err = utils.UpdateK8sCustomResource(runtime, handler, file, funcName, ns)
+		labels, err := cmd.Flags().GetStringSlice("label")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		envs, err := cmd.Flags().GetStringSlice("env")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		mem, err := cmd.Flags().GetString("memory")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		funcType := "HTTP"
+		funcLabels := parseLabel(labels)
+		funcEnv := parseEnv(envs)
+		funcMem := resource.Quantity{}
+		if mem != "" {
+			funcMem, err = parseMemory(mem)
+			if err != nil {
+				logrus.Fatalf("Wrong format of the memory value: %v", err)
+			}
+		}
+		funcContent, err := readFile(file)
+		if err != nil {
+			logrus.Fatalf("Unable to read file %s: %v", file, err)
+		}
+
+		resource := map[v1.ResourceName]resource.Quantity{
+			v1.ResourceMemory: funcMem,
+		}
+
+		f := &spec.Function{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Function",
+				APIVersion: "k8s.io/v1",
+			},
+			Metadata: metav1.ObjectMeta{
+				Name:      funcName,
+				Namespace: ns,
+				Labels:    funcLabels,
+			},
+			Spec: spec.FunctionSpec{
+				Handler:  handler,
+				Runtime:  runtime,
+				Type:     funcType,
+				Function: funcContent,
+				Topic:    "",
+				Template: v1.PodTemplateSpec{
+					Spec: v1.PodSpec{
+						Containers: []v1.Container{
+							{
+								Env: funcEnv,
+								Resources: v1.ResourceRequirements{
+									Limits:   resource,
+									Requests: resource,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		err = utils.UpdateK8sCustomResource(f)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -64,5 +134,8 @@ func init() {
 	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	updateCmd.Flags().StringP("handler", "", "", "Specify handler")
 	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
+	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
+	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
+	updateCmd.Flags().StringSliceP("env", "", []string{}, "Specify environment variable of the function")
 	updateCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 }
