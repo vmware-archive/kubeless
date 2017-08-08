@@ -6,10 +6,13 @@ import (
 	"testing"
 
 	"github.com/kubeless/kubeless/pkg/spec"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
 	xv1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
 )
 
@@ -278,4 +281,62 @@ func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
 		}
 	}
 	return true
+}
+
+func TestCreateIngressResource(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	if err := CreateIngress(clientset, "foo", "bar", "foo.bar", "myns"); err != nil {
+		t.Fatalf("Creating ingress returned err: %v", err)
+	}
+	if err := CreateIngress(clientset, "foo", "bar", "foo.bar", "myns"); err != nil {
+		if !k8sErrors.IsAlreadyExists(err) {
+			t.Fatalf("Expect object is already exists, got %v", err)
+		}
+	}
+}
+
+func TestDeleteIngressResource(t *testing.T) {
+	myNsFoo := metav1.ObjectMeta{
+		Namespace: "myns",
+		Name:      "foo",
+	}
+
+	ing := xv1beta1.Ingress{
+		ObjectMeta: myNsFoo,
+	}
+
+	clientset := fake.NewSimpleClientset(&ing)
+	if err := DeleteIngress(clientset, "foo", "myns"); err != nil {
+		t.Fatalf("Deleting ingress returned err: %v", err)
+	}
+	a := clientset.Actions()
+	if ns := a[0].GetNamespace(); ns != "myns" {
+		t.Errorf("deleted ingress from wrong namespace (%s)", ns)
+	}
+	if name := a[0].(ktesting.DeleteAction).GetName(); name != "foo" {
+		t.Errorf("deleted ingress with wrong name (%s)", name)
+	}
+}
+
+func fakeConfig() *rest.Config {
+	return &rest.Config{
+		Host: "https://example.com:443",
+		ContentConfig: rest.ContentConfig{
+			GroupVersion:         &api.Registry.GroupOrDie(api.GroupName).GroupVersion,
+			NegotiatedSerializer: api.Codecs,
+		},
+	}
+}
+
+func TestGetLocalHostname(t *testing.T) {
+	config := fakeConfig()
+	expectedHostName := "foobar.example.com.nip.io"
+	actualHostName, err := GetLocalHostname(config, "foobar")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if expectedHostName != actualHostName {
+		t.Errorf("Expected %s but got %s", expectedHostName, actualHostName)
+	}
 }
