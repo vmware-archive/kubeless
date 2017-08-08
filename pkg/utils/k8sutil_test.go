@@ -331,7 +331,7 @@ func fakeConfig() *rest.Config {
 func TestGetLocalHostname(t *testing.T) {
 	config := fakeConfig()
 	expectedHostName := "foobar.example.com.nip.io"
-	actualHostName, err := getLocalHostname(config, "foobar")
+	actualHostName, err := GetLocalHostname(config, "foobar")
 	if err != nil {
 		t.Error(err)
 	}

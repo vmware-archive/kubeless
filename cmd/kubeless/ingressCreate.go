@@ -35,24 +35,35 @@ var ingressCreateCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		hostname, err := cmd.Flags().GetString("hostname")
+
+		funcName, err := cmd.Flags().GetString("function")
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		function, err := cmd.Flags().GetString("function")
+		hostName, err := cmd.Flags().GetString("hostname")
 		if err != nil {
 			logrus.Fatal(err)
+		}
+		if hostName == "" {
+			config, err := utils.BuildOutOfClusterConfig()
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			hostName, err = utils.GetLocalHostname(config, funcName)
+			if err != nil {
+				logrus.Fatal(err)
+			}
 		}
 
 		tprClient, err := utils.GetTPRClientOutOfCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		err = functionExists(tprClient, function, ns)
+		err = functionExists(tprClient, funcName, ns)
 		if err != nil {
 			if k8sErrors.IsNotFound(err) {
-				logrus.Fatalf("function %s doesn't exist in namespace %s", function, ns)
+				logrus.Fatalf("function %s doesn't exist in namespace %s", funcName, ns)
 			} else {
 				logrus.Fatalf("error validate input %v", err)
 			}
@@ -60,7 +71,7 @@ var ingressCreateCmd = &cobra.Command{
 
 		client := utils.GetClientOutOfCluster()
 
-		err = utils.CreateIngress(client, ingressName, function, hostname, ns)
+		err = utils.CreateIngress(client, ingressName, funcName, hostName, ns)
 		if err != nil {
 			logrus.Fatalf("Can't create ingress route: %v", err)
 		}

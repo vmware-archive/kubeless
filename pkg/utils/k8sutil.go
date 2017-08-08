@@ -98,7 +98,8 @@ func GetClient() kubernetes.Interface {
 	return clientset
 }
 
-func buildOutOfClusterConfig() (*rest.Config, error) {
+// BuildOutOfClusterConfig returns k8s config
+func BuildOutOfClusterConfig() (*rest.Config, error) {
 	kubeconfigPath := os.Getenv("KUBECONFIG")
 	if kubeconfigPath == "" {
 		kubeconfigPath = os.Getenv("HOME") + "/.kube/config"
@@ -108,7 +109,7 @@ func buildOutOfClusterConfig() (*rest.Config, error) {
 
 // GetClientOutOfCluster returns a k8s clientset to the request from outside of cluster
 func GetClientOutOfCluster() kubernetes.Interface {
-	config, err := buildOutOfClusterConfig()
+	config, err := BuildOutOfClusterConfig()
 	if err != nil {
 		logrus.Fatalf("Can not get kubernetes config: %v", err)
 	}
@@ -152,7 +153,7 @@ func GetTPRClient() (*rest.RESTClient, error) {
 
 // GetTPRClientOutOfCluster returns tpr client to the request from outside of cluster
 func GetTPRClientOutOfCluster() (*rest.RESTClient, error) {
-	tprconfig, err := buildOutOfClusterConfig()
+	tprconfig, err := BuildOutOfClusterConfig()
 	if err != nil {
 		logrus.Fatalf("Can not get kubernetes config: %v", err)
 	}
@@ -777,17 +778,6 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 
 // CreateIngress creates ingress rule for a specific function
 func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname, ns string) error {
-	if hostname == "" {
-		config, err := buildOutOfClusterConfig()
-		if err != nil {
-			return err
-		}
-		hostname, err = getLocalHostname(config, funcName)
-		if err != nil {
-			return err
-		}
-	}
-
 	//TODO: skip annotation. We can add it later
 	//ingressAnnotations := map[string]string{
 	//	"kubernetes.io/ingress.class": "nginx",
@@ -829,8 +819,8 @@ func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname,
 	return nil
 }
 
-// getLocalHostname returns hostname
-func getLocalHostname(config *rest.Config, funcName string) (string, error) {
+// GetLocalHostname returns hostname
+func GetLocalHostname(config *rest.Config, funcName string) (string, error) {
 	url, err := url.Parse(config.Host)
 	if err != nil {
 		return "", err
