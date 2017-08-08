@@ -288,6 +288,10 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		"prometheus.io/path":   "/metrics",
 		"prometheus.io/port":   "8080",
 	}
+	for k, v := range funcObj.Metadata.Annotations {
+		podAnnotations[k] = v
+	}
+
 	configMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
@@ -377,12 +381,14 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 	dpm.Spec.Template = tmplCopy.(v1.PodTemplateSpec)
 
 	//append data to dpm spec
-	dpm.Spec.Template.ObjectMeta = metav1.ObjectMeta{
-		Labels:      labels,
-		Annotations: podAnnotations,
+	if len(dpm.Spec.Template.ObjectMeta.Labels) == 0 {
+		dpm.Spec.Template.ObjectMeta.Labels = make(map[string]string)
 	}
 	for k, v := range labels {
 		dpm.Spec.Template.ObjectMeta.Labels[k] = v
+	}
+	if len(dpm.Spec.Template.ObjectMeta.Annotations) == 0 {
+		dpm.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
 	}
 	for k, v := range podAnnotations {
 		dpm.Spec.Template.ObjectMeta.Annotations[k] = v

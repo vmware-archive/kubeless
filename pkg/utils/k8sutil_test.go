@@ -143,6 +143,9 @@ func TestEnsureK8sResources(t *testing.T) {
 	funcLabels := map[string]string{
 		"foo": "bar",
 	}
+	funcAnno := map[string]string{
+		"bar": "foo",
+	}
 
 	f1 := &spec.Function{
 		TypeMeta: metav1.TypeMeta{
@@ -166,9 +169,10 @@ func TestEnsureK8sResources(t *testing.T) {
 			APIVersion: "k8s.io/v1",
 		},
 		Metadata: metav1.ObjectMeta{
-			Name:      func2,
-			Namespace: ns,
-			Labels:    funcLabels,
+			Name:        func2,
+			Namespace:   ns,
+			Labels:      funcLabels,
+			Annotations: funcAnno,
 		},
 		Spec: spec.FunctionSpec{
 			Handler: "foo.bar",
@@ -246,6 +250,13 @@ func TestEnsureK8sResources(t *testing.T) {
 		Value: "bar",
 	}) {
 		t.Errorf("Deployment env doesn't contain foo=bar")
+	}
+	if v, ok := dpm.Spec.Template.ObjectMeta.Annotations["bar"]; ok {
+		if v != "foo" {
+			t.Errorf("Deployment annotation doesn't contain bar=foo")
+		}
+	} else {
+		t.Errorf("Deployment annotation doesn't contain key bar")
 	}
 }
 
