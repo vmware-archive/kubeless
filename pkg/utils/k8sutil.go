@@ -394,7 +394,11 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		}
 	}
 
-	dpm.Spec.Template.Spec.InitContainers = append(dpm.Spec.Template.Spec.InitContainers, initContainer)
+	// only append non-empty initContainer
+	if initContainer.Name != "" {
+		dpm.Spec.Template.Spec.InitContainers = append(dpm.Spec.Template.Spec.InitContainers, initContainer)
+	}
+
 	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
 		Name: name,
 		VolumeSource: v1.VolumeSource{
