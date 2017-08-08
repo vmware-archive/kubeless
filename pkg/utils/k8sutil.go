@@ -52,9 +52,9 @@ import (
 const (
 	python27Http   = "bitnami/kubeless-python@sha256:6789266df0c97333f76e23efd58cf9c7efe24fa3e83b5fc826fd5cc317699b55"
 	python27Pubsub = "bitnami/kubeless-event-consumer@sha256:5ce469529811acf49c4d20bcd8a675be7aa029b43cf5252a8c9375b170859d83"
-	node6Http      = "bitnami/kubeless-nodejs@sha256:6e86ed023f25cbe410d6085ca16ee14a9fb4b1df10034c05375d5e24e0c59acb"
+	node6Http      = "bitnami/kubeless-nodejs@sha256:b3c7cec77f973bf7a48cbbb8ea5069cacbaee7044683a275c6f78fa248de17b4"
 	node6Pubsub    = "bitnami/kubeless-nodejs-event-consumer@sha256:b027bfef5f99c3be68772155a1feaf1f771ab9a3c7bb49bef2e939d6b766abec"
-	node8Http      = "bitnami/kubeless-nodejs@sha256:29077c5131ab63c557507596958510e9d2011dc0e88b968371c531ba3b41c47f"
+	node8Http      = "bitnami/kubeless-nodejs@sha256:1eff2beae6fcc40577ada75624c3e4d3840a854588526cd8616d66f4e889dfe6"
 	node8Pubsub    = "bitnami/kubeless-nodejs-event-consumer@sha256:4d005c9c0b462750d9ab7f1305897e7a01143fe869d3b722ed3330560f9c7fb5"
 	ruby24Http     = "jbianquettibitnami/kubeless-ruby@sha256:9ea43e4e1570b46ae272e9f81a0ea4736e4956ee2ee67d8def29287a1d7153fe"
 	pubsubFunc     = "PubSub"
