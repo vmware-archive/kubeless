@@ -9,8 +9,10 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
 	xv1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
 )
 
@@ -313,5 +315,28 @@ func TestDeleteIngressResource(t *testing.T) {
 	}
 	if name := a[0].(ktesting.DeleteAction).GetName(); name != "foo" {
 		t.Errorf("deleted ingress with wrong name (%s)", name)
+	}
+}
+
+func fakeConfig() *rest.Config {
+	return &rest.Config{
+		Host: "https://example.com:443",
+		ContentConfig: rest.ContentConfig{
+			GroupVersion:         &api.Registry.GroupOrDie(api.GroupName).GroupVersion,
+			NegotiatedSerializer: api.Codecs,
+		},
+	}
+}
+
+func TestGetLocalHostname(t *testing.T) {
+	config := fakeConfig()
+	expectedHostName := "foobar.example.com.nip.io"
+	actualHostName, err := getLocalHostname(config, "foobar")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if expectedHostName != actualHostName {
+		t.Errorf("Expected %s but got %s", expectedHostName, actualHostName)
 	}
 }

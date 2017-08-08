@@ -19,6 +19,7 @@ import (
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/rest"
 )
 
 var ingressCreateCmd = &cobra.Command{
@@ -44,36 +45,37 @@ var ingressCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		validateInput(function, ns)
+		tprClient, err := utils.GetTPRClientOutOfCluster()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		err = functionExists(tprClient, function, ns)
+		if err != nil {
+			if k8sErrors.IsNotFound(err) {
+				logrus.Fatalf("function %s doesn't exist in namespace %s", function, ns)
+			} else {
+				logrus.Fatalf("error validate input %v", err)
+			}
+		}
 
 		client := utils.GetClientOutOfCluster()
 
 		err = utils.CreateIngress(client, ingressName, function, hostname, ns)
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("Can't create ingress route: %v", err)
 		}
 	},
 }
 
-func validateInput(function, ns string) {
-	tprClient, err := utils.GetTPRClientOutOfCluster()
-	if err != nil {
-		logrus.Fatalf("error validate input %v", err)
-	}
+func functionExists(tprClient rest.Interface, function, ns string) error {
 	f := spec.Function{}
-	err = tprClient.Get().
+	err := tprClient.Get().
 		Resource("functions").
 		Namespace(ns).
 		Name(function).
 		Do().
 		Into(&f)
-	if err != nil {
-		if k8sErrors.IsNotFound(err) {
-			logrus.Fatalf("function %s doesn't exist in namespace %s", function, ns)
-		} else {
-			logrus.Fatalf("error validate input %v", err)
-		}
-	}
+	return err
 }
 
 func init() {

@@ -778,8 +778,11 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 // CreateIngress creates ingress rule for a specific function
 func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname, ns string) error {
 	if hostname == "" {
-		var err error
-		hostname, err = getLocalHostname(funcName)
+		config, err := buildOutOfClusterConfig()
+		if err != nil {
+			return err
+		}
+		hostname, err = getLocalHostname(config, funcName)
 		if err != nil {
 			return err
 		}
@@ -826,12 +829,8 @@ func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname,
 	return nil
 }
 
-// getLocalDomain returns hostname
-func getLocalHostname(funcName string) (string, error) {
-	config, err := buildOutOfClusterConfig()
-	if err != nil {
-		return "", err
-	}
+// getLocalHostname returns hostname
+func getLocalHostname(config *rest.Config, funcName string) (string, error) {
 	url, err := url.Parse(config.Host)
 	if err != nil {
 		return "", err
