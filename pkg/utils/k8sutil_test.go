@@ -169,15 +169,17 @@ func TestEnsureK8sResources(t *testing.T) {
 			APIVersion: "k8s.io/v1",
 		},
 		Metadata: metav1.ObjectMeta{
-			Name:        func2,
-			Namespace:   ns,
-			Labels:      funcLabels,
-			Annotations: funcAnno,
+			Name:      func2,
+			Namespace: ns,
+			Labels:    funcLabels,
 		},
 		Spec: spec.FunctionSpec{
 			Handler: "foo.bar",
 			Runtime: "python2.7",
 			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: funcAnno,
+				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
 						{
