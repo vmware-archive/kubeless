@@ -125,8 +125,10 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 			dep := f.Spec.Deps
 			mem := ""
 			env := []byte{}
-			if len(f.Spec.Template.Spec.Containers) > 0 {
+			if len(f.Spec.Template.Spec.Containers[0].Resources.Requests) != 0 {
 				mem = f.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()
+			}
+			if len(f.Spec.Template.Spec.Containers[0].Env) != 0 {
 				env, _ = json.Marshal(f.Spec.Template.Spec.Containers[0].Env)
 			}
 			label := []byte{}
