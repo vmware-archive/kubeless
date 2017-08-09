@@ -29,6 +29,8 @@ install:
   - chmod +x $GOPATH/bin/kubecfg
   - git clone --depth=1 https://github.com/ksonnet/ksonnet-lib.git
   - export KUBECFG_JPATH=$PWD/ksonnet-lib
+  - git clone --depth=1 https://github.com/sstephenson/bats.git bats
+  - export PATH=$PATH:$PWD/bats/bin
 
 script:
   - make test

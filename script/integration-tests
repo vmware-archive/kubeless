@@ -5,10 +5,15 @@ test -d $PWD/ksonnet-lib && export KUBECFG_JPATH=$PWD/ksonnet-lib
 # We require below env
 : ${GOPATH:?} ${KUBECFG_JPATH:?}
 
-# Default to "dind" for testing
+# Default to "dind" kubernetes context
 INTEGRATION_TESTS_CTX=${1:-dind}
 
-set -xu
+# ... and 'bats' installed
+which bats > /dev/null || {
+   echo "ERROR: 'bats' is required to run these tests," \
+        "install it from https://github.com/sstephenson/bats"
+   exit 255
+}
 
 k8s_create_dind() {
     # Bring up kubeadm-dind-cluster (docker-in-docker k8s cluster)
@@ -22,12 +27,18 @@ k8s_create_dind() {
     sleep 5
 }
 
-kubectl get nodes --context=${INTEGRATION_TESTS_CTX} || k8s_create_${INTEGRATION_TESTS_CTX}
+## main() ##
+# Create k8s cluster (only "dind" supported atm) if missing:
+kubectl get nodes --context=${INTEGRATION_TESTS_CTX:?} || k8s_create_${INTEGRATION_TESTS_CTX} || exit 255
+export TEST_CONTEXT=${INTEGRATION_TESTS_CTX}
+
+source script/libtest.bash
+trap k8s_context_restore 0
+k8s_context_save
+
+# Run the tests thru bats:
 kubectl create namespace kubeless
-# TEST: kubeless and RBAC (will leave setup ready for next tests)
-./script/integration-test-rbac      ${INTEGRATION_TESTS_CTX} || exit 1
-# TEST: some simple function calls
-./script/integration-test-functions ${INTEGRATION_TESTS_CTX} || exit 1
+bats tests/integration-tests.bats
 
 # Just showing remaining k8s objects
 kubectl get all --all-namespaces
