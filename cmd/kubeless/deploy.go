@@ -51,11 +51,13 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		funcLabels := parseLabel(labels)
 
 		envs, err := cmd.Flags().GetStringSlice("env")
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		funcEnv := parseEnv(envs)
 
 		runtime, err := cmd.Flags().GetString("runtime")
 		if err != nil {
@@ -86,6 +88,14 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		resource := map[v1.ResourceName]resource.Quantity{}
+		if mem != "" {
+			funcMem, err := parseMemory(mem)
+			if err != nil {
+				logrus.Fatalf("Wrong format of the memory value: %v", err)
+			}
+			resource[v1.ResourceMemory] = funcMem
+		}
 
 		funcType := "PubSub"
 		if triggerHTTP {
@@ -93,22 +103,9 @@ var deployCmd = &cobra.Command{
 			topic = ""
 		}
 
-		funcLabels := parseLabel(labels)
-		funcEnv := parseEnv(envs)
-		funcMem := resource.Quantity{}
-		if mem != "" {
-			funcMem, err = parseMemory(mem)
-			if err != nil {
-				logrus.Fatalf("Wrong format of the memory value: %v", err)
-			}
-		}
 		funcContent, err := readFile(file)
 		if err != nil {
 			logrus.Fatalf("Unable to read file %s: %v", file, err)
-		}
-
-		resource := map[v1.ResourceName]resource.Quantity{
-			v1.ResourceMemory: funcMem,
 		}
 
 		f := &spec.Function{
@@ -129,18 +126,20 @@ var deployCmd = &cobra.Command{
 				Topic:    topic,
 				Template: v1.PodTemplateSpec{
 					Spec: v1.PodSpec{
-						Containers: []v1.Container{
-							{
-								Env: funcEnv,
-								Resources: v1.ResourceRequirements{
-									Limits:   resource,
-									Requests: resource,
-								},
-							},
-						},
+						Containers: []v1.Container{{}},
 					},
 				},
 			},
+		}
+
+		if len(funcEnv) != 0 {
+			f.Spec.Template.Spec.Containers[0].Env = funcEnv
+		}
+		if len(resource) != 0 {
+			f.Spec.Template.Spec.Containers[0].Resources = v1.ResourceRequirements{
+				Limits:   resource,
+				Requests: resource,
+			}
 		}
 
 		// add dependencies file to func spec
