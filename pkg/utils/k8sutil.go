@@ -34,8 +34,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 	batchv1 "k8s.io/client-go/pkg/apis/batch/v1"
-	"k8s.io/client-go/pkg/apis/batch/v2alpha1"
+	batchv2alpha1 "k8s.io/client-go/pkg/apis/batch/v2alpha1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -1043,15 +1044,15 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 }
 
 func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
-	job := &v2alpha1.CronJob{
+	job := &batchv2alpha1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            fmt.Sprintf("trigger-%s", funcObj.Metadata.Name),
 			Labels:          funcObj.Metadata.Labels,
 			OwnerReferences: or,
 		},
-		Spec: v2alpha1.CronJobSpec{
+		Spec: batchv2alpha1.CronJobSpec{
 			Schedule: funcObj.Spec.Schedule,
-			JobTemplate: v2alpha1.JobTemplateSpec{
+			JobTemplate: batchv2alpha1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
 					Template: v1.PodTemplateSpec{
 						Spec: v1.PodSpec{
@@ -1078,6 +1079,42 @@ func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []met
 			return err
 		}
 		_, err = client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Patch(job.Name, types.StrategicMergePatchType, data)
+	}
+
+	return err
+}
+
+// CreateAutoscale creates HPA object for function
+func CreateAutoscale(client kubernetes.Interface, funcName string, min, max int32) error {
+	targetAverageUtilization := int32(50)
+
+	hpa := &v2alpha1.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      funcName,
+			Namespace: api.NamespaceDefault,
+		},
+		Spec: v2alpha1.HorizontalPodAutoscalerSpec{
+			ScaleTargetRef: v2alpha1.CrossVersionObjectReference{
+				Kind: "Deployment",
+				Name: funcName,
+			},
+			MinReplicas: &min,
+			MaxReplicas: max,
+			Metrics: []v2alpha1.MetricSpec{
+				{
+					Type: "Resource",
+					Resource: &v2alpha1.ResourceMetricSource{
+						Name: v1.ResourceCPU,
+						TargetAverageUtilization: &targetAverageUtilization,
+					},
+				},
+			},
+		},
+	}
+
+	_, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(api.NamespaceDefault).Create(hpa)
+	if err != nil {
+		return err
 	}
 
 	return err

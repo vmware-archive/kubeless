@@ -503,3 +503,26 @@ func TestGetRuntimes(t *testing.T) {
 		t.Errorf("Expected %s but got %s", expectedRuntimes, runtimes)
 	}
 }
+
+func TestCreateAutoscale(t *testing.T) {
+	min := int32(1)
+	max := int32(10)
+	clientset := fake.NewSimpleClientset()
+	if err := CreateAutoscale(clientset, "foo", min, max); err != nil {
+		t.Fatalf("Creating autoscale returned err: %v", err)
+	}
+
+	hpa, err := clientset.AutoscalingV2alpha1().HorizontalPodAutoscalers(api.NamespaceDefault).Get("foo", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Creating autoscale returned err: %v", err)
+	}
+	if hpa.Spec.ScaleTargetRef.Name != "foo" {
+		t.Fatalf("Creating wrong scale target name")
+	}
+
+	if err := CreateAutoscale(clientset, "foo", min, max); err != nil {
+		if !k8sErrors.IsAlreadyExists(err) {
+			t.Fatalf("Expect object is already exists, got %v", err)
+		}
+	}
+}
