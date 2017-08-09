@@ -17,7 +17,7 @@ set -u
 _wait_for_kubeless_controller_ready() {
     info "Waiting for kubeless controller to be ready ... "
     k8s_wait_for_pod_ready -n kubeless -l kubeless=controller
-    sleep 10
+    wait_for_cmd_ok kubectl get functions
 }
 _wait_for_controller_logline() {
     local string="${1:?}"

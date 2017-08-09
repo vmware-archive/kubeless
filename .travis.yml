@@ -8,6 +8,8 @@ go:
   - 1.7
   - 1.8.3
 
+go_import_path: github.com/kubeless/kubeless
+
 services:
   - docker
 env:
@@ -27,16 +29,6 @@ install:
   - chmod +x $GOPATH/bin/kubecfg
   - git clone --depth=1 https://github.com/ksonnet/ksonnet-lib.git
   - export KUBECFG_JPATH=$PWD/ksonnet-lib
-
-before_script:
-  - |
-    # Hack to always build from github.com/kubeless/kubeless,
-    # to allow travis runs pushed from your own <user>/kubeless repo
-    test -d ../../kubeless || {
-        mkdir -p ../../kubeless
-        git clone . ../../kubeless/kubeless/
-        cd ../../kubeless/kubeless || exit 1
-    }
 
 script:
   - make test

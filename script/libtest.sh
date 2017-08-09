@@ -95,6 +95,13 @@ k8s_wait_for_pod_logline() {
     done
     pass_or_fail $? 0 "Found logline: '$string'"
 }
+wait_for_cmd_ok() {
+    local cmd="${*:?}"; shift
+    info "Waiting for '${*}' to successfully exit ..."
+    until env ${cmd}; do
+        spin 0.5
+    done
+}
 kubeless_recreate() {
     local jsonnet_del=${1:?missing jsonnet delete manifest} jsonnet_upd=${2:?missing jsonnet update manifest}
     info "Delete kubeless namespace, wait to be gone ... "
