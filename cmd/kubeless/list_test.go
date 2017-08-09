@@ -62,6 +62,11 @@ func TestList(t *testing.T) {
 					Type:     "ftype",
 					Topic:    "ftopic",
 					Deps:     "fdeps",
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{{}},
+						},
+					},
 				},
 			},
 			{
