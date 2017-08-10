@@ -1,2 +1,2 @@
 #!/bin/sh
-docker build -t kubeless/ruby-runtime:2.4  .
+docker build -t bitnami/kubeless-ruby:2.4  .
