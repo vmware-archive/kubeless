@@ -8,6 +8,8 @@ go:
   - 1.7
   - 1.8.3
 
+go_import_path: github.com/kubeless/kubeless
+
 services:
   - docker
 env:
@@ -27,6 +29,8 @@ install:
   - chmod +x $GOPATH/bin/kubecfg
   - git clone --depth=1 https://github.com/ksonnet/ksonnet-lib.git
   - export KUBECFG_JPATH=$PWD/ksonnet-lib
+  - git clone --depth=1 https://github.com/sstephenson/bats.git bats
+  - export PATH=$PATH:$PWD/bats/bin
 
 script:
   - make test
@@ -37,6 +41,10 @@ script:
       make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
     fi
   - make all-yaml
+  - |
+    if [ "$TRAVIS_OS_NAME" = linux ]; then
+      make integration-tests
+    fi
 
 after_success:
   - |
