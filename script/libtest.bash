@@ -6,6 +6,8 @@ KUBELESS_JSONNET_RBAC=kubeless-rbac-novols.jsonnet
 
 KUBECTL_BIN=$(which kubectl)
 KUBECFG_BIN=$(which kubecfg)
+: ${KUBECTL_BIN:?ERROR: missing binary: kubectl}
+: ${KUBECFG_BIN:?ERROR: missing binary: kubecfg}
 
 export TEST_MAX_WAIT_SEC=120
 
@@ -48,6 +50,21 @@ k8s_wait_for_pod_logline() {
     until kubectl logs --tail=10 "${@}"|&grep -q "${string}"; do
         ((cnt=cnt-1)) || return 1
         sleep 1
+    done
+}
+k8s_wait_for_cluster_ready() {
+    echo_info "Waiting for k8s cluster to be ready (context=${TEST_CONTEXT}) ..."
+    _wait_for_cmd_ok kubectl get po 2>/dev/null && \
+    k8s_wait_for_pod_ready -n kube-system -l component=kube-addon-manager && \
+    k8s_wait_for_pod_ready -n kube-system -l k8s-app=kube-dns && \
+        return 0
+    return 1
+}
+k8s_log_all_pods() {
+    local namespaces=${*:?} ns
+    for ns in ${*}; do
+        echo "### namespace: ${ns} ###"
+        kubectl get pod -n ${ns} -oname|xargs -I@ sh -xc "kubectl logs -n ${ns} @|sed 's|^|@: |'"
     done
 }
 k8s_context_save() {
@@ -103,19 +120,18 @@ kubeless_function_deploy() {
     echo_info "Deploying function ..."
     kubeless function deploy ${func} ${@}
 }
-kubeless_function_exp_regex_call() {
-    local exp_rc=${1:?} regex=${2:?} func=${3:?}; shift 3
-    echo_info "Calling function ${func}, expecting rc=${exp_rc} "
-    kubeless function call ${func} "${@}"|&egrep ${regex}
-}
 _wait_for_kubeless_controller_ready() {
     echo_info "Waiting for kubeless controller to be ready ... "
     k8s_wait_for_pod_ready -n kubeless -l kubeless=controller
     _wait_for_cmd_ok kubectl get functions 2>/dev/null
 }
-_wait_for_controller_logline() {
+_wait_for_kubeless_controller_logline() {
     local string="${1:?}"
     k8s_wait_for_pod_logline "${string}" -n kubeless -l kubeless=controller
+}
+_wait_for_kubeless_kafka_ready() {
+    echo_info "Waiting for kafka-0 to be ready ..."
+    k8s_wait_for_pod_logline "Kafka.*Server.*started" -n kubeless kafka-0
 }
 _wait_for_simple_function_pod_ready() {
     k8s_wait_for_pod_ready -l function=get-python
@@ -160,7 +176,7 @@ test_must_fail_without_rbac_roles() {
     kubeless_recreate $KUBELESS_JSONNET_RBAC $KUBELESS_JSONNET
     _wait_for_kubeless_controller_ready
     _deploy_simple_function
-    _wait_for_controller_logline "User.*cannot"
+    _wait_for_kubeless_controller_logline "User.*cannot"
     _call_simple_function 1
 }
 test_must_pass_with_rbac_roles() {
@@ -169,7 +185,7 @@ test_must_pass_with_rbac_roles() {
     kubeless_recreate $KUBELESS_JSONNET_RBAC $KUBELESS_JSONNET_RBAC
     _wait_for_kubeless_controller_ready
     _deploy_simple_function
-    _wait_for_controller_logline "controller synced and ready"
+    _wait_for_kubeless_controller_logline "controller synced and ready"
     _wait_for_simple_function_pod_ready
     _call_simple_function 0
 }
@@ -177,6 +193,9 @@ test_must_pass_with_rbac_roles() {
 test_kubeless_function() {
     local func=${1:?}
     echo_info "TEST: $func"
+    case "${func}" in
+        *pubsub*) _wait_for_kubeless_kafka_ready;;
+    esac
     kubeless_function_delete ${func}
     make -sC examples ${func}
     k8s_wait_for_pod_ready -l function=${func}

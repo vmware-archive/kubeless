@@ -4,34 +4,51 @@ test -d $PWD/ksonnet-lib && export KUBECFG_JPATH=$PWD/ksonnet-lib
 
 # We require below env
 : ${GOPATH:?} ${KUBECFG_JPATH:?}
+export PATH=${PATH}:${GOPATH}/bin
 
-# Default to "dind" kubernetes context
-INTEGRATION_TESTS_CTX=${1:-dind}
+# Default kubernetes context - if it's "dind" or "minikube" will 
+# try to bring up a local (dockerized) cluster
+test -n "${TRAVIS_K8S_CONTEXT}" && set -- ${TRAVIS_K8S_CONTEXT}
+# minikube seems to be more stable than dind, sp for kafka
+INTEGRATION_TESTS_CTX=${1:-minikube}
 
-# ... and 'bats' installed
+# Check for some needed tools, install (some) if missing
 which bats > /dev/null || {
    echo "ERROR: 'bats' is required to run these tests," \
         "install it from https://github.com/sstephenson/bats"
    exit 255
 }
 
-k8s_create_dind() {
-    # Bring up kubeadm-dind-cluster (docker-in-docker k8s cluster)
-    DIND_CLUSTER_SH=dind-cluster-v1.7.sh
-    DIND_URL=https://cdn.rawgit.com/Mirantis/kubeadm-dind-cluster/master/fixed/${DIND_CLUSTER_SH}
-    rm -f ${DIND_CLUSTER_SH}
-    wget ${DIND_URL}
-    chmod +x ${DIND_CLUSTER_SH}
-    ./${DIND_CLUSTER_SH} up
-    export PATH="$HOME/.kubeadm-dind-cluster:$PATH"
-    sleep 5
+install_bin() {
+    local exe=${1:?}
+    test -n "${TRAVIS}" && sudo install -v ${exe} /usr/local/bin || install ${exe} ${GOPATH:?}/bin
 }
 
-## main() ##
-# Create k8s cluster (only "dind" supported atm) if missing:
-kubectl get nodes --context=${INTEGRATION_TESTS_CTX:?} || k8s_create_${INTEGRATION_TESTS_CTX} || exit 255
-export TEST_CONTEXT=${INTEGRATION_TESTS_CTX}
+which kubectl || {
+    KUBECTL_VERSION=$(wget -qO- https://storage.googleapis.com/kubernetes-release/release/stable.txt)
+    wget --no-clobber \
+        https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl
+    install_bin ./kubectl
+}
 
+# Start a k8s cluster (minikube, dind) if not running
+kubectl get nodes --context=${INTEGRATION_TESTS_CTX:?} || {
+    cluster_up=./script/cluster-up-${INTEGRATION_TESTS_CTX}.sh
+    test -f ${cluster_up} || {
+        echo "FATAL: bringing up k8s cluster '${INTEGRATION_TESTS_CTX}' not supported"
+        exit 255
+    }
+    ${cluster_up}
+}
+
+# Both RBAC'd dind and minikube seem to be missing rules to make kube-dns work properly
+# add some (granted) broad ones:
+kubectl --context=${INTEGRATION_TESTS_CTX:?} get clusterrolebinding kube-dns-admin >& /dev/null || \
+    kubectl --context=${INTEGRATION_TESTS_CTX:?} create clusterrolebinding kube-dns-admin --serviceaccount=kube-system:default --clusterrole=cluster-admin
+
+# Prep: load test library, save current k8s default context (and restore it at exit),
+# as kubeless doesn't support --context
+export TEST_CONTEXT=${INTEGRATION_TESTS_CTX}
 source script/libtest.bash
 trap k8s_context_restore 0
 k8s_context_save
@@ -44,4 +61,14 @@ exit_code=$?
 # Just showing remaining k8s objects
 kubectl get all --all-namespaces
 
+[[ ${exit_code} == 0 ]] || {
+    echo "INFO: Build ERRORed, dumping logs: ##"
+    for ns in kubeless default; do
+        echo "### LOGs: namespace: ${ns} ###"
+        kubectl get pod -n ${ns} -oname|xargs -I@ sh -xc "kubectl logs -n ${ns} @|sed 's|^|@: |'"
+    done
+    echo "INFO: LOGs: pod: kube-dns ###"
+    kubectl logs -n kube-system -l k8s-app=kube-dns -c kubedns
+}
 exit ${exit_code}
+# vim: sw=4 ts=4 et si

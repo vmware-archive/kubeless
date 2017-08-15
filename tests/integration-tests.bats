@@ -33,5 +33,10 @@ load ../script/libtest
 @test "Test function: post-nodejs" {
   test_kubeless_function post-nodejs
 }
-
+@test "Test function: pubsub" {
+  test_kubeless_function pubsub
+}
+@test "Test function: get-python-metadata" {
+  test_kubeless_function get-python-metadata
+}
 # vim: ts=2 sw=2 si et syntax=sh
