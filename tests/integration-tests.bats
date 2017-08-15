@@ -34,6 +34,7 @@ load ../script/libtest
   test_kubeless_function post-nodejs
 }
 @test "Test function: pubsub" {
+  skip "XXX(jjo): flaky kafka->zookeeper under minikube, likely from its kube-dns"
   test_kubeless_function pubsub
 }
 @test "Test function: get-python-metadata" {
