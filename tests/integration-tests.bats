@@ -33,5 +33,11 @@ load ../script/libtest
 @test "Test function: post-nodejs" {
   test_kubeless_function post-nodejs
 }
-
+@test "Test function: pubsub" {
+  skip "XXX(jjo): flaky kafka->zookeeper under minikube, likely from its kube-dns"
+  test_kubeless_function pubsub
+}
+@test "Test function: get-python-metadata" {
+  test_kubeless_function get-python-metadata
+}
 # vim: ts=2 sw=2 si et syntax=sh

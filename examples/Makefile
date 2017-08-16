@@ -10,13 +10,16 @@ get-nodejs:
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-nodejs/"
 
 get-python-metadata:
-	kubeless function deploy get-python --trigger-http --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --env foo:bar,bar=foo,foo --mem 128Mi --label --label foo:bar,bar=foo,foobar
-	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python/"
+	kubeless function deploy get-python-metadata --trigger-http --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --env foo:bar,bar=foo,foo --memory 128Mi --label foo:bar,bar=foo,foobar
+	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python-metadata/"
 
 get: get-python get-nodejs get-python-metadata
 
 get-nodejs-verify:
 	kubeless function call get-nodejs |egrep hello.world
+
+get-python-metadata-verify:
+	kubeless function call get-python-metadata |egrep hello.world
 
 post-python:
 	kubeless function deploy post-python --trigger-http --runtime python2.7 --handler hellowithdata.handler --from-file python/hellowithdata.py
@@ -38,5 +41,6 @@ pubsub:
 	kubeless topic create s3
 	kubeless function deploy pubsub --trigger-topic s3 --runtime python2.7 --handler pubsub.handler --from-file python/pubsub.py
 
-topic:
-	kubeless function publish --topic demo --data "s3"
+pubsub-verify:
+	kubeless topic publish --topic s3 --data "s3"
+	kubectl logs $(shell kubectl get po -oname| grep pubsub) |egrep "s3"
