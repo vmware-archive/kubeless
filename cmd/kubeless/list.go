@@ -118,13 +118,14 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 		table := uitable.New()
 		table.MaxColWidth = 50
 		table.Wrap = true
-		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "MEMORY", "ENV", "LABEL")
+		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "MEMORY", "ENV", "LABEL", "SCHEDULE")
 		for _, f := range functions {
 			n := f.Metadata.Name
 			h := f.Spec.Handler
 			r := f.Spec.Runtime
 			t := f.Spec.Type
 			tp := f.Spec.Topic
+			s := f.Spec.Schedule
 			ns := f.Metadata.Namespace
 			mem := ""
 			env := ""
@@ -146,7 +147,7 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 				}
 				label = buffer.String()
 			}
-			table.AddRow(n, ns, h, r, t, tp, mem, env, label)
+			table.AddRow(n, ns, h, r, t, tp, mem, env, label, s)
 		}
 		fmt.Fprintln(w, table)
 	} else {

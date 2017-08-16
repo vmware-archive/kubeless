@@ -42,6 +42,11 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		schedule, err := cmd.Flags().GetString("schedule")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		topic, err := cmd.Flags().GetString("trigger-topic")
 		if err != nil {
 			logrus.Fatal(err)
@@ -98,8 +103,12 @@ var deployCmd = &cobra.Command{
 		}
 
 		funcType := "PubSub"
-		if triggerHTTP {
+		switch {
+		case triggerHTTP:
 			funcType = "HTTP"
+			topic = ""
+		case schedule != "":
+			funcType = "Scheduled"
 			topic = ""
 		}
 
@@ -124,6 +133,7 @@ var deployCmd = &cobra.Command{
 				Type:     funcType,
 				Function: funcContent,
 				Topic:    topic,
+				Schedule: schedule,
 				Template: v1.PodTemplateSpec{
 					Spec: v1.PodSpec{
 						Containers: []v1.Container{{}},
@@ -172,6 +182,7 @@ func init() {
 	deployCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
 	deployCmd.Flags().StringP("trigger-topic", "", "kubeless", "Deploy a pubsub function to Kubeless")
+	deployCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory, which is measured in bytes, for the function. It is expressed as a plain integer or a fixed-point interger with one of these suffies: E, P, T, G, M, K, Ei, Pi, Ti, Gi, Mi, Ki")
 	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 }
