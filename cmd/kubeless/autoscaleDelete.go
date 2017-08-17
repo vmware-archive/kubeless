@@ -14,25 +14,31 @@ limitations under the License.
 package main
 
 import (
+	"github.com/Sirupsen/logrus"
+	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/pkg/api"
 )
 
-var autoscaleCmd = &cobra.Command{
-	Use:   "autoscale SUBCOMMAND",
-	Short: "manage autoscale to function on Kubeless",
-	Long:  `autoscale command allows user to list, create, delete autoscale rule for function on Kubeless`,
+var autoscaleDeleteCmd = &cobra.Command{
+	Use:   "delete <name>",
+	Short: "delete an autoscale from Kubeless",
+	Long:  `delete an autoscale from Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
+		if len(args) != 1 {
+			logrus.Fatal("Need exactly one argument - autoscale name")
+		}
+		asName := args[0]
+
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		client := utils.GetClientOutOfCluster()
+
+		err = utils.DeleteAutoscale(client, asName, ns)
+		if err != nil {
+			logrus.Fatal(err)
+		}
 	},
-}
-
-func init() {
-	cmds := []*cobra.Command{autoscaleCreateCmd, autoscaleListCmd, autoscaleDeleteCmd}
-
-	for _, cmd := range cmds {
-		autoscaleCmd.AddCommand(cmd)
-		cmd.Flags().StringP("namespace", "n", api.NamespaceDefault, "Specify namespace for the ingress")
-
-	}
 }

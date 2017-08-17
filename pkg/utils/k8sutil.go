@@ -1085,13 +1085,13 @@ func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []met
 }
 
 // CreateAutoscale creates HPA object for function
-func CreateAutoscale(client kubernetes.Interface, funcName string, min, max int32) error {
+func CreateAutoscale(client kubernetes.Interface, funcName, ns string, min, max int32) error {
 	targetAverageUtilization := int32(50)
 
 	hpa := &v2alpha1.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      funcName,
-			Namespace: api.NamespaceDefault,
+			Namespace: ns,
 		},
 		Spec: v2alpha1.HorizontalPodAutoscalerSpec{
 			ScaleTargetRef: v2alpha1.CrossVersionObjectReference{
@@ -1112,10 +1112,19 @@ func CreateAutoscale(client kubernetes.Interface, funcName string, min, max int3
 		},
 	}
 
-	_, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(api.NamespaceDefault).Create(hpa)
+	_, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).Create(hpa)
 	if err != nil {
 		return err
 	}
 
 	return err
+}
+
+// DeleteAutoscale deletes an autoscale rule
+func DeleteAutoscale(client kubernetes.Interface, name, ns string) error {
+	err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).Delete(name, &metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+	return nil
 }

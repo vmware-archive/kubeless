@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/apis/batch/v2alpha1"
+	av2alpha1 "k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 	xv1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
@@ -504,15 +505,15 @@ func TestGetRuntimes(t *testing.T) {
 	}
 }
 
-func TestCreateAutoscale(t *testing.T) {
+func TestCreateAutoscaleResource(t *testing.T) {
 	min := int32(1)
 	max := int32(10)
 	clientset := fake.NewSimpleClientset()
-	if err := CreateAutoscale(clientset, "foo", min, max); err != nil {
+	if err := CreateAutoscale(clientset, "foo", "myns", min, max); err != nil {
 		t.Fatalf("Creating autoscale returned err: %v", err)
 	}
 
-	hpa, err := clientset.AutoscalingV2alpha1().HorizontalPodAutoscalers(api.NamespaceDefault).Get("foo", metav1.GetOptions{})
+	hpa, err := clientset.AutoscalingV2alpha1().HorizontalPodAutoscalers("myns").Get("foo", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Creating autoscale returned err: %v", err)
 	}
@@ -520,9 +521,32 @@ func TestCreateAutoscale(t *testing.T) {
 		t.Fatalf("Creating wrong scale target name")
 	}
 
-	if err := CreateAutoscale(clientset, "foo", min, max); err != nil {
+	if err := CreateAutoscale(clientset, "foo", "myns", min, max); err != nil {
 		if !k8sErrors.IsAlreadyExists(err) {
 			t.Fatalf("Expect object is already exists, got %v", err)
 		}
+	}
+}
+
+func TestDeleteAutoscaleResource(t *testing.T) {
+	myNsFoo := metav1.ObjectMeta{
+		Namespace: "myns",
+		Name:      "foo",
+	}
+
+	as := av2alpha1.HorizontalPodAutoscaler{
+		ObjectMeta: myNsFoo,
+	}
+
+	clientset := fake.NewSimpleClientset(&as)
+	if err := DeleteAutoscale(clientset, "foo", "myns"); err != nil {
+		t.Fatalf("Deleting autoscale returned err: %v", err)
+	}
+	a := clientset.Actions()
+	if ns := a[0].GetNamespace(); ns != "myns" {
+		t.Errorf("deleted autoscale from wrong namespace (%s)", ns)
+	}
+	if name := a[0].(ktesting.DeleteAction).GetName(); name != "foo" {
+		t.Errorf("deleted autoscale with wrong name (%s)", name)
 	}
 }
