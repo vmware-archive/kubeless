@@ -68,6 +68,7 @@ local kafkaContainer =
   container.imagePullPolicy("IfNotPresent") +
   container.env(kafkaEnv) +
   container.ports({containerPort: 9092}) +
+  container.livenessProbe({tcpSocket: {port: 9092}, initialDelaySeconds: 30}) +
   container.volumeMounts([
     {
       name: "datadir",

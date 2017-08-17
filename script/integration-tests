@@ -61,7 +61,7 @@ exit_code=$?
 # Just showing remaining k8s objects
 kubectl get all --all-namespaces
 
-[[ ${exit_code} == 0 ]] || {
+if [ ${exit_code} -ne 0 -o -n "${TRAVIS_DUMP_LOGS}" ]; then
     echo "INFO: Build ERRORed, dumping logs: ##"
     for ns in kubeless default; do
         echo "### LOGs: namespace: ${ns} ###"
@@ -69,6 +69,8 @@ kubectl get all --all-namespaces
     done
     echo "INFO: LOGs: pod: kube-dns ###"
     kubectl logs -n kube-system -l k8s-app=kube-dns -c kubedns
-}
+    echo "INFO: LOGs: END"
+fi
+[ ${exit_code} -eq 0 ] && echo "INFO: $0: SUCCESS" || echo "ERROR: $0: FAILED"
 exit ${exit_code}
 # vim: sw=4 ts=4 et si

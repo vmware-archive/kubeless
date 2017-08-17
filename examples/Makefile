@@ -41,6 +41,9 @@ pubsub:
 	kubeless topic create s3
 	kubeless function deploy pubsub --trigger-topic s3 --runtime python2.7 --handler pubsub.handler --from-file python/pubsub.py
 
+# Generate a random string to inject into s3 topic,
+# then "tail -f" until it shows (with timeout)
 pubsub-verify:
-	kubeless topic publish --topic s3 --data "s3"
-	kubectl logs $(shell kubectl get po -oname| grep pubsub) |egrep "s3"
+	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
+	kubeless topic publish --topic s3 --data "$(DATA)"
+	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub))'
