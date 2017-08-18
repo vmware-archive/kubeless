@@ -47,7 +47,7 @@ k8s_wait_for_pod_logline() {
     local string="${1:?}"; shift
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     echo_info "Waiting for '${@}' to show logline '${string}' ..."
-    until kubectl logs --tail=10 "${@}"|&grep -q "${string}"; do
+    until kubectl logs "${@}"|&grep -q "${string}"; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
@@ -111,7 +111,7 @@ kubeless_recreate() {
 kubeless_function_delete() {
     local func=${1:?}; shift
     echo_info "Deleting function "${func}" in case still present ... "
-    kubeless function delete "${func}" >& /dev/null || true
+    kubeless function ls |grep -w "${func}" && kubeless function delete "${func}" >& /dev/null || true
     kubectl delete all -l function="${func}" > /dev/null || true
     k8s_wait_for_pod_gone -l function="${func}"
 }
@@ -129,9 +129,28 @@ _wait_for_kubeless_controller_logline() {
     local string="${1:?}"
     k8s_wait_for_pod_logline "${string}" -n kubeless -l kubeless=controller
 }
-_wait_for_kubeless_kafka_ready() {
+_wait_for_kubeless_kafka_server_ready() {
+    local test_topic=test-centinel
     echo_info "Waiting for kafka-0 to be ready ..."
     k8s_wait_for_pod_logline "Kafka.*Server.*started" -n kubeless kafka-0
+    sleep 10
+    kubeless topic create "${test_topic}"
+    _wait_for_kubeless_kafka_topic_ready "${test_topic}"
+}
+_wait_for_kubeless_kafka_topic_ready() {
+    local topic=${1:?}
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    echo_info "Waiting for kafka-0 topic='${topic}' to be ready ..."
+    # zomg enter kafka-0 container to peek for topic already present
+    until \
+        kubectl exec -n kubeless kafka-0 -- sh -c \
+        '/opt/bitnami/kafka/bin/kafka-topics.sh --list --zookeeper $(
+            sed -n s/zookeeper.connect=//p /bitnami/kafka/conf/server.properties)'| \
+                grep -qw ${topic}
+        do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
 }
 _wait_for_simple_function_pod_ready() {
     k8s_wait_for_pod_ready -l function=get-python
@@ -191,14 +210,19 @@ test_must_pass_with_rbac_roles() {
 }
 
 test_kubeless_function() {
-    local func=${1:?}
+    local func=${1:?} func_topic
     echo_info "TEST: $func"
     case "${func}" in
-        *pubsub*) _wait_for_kubeless_kafka_ready;;
+        *pubsub*) _wait_for_kubeless_kafka_server_ready;;
     esac
     kubeless_function_delete ${func}
     make -sC examples ${func}
     k8s_wait_for_pod_ready -l function=${func}
+    case "${func}" in
+        *pubsub*)
+            func_topic=$(kubeless function describe "${func}" -o yaml|sed -n 's/^topic: //p')
+            _wait_for_kubeless_kafka_topic_ready ${func_topic:?};;
+    esac
     make -sC examples ${func}-verify
 }
 # vim: sw=4 ts=4 et si
