@@ -69,7 +69,7 @@ kubeless topic create s3
 Create the function with kubeless:
 
 ```
-kubeless function deploy pubsub --trigger-topic s3 --runtime python27 --handler pubsub.handler --from-file python/pubsub.py
+kubeless function deploy pubsub --trigger-topic s3 --runtime python2.7 --handler pubsub.handler --from-file python/pubsub.py
 ```
 
 Watch the logs of the pods for Minio events:
@@ -93,7 +93,7 @@ kubectl create secret generic minio --from-literal=access_key=foobar --from-lite
 Create the function:
 
 ```
-kubeless function deploy minio --trigger-topic s3 --runtime python27 --handler minio-test.ocr --from-file minio-test.py --dependencies requirements.txt
+kubeless function deploy minio --trigger-topic s3 --runtime python2.7 --handler minio-test.ocr --from-file minio-test.py --dependencies requirements.txt
 ```
 
 Create a `foobar` and a `ocr` bucket in Minio UI.

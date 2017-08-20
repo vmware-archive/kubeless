@@ -82,7 +82,7 @@ def foobar(context):
 You create it with:
 
 ```
-$ kubeless function deploy get-python --runtime python27 \
+$ kubeless function deploy get-python --runtime python2.7 \
                                 --handler test.foobar \
                                 --from-file test.py \
                                 --trigger-http
@@ -127,7 +127,7 @@ def foobar(context):
 You create it the same way than an _HTTP_ function except that you specify a `--trigger-topic`.
 
 ```
-$ kubeless function deploy test --runtime python27 \
+$ kubeless function deploy test --runtime python2.7 \
                                 --handler test.foobar \
                                 --from-file test.py \
                                 --trigger-topic <topic_name>

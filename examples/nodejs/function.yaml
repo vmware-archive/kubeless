@@ -5,7 +5,7 @@ metadata:
   name: function
 spec:
   handler: hello.handler
-  runtime: nodejs6.10
+  runtime: nodejs6
   function: |
       module.exports = {
         hello: function(req, res) {

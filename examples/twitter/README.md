@@ -63,7 +63,7 @@ Store this function in a `send-tweet.py` file
 ## Deploy the function with `kubeless`
 
 ```
-kubeless function deploy tweet --trigger-http --runtime python27 --handler send-tweet.tweet --from-file send-tweet.py --dependencies requirements.txt
+kubeless function deploy tweet --trigger-http --runtime python2.7 --handler send-tweet.tweet --from-file send-tweet.py --dependencies requirements.txt
 ```
 
 The `handler` referes to the file name of the function and the method name that we will trigger. Note that the dependency file is loaded with the `--dependencies` option.
