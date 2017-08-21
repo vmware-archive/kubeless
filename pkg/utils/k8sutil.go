@@ -75,8 +75,8 @@ func init() {
 	python27 := runtimeVersion{runtimeID: "python", version: "2.7", httpImage: python27Http, pubsubImage: python27Pubsub}
 	python = []runtimeVersion{python27}
 
-	node6 := runtimeVersion{runtimeID: "node", version: "6", httpImage: node6Http, pubsubImage: node6Pubsub}
-	node8 := runtimeVersion{runtimeID: "node", version: "8", httpImage: node8Http, pubsubImage: node8Pubsub}
+	node6 := runtimeVersion{runtimeID: "nodejs", version: "6", httpImage: node6Http, pubsubImage: node6Pubsub}
+	node8 := runtimeVersion{runtimeID: "nodejs", version: "8", httpImage: node8Http, pubsubImage: node8Pubsub}
 	node = []runtimeVersion{node6, node8}
 
 	ruby24 := runtimeVersion{runtimeID: "ruby", version: "2.4", httpImage: ruby24Http, pubsubImage: ""}
