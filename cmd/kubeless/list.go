@@ -17,13 +17,14 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/ghodss/yaml"
-	"github.com/olekukonko/tablewriter"
+	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/rest"
@@ -99,8 +100,10 @@ func doList(w io.Writer, tprClient rest.Interface, ns, output string, args []str
 // printFunctions formats the output of function list
 func printFunctions(w io.Writer, functions []*spec.Function, output string) error {
 	if output == "" {
-		table := tablewriter.NewWriter(w)
-		table.SetHeader([]string{"Name", "namespace", "handler", "runtime", "type", "topic", "dependencies"})
+		table := uitable.New()
+		table.MaxColWidth = 50
+		table.Wrap = true
+		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC")
 		for _, f := range functions {
 			n := f.Metadata.Name
 			h := f.Spec.Handler
@@ -108,13 +111,14 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 			t := f.Spec.Type
 			tp := f.Spec.Topic
 			ns := f.Metadata.Namespace
-			dep := f.Spec.Deps
-			table.Append([]string{n, ns, h, r, t, tp, dep})
+			table.AddRow(n, ns, h, r, t, tp)
 		}
-		table.Render()
+		fmt.Fprintln(w, table)
 	} else if output == "wide" {
-		table := tablewriter.NewWriter(w)
-		table.SetHeader([]string{"Name", "namespace", "handler", "runtime", "type", "topic", "dependencies", "memory", "env", "label"})
+		table := uitable.New()
+		table.MaxColWidth = 50
+		table.Wrap = true
+		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "MEMORY", "ENV", "LABEL")
 		for _, f := range functions {
 			n := f.Metadata.Name
 			h := f.Spec.Handler
@@ -122,22 +126,29 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 			t := f.Spec.Type
 			tp := f.Spec.Topic
 			ns := f.Metadata.Namespace
-			dep := f.Spec.Deps
 			mem := ""
-			env := []byte{}
+			env := ""
 			if len(f.Spec.Template.Spec.Containers[0].Resources.Requests) != 0 {
 				mem = f.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()
 			}
 			if len(f.Spec.Template.Spec.Containers[0].Env) != 0 {
-				env, _ = json.Marshal(f.Spec.Template.Spec.Containers[0].Env)
+				var buffer bytes.Buffer
+				for _, e := range f.Spec.Template.Spec.Containers[0].Env {
+					buffer.WriteString(e.Name + " = " + e.Value + "\n")
+				}
+				env = buffer.String()
 			}
-			label := []byte{}
+			label := ""
 			if len(f.Metadata.Labels) > 0 {
-				label, _ = json.Marshal(f.Metadata.Labels)
+				var buffer bytes.Buffer
+				for k, v := range f.Metadata.Labels {
+					buffer.WriteString(k + " : " + v + "\n")
+				}
+				label = buffer.String()
 			}
-			table.Append([]string{n, ns, h, r, t, tp, dep, mem, string(env), string(label)})
+			table.AddRow(n, ns, h, r, t, tp, mem, env, label)
 		}
-		table.Render()
+		fmt.Fprintln(w, table)
 	} else {
 		for _, f := range functions {
 			switch output {
