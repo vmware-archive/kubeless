@@ -55,7 +55,7 @@ items:
       def foo():
           return "hello world"
     handler: helloget.foo
-    runtime: python27
+    runtime: python2.7
     topic: ""
     type: HTTP
 kind: List
