@@ -1,5 +1,5 @@
-hash: a1d06155d2b75635eb9dc783a154e1f4774b25997f8b6f1ea351583c046358b6
-updated: 2017-08-07T22:33:48.615955827+10:00
+hash: 479ec7c29f33e69bd4c9ff646ea2fe65317202cc65ebcabbfa80528e816e689f
+updated: 2017-08-21T17:28:08.375820375+07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -120,6 +120,11 @@ imports:
   - proto
 - name: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
+- name: github.com/gosuri/uitable
+  version: 36ee7e946282a3fb1cfecd476ddc9b35d8847e42
+  subpackages:
+  - util/strutil
+  - util/wordwrap
 - name: github.com/howeyc/gopass
   version: 3ca23474a7c7203e0a0a070fd33508f6efdb9b3d
 - name: github.com/imdario/mergo

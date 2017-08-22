@@ -19,15 +19,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ghodss/yaml"
-	"os"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/olekukonko/tablewriter"
-	"github.com/spf13/cobra"
-
+	"github.com/ghodss/yaml"
+	"github.com/gosuri/uitable"
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/spf13/cobra"
 	"k8s.io/client-go/pkg/api"
 )
 
@@ -69,33 +67,27 @@ func init() {
 func print(f spec.Function, name, output string) {
 	switch output {
 	case "":
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"Properties", "Value"})
+		table := uitable.New()
+		table.MaxColWidth = 80
+		table.Wrap = true
 		label, _ := json.Marshal(f.Metadata.Labels)
 		env, _ := json.Marshal(f.Spec.Template.Spec.Containers[0].Env)
-		data := [][]string{
-			{"Name", name},
-			{"Namespace", fmt.Sprintf(f.Metadata.Namespace)},
-			{"Handler", fmt.Sprintf(f.Spec.Handler)},
-			{"Runtime", fmt.Sprintf(f.Spec.Runtime)},
-			{"Type", fmt.Sprintf(f.Spec.Type)},
-			{"Topic", fmt.Sprintf(f.Spec.Topic)},
-			{"Dependencies", fmt.Sprintf(f.Spec.Deps)},
-			{"Labels", fmt.Sprintf(string(label))},
-			{"Environment variables", fmt.Sprintf(string(env))},
-			{"Memory", fmt.Sprintf(f.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String())},
-		}
-
-		for _, v := range data {
-			table.Append(v)
-		}
-		table.Render() // Send output
+		table.AddRow("Name:", name)
+		table.AddRow("Namespace:", fmt.Sprintf(f.Metadata.Namespace))
+		table.AddRow("Handler:", fmt.Sprintf(f.Spec.Handler))
+		table.AddRow("Runtime:", fmt.Sprintf(f.Spec.Runtime))
+		table.AddRow("Type:", fmt.Sprintf(f.Spec.Type))
+		table.AddRow("Topic:", fmt.Sprintf(f.Spec.Topic))
+		table.AddRow("Label:", fmt.Sprintf(string(label)))
+		table.AddRow("Envvar:", fmt.Sprintf(string(env)))
+		table.AddRow("Memory:", fmt.Sprintf(f.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()))
+		table.AddRow("Dependencies:", fmt.Sprintf(f.Spec.Deps))
+		fmt.Println(table)
 	case "json":
 		b, _ := json.MarshalIndent(f, "", "  ")
 		fmt.Println(string(b))
 	case "yaml":
-		//will fix later: there is a panic here with yaml.Marshal(f)
-		b, _ := yaml.Marshal(f.Spec)
+		b, _ := yaml.Marshal(f)
 		fmt.Println(string(b))
 	default:
 		fmt.Println("Wrong output format. Please use only json|yaml")

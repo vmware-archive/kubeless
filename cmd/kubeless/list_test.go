@@ -93,6 +93,10 @@ func TestList(t *testing.T) {
 											Name:  "foo",
 											Value: "bar",
 										},
+										{
+											Name:  "foo2",
+											Value: "bar2",
+										},
 									},
 									Resources: v1.ResourceRequirements{
 										Limits: map[v1.ResourceName]resource.Quantity{
@@ -172,7 +176,7 @@ func TestList(t *testing.T) {
 	// wide output
 	output = listOutput(t, client, "myns", "wide", []string{})
 	t.Log("output is", output)
-	if !strings.Contains(output, "[{\"name\":\"foo\",\"value\":\"bar\"}]") {
+	if !strings.Contains(output, "foo = bar") {
 		t.Errorf("table output didn't mention proper env of function")
 	}
 }
