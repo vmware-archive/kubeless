@@ -433,7 +433,9 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 	if len(dpm.Spec.Template.Spec.Containers) == 0 {
 		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
 	}
-	dpm.Spec.Template.Spec.Containers[0].Image = imageName
+	if dpm.Spec.Template.Spec.Containers[0].Image == "" {
+		dpm.Spec.Template.Spec.Containers[0].Image = imageName
+	}
 	dpm.Spec.Template.Spec.Containers[0].Name = name
 	dpm.Spec.Template.Spec.Containers[0].Ports = append(dpm.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{
 		ContainerPort: 8080,
