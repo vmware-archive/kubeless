@@ -25,7 +25,7 @@ local clusterRoleBinding(name, role, subjects) = {
     kind: "ClusterRoleBinding",
     metadata: objectMeta.name(name),
     subjects: [{kind: s.kind, namespace: s.metadata.namespace, name: s.metadata.name} for s in subjects],
-    roleRef: {kind: role.kind, name: role.metadata.name},
+    roleRef: {kind: role.kind, apiGroup: "rbac.authorization.k8s.io", name: role.metadata.name},
 };
 
 local controllerClusterRole = clusterRole(
