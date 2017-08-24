@@ -509,7 +509,7 @@ func TestCreateAutoscaleResource(t *testing.T) {
 	min := int32(1)
 	max := int32(10)
 	clientset := fake.NewSimpleClientset()
-	if err := CreateAutoscale(clientset, "foo", "myns", min, max); err != nil {
+	if err := CreateAutoscale(clientset, "foo", "myns", "cpu", min, max, "50"); err != nil {
 		t.Fatalf("Creating autoscale returned err: %v", err)
 	}
 
@@ -521,7 +521,7 @@ func TestCreateAutoscaleResource(t *testing.T) {
 		t.Fatalf("Creating wrong scale target name")
 	}
 
-	if err := CreateAutoscale(clientset, "foo", "myns", min, max); err != nil {
+	if err := CreateAutoscale(clientset, "foo", "myns", "qps", min, max, "10k"); err != nil {
 		if !k8sErrors.IsAlreadyExists(err) {
 			t.Fatalf("Expect object is already exists, got %v", err)
 		}

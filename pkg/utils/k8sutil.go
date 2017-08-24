@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -1085,8 +1086,45 @@ func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []met
 }
 
 // CreateAutoscale creates HPA object for function
-func CreateAutoscale(client kubernetes.Interface, funcName, ns string, min, max int32) error {
-	targetAverageUtilization := int32(50)
+func CreateAutoscale(client kubernetes.Interface, funcName, ns, metric string, min, max int32, value string) error {
+	m := []v2alpha1.MetricSpec{}
+	switch metric {
+	case "cpu":
+		i, err := strconv.ParseInt(value, 10, 32)
+		if err != nil {
+			return err
+		}
+		i32 := int32(i)
+		m = []v2alpha1.MetricSpec{
+			{
+				Type: v2alpha1.ResourceMetricSourceType,
+				Resource: &v2alpha1.ResourceMetricSource{
+					Name: v1.ResourceCPU,
+					TargetAverageUtilization: &i32,
+				},
+			},
+		}
+	case "qps":
+		q, err := resource.ParseQuantity(value)
+		if err != nil {
+			return err
+		}
+		m = []v2alpha1.MetricSpec{
+			{
+				Type: v2alpha1.ObjectMetricSourceType,
+				Object: &v2alpha1.ObjectMetricSource{
+					MetricName:  "requests-per-second",
+					TargetValue: q,
+					Target: v2alpha1.CrossVersionObjectReference{
+						Kind: "Service",
+						Name: funcName,
+					},
+				},
+			},
+		}
+	default:
+		return errors.New("metric is not supported")
+	}
 
 	hpa := &v2alpha1.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1100,15 +1138,7 @@ func CreateAutoscale(client kubernetes.Interface, funcName, ns string, min, max 
 			},
 			MinReplicas: &min,
 			MaxReplicas: max,
-			Metrics: []v2alpha1.MetricSpec{
-				{
-					Type: "Resource",
-					Resource: &v2alpha1.ResourceMetricSource{
-						Name: v1.ResourceCPU,
-						TargetAverageUtilization: &targetAverageUtilization,
-					},
-				},
-			},
+			Metrics:     m,
 		},
 	}
 

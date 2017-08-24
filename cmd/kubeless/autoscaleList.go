@@ -19,8 +19,8 @@ import (
 	"io"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/gosuri/uitable"
 	"github.com/kubeless/kubeless/pkg/utils"
-	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,8 +67,10 @@ func doAutoscaleList(w io.Writer, client kubernetes.Interface, ns, output string
 // printAutoscale formats the output of autoscale list
 func printAutoscale(w io.Writer, ass []v2alpha1.HorizontalPodAutoscaler, output string) error {
 	if output == "" {
-		table := tablewriter.NewWriter(w)
-		table.SetHeader([]string{"Name", "namespace", "target", "min", "max", "type", "object", "pods", "resource"})
+		table := uitable.New()
+		table.MaxColWidth = 50
+		table.Wrap = true
+		table.AddRow("NAME", "NAMESPACE", "TARGET", "MIN", "MAX", "TYPE", "OBJECT", "PODS", "RESOURCE")
 		for _, i := range ass {
 			n := i.Name
 			ns := i.Namespace
@@ -96,9 +98,9 @@ func printAutoscale(w io.Writer, ass []v2alpha1.HorizontalPodAutoscaler, output 
 			}
 			r := string(data)
 
-			table.Append([]string{n, ns, ta, min, max, ty, o, p, r})
+			table.AddRow([]string{n, ns, ta, min, max, ty, o, p, r})
 		}
-		table.Render()
+		fmt.Fprintln(w, table)
 	} else {
 		for _, i := range ass {
 			switch output {

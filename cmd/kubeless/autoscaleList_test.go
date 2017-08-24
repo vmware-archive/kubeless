@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
@@ -25,6 +26,8 @@ func listAutoscaleOutput(t *testing.T, client kubernetes.Interface, ns, output s
 func TestAutoscaleList(t *testing.T) {
 	replicas := int32(1)
 	targetAverageUtilization := int32(50)
+	q, _ := resource.ParseQuantity("10k")
+
 	as1 := av2alpha1.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
@@ -39,7 +42,7 @@ func TestAutoscaleList(t *testing.T) {
 			MaxReplicas: replicas,
 			Metrics: []av2alpha1.MetricSpec{
 				{
-					Type: "Resource",
+					Type: av2alpha1.ResourceMetricSourceType,
 					Resource: &av2alpha1.ResourceMetricSource{
 						Name: v1.ResourceCPU,
 						TargetAverageUtilization: &targetAverageUtilization,
@@ -63,10 +66,14 @@ func TestAutoscaleList(t *testing.T) {
 			MaxReplicas: replicas,
 			Metrics: []av2alpha1.MetricSpec{
 				{
-					Type: "Resource",
-					Resource: &av2alpha1.ResourceMetricSource{
-						Name: v1.ResourceCPU,
-						TargetAverageUtilization: &targetAverageUtilization,
+					Type: av2alpha1.ObjectMetricSourceType,
+					Object: &av2alpha1.ObjectMetricSource{
+						MetricName:  "requests-per-second",
+						TargetValue: q,
+						Target: av2alpha1.CrossVersionObjectReference{
+							Kind: "Service",
+							Name: "foo",
+						},
 					},
 				},
 			},
