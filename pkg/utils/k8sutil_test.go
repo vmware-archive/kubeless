@@ -82,10 +82,13 @@ func TestDeleteK8sResources(t *testing.T) {
 
 	// Test deleting cronjob
 	job := v2alpha1.CronJob{
-		ObjectMeta: myNsFoo,
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "myns",
+			Name:      "trigger-foo",
+		},
 	}
 
-	clientset = fake.NewSimpleClientset(&job, &cm)
+	clientset = fake.NewSimpleClientset(&job, &deploy, &svc, &cm)
 
 	if err := DeleteK8sResources("myns", "foo", clientset); err != nil {
 		t.Fatalf("Deleting resources returned err: %v", err)
@@ -93,14 +96,12 @@ func TestDeleteK8sResources(t *testing.T) {
 
 	t.Log("Actions:", clientset.Actions())
 
-	for _, kind := range []string{"cronjobs", "configmaps"} {
+	for _, kind := range []string{"cronjobs", "services", "configmaps", "deployments"} {
 		a := findAction(clientset, "delete", kind)
 		if a == nil {
 			t.Errorf("failed to delete %s", kind)
 		} else if ns := a.GetNamespace(); ns != "myns" {
 			t.Errorf("deleted %s from wrong namespace (%s)", kind, ns)
-		} else if n := a.(ktesting.DeleteAction).GetName(); n != "foo" {
-			t.Errorf("deleted %s with wrong name (%s)", kind, n)
 		}
 	}
 }

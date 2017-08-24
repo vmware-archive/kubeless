@@ -34,7 +34,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
-
+	batchv1 "k8s.io/client-go/pkg/apis/batch/v1"
 	"k8s.io/client-go/pkg/apis/batch/v2alpha1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
@@ -60,6 +60,7 @@ const (
 	node8Http      = "bitnami/kubeless-nodejs@sha256:1eff2beae6fcc40577ada75624c3e4d3840a854588526cd8616d66f4e889dfe6"
 	node8Pubsub    = "bitnami/kubeless-nodejs-event-consumer@sha256:4d005c9c0b462750d9ab7f1305897e7a01143fe869d3b722ed3330560f9c7fb5"
 	ruby24Http     = "bitnami/kubeless-ruby@sha256:98e95c41652a7a0149421157c2dfb64b31e0d406b8c46c8bc89bd54e50f9898d"
+	busybox        = "tuna/busybox@sha256:3651f7ee3b1e779471e338dcc43e6a5e69e0a8c7a4d08fd5702531cbbacc3269"
 	pubsubFunc     = "PubSub"
 	schedFunc      = "Scheduled"
 )
@@ -328,18 +329,18 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 		return err
 	}
 
+	err = ensureFuncService(client, funcMeta, or)
+	if err != nil {
+		return err
+	}
+
+	err = ensureFuncDeployment(client, funcMeta, funcObj, or)
+	if err != nil {
+		return err
+	}
+
 	if funcObj.Spec.Type == schedFunc {
 		err = ensureFuncJob(client, funcMeta, funcObj, or)
-		if err != nil {
-			return err
-		}
-	} else {
-		err = ensureFuncService(client, funcMeta, or)
-		if err != nil {
-			return err
-		}
-
-		err = ensureFuncDeployment(client, funcMeta, funcObj, or)
 		if err != nil {
 			return err
 		}
@@ -351,9 +352,9 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 // DeleteK8sResources removes k8s objects of the function
 func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
 	//check if func is scheduled or not
-	_, err := client.BatchV2alpha1().CronJobs(ns).Get(name, metav1.GetOptions{})
+	_, err := client.BatchV2alpha1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", name), metav1.GetOptions{})
 	if err == nil {
-		err = client.BatchV2alpha1().CronJobs(ns).Delete(name, &metav1.DeleteOptions{})
+		err = client.BatchV2alpha1().CronJobs(ns).Delete(fmt.Sprintf("trigger-%s", name), &metav1.DeleteOptions{})
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return err
 		}
@@ -956,19 +957,6 @@ func ensureFuncDeployment(client kubernetes.Interface, funcMeta metadata, funcOb
 }
 
 func ensureFuncJob(client kubernetes.Interface, funcMeta metadata, funcObj *spec.Function, or []metav1.OwnerReference) error {
-	//prepare init-container for custom runtime
-	initContainer := v1.Container{}
-	if funcObj.Spec.Deps != "" {
-		initContainer = v1.Container{
-			Name:            "install",
-			Image:           getInitImage(funcObj.Spec.Runtime),
-			Command:         getCommand(funcObj.Spec.Runtime),
-			VolumeMounts:    getVolumeMounts(funcMeta.Name, funcObj.Spec.Runtime),
-			WorkingDir:      "/requirements",
-			ImagePullPolicy: v1.PullIfNotPresent,
-		}
-	}
-
 	podAnnotations := map[string]string{
 		// Attempt to attract the attention of prometheus.
 		// For runtimes that don't support /metrics,
@@ -982,120 +970,40 @@ func ensureFuncJob(client kubernetes.Interface, funcMeta metadata, funcObj *spec
 
 	job := &v2alpha1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            funcMeta.Name,
+			Name:            fmt.Sprintf("trigger-%s", funcMeta.Name),
 			Labels:          funcMeta.Labels,
 			OwnerReferences: or,
 		},
 		Spec: v2alpha1.CronJobSpec{
 			Schedule: funcObj.Spec.Schedule,
-		},
-	}
-	//copy all func's Spec.Template to the deployment
-	tmplCopy, err := api.Scheme.DeepCopy(funcObj.Spec.Template)
-	if err != nil {
-		return err
-	}
-	job.Spec.JobTemplate.Spec.Template = tmplCopy.(v1.PodTemplateSpec)
-	//append data to dpm spec
-	if len(job.Spec.JobTemplate.Spec.Template.ObjectMeta.Labels) == 0 {
-		job.Spec.JobTemplate.Spec.Template.ObjectMeta.Labels = make(map[string]string)
-	}
-	for k, v := range funcMeta.Labels {
-		job.Spec.JobTemplate.Spec.Template.ObjectMeta.Labels[k] = v
-	}
-	if len(job.Spec.JobTemplate.Spec.Template.ObjectMeta.Annotations) == 0 {
-		job.Spec.JobTemplate.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
-	}
-	for k, v := range podAnnotations {
-		//only append k-v from podAnnotations if it doesn't exist in deployment podTemplateSpec annotation
-		if _, ok := job.Spec.JobTemplate.Spec.Template.ObjectMeta.Annotations[k]; !ok {
-			job.Spec.JobTemplate.Spec.Template.ObjectMeta.Annotations[k] = v
-		}
-	}
-
-	// only append non-empty initContainer
-	if initContainer.Name != "" {
-		job.Spec.JobTemplate.Spec.Template.Spec.InitContainers = append(job.Spec.JobTemplate.Spec.Template.Spec.InitContainers, initContainer)
-	}
-
-	job.Spec.JobTemplate.Spec.Template.Spec.Volumes = append(job.Spec.JobTemplate.Spec.Template.Spec.Volumes, v1.Volume{
-		Name: funcMeta.Name,
-		VolumeSource: v1.VolumeSource{
-			ConfigMap: &v1.ConfigMapVolumeSource{
-				LocalObjectReference: v1.LocalObjectReference{
-					Name: funcMeta.Name,
+			JobTemplate: v2alpha1.JobTemplateSpec{
+				Spec: batchv1.JobSpec{
+					Template: v1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Annotations: podAnnotations,
+						},
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{
+								{
+									Image: busybox,
+									Name:  "trigger",
+									Args:  []string{"curl", fmt.Sprintf("http://%s.%s.svc:8080", funcMeta.Name, funcMeta.Namespace)},
+								},
+							},
+							RestartPolicy: v1.RestartPolicyOnFailure,
+						},
+					},
 				},
 			},
 		},
-	})
-	if len(job.Spec.JobTemplate.Spec.Template.Spec.Containers) == 0 {
-		job.Spec.JobTemplate.Spec.Template.Spec.Containers = append(job.Spec.JobTemplate.Spec.Template.Spec.Containers, v1.Container{})
-	}
-	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Image = funcMeta.Image
-	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Name = funcMeta.Name
-	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Ports = append(job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{
-		ContainerPort: 8080,
-	})
-	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Env = append(job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Env,
-		v1.EnvVar{
-			Name:  "FUNC_HANDLER",
-			Value: funcMeta.Handler,
-		},
-		v1.EnvVar{
-			Name:  "MOD_NAME",
-			Value: funcMeta.Module,
-		},
-		v1.EnvVar{
-			Name:  "TOPIC_NAME",
-			Value: funcObj.Spec.Topic,
-		})
-	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-		Name:      funcMeta.Name,
-		MountPath: "/kubeless",
-	})
-
-	// update cronjob for custom runtime
-	if funcObj.Spec.Deps != "" {
-		updateJob(job, funcObj.Spec.Runtime)
-		//TODO: remove this when init containers becomes a stable feature
-		addInitContainerAnnotationToJob(job)
 	}
 
-	// add liveness Probe to cronjob
-	if funcObj.Spec.Type != pubsubFunc {
-		livenessProbe := &v1.Probe{
-			InitialDelaySeconds: int32(3),
-			PeriodSeconds:       int32(30),
-			Handler: v1.Handler{
-				HTTPGet: &v1.HTTPGetAction{
-					Path: "/healthz",
-					Port: intstr.FromInt(8080),
-				},
-			},
-		}
-		job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
-	}
-
-	job.Spec.JobTemplate.Spec.Template.Spec.RestartPolicy = v1.RestartPolicyOnFailure
-
-	_, err = client.BatchV2alpha1().CronJobs(funcMeta.Namespace).Create(job)
+	_, err := client.BatchV2alpha1().CronJobs(funcMeta.Namespace).Create(job)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		data, _ := json.Marshal(job)
 		_, err = client.BatchV2alpha1().CronJobs(funcMeta.Namespace).Patch(job.Name, types.StrategicMergePatchType, data)
 		if err != nil {
 			return err
-		}
-
-		// kick existing function pods then it will be recreated
-		// with the new data mount from updated configmap.
-		// TODO: This is a workaround.  Do something better.
-		pods, err := GetPodsByLabel(client, funcMeta.Namespace, "function", funcMeta.Name)
-		for _, pod := range pods.Items {
-			err = client.Core().Pods(funcMeta.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
-			if err != nil && !k8sErrors.IsNotFound(err) {
-				// non-fatal
-				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", funcMeta.Namespace, pod.Name, err)
-			}
 		}
 	}
 
