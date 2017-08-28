@@ -32,7 +32,7 @@ func init() {
 
 	for _, cmd := range cmds {
 		autoscaleCmd.AddCommand(cmd)
-		cmd.Flags().StringP("namespace", "n", api.NamespaceDefault, "Specify namespace for the ingress")
+		cmd.Flags().StringP("namespace", "n", api.NamespaceDefault, "Specify namespace for the autoscale")
 
 	}
 }

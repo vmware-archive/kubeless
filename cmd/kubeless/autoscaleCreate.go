@@ -19,14 +19,14 @@ var autoscaleCreateCmd = &cobra.Command{
 		min, err := cmd.Flags().GetInt32("min")
 		if err != nil {
 			logrus.Fatal(err)
-		} else if min == 0 {
-			logrus.Fatalf("--min can't be 0")
+		} else if min < 0 {
+			logrus.Fatalf("min can't be negative")
 		}
 		max, err := cmd.Flags().GetInt32("max")
 		if err != nil {
 			logrus.Fatal(err)
-		} else if min == 0 {
-			logrus.Fatalf("--max can't be 0")
+		} else if max < min {
+			logrus.Fatalf("max must be greater than or equal to min")
 		}
 		ns, err := cmd.Flags().GetString("namespace")
 		if err != nil {
@@ -55,8 +55,8 @@ var autoscaleCreateCmd = &cobra.Command{
 }
 
 func init() {
-	autoscaleCreateCmd.Flags().Int32("min", 0, "minimum number of replicas")
-	autoscaleCreateCmd.Flags().Int32("max", 0, "maximum number of replicas")
-	autoscaleCreateCmd.Flags().String("metric", "", "metric to use for calculating the autoscale. Supported metrics: cpu, qps")
+	autoscaleCreateCmd.Flags().Int32("min", 1, "minimum number of replicas")
+	autoscaleCreateCmd.Flags().Int32("max", 1, "maximum number of replicas")
+	autoscaleCreateCmd.Flags().String("metric", "cpu", "metric to use for calculating the autoscale. Supported metrics: cpu, qps")
 	autoscaleCreateCmd.Flags().String("value", "", "value of the average of the metric across all replicas. If metric is cpu, value is a number represented as percentage. If metric is qps, value must be in format of Quantity")
 }
