@@ -268,79 +268,38 @@ func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileNa
 	return
 }
 
-type metadata struct {
-	Name       string
-	Namespace  string
-	Handler    string
-	Module     string
-	Image      string
-	File       string
-	Dependency string
-	Labels     map[string]string
-}
-
 // EnsureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
-func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernetes.Interface) error {
-	str := strings.Split(funcObj.Spec.Handler, ".")
-	if len(str) != 2 {
-		return errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
-	}
-
-	funcHandler := str[1]
-	modName := str[0]
-
-	fileName := modName
-	imageName, depName, fileName, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
-	if err != nil {
-		return err
-	}
-
-	labels := map[string]string{
-		"function": name,
-	}
-	for k, v := range funcObj.Metadata.Labels {
-		labels[k] = v
-	}
-
-	funcMeta := metadata{
-		Name:       name,
-		Namespace:  ns,
-		Handler:    funcHandler,
-		Module:     modName,
-		Image:      imageName,
-		File:       fileName,
-		Dependency: depName,
-		Labels:     labels,
-	}
+func EnsureK8sResources(funcObj *spec.Function, client kubernetes.Interface) error {
+	funcObj.Metadata.Labels["function"] = funcObj.Metadata.Name
 
 	t := true
 	or := []metav1.OwnerReference{
 		{
 			Kind:               "Function",
 			APIVersion:         "k8s.io",
-			Name:               funcMeta.Name,
+			Name:               funcObj.Metadata.Name,
 			UID:                funcObj.Metadata.UID,
 			BlockOwnerDeletion: &t,
 		},
 	}
 
-	err = ensureFuncConfigMap(client, funcMeta, funcObj, or)
+	err := ensureFuncConfigMap(client, funcObj, or)
 	if err != nil {
 		return err
 	}
 
-	err = ensureFuncService(client, funcMeta, or)
+	err = ensureFuncService(client, funcObj, or)
 	if err != nil {
 		return err
 	}
 
-	err = ensureFuncDeployment(client, funcMeta, funcObj, or)
+	err = ensureFuncDeployment(client, funcObj, or)
 	if err != nil {
 		return err
 	}
 
 	if funcObj.Spec.Type == schedFunc {
-		err = ensureFuncJob(client, funcMeta, funcObj, or)
+		err = ensureFuncJob(client, funcObj, or)
 		if err != nil {
 			return err
 		}
@@ -358,17 +317,18 @@ func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return err
 		}
-	} else {
-		deletePolicy := metav1.DeletePropagationForeground
-		err := client.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return err
-		}
-		// delete svc
-		err = client.Core().Services(ns).Delete(name, &metav1.DeleteOptions{})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return err
-		}
+	}
+
+	// delete deployment
+	deletePolicy := metav1.DeletePropagationForeground
+	err = client.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+	// delete svc
+	err = client.Core().Services(ns).Delete(name, &metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
 	}
 
 	// delete cm
@@ -585,42 +545,6 @@ func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
 	}
 }
 
-// update cronjob object in case of custom runtime
-func updateJob(job *v2alpha1.CronJob, runtime string) {
-	switch {
-	case strings.Contains(runtime, "python"):
-		job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Env = append(job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-			Name:  "PYTHONPATH",
-			Value: "/opt/kubeless/pythonpath/lib/python2.7/site-packages",
-		})
-		job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      "pythonpath",
-			MountPath: "/opt/kubeless/pythonpath",
-		})
-		job.Spec.JobTemplate.Spec.Template.Spec.Volumes = append(job.Spec.JobTemplate.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: "pythonpath",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
-		})
-	case strings.Contains(runtime, "nodejs"):
-		job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Env = append(job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-			Name:  "NODE_PATH",
-			Value: "/opt/kubeless/nodepath/node_modules",
-		})
-		job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      "nodepath",
-			MountPath: "/opt/kubeless/nodepath",
-		})
-		job.Spec.JobTemplate.Spec.Template.Spec.Volumes = append(job.Spec.JobTemplate.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: "nodepath",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
-		})
-	}
-}
-
 // configureClient configures tpr client
 func configureClient(config *rest.Config) {
 	groupversion := schema.GroupVersion{
@@ -658,22 +582,6 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 		}
 		dpm.Spec.Template.Annotations[v1.PodInitContainersAnnotationKey] = string(value)
 		dpm.Spec.Template.Annotations[v1.PodInitContainersBetaAnnotationKey] = string(value)
-	}
-	return nil
-}
-
-// addInitContainerAnnotationToJob is a hot fix to add annotation to cronjob for init container to run
-func addInitContainerAnnotationToJob(job *v2alpha1.CronJob) error {
-	if len(job.Spec.JobTemplate.Spec.Template.Spec.InitContainers) > 0 {
-		value, err := json.Marshal(job.Spec.JobTemplate.Spec.Template.Spec.InitContainers)
-		if err != nil {
-			return err
-		}
-		if job.Spec.JobTemplate.Spec.Template.Annotations == nil {
-			job.Spec.JobTemplate.Spec.Template.Annotations = make(map[string]string)
-		}
-		job.Spec.JobTemplate.Spec.Template.Annotations[v1.PodInitContainersAnnotationKey] = string(value)
-		job.Spec.JobTemplate.Spec.Template.Annotations[v1.PodInitContainersBetaAnnotationKey] = string(value)
 	}
 	return nil
 }
@@ -752,34 +660,54 @@ func DeleteIngress(client kubernetes.Interface, name, ns string) error {
 	return nil
 }
 
-func ensureFuncConfigMap(client kubernetes.Interface, funcMeta metadata, funcObj *spec.Function, or []metav1.OwnerReference) error {
+func splitHandler(handler string) (string, string, error) {
+	str := strings.Split(handler, ".")
+	if len(str) != 2 {
+		return "", "", errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
+	}
+
+	return str[0], str[1], nil
+}
+
+func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+	modName, _, err := splitHandler(funcObj.Spec.Handler)
+	if err != nil {
+		return err
+	}
+
+	fileName := modName
+	_, depName, fileName, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
+	if err != nil {
+		return err
+	}
+
 	configMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            funcMeta.Name,
-			Labels:          funcMeta.Labels,
+			Name:            funcObj.Metadata.Name,
+			Labels:          funcObj.Metadata.Labels,
 			OwnerReferences: or,
 		},
 		Data: map[string]string{
-			"handler":           funcObj.Spec.Handler,
-			funcMeta.File:       funcObj.Spec.Function,
-			funcMeta.Dependency: funcObj.Spec.Deps,
+			"handler": funcObj.Spec.Handler,
+			fileName:  funcObj.Spec.Function,
+			depName:   funcObj.Spec.Deps,
 		},
 	}
 
-	_, err := client.Core().ConfigMaps(funcMeta.Namespace).Create(configMap)
+	_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Create(configMap)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		data, _ := json.Marshal(configMap)
-		_, err = client.Core().ConfigMaps(funcMeta.Namespace).Patch(configMap.Name, types.StrategicMergePatchType, data)
+		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Patch(configMap.Name, types.StrategicMergePatchType, data)
 	}
 
 	return err
 }
 
-func ensureFuncService(client kubernetes.Interface, funcMeta metadata, or []metav1.OwnerReference) error {
+func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            funcMeta.Name,
-			Labels:          funcMeta.Labels,
+			Name:            funcObj.Metadata.Name,
+			Labels:          funcObj.Metadata.Labels,
 			OwnerReferences: or,
 		},
 		Spec: v1.ServiceSpec{
@@ -790,20 +718,20 @@ func ensureFuncService(client kubernetes.Interface, funcMeta metadata, or []meta
 					Protocol:   v1.ProtocolTCP,
 				},
 			},
-			Selector: funcMeta.Labels,
+			Selector: funcObj.Metadata.Labels,
 			Type:     v1.ServiceTypeClusterIP,
 		},
 	}
-	_, err := client.Core().Services(funcMeta.Namespace).Create(svc)
+	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(svc)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		data, _ := json.Marshal(svc)
-		_, err = client.Core().Services(funcMeta.Namespace).Patch(svc.Name, types.StrategicMergePatchType, data)
+		_, err = client.Core().Services(funcObj.Metadata.Namespace).Patch(svc.Name, types.StrategicMergePatchType, data)
 
 	}
 	return err
 }
 
-func ensureFuncDeployment(client kubernetes.Interface, funcMeta metadata, funcObj *spec.Function, or []metav1.OwnerReference) error {
+func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
 	//prepare init-container for custom runtime
 	initContainer := v1.Container{}
 	if funcObj.Spec.Deps != "" {
@@ -811,7 +739,7 @@ func ensureFuncDeployment(client kubernetes.Interface, funcMeta metadata, funcOb
 			Name:            "install",
 			Image:           getInitImage(funcObj.Spec.Runtime),
 			Command:         getCommand(funcObj.Spec.Runtime),
-			VolumeMounts:    getVolumeMounts(funcMeta.Name, funcObj.Spec.Runtime),
+			VolumeMounts:    getVolumeMounts(funcObj.Metadata.Name, funcObj.Spec.Runtime),
 			WorkingDir:      "/requirements",
 			ImagePullPolicy: v1.PullIfNotPresent,
 		}
@@ -832,8 +760,8 @@ func ensureFuncDeployment(client kubernetes.Interface, funcMeta metadata, funcOb
 	maxUnavailable := intstr.FromInt(0)
 	dpm := &v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            funcMeta.Name,
-			Labels:          funcMeta.Labels,
+			Name:            funcObj.Metadata.Name,
+			Labels:          funcObj.Metadata.Labels,
 			OwnerReferences: or,
 		},
 		Spec: v1beta1.DeploymentSpec{
@@ -856,7 +784,7 @@ func ensureFuncDeployment(client kubernetes.Interface, funcMeta metadata, funcOb
 	if len(dpm.Spec.Template.ObjectMeta.Labels) == 0 {
 		dpm.Spec.Template.ObjectMeta.Labels = make(map[string]string)
 	}
-	for k, v := range funcMeta.Labels {
+	for k, v := range funcObj.Metadata.Labels {
 		dpm.Spec.Template.ObjectMeta.Labels[k] = v
 	}
 	if len(dpm.Spec.Template.ObjectMeta.Annotations) == 0 {
@@ -875,11 +803,11 @@ func ensureFuncDeployment(client kubernetes.Interface, funcMeta metadata, funcOb
 	}
 
 	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
-		Name: funcMeta.Name,
+		Name: funcObj.Metadata.Name,
 		VolumeSource: v1.VolumeSource{
 			ConfigMap: &v1.ConfigMapVolumeSource{
 				LocalObjectReference: v1.LocalObjectReference{
-					Name: funcMeta.Name,
+					Name: funcObj.Metadata.Name,
 				},
 			},
 		},
@@ -887,26 +815,37 @@ func ensureFuncDeployment(client kubernetes.Interface, funcMeta metadata, funcOb
 	if len(dpm.Spec.Template.Spec.Containers) == 0 {
 		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
 	}
-	dpm.Spec.Template.Spec.Containers[0].Image = funcMeta.Image
-	dpm.Spec.Template.Spec.Containers[0].Name = funcMeta.Name
+
+	modName, handlerName, err := splitHandler(funcObj.Spec.Handler)
+	if err != nil {
+		return err
+	}
+
+	imageName, _, _, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
+	if err != nil {
+		return err
+	}
+
+	dpm.Spec.Template.Spec.Containers[0].Image = imageName
+	dpm.Spec.Template.Spec.Containers[0].Name = funcObj.Metadata.Name
 	dpm.Spec.Template.Spec.Containers[0].Ports = append(dpm.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{
 		ContainerPort: 8080,
 	})
 	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
 		v1.EnvVar{
 			Name:  "FUNC_HANDLER",
-			Value: funcMeta.Handler,
+			Value: handlerName,
 		},
 		v1.EnvVar{
 			Name:  "MOD_NAME",
-			Value: funcMeta.Module,
+			Value: modName,
 		},
 		v1.EnvVar{
 			Name:  "TOPIC_NAME",
 			Value: funcObj.Spec.Topic,
 		})
 	dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-		Name:      funcMeta.Name,
+		Name:      funcObj.Metadata.Name,
 		MountPath: "/kubeless",
 	})
 
@@ -932,10 +871,10 @@ func ensureFuncDeployment(client kubernetes.Interface, funcMeta metadata, funcOb
 		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
 	}
 
-	_, err = client.Extensions().Deployments(funcMeta.Namespace).Create(dpm)
+	_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		data, _ := json.Marshal(dpm)
-		_, err = client.Extensions().Deployments(funcMeta.Namespace).Patch(dpm.Name, types.StrategicMergePatchType, data)
+		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Patch(dpm.Name, types.StrategicMergePatchType, data)
 		if err != nil {
 			return err
 		}
@@ -943,12 +882,12 @@ func ensureFuncDeployment(client kubernetes.Interface, funcMeta metadata, funcOb
 		// kick existing function pods then it will be recreated
 		// with the new data mount from updated configmap.
 		// TODO: This is a workaround.  Do something better.
-		pods, err := GetPodsByLabel(client, funcMeta.Namespace, "function", funcMeta.Name)
+		pods, err := GetPodsByLabel(client, funcObj.Metadata.Namespace, "function", funcObj.Metadata.Name)
 		for _, pod := range pods.Items {
-			err = client.Core().Pods(funcMeta.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+			err = client.Core().Pods(funcObj.Metadata.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 			if err != nil && !k8sErrors.IsNotFound(err) {
 				// non-fatal
-				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", funcMeta.Namespace, pod.Name, err)
+				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", funcObj.Metadata.Namespace, pod.Name, err)
 			}
 		}
 	}
@@ -956,22 +895,11 @@ func ensureFuncDeployment(client kubernetes.Interface, funcMeta metadata, funcOb
 	return err
 }
 
-func ensureFuncJob(client kubernetes.Interface, funcMeta metadata, funcObj *spec.Function, or []metav1.OwnerReference) error {
-	podAnnotations := map[string]string{
-		// Attempt to attract the attention of prometheus.
-		// For runtimes that don't support /metrics,
-		// prometheus will get a 404 and mostly silently
-		// ignore the pod (still displayed in the list of
-		// "targets")
-		"prometheus.io/scrape": "true",
-		"prometheus.io/path":   "/metrics",
-		"prometheus.io/port":   "8080",
-	}
-
+func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
 	job := &v2alpha1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            fmt.Sprintf("trigger-%s", funcMeta.Name),
-			Labels:          funcMeta.Labels,
+			Name:            fmt.Sprintf("trigger-%s", funcObj.Metadata.Name),
+			Labels:          funcObj.Metadata.Labels,
 			OwnerReferences: or,
 		},
 		Spec: v2alpha1.CronJobSpec{
@@ -979,15 +907,12 @@ func ensureFuncJob(client kubernetes.Interface, funcMeta metadata, funcObj *spec
 			JobTemplate: v2alpha1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
 					Template: v1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Annotations: podAnnotations,
-						},
 						Spec: v1.PodSpec{
 							Containers: []v1.Container{
 								{
 									Image: busybox,
 									Name:  "trigger",
-									Args:  []string{"curl", fmt.Sprintf("http://%s.%s.svc:8080", funcMeta.Name, funcMeta.Namespace)},
+									Args:  []string{"curl", fmt.Sprintf("http://%s.%s.svc:8080", funcObj.Metadata.Name, funcObj.Metadata.Namespace)},
 								},
 							},
 							RestartPolicy: v1.RestartPolicyOnFailure,
@@ -998,10 +923,10 @@ func ensureFuncJob(client kubernetes.Interface, funcMeta metadata, funcObj *spec
 		},
 	}
 
-	_, err := client.BatchV2alpha1().CronJobs(funcMeta.Namespace).Create(job)
+	_, err := client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Create(job)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		data, _ := json.Marshal(job)
-		_, err = client.BatchV2alpha1().CronJobs(funcMeta.Namespace).Patch(job.Name, types.StrategicMergePatchType, data)
+		_, err = client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Patch(job.Name, types.StrategicMergePatchType, data)
 		if err != nil {
 			return err
 		}

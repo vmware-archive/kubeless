@@ -234,7 +234,7 @@ func TestEnsureK8sResources(t *testing.T) {
 		},
 	}
 
-	if err := EnsureK8sResources(ns, func1, f1, clientset); err != nil {
+	if err := EnsureK8sResources(f1, clientset); err != nil {
 		t.Fatalf("Creating resources returned err: %v", err)
 	}
 
@@ -262,7 +262,7 @@ func TestEnsureK8sResources(t *testing.T) {
 		t.Errorf("Create wrong deployment object. Expect deployment labels foo=bar but got %s", dpm.Spec.Template.Labels["foo"])
 	}
 
-	if err := EnsureK8sResources(ns, func2, f2, clientset); err != nil {
+	if err := EnsureK8sResources(f2, clientset); err != nil {
 		t.Fatalf("Creating resources returned err: %v", err)
 	}
 	svc, err = clientset.CoreV1().Services(ns).Get(func2, metav1.GetOptions{})
