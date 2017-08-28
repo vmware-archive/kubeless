@@ -1,4 +1,19 @@
 #!/bin/bash
+
+# Copyright (c) 2016-2017 Bitnami
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Special case: if ./ksonnet-lib exists, set KUBECFG_JPATH
 test -d $PWD/ksonnet-lib && export KUBECFG_JPATH=$PWD/ksonnet-lib
 
@@ -6,7 +21,7 @@ test -d $PWD/ksonnet-lib && export KUBECFG_JPATH=$PWD/ksonnet-lib
 : ${GOPATH:?} ${KUBECFG_JPATH:?}
 export PATH=${PATH}:${GOPATH}/bin
 
-# Default kubernetes context - if it's "dind" or "minikube" will 
+# Default kubernetes context - if it's "dind" or "minikube" will
 # try to bring up a local (dockerized) cluster
 test -n "${TRAVIS_K8S_CONTEXT}" && set -- ${TRAVIS_K8S_CONTEXT}
 # minikube seems to be more stable than dind, sp for kafka
