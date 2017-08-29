@@ -43,6 +43,7 @@ script:
   - make all-yaml
   - |
     if [ "$TRAVIS_OS_NAME" = linux ]; then
+      export TEST_DEBUG=1
       make integration-tests
     fi
 
