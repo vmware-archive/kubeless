@@ -19,10 +19,10 @@ import (
 	"io"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
@@ -98,17 +98,17 @@ func printAutoscale(w io.Writer, ass []v2alpha1.HorizontalPodAutoscaler, output 
 			}
 			r := string(data)
 
-			table.AddRow([]string{n, ns, ta, min, max, ty, o, p, r})
+			table.AddRow(n, ns, ta, min, max, ty, o, p, r)
 		}
 		fmt.Fprintln(w, table)
 	} else {
 		for _, i := range ass {
 			switch output {
 			case "json":
-				b, _ := json.MarshalIndent(i.Spec, "", "  ")
+				b, _ := json.MarshalIndent(i, "", "  ")
 				fmt.Fprintln(w, string(b))
 			case "yaml":
-				b, _ := yaml.Marshal(i.Spec)
+				b, _ := yaml.Marshal(i)
 				fmt.Fprintln(w, string(b))
 			default:
 				return fmt.Errorf("Wrong output format. Please use only json|yaml")

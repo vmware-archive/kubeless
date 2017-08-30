@@ -1113,7 +1113,7 @@ func CreateAutoscale(client kubernetes.Interface, funcName, ns, metric string, m
 			{
 				Type: v2alpha1.ObjectMetricSourceType,
 				Object: &v2alpha1.ObjectMetricSource{
-					MetricName:  "requests-per-second",
+					MetricName:  "http_requests",
 					TargetValue: q,
 					Target: v2alpha1.CrossVersionObjectReference{
 						Kind: "Service",

@@ -36,7 +36,7 @@ var autoscaleCreateCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err.Error())
 		}
-		if metric != "cpu" || metric != "qps" {
+		if metric != "cpu" && metric != "qps" {
 			logrus.Fatalf("only supported metrics: cpu, qps")
 		}
 
