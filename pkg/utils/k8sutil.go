@@ -651,6 +651,8 @@ func getInitImage(runtime string) string {
 		return "tuna/python-pillow:2.7.11-alpine"
 	case strings.Contains(runtime, "nodejs"):
 		return "node:6.10-alpine"
+	case strings.Contains(runtime, "ruby"):
+		return "bitnami/ruby:2.4"
 	default:
 		return ""
 	}
@@ -663,6 +665,8 @@ func getCommand(runtime string) []string {
 		return []string{"pip", "install", "--prefix=/pythonpath", "-r", "/requirements/requirements.txt"}
 	case strings.Contains(runtime, "nodejs"):
 		return []string{"/bin/sh", "-c", "cp package.json /nodepath && npm install --prefix=/nodepath"}
+	case strings.Contains(runtime, "ruby"):
+		return []string{"bundle", "install", "--path", "/rubypath"}
 	default:
 		return []string{}
 	}
@@ -687,6 +691,17 @@ func getVolumeMounts(name, runtime string) []v1.VolumeMount {
 			{
 				Name:      "nodepath",
 				MountPath: "/nodepath",
+			},
+			{
+				Name:      name,
+				MountPath: "/requirements",
+			},
+		}
+	case strings.Contains(runtime, "ruby"):
+		return []v1.VolumeMount{
+			{
+				Name:      "rubypath",
+				MountPath: "/rubypath",
 			},
 			{
 				Name:      name,
@@ -727,6 +742,21 @@ func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
 		})
 		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
 			Name: "nodepath",
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		})
+	case strings.Contains(runtime, "ruby"):
+		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
+			Name:  "GEM_HOME",
+			Value: "/opt/kubeless/rubypath/ruby/2.4.0",
+		})
+		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
+			Name:      "rubypath",
+			MountPath: "/opt/kubeless/rubypath",
+		})
+		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
+			Name: "rubypath",
 			VolumeSource: v1.VolumeSource{
 				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},

@@ -26,7 +26,14 @@ get-ruby:
 get-ruby-verify:
 	kubeless function call get-ruby |egrep hello.world
 
-get: get-python get-nodejs get-python-metadata get-ruby
+get-ruby-deps:
+	kubeless function deploy get-ruby-deps --trigger-http --runtime ruby2.4 --handler hellowithdeps.foo --from-file ruby/hellowithdeps.rb --dependencies ruby/Gemfile
+	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-ruby-deps/"
+
+get-ruby-deps-verify:
+	kubeless function call get-ruby-deps |egrep hello.world
+
+get: get-python get-nodejs get-python-metadata get-ruby get-ruby-deps
 
 post-python:
 	kubeless function deploy post-python --trigger-http --runtime python2.7 --handler hellowithdata.handler --from-file python/hellowithdata.py
