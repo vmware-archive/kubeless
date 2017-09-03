@@ -285,10 +285,10 @@ func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
 
 func TestCreateIngressResource(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
-	if err := CreateIngress(clientset, "foo", "bar", "foo.bar", "myns"); err != nil {
+	if err := CreateIngress(clientset, "foo", "bar", "foo.bar", "myns", false); err != nil {
 		t.Fatalf("Creating ingress returned err: %v", err)
 	}
-	if err := CreateIngress(clientset, "foo", "bar", "foo.bar", "myns"); err != nil {
+	if err := CreateIngress(clientset, "foo", "bar", "foo.bar", "myns", false); err != nil {
 		if !k8sErrors.IsAlreadyExists(err) {
 			t.Fatalf("Expect object is already exists, got %v", err)
 		}
