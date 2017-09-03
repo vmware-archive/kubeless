@@ -775,7 +775,7 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 }
 
 // CreateIngress creates ingress rule for a specific function
-func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname, ns string, enableTlsAcme bool) error {
+func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname, ns string, enableTLSAcme bool) error {
 
 	ingress := &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
@@ -804,7 +804,7 @@ func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname,
 		},
 	}
 
-	if enableTlsAcme {
+	if enableTLSAcme {
 		// add annotations and TLS configuration for kube-lego
 		ingressAnnotations := map[string]string{
 			"kubernetes.io/tls-acme":             "true",

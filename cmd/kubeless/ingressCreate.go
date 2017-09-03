@@ -56,7 +56,7 @@ var ingressCreateCmd = &cobra.Command{
 			}
 		}
 
-		enableTlsAcme, err := cmd.Flags().GetBool("enableTlsAcme")
+		enableTLSAcme, err := cmd.Flags().GetBool("enableTLSAcme")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -76,7 +76,7 @@ var ingressCreateCmd = &cobra.Command{
 
 		client := utils.GetClientOutOfCluster()
 
-		err = utils.CreateIngress(client, ingressName, funcName, hostName, ns, enableTlsAcme)
+		err = utils.CreateIngress(client, ingressName, funcName, hostName, ns, enableTLSAcme)
 		if err != nil {
 			logrus.Fatalf("Can't create ingress route: %v", err)
 		}
@@ -97,5 +97,5 @@ func functionExists(tprClient rest.Interface, function, ns string) error {
 func init() {
 	ingressCreateCmd.Flags().StringP("hostname", "", "", "Specify a valid hostname for the function")
 	ingressCreateCmd.Flags().StringP("function", "", "", "Name of the function")
-	ingressCreateCmd.Flags().BoolP("enableTlsAcme", "", false, "If true, Ingress will be configured for use with kube-lego")
+	ingressCreateCmd.Flags().BoolP("enableTLSAcme", "", false, "If true, Ingress will be configured for use with kube-lego")
 }
