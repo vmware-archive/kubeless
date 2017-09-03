@@ -775,18 +775,12 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 }
 
 // CreateIngress creates ingress rule for a specific function
-func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname, ns string) error {
-	//TODO: skip annotation. We can add it later
-	//ingressAnnotations := map[string]string{
-	//	"kubernetes.io/ingress.class": "nginx",
-	//	"kubernetes.io/tlsacme":      "true",
-	//}
+func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname, ns string, enableTlsAcme bool) error {
 
 	ingress := &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ingressName,
 			Namespace: ns,
-			//Annotations: ingressAnnotations,
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
@@ -808,6 +802,22 @@ func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname,
 				},
 			},
 		},
+	}
+
+	if enableTlsAcme {
+		// add annotations and TLS configuration for kube-lego
+		ingressAnnotations := map[string]string{
+			"kubernetes.io/tls-acme":             "true",
+			"ingress.kubernetes.io/ssl-redirect": "true",
+		}
+		ingress.ObjectMeta.Annotations = ingressAnnotations
+
+		ingress.Spec.TLS = []v1beta1.IngressTLS{
+			{
+				Hosts:      []string{hostname},
+				SecretName: ingressName + "-tls",
+			},
+		}
 	}
 
 	_, err := client.ExtensionsV1beta1().Ingresses(ns).Create(ingress)
