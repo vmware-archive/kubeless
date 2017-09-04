@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 require 'sinatra'
+require 'kafka'
 
 # Don't buffer stdout
 $stdout.sync = true
@@ -21,6 +22,11 @@ MOD_NAME = ENV['MOD_NAME']
 FUNC_HANDLER = ENV['FUNC_HANDLER']
 MOD_ROOT_PATH = ENV.fetch('MOD_ROOT_PATH', '/kubeless/')
 MOD_PATH = "#{File.join(MOD_ROOT_PATH, MOD_NAME)}.rb"
+
+TOPIC_NAME = ENV['TOPIC_NAME']
+KAFKA_SVC = ENV.fetch('KUBELESS_KAFKA_SVC', 'kafka')
+KAFKA_NAMESPACE = ENV.fetch('KUBELESS_KAFKA_NAMESPACE', 'kubeless')
+KAFKA_HOST = "#{KAFKA_SVC}.#{KAFKA_NAMESPACE}:9092";
 
 begin
   puts "Loading #{MOD_PATH}"
@@ -33,17 +39,18 @@ rescue
   raise
 end
 
+kafka = Kafka.new(seed_brokers: [KAFKA_HOST])
+consumer = kafka.consumer(group_id: "ruby#{MOD_NAME}#{FUNC_HANDLER}")
+consumer.subscribe(TOPIC_NAME)
+trap("TERM") { consumer.stop }
+
+consumer.each_message do |message|
+  mod.send(FUNC_HANDLER.to_sym, message.value)
+end
+
 set :server, 'webrick'
 set :port, 8080
 
-get '/' do
-  mod.send(FUNC_HANDLER.to_sym, request)
-end
-
-post '/' do
-  mod.send(FUNC_HANDLER.to_sym, request)
-end
-
 get '/healthz' do
-  'OK'
+  return 'OK'
 end

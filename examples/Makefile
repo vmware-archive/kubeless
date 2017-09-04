@@ -65,24 +65,42 @@ post-ruby-verify:
 
 post: post-python post-nodejs post-ruby
 
-pubsub-34:
-	kubeless topic create pubsub
-	kubeless function deploy pubsub --trigger-topic pubsub --runtime python3.4 --handler pubsub.handler --from-file python/pubsub.py
-
-# Generate a random string to inject into pubsub topic,
-# then "tail -f" until it shows (with timeout)
-pubsub-verify-34:
-	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
-	kubeless topic publish --topic pubsub --data "$(DATA)"
-	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub))'
-
-pubsub:
-	kubeless topic create s3
-	kubeless function deploy pubsub --trigger-topic s3 --runtime python2.7 --handler pubsub.handler --from-file python/pubsub.py
+pubsub-python:
+	kubeless topic create s3-python
+	kubeless function deploy pubsub-python --trigger-topic s3-python --runtime python2.7 --handler pubsub.handler --from-file python/pubsub.py
 
 # Generate a random string to inject into s3 topic,
 # then "tail -f" until it shows (with timeout)
-pubsub-verify:
+pubsub-python-verify:
 	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
-	kubeless topic publish --topic s3 --data "$(DATA)"
-	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub))'
+	kubeless topic publish --topic s3-python --data "$(DATA)"
+	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-python))'
+
+pubsub-python34:
+	kubeless topic create s3-python34
+	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub.handler --from-file python/pubsub.py
+
+pubsub-python34-verify:
+	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
+	kubeless topic publish --topic s3-python34 --data "$(DATA)"
+	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-python34))'
+
+pubsub-nodejs:
+	kubeless topic create s3-nodejs
+	kubeless function deploy pubsub-nodejs --trigger-topic s3-nodejs --runtime nodejs6 --handler pubsub.handler --from-file nodejs/helloevent.js
+
+pubsub-nodejs-verify:
+	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
+	kubeless topic publish --topic s3-nodejs --data "$(DATA)"
+	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-nodejs))'
+
+pubsub-ruby:
+	kubeless topic create s3-ruby
+	kubeless function deploy pubsub-ruby --trigger-topic s3-ruby --runtime ruby2.4 --handler pubsub.handler --from-file ruby/helloevent.rb
+
+pubsub-ruby-verify:
+	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
+	kubeless topic publish --topic s3-ruby --data "$(DATA)"
+	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-ruby))'
+
+post: pubsub-python pubsub-nodejs pubsub-ruby
