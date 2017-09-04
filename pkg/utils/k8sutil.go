@@ -508,16 +508,8 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 
 // DeleteK8sResources removes k8s objects of the function
 func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
-	deploy, err := client.Extensions().Deployments(ns).Get(name, metav1.GetOptions{})
-	if err == nil {
-		//scale deployment to 0
-		replicas := int32(0)
-		deploy.Spec.Replicas = &replicas
-		_, _ = client.Extensions().Deployments(ns).Update(deploy)
-	}
-
-	// delete deployment
-	err = client.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{})
+	deletePolicy := metav1.DeletePropagationForeground
+	err := client.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
