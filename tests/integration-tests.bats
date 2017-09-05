@@ -41,11 +41,17 @@ load ../script/libtest
 @test "Test function: get-nodejs" {
   test_kubeless_function get-nodejs
 }
+@test "Test function: get-ruby" {
+  test_kubeless_function get-ruby
+}
 @test "Test function: post-python" {
   test_kubeless_function post-python
 }
 @test "Test function: post-nodejs" {
   test_kubeless_function post-nodejs
+}
+@test "Test function: post-ruby" {
+  test_kubeless_function post-ruby
 }
 @test "Test function: get-python-metadata" {
   test_kubeless_function get-python-metadata
