@@ -295,6 +295,32 @@ func TestCreateIngressResource(t *testing.T) {
 	}
 }
 
+func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	if err := CreateIngress(clientset, "foo", "bar", "foo.bar", "myns", true); err != nil {
+		t.Fatalf("Creating ingress returned err: %v", err)
+	}
+
+	ingress, err := clientset.ExtensionsV1beta1().Ingresses("myns").Get("foo", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Getting Ingress returned err: %v", err)
+	}
+
+	annotations := ingress.ObjectMeta.Annotations
+	if annotations == nil || len(annotations) == 0 ||
+		annotations["kubernetes.io/tls-acme"] != "true" ||
+		annotations["ingress.kubernetes.io/ssl-redirect"] != "true" {
+		t.Fatal("Missing or wrong annotations!")
+	}
+
+	tls := ingress.Spec.TLS
+	if tls == nil || len(tls) != 1 ||
+		tls[0].SecretName == "" ||
+		tls[0].Hosts == nil || len(tls[0].Hosts) != 1 || tls[0].Hosts[0] == "" {
+		t.Fatal("Missing or incomplete TLS spec!")
+	}
+}
+
 func TestDeleteIngressResource(t *testing.T) {
 	myNsFoo := metav1.ObjectMeta{
 		Namespace: "myns",
