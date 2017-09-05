@@ -1,3 +1,3 @@
 def foo(context)
-  return "hello world"
+  "hello world"
 end

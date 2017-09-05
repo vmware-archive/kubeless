@@ -18,14 +18,13 @@ spec:
       http = Net::HTTP.new(uri.host, uri.port)
       request = Net::HTTP::Get.new(uri.request_uri)
       http.use_ssl = true
-      http.verify_mode = OpenSSL::SSL::VERIFY_PEER
       response = http.request(request)
 
       # Parse response
       output = JSON.parse(response.body)
 
       # Create a Hash for output 
-      output_hash = { :version => output[0]['name'] }
+      output_hash = { version: output.first['name'] }
 
       # Print the stuff (JSON)
       puts JSON.pretty_generate(output_hash)
