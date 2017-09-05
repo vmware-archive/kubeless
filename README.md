@@ -115,7 +115,7 @@ $ curl --data '{"Another": "Echo"}' localhost:8080/api/v1/proxy/namespaces/defau
 {"Another": "Echo"}
 ```
 
-Kubeless also supports [ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) which means you can provide your custom URL to the function. Please refer to this doc for more details.
+Kubeless also supports [ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) which means you can provide your custom URL to the function. Please refer to [this doc](https://github.com/kubeless/kubeless/docs/ingress.md) for more details.
 
 ### PubSub function
 
@@ -188,7 +188,7 @@ Kubeless uses k8s primitives, there is no additional API server or API router/ga
 
 We would love to get your help, feel free to land a hand. We are currently looking to implement the following high level features:
 
-* Add other runtimes, currently Python, NodeJS and Ruby are supported. We are also providing a way to use custom runtime. Please check this doc for more details.
+* Add other runtimes, currently Python, NodeJS and Ruby are supported. We are also providing a way to use custom runtime. Please check [this doc](https://github.com/kubeless/kubeless/docs/runtimes.md) for more details.
 * Investigate other messaging bus (e.g nats.io)
 * Instrument the runtimes via Prometheus to be able to create pod autoscalers automatically (e.g use custom metrics not just CPU)
 * Optimize for functions startup time
