@@ -45,5 +45,5 @@ post '/' do
 end
 
 get '/healthz' do
-	'OK'
+  'OK'
 end
