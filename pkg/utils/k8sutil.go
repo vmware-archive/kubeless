@@ -58,7 +58,7 @@ const (
 	node6Pubsub    = "bitnami/kubeless-nodejs-event-consumer@sha256:b027bfef5f99c3be68772155a1feaf1f771ab9a3c7bb49bef2e939d6b766abec"
 	node8Http      = "bitnami/kubeless-nodejs@sha256:1eff2beae6fcc40577ada75624c3e4d3840a854588526cd8616d66f4e889dfe6"
 	node8Pubsub    = "bitnami/kubeless-nodejs-event-consumer@sha256:4d005c9c0b462750d9ab7f1305897e7a01143fe869d3b722ed3330560f9c7fb5"
-	ruby24Http     = "prydonius/kubeless-ruby:latest"
+	ruby24Http     = "bitnami/kubeless-ruby@sha256:98e95c41652a7a0149421157c2dfb64b31e0d406b8c46c8bc89bd54e50f9898d"
 	pubsubFunc     = "PubSub"
 )
 
