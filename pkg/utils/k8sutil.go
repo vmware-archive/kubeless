@@ -565,7 +565,8 @@ func UpdateK8sCustomResource(f *spec.Function) error {
 	}
 
 	// TODO: looking for a way to not writing to temp file
-	err = ioutil.WriteFile(".func.json", funcJSON, 0644)
+	filename := os.TempDir() + "/.func.json"
+	err = ioutil.WriteFile(filename, funcJSON, 0644)
 	if err != nil {
 		return err
 	}
@@ -574,12 +575,12 @@ func UpdateK8sCustomResource(f *spec.Function) error {
 	buferr := bytes.NewBuffer([]byte{})
 	applyCmd := cmd.NewCmdApply(fa, buf, buferr)
 
-	applyCmd.Flags().Set("filename", ".func.json")
+	applyCmd.Flags().Set("filename", filename)
 	applyCmd.Flags().Set("output", "name")
 	applyCmd.Run(applyCmd, []string{})
 
 	// remove temp func file
-	err = os.Remove(".func.json")
+	err = os.Remove(filename)
 	if err != nil {
 		return err
 	}
