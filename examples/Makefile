@@ -9,17 +9,24 @@ get-nodejs:
 	kubeless function deploy get-nodejs --trigger-http --runtime nodejs6 --handler helloget.foo --from-file nodejs/helloget.js
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-nodejs/"
 
+get-nodejs-verify:
+	kubeless function call get-nodejs |egrep hello.world
+
 get-python-metadata:
 	kubeless function deploy get-python-metadata --trigger-http --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --env foo:bar,bar=foo,foo --memory 128Mi --label foo:bar,bar=foo,foobar
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python-metadata/"
 
-get: get-python get-nodejs get-python-metadata
-
-get-nodejs-verify:
-	kubeless function call get-nodejs |egrep hello.world
-
 get-python-metadata-verify:
 	kubeless function call get-python-metadata |egrep hello.world
+
+get-ruby:
+	kubeless function deploy get-ruby --trigger-http --runtime ruby2.4 --handler helloget.foo --from-file ruby/helloget.rb
+	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-ruby/"
+
+get-ruby-verify:
+	kubeless function call get-ruby |egrep hello.world
+
+get: get-python get-nodejs get-python-metadata get-ruby
 
 post-python:
 	kubeless function deploy post-python --trigger-http --runtime python2.7 --handler hellowithdata.handler --from-file python/hellowithdata.py
@@ -35,7 +42,14 @@ post-nodejs:
 post-nodejs-verify:
 	kubeless function call post-nodejs --data '{"it-s": "alive"}'|egrep "it.*alive"
 
-post: post-python post-nodejs
+post-ruby:
+	kubeless function deploy post-ruby --trigger-http --runtime ruby2.4 --handler hellowithdata.handler --from-file ruby/hellowithdata.rb
+	echo "curl --data '{\"hello\":\"world\"}' localhost:8080/api/v1/proxy/namespaces/default/services/post-ruby/ --header \"Content-Type:application/json\""
+
+post-ruby-verify:
+	kubeless function call post-ruby --data '{"it-s": "alive"}'|egrep "it.*alive"
+
+post: post-python post-nodejs post-ruby
 
 pubsub:
 	kubeless topic create s3
