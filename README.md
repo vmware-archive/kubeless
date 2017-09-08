@@ -27,9 +27,9 @@ Download `kubeless` cli from the [release page](https://github.com/kubeless/kube
 
 There are several kubeless manifests being shipped for multiple k8s environments (non-rbac, rbac and openshift), please consider to pick up the correct one:
 
-- `kubeless-$RELEASE.yaml` is used for non-RBAC Kubernetes cluster.
-- `kubeless-rbac-$RELEASE.yaml` is used for RBAC-enabled Kubernetes cluster.
-- `kubeless-openshift-$RELEASE.yaml` is used to deploy Kubeless to OpenShift (1.5+).
+* `kubeless-$RELEASE.yaml` is used for non-RBAC Kubernetes cluster.
+* `kubeless-rbac-$RELEASE.yaml` is used for RBAC-enabled Kubernetes cluster.
+* `kubeless-openshift-$RELEASE.yaml` is used to deploy Kubeless to OpenShift (1.5+).
 
 For example, this below is a show case of deploying kubeless to a non-RBAC Kubernetes cluster.
 
@@ -81,7 +81,7 @@ def foobar(context):
 
 You create it with:
 
-```
+```console
 $ kubeless function deploy get-python --runtime python2.7 \
                                 --handler test.foobar \
                                 --from-file test.py \
@@ -94,11 +94,15 @@ You will see the function custom resource created:
 $ kubectl get functions
 NAME          KIND
 get-python    Function.v1.k8s.io
+
+$ kubeless function ls
+NAME        NAMESPACE   HANDLER     RUNTIME     TYPE    TOPIC
+get-python  default     test.foobar python2.7   HTTP
 ```
 
 You can then call the function with:
 
-```
+```console
 $ kubeless function call get-python --data '{"echo": "echo echo"}'
 Connecting to function...
 Forwarding from 127.0.0.1:30000 -> 8080
@@ -109,8 +113,9 @@ Handling connection for 30000
 
 Or you can curl directly with `kubectl proxy`, for example:
 
-```
-$ kubectl proxy -p 8080
+```console
+$ kubectl proxy -p 8080 &
+
 $ curl --data '{"Another": "Echo"}' localhost:8080/api/v1/proxy/namespaces/default/services/get-python/ --header "Content-Type:application/json"
 {"Another": "Echo"}
 ```
@@ -129,27 +134,36 @@ def foobar(context):
 
 You create it the same way than an _HTTP_ function except that you specify a `--trigger-topic`.
 
-```
+```console
 $ kubeless function deploy test --runtime python2.7 \
                                 --handler test.foobar \
                                 --from-file test.py \
-                                --trigger-topic <topic_name>
+                                --trigger-topic test-topic
 ```
 
 ### Other commands
 
 You can delete and list functions:
 
-```
-$ kubeless function delete <function_name>
+```console
 $ kubeless function ls
+NAME        NAMESPACE   HANDLER     RUNTIME     TYPE    TOPIC
+test        default     test.foobar python2.7   PubSub  test-topic
+
+$ kubeless function delete test
+
+$ kubeless function ls
+NAME        NAMESPACE   HANDLER     RUNTIME     TYPE    TOPIC
 ```
 
 You can create, list and delete PubSub topics:
 
-```
-$ kubeless topic create <topic_name>
-$ kubeless topic delete <topic_name>
+```console
+$ kubeless topic create another-topic
+Created topic "another-topic".
+
+$ kubeless topic delete another-topic
+
 $ kubeless topic ls
 ```
 
@@ -163,22 +177,21 @@ Also checkout the [functions repository](https://github.com/kubeless/functions).
 
 ### Building with go
 
-- you need go v1.7+
-- if your working copy is not in your `GOPATH`, you need to set it accordingly.
-- we provided Makefile.
+* you need go v1.7+
+* if your working copy is not in your `GOPATH`, you need to set it accordingly.
+* we provided Makefile.
 
-```
+```console
 $ make binary
 ```
 
 You can build kubeless for multiple platforms with:
 
-```
+```console
 $ make binary-cross
 ```
 
 ## Comparison
-
 
 There are other solutions, like [fission](http://fission.io) and [funktion](https://github.com/fabric8io/funktion). There is also an incubating project at the ASF: [OpenWhisk](https://github.com/openwhisk/openwhisk). We believe however, that Kubeless is the most Kubernetes native of all.
 
