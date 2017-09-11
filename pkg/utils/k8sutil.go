@@ -51,6 +51,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/kubectl/cmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+
+	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 )
 
 const (
@@ -181,7 +183,7 @@ func GetTPRClient() (*rest.RESTClient, error) {
 func GetTPRClientOutOfCluster() (*rest.RESTClient, error) {
 	tprconfig, err := BuildOutOfClusterConfig()
 	if err != nil {
-		logrus.Fatalf("Can not get kubernetes config: %v", err)
+		return nil, err
 	}
 
 	configureClient(tprconfig)
@@ -192,6 +194,19 @@ func GetTPRClientOutOfCluster() (*rest.RESTClient, error) {
 	}
 
 	return tprclient, nil
+}
+
+func GetServiceMonitorClientOutOfCluster() (*monitoringv1alpha1.MonitoringV1alpha1Client, error) {
+	config, err := BuildOutOfClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := monitoringv1alpha1.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }
 
 // GetFunction returns specification of a function
@@ -449,7 +464,7 @@ func DeleteK8sCustomResource(tprClient *rest.RESTClient, funcName, ns string) er
 		Do().Into(&f)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
-			return fmt.Errorf("The function doesn't exist")
+			return errors.New("The function doesn't exist")
 		}
 	}
 
@@ -840,6 +855,7 @@ func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
 				{
+					Name:       "function-port",
 					Port:       8080,
 					TargetPort: intstr.FromInt(8080),
 					Protocol:   v1.ProtocolTCP,
@@ -1113,7 +1129,7 @@ func CreateAutoscale(client kubernetes.Interface, funcName, ns, metric string, m
 			{
 				Type: v2alpha1.ObjectMetricSourceType,
 				Object: &v2alpha1.ObjectMetricSource{
-					MetricName:  "http_requests",
+					MetricName:  "function_calls",
 					TargetValue: q,
 					Target: v2alpha1.CrossVersionObjectReference{
 						Kind: "Service",
@@ -1121,6 +1137,10 @@ func CreateAutoscale(client kubernetes.Interface, funcName, ns, metric string, m
 					},
 				},
 			},
+		}
+		err = createServiceMonitor(funcName, ns)
+		if err != nil {
+			return err
 		}
 	default:
 		return errors.New("metric is not supported")
@@ -1157,4 +1177,45 @@ func DeleteAutoscale(client kubernetes.Interface, name, ns string) error {
 		return err
 	}
 	return nil
+}
+
+func createServiceMonitor(funcName, ns string) error {
+	smclient, err := GetServiceMonitorClientOutOfCluster()
+	if err != nil {
+		return err
+	}
+
+	_, err = smclient.ServiceMonitors(ns).Get(funcName)
+	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			s := &monitoringv1alpha1.ServiceMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      funcName,
+					Namespace: ns,
+					Labels: map[string]string{
+						"service-monitor": funcName,
+					},
+				},
+				Spec: monitoringv1alpha1.ServiceMonitorSpec{
+					Selector: metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"function": funcName,
+						},
+					},
+					Endpoints: []monitoringv1alpha1.Endpoint{
+						{
+							Port: "function-port",
+						},
+					},
+				},
+			}
+			_, err = smclient.ServiceMonitors(ns).Create(s)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	} else {
+		return errors.New("service monitor has already existed")
+	}
 }
