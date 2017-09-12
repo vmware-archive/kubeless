@@ -1,5 +1,5 @@
-hash: 479ec7c29f33e69bd4c9ff646ea2fe65317202cc65ebcabbfa80528e816e689f
-updated: 2017-08-21T17:28:08.375820375+07:00
+hash: 982801e6c8f8fa5c85ca4b188c00713b817016e1027cffb864885e368bbc0d21
+updated: 2017-09-11T14:40:00.618199424+07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -31,6 +31,10 @@ imports:
   - health
   - httputil
   - timeutil
+- name: github.com/coreos/prometheus-operator
+  version: 0d446f3052e47b5ad95989d9a8ffe4f6675e69b5
+  subpackages:
+  - pkg/client/monitoring/v1alpha1
 - name: github.com/davecgh/go-spew
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
@@ -158,6 +162,8 @@ imports:
   version: febf2d34b54a69ce7530036c7503b1c9fbfdf0bb
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
+- name: github.com/pkg/errors
+  version: a22138067af1c4942683050411a841ade67fe1eb
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
@@ -291,7 +297,7 @@ imports:
   - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: 2308857ad3b8b18abf74ff734853973eda9da94d
+  version: b6348e73bd115a31b70a4e9ff12d35869d057d8c
   subpackages:
   - pkg/authentication/authenticator
   - pkg/authentication/serviceaccount
@@ -305,47 +311,27 @@ imports:
   version: 3627aeb7d4f6ade38f995d2c923e459146493c7e
   subpackages:
   - discovery
-  - discovery/fake
   - dynamic
   - kubernetes
-  - kubernetes/fake
   - kubernetes/scheme
   - kubernetes/typed/apps/v1beta1
-  - kubernetes/typed/apps/v1beta1/fake
   - kubernetes/typed/authentication/v1
-  - kubernetes/typed/authentication/v1/fake
   - kubernetes/typed/authentication/v1beta1
-  - kubernetes/typed/authentication/v1beta1/fake
   - kubernetes/typed/authorization/v1
-  - kubernetes/typed/authorization/v1/fake
   - kubernetes/typed/authorization/v1beta1
-  - kubernetes/typed/authorization/v1beta1/fake
   - kubernetes/typed/autoscaling/v1
-  - kubernetes/typed/autoscaling/v1/fake
   - kubernetes/typed/autoscaling/v2alpha1
-  - kubernetes/typed/autoscaling/v2alpha1/fake
   - kubernetes/typed/batch/v1
-  - kubernetes/typed/batch/v1/fake
   - kubernetes/typed/batch/v2alpha1
-  - kubernetes/typed/batch/v2alpha1/fake
   - kubernetes/typed/certificates/v1beta1
-  - kubernetes/typed/certificates/v1beta1/fake
   - kubernetes/typed/core/v1
-  - kubernetes/typed/core/v1/fake
   - kubernetes/typed/extensions/v1beta1
-  - kubernetes/typed/extensions/v1beta1/fake
   - kubernetes/typed/policy/v1beta1
-  - kubernetes/typed/policy/v1beta1/fake
   - kubernetes/typed/rbac/v1alpha1
-  - kubernetes/typed/rbac/v1alpha1/fake
   - kubernetes/typed/rbac/v1beta1
-  - kubernetes/typed/rbac/v1beta1/fake
   - kubernetes/typed/settings/v1alpha1
-  - kubernetes/typed/settings/v1alpha1/fake
   - kubernetes/typed/storage/v1
-  - kubernetes/typed/storage/v1/fake
   - kubernetes/typed/storage/v1beta1
-  - kubernetes/typed/storage/v1beta1/fake
   - pkg/api
   - pkg/api/install
   - pkg/api/v1
@@ -395,9 +381,7 @@ imports:
   - plugin/pkg/client/auth/gcp
   - plugin/pkg/client/auth/oidc
   - rest
-  - rest/fake
   - rest/watch
-  - testing
   - third_party/forked/golang/template
   - tools/auth
   - tools/cache

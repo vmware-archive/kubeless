@@ -13,3 +13,7 @@ import:
 - package: github.com/docker/spdystream
 - package: github.com/renstrom/dedent
 - package: github.com/gosuri/uitable
+- package: github.com/coreos/prometheus-operator
+  version: v0.10.1
+  subpackages:
+  - pkg/client/monitoring/v1alpha1
