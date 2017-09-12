@@ -159,11 +159,11 @@ local zookeeperHeadlessSvc =
   service.mixin.spec.selector({kubeless: "zookeeper"}) +
   {spec+: {clusterIP: "None"}};
 
-local tpr = {
-  apiVersion: "extensions/v1beta1",
-  kind: "ThirdPartyResource",
-  metadata: objectMeta.name("function.k8s.io"),
-  versions: [{name: "v1"}],
+local crd = {
+  apiVersion: "apiextensions.k8s.io/v1beta1",
+  kind: "CustomResourceDefinition",
+  metadata: objectMeta.name("functions.k8s.io"),
+  spec: {group: "k8s.io", version: "v1", scope: "Namespaced", names: {plural: "functions", singular: "function", kind: "Function"}},
   description: "Kubernetes Native Serverless Framework",
 };
 
@@ -176,5 +176,5 @@ local tpr = {
   kafkaHeadlessSvc: k.util.prune(kafkaHeadlessSvc),
   zookeeperSvc: k.util.prune(zookeeperSvc),
   zookeeperHeadlessSvc: k.util.prune(zookeeperHeadlessSvc),
-  tpr: k.util.prune(tpr),
+  crd: k.util.prune(crd),
 }

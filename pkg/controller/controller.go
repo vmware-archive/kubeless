@@ -22,14 +22,12 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -203,28 +201,6 @@ func (c *Controller) processItem(key string) error {
 	}
 
 	c.logger.Infof("Updated Function %s", key)
-	return nil
-}
-
-func initResource(clientset kubernetes.Interface) error {
-	tpr := &v1beta1.ThirdPartyResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: tprName,
-		},
-		Versions: []v1beta1.APIVersion{
-			{Name: "v1"},
-		},
-		Description: "Kubeless: Serverless framework for Kubernetes",
-	}
-
-	_, err := clientset.Extensions().ThirdPartyResources().Create(tpr)
-	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		_, err = clientset.Extensions().ThirdPartyResources().Update(tpr)
-	}
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
