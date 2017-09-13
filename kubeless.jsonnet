@@ -11,7 +11,7 @@ local namespace = "kubeless";
 local controller_account_name = "controller-acct";
 
 local controllerContainer =
-  container.default("kubeless-controller", "bitnami/kubeless-controller@sha256:d07986d575a80179ae15205c6fa5eb3bf9f4f4f46235c79ad6b284e5d3df22d0") +
+  container.default("kubeless-controller", "bitnami/kubeless-controller:latest") +
   container.imagePullPolicy("IfNotPresent");
 
 local kafkaEnv = [

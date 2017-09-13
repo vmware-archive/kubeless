@@ -44,9 +44,7 @@ script:
   - |
     if [ "$TRAVIS_OS_NAME" = linux ]; then
       export TEST_DEBUG=1
-      NEW_DIGEST=$(docker inspect --format={{.Id}} $CONTROLLER_IMAGE)
-      OLD_DIGEST=$(cat kubeless.yaml | grep ${CONTROLLER_IMAGE_NAME} |  cut -d "@" -f 2)
-      sed 's/'"$OLD_DIGEST"'/'"$NEW_DIGEST"'/g' kubeless.yaml > kubeless-${TRAVIS_TAG}.yaml
+      docker tag $CONTROLLER_IMAGE ${CONTROLLER_IMAGE_NAME}:latest
       make integration-tests
     fi
 
@@ -69,10 +67,10 @@ before_deploy:
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
       docker push $CONTROLLER_IMAGE
       NEW_DIGEST=$(./script/find_digest.sh ${CONTROLLER_IMAGE_NAME} ${TRAVIS_TAG} | cut -d " " -f 2)
-      OLD_DIGEST=$(cat kubeless.yaml | grep ${CONTROLLER_IMAGE_NAME} |  cut -d "@" -f 2)
-      sed 's/'"$OLD_DIGEST"'/'"$NEW_DIGEST"'/g' kubeless.yaml > kubeless-${TRAVIS_TAG}.yaml
-      sed 's/'"$OLD_DIGEST"'/'"$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
-      sed 's/'"$OLD_DIGEST"'/'"$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
+      OLD_DIGEST=":latest"
+      sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless.yaml > kubeless-${TRAVIS_TAG}.yaml
+      sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
+      sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
     fi
 
 deploy:
