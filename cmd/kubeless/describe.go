@@ -55,7 +55,10 @@ var describeCmd = &cobra.Command{
 			logrus.Fatalf("Can not describe function: %v", err)
 		}
 
-		print(f, funcName, output)
+		err = print(f, funcName, output)
+		if err != nil {
+			logrus.Fatalf("Can not describe function: %v", err)
+		}
 	},
 }
 
@@ -64,14 +67,20 @@ func init() {
 	describeCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 }
 
-func print(f spec.Function, name, output string) {
+func print(f spec.Function, name, output string) error {
 	switch output {
 	case "":
 		table := uitable.New()
 		table.MaxColWidth = 80
 		table.Wrap = true
-		label, _ := json.Marshal(f.Metadata.Labels)
-		env, _ := json.Marshal(f.Spec.Template.Spec.Containers[0].Env)
+		label, err := json.Marshal(f.Metadata.Labels)
+		if err != nil {
+			return err
+		}
+		env, err := json.Marshal(f.Spec.Template.Spec.Containers[0].Env)
+		if err != nil {
+			return err
+		}
 		table.AddRow("Name:", name)
 		table.AddRow("Namespace:", fmt.Sprintf(f.Metadata.Namespace))
 		table.AddRow("Handler:", fmt.Sprintf(f.Spec.Handler))
@@ -84,12 +93,20 @@ func print(f spec.Function, name, output string) {
 		table.AddRow("Dependencies:", fmt.Sprintf(f.Spec.Deps))
 		fmt.Println(table)
 	case "json":
-		b, _ := json.MarshalIndent(f, "", "  ")
+		b, err := json.MarshalIndent(f, "", "  ")
+		if err != nil {
+			return err
+		}
 		fmt.Println(string(b))
 	case "yaml":
-		b, _ := yaml.Marshal(f)
+		b, err := yaml.Marshal(f)
+		if err != nil {
+			return err
+		}
 		fmt.Println(string(b))
 	default:
 		fmt.Println("Wrong output format. Please use only json|yaml")
 	}
+
+	return nil
 }

@@ -83,10 +83,16 @@ func printIngress(w io.Writer, ings []v1beta1.Ingress, output string) error {
 		for _, i := range ings {
 			switch output {
 			case "json":
-				b, _ := json.MarshalIndent(i.Spec, "", "  ")
+				b, err := json.MarshalIndent(i.Spec, "", "  ")
+				if err != nil {
+					return err
+				}
 				fmt.Fprintln(w, string(b))
 			case "yaml":
-				b, _ := yaml.Marshal(i.Spec)
+				b, err := yaml.Marshal(i.Spec)
+				if err != nil {
+					return err
+				}
 				fmt.Fprintln(w, string(b))
 			default:
 				return fmt.Errorf("Wrong output format. Please use only json|yaml")

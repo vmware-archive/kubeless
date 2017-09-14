@@ -154,10 +154,16 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 		for _, f := range functions {
 			switch output {
 			case "json":
-				b, _ := json.MarshalIndent(f, "", "  ")
+				b, err := json.MarshalIndent(f, "", "  ")
+				if err != nil {
+					return err
+				}
 				fmt.Fprintln(w, string(b))
 			case "yaml":
-				b, _ := yaml.Marshal(f)
+				b, err := yaml.Marshal(f)
+				if err != nil {
+					return err
+				}
 				fmt.Fprintln(w, string(b))
 			default:
 				return fmt.Errorf("Wrong output format. Please use only json|yaml")

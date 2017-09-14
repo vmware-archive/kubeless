@@ -41,7 +41,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -426,12 +425,6 @@ func DeleteK8sCustomResource(tprClient *rest.RESTClient, funcName, ns string) er
 	return nil
 }
 
-func getResource() v1.ResourceList {
-	r := make(map[v1.ResourceName]resource.Quantity)
-	r[v1.ResourceStorage], _ = resource.ParseQuantity("1Gi")
-	return r
-}
-
 // GetPodsByLabel returns list of pods which match the label
 // We use this to returns pods to which the function is deployed or pods running controllers
 func GetPodsByLabel(c kubernetes.Interface, ns, k, v string) (*v1.PodList, error) {
@@ -646,7 +639,10 @@ func GetLocalHostname(config *rest.Config, funcName string) (string, error) {
 		return "", err
 	}
 
-	host, _, _ := net.SplitHostPort(url.Host)
+	host, _, err := net.SplitHostPort(url.Host)
+	if err != nil {
+		return "", err
+	}
 
 	return fmt.Sprintf("%s.%s.nip.io", funcName, host), nil
 }
@@ -696,7 +692,10 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 
 	_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Create(configMap)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		data, _ := json.Marshal(configMap)
+		data, err := json.Marshal(configMap)
+		if err != nil {
+			return err
+		}
 		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Patch(configMap.Name, types.StrategicMergePatchType, data)
 	}
 
@@ -724,7 +723,10 @@ func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 	}
 	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(svc)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		data, _ := json.Marshal(svc)
+		data, err := json.Marshal(svc)
+		if err != nil {
+			return err
+		}
 		_, err = client.Core().Services(funcObj.Metadata.Namespace).Patch(svc.Name, types.StrategicMergePatchType, data)
 
 	}
@@ -873,7 +875,10 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 	_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		data, _ := json.Marshal(dpm)
+		data, err := json.Marshal(dpm)
+		if err != nil {
+			return err
+		}
 		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Patch(dpm.Name, types.StrategicMergePatchType, data)
 		if err != nil {
 			return err
@@ -925,7 +930,10 @@ func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []met
 
 	_, err := client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Create(job)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		data, _ := json.Marshal(job)
+		data, err := json.Marshal(job)
+		if err != nil {
+			return err
+		}
 		_, err = client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Patch(job.Name, types.StrategicMergePatchType, data)
 		if err != nil {
 			return err
