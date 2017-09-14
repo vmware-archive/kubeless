@@ -183,7 +183,7 @@ Also checkout the [functions repository](https://github.com/kubeless/functions).
 * We use make to build the project. 
 * Ensure you have a GOPATH setup
 
-fect the project:
+fecth the project:
 ```console
 $ got get -d github.com/kubeless/kubeless
 $ cd $GOPATH/src/github.com/kubeless/kubeless/
