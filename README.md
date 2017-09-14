@@ -178,18 +178,30 @@ Also checkout the [functions repository](https://github.com/kubeless/functions).
 
 ### Building with go
 
-* you need go v1.7+
-* if your working copy is not in your `GOPATH`, you need to set it accordingly.
-* we provided Makefile.
+* You need go v1.7+
+* To cross compile the kubeless command you will need [gox](https://github.com/mitchellh/gox) set up in your environment
+* We use make to build the project. 
+* Ensure you have a GOPATH setup
 
+fect the project:
+```console
+$ got get -d github.com/kubeless/kubeless
+$ cd $GOPATH/src/github.com/kubeless/kubeless/
+```
+
+build for your local system kubeless and kubeless-controller:
 ```console
 $ make binary
 ```
 
-You can build kubeless for multiple platforms with:
-
+You can build kubeless (cli) for multiple platforms with:
 ```console
 $ make binary-cross
+```
+To build a deployable kubeless-controller docker image:
+```console
+$ make controller-image
+$ docker tag kubeless-controller [your_image_name] 
 ```
 
 ## Comparison
