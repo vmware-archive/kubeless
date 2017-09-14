@@ -59,7 +59,7 @@ const (
 	node8Http      = "bitnami/kubeless-nodejs@sha256:1eff2beae6fcc40577ada75624c3e4d3840a854588526cd8616d66f4e889dfe6"
 	node8Pubsub    = "bitnami/kubeless-nodejs-event-consumer@sha256:4d005c9c0b462750d9ab7f1305897e7a01143fe869d3b722ed3330560f9c7fb5"
 	ruby24Http     = "bitnami/kubeless-ruby@sha256:98e95c41652a7a0149421157c2dfb64b31e0d406b8c46c8bc89bd54e50f9898d"
-	busybox        = "tuna/busybox@sha256:3651f7ee3b1e779471e338dcc43e6a5e69e0a8c7a4d08fd5702531cbbacc3269"
+	busybox        = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
 	pubsubFunc     = "PubSub"
 	schedFunc      = "Scheduled"
 )
@@ -269,6 +269,9 @@ func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileNa
 
 // EnsureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
 func EnsureK8sResources(funcObj *spec.Function, client kubernetes.Interface) error {
+	if len(funcObj.Metadata.Labels) == 0 {
+		funcObj.Metadata.Labels = make(map[string]string)
+	}
 	funcObj.Metadata.Labels["function"] = funcObj.Metadata.Name
 
 	t := true
@@ -917,7 +920,7 @@ func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []met
 								{
 									Image: busybox,
 									Name:  "trigger",
-									Args:  []string{"curl", fmt.Sprintf("http://%s.%s.svc:8080", funcObj.Metadata.Name, funcObj.Metadata.Namespace)},
+									Args:  []string{"wget", "-qO-", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.Metadata.Name, funcObj.Metadata.Namespace)},
 								},
 							},
 							RestartPolicy: v1.RestartPolicyOnFailure,
