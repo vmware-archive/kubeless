@@ -1193,7 +1193,7 @@ func createServiceMonitor(funcName, ns string) error {
 					Name:      funcName,
 					Namespace: ns,
 					Labels: map[string]string{
-						"service-monitor": funcName,
+						"service-monitor": "function",
 					},
 				},
 				Spec: monitoringv1alpha1.ServiceMonitorSpec{
