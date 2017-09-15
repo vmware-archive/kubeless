@@ -23,7 +23,7 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 )
@@ -56,7 +56,7 @@ func init() {
 }
 
 func doAutoscaleList(w io.Writer, client kubernetes.Interface, ns, output string) error {
-	asList, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).List(v1.ListOptions{})
+	asList, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -70,45 +70,40 @@ func printAutoscale(w io.Writer, ass []v2alpha1.HorizontalPodAutoscaler, output 
 		table := uitable.New()
 		table.MaxColWidth = 50
 		table.Wrap = true
-		table.AddRow("NAME", "NAMESPACE", "TARGET", "MIN", "MAX", "TYPE", "OBJECT", "PODS", "RESOURCE")
+		table.AddRow("NAME", "NAMESPACE", "TARGET", "MIN", "MAX", "METRIC", "VALUE")
 		for _, i := range ass {
 			n := i.Name
 			ns := i.Namespace
-			data, err := json.Marshal(i.Spec.ScaleTargetRef)
-			if err != nil {
-				return err
+			ta := i.Spec.ScaleTargetRef.Name
+			min := i.Spec.MinReplicas
+			max := i.Spec.MaxReplicas
+			m := ""
+			v := ""
+			if i.Spec.Metrics[0].Object != nil {
+				m = i.Spec.Metrics[0].Object.MetricName
+				v = i.Spec.Metrics[0].Object.TargetValue.String()
+			} else if i.Spec.Metrics[0].Resource != nil {
+				m = string(i.Spec.Metrics[0].Resource.Name)
+				v = fmt.Sprint(i.Spec.Metrics[0].Resource.TargetAverageUtilization)
 			}
-			ta := string(data)
-			min := string(*i.Spec.MinReplicas)
-			max := string(i.Spec.MaxReplicas)
-			ty := string(i.Spec.Metrics[0].Type)
-			data, err = json.Marshal(i.Spec.Metrics[0].Object)
-			if err != nil {
-				return err
-			}
-			o := string(data)
-			data, err = json.Marshal(i.Spec.Metrics[0].Pods)
-			if err != nil {
-				return err
-			}
-			p := string(data)
-			data, err = json.Marshal(i.Spec.Metrics[0].Resource)
-			if err != nil {
-				return err
-			}
-			r := string(data)
 
-			table.AddRow(n, ns, ta, min, max, ty, o, p, r)
+			table.AddRow(n, ns, ta, fmt.Sprint(*min), fmt.Sprint(max), m, v)
 		}
 		fmt.Fprintln(w, table)
 	} else {
 		for _, i := range ass {
 			switch output {
 			case "json":
-				b, _ := json.MarshalIndent(i, "", "  ")
+				b, err := json.MarshalIndent(i, "", "  ")
+				if err != nil {
+					return err
+				}
 				fmt.Fprintln(w, string(b))
 			case "yaml":
-				b, _ := yaml.Marshal(i)
+				b, err := yaml.Marshal(i)
+				if err != nil {
+					return err
+				}
 				fmt.Fprintln(w, string(b))
 			default:
 				return fmt.Errorf("Wrong output format. Please use only json|yaml")

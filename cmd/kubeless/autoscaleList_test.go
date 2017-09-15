@@ -68,7 +68,7 @@ func TestAutoscaleList(t *testing.T) {
 				{
 					Type: av2alpha1.ObjectMetricSourceType,
 					Object: &av2alpha1.ObjectMetricSource{
-						MetricName:  "requests-per-second",
+						MetricName:  "function_calls",
 						TargetValue: q,
 						Target: av2alpha1.CrossVersionObjectReference{
 							Kind: "Service",
