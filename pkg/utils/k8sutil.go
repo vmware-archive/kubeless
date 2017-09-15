@@ -34,13 +34,13 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
-
+	batchv1 "k8s.io/client-go/pkg/apis/batch/v1"
+	"k8s.io/client-go/pkg/apis/batch/v2alpha1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -59,7 +59,9 @@ const (
 	node8Http      = "bitnami/kubeless-nodejs@sha256:1eff2beae6fcc40577ada75624c3e4d3840a854588526cd8616d66f4e889dfe6"
 	node8Pubsub    = "bitnami/kubeless-nodejs-event-consumer@sha256:4d005c9c0b462750d9ab7f1305897e7a01143fe869d3b722ed3330560f9c7fb5"
 	ruby24Http     = "bitnami/kubeless-ruby@sha256:98e95c41652a7a0149421157c2dfb64b31e0d406b8c46c8bc89bd54e50f9898d"
+	busybox        = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
 	pubsubFunc     = "PubSub"
+	schedFunc      = "Scheduled"
 )
 
 type runtimeVersion struct {
@@ -266,241 +268,43 @@ func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileNa
 }
 
 // EnsureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
-func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernetes.Interface) error {
-	str := strings.Split(funcObj.Spec.Handler, ".")
-	if len(str) != 2 {
-		return errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
+func EnsureK8sResources(funcObj *spec.Function, client kubernetes.Interface) error {
+	if len(funcObj.Metadata.Labels) == 0 {
+		funcObj.Metadata.Labels = make(map[string]string)
 	}
-	funcHandler := str[1]
-	modName := str[0]
-	fileName := modName
-	imageName, depName, fileName, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
-
-	if err != nil {
-		return err
-	}
-
-	//add configmap
-	labels := map[string]string{
-		"function": name,
-	}
-	for k, v := range funcObj.Metadata.Labels {
-		labels[k] = v
-	}
+	funcObj.Metadata.Labels["function"] = funcObj.Metadata.Name
 
 	t := true
 	or := []metav1.OwnerReference{
 		{
 			Kind:               "Function",
 			APIVersion:         "k8s.io",
-			Name:               name,
+			Name:               funcObj.Metadata.Name,
 			UID:                funcObj.Metadata.UID,
 			BlockOwnerDeletion: &t,
 		},
 	}
 
-	podAnnotations := map[string]string{
-		// Attempt to attract the attention of prometheus.
-		// For runtimes that don't support /metrics,
-		// prometheus will get a 404 and mostly silently
-		// ignore the pod (still displayed in the list of
-		// "targets")
-		"prometheus.io/scrape": "true",
-		"prometheus.io/path":   "/metrics",
-		"prometheus.io/port":   "8080",
-	}
-
-	configMap := &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            name,
-			Labels:          labels,
-			OwnerReferences: or,
-		},
-		Data: map[string]string{
-			"handler": funcObj.Spec.Handler,
-			fileName:  funcObj.Spec.Function,
-			depName:   funcObj.Spec.Deps,
-		},
-	}
-
-	_, err = client.Core().ConfigMaps(ns).Create(configMap)
-	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		data, _ := json.Marshal(configMap)
-		_, err = client.Core().ConfigMaps(ns).Patch(configMap.Name, types.StrategicMergePatchType, data)
-	}
+	err := ensureFuncConfigMap(client, funcObj, or)
 	if err != nil {
 		return err
 	}
 
-	//add service
-	svc := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            name,
-			Labels:          labels,
-			OwnerReferences: or,
-		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
-				{
-					Port:       8080,
-					TargetPort: intstr.FromInt(8080),
-					Protocol:   v1.ProtocolTCP,
-				},
-			},
-			Selector: labels,
-			Type:     v1.ServiceTypeClusterIP,
-		},
-	}
-	_, err = client.Core().Services(ns).Create(svc)
-	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		data, _ := json.Marshal(svc)
-		_, err = client.Core().Services(ns).Patch(svc.Name, types.StrategicMergePatchType, data)
-
-	}
+	err = ensureFuncService(client, funcObj, or)
 	if err != nil {
 		return err
 	}
 
-	//prepare init-container for custom runtime
-	initContainer := v1.Container{}
-	if funcObj.Spec.Deps != "" {
-		initContainer = v1.Container{
-			Name:            "install",
-			Image:           getInitImage(funcObj.Spec.Runtime),
-			Command:         getCommand(funcObj.Spec.Runtime),
-			VolumeMounts:    getVolumeMounts(name, funcObj.Spec.Runtime),
-			WorkingDir:      "/requirements",
-			ImagePullPolicy: v1.PullIfNotPresent,
-		}
-	}
-
-	//add deployment
-	maxUnavailable := intstr.FromInt(0)
-	dpm := &v1beta1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            name,
-			Labels:          labels,
-			OwnerReferences: or,
-		},
-		Spec: v1beta1.DeploymentSpec{
-			Strategy: v1beta1.DeploymentStrategy{
-				RollingUpdate: &v1beta1.RollingUpdateDeployment{
-					MaxUnavailable: &maxUnavailable,
-				},
-			},
-		},
-	}
-
-	//copy all func's Spec.Template to the deployment
-	tmplCopy, err := api.Scheme.DeepCopy(funcObj.Spec.Template)
+	err = ensureFuncDeployment(client, funcObj, or)
 	if err != nil {
 		return err
 	}
-	dpm.Spec.Template = tmplCopy.(v1.PodTemplateSpec)
 
-	//append data to dpm spec
-	if len(dpm.Spec.Template.ObjectMeta.Labels) == 0 {
-		dpm.Spec.Template.ObjectMeta.Labels = make(map[string]string)
-	}
-	for k, v := range labels {
-		dpm.Spec.Template.ObjectMeta.Labels[k] = v
-	}
-	if len(dpm.Spec.Template.ObjectMeta.Annotations) == 0 {
-		dpm.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
-	}
-	for k, v := range podAnnotations {
-		//only append k-v from podAnnotations if it doesn't exist in deployment podTemplateSpec annotation
-		if _, ok := dpm.Spec.Template.ObjectMeta.Annotations[k]; !ok {
-			dpm.Spec.Template.ObjectMeta.Annotations[k] = v
-		}
-	}
-
-	// only append non-empty initContainer
-	if initContainer.Name != "" {
-		dpm.Spec.Template.Spec.InitContainers = append(dpm.Spec.Template.Spec.InitContainers, initContainer)
-	}
-
-	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
-		Name: name,
-		VolumeSource: v1.VolumeSource{
-			ConfigMap: &v1.ConfigMapVolumeSource{
-				LocalObjectReference: v1.LocalObjectReference{
-					Name: name,
-				},
-			},
-		},
-	})
-	if len(dpm.Spec.Template.Spec.Containers) == 0 {
-		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
-	}
-	if dpm.Spec.Template.Spec.Containers[0].Image == "" {
-		dpm.Spec.Template.Spec.Containers[0].Image = imageName
-	}
-	dpm.Spec.Template.Spec.Containers[0].Name = name
-	dpm.Spec.Template.Spec.Containers[0].Ports = append(dpm.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{
-		ContainerPort: 8080,
-	})
-	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
-		v1.EnvVar{
-			Name:  "FUNC_HANDLER",
-			Value: funcHandler,
-		},
-		v1.EnvVar{
-			Name:  "MOD_NAME",
-			Value: modName,
-		},
-		v1.EnvVar{
-			Name:  "TOPIC_NAME",
-			Value: funcObj.Spec.Topic,
-		})
-	dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-		Name:      name,
-		MountPath: "/kubeless",
-	})
-
-	// update deployment for custom runtime
-	if funcObj.Spec.Deps != "" {
-		updateDeployment(dpm, funcObj.Spec.Runtime)
-		//TODO: remove this when init containers becomes a stable feature
-		addInitContainerAnnotation(dpm)
-	}
-
-	// add liveness Probe to deployment
-	if funcObj.Spec.Type != pubsubFunc {
-		livenessProbe := &v1.Probe{
-			InitialDelaySeconds: int32(3),
-			PeriodSeconds:       int32(30),
-			Handler: v1.Handler{
-				HTTPGet: &v1.HTTPGetAction{
-					Path: "/healthz",
-					Port: intstr.FromInt(8080),
-				},
-			},
-		}
-		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
-	}
-	_, err = client.Extensions().Deployments(ns).Create(dpm)
-	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		data, _ := json.Marshal(dpm)
-		_, err = client.Extensions().Deployments(ns).Patch(dpm.Name, types.StrategicMergePatchType, data)
+	if funcObj.Spec.Type == schedFunc {
+		err = ensureFuncJob(client, funcObj, or)
 		if err != nil {
 			return err
 		}
-
-		// kick existing function pods then it will be recreated
-		// with the new data mount from updated configmap.
-		// TODO: This is a workaround.  Do something better.
-		pods, err := GetPodsByLabel(client, ns, "function", name)
-		for _, pod := range pods.Items {
-			err = client.Core().Pods(ns).Delete(pod.Name, &metav1.DeleteOptions{})
-			if err != nil && !k8sErrors.IsNotFound(err) {
-				// non-fatal
-				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", ns, pod.Name, err)
-			}
-		}
-	}
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -508,12 +312,21 @@ func EnsureK8sResources(ns, name string, funcObj *spec.Function, client kubernet
 
 // DeleteK8sResources removes k8s objects of the function
 func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
+	//check if func is scheduled or not
+	_, err := client.BatchV2alpha1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", name), metav1.GetOptions{})
+	if err == nil {
+		err = client.BatchV2alpha1().CronJobs(ns).Delete(fmt.Sprintf("trigger-%s", name), &metav1.DeleteOptions{})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	// delete deployment
 	deletePolicy := metav1.DeletePropagationForeground
-	err := client.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
+	err = client.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
-
 	// delete svc
 	err = client.Core().Services(ns).Delete(name, &metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -613,12 +426,6 @@ func DeleteK8sCustomResource(tprClient *rest.RESTClient, funcName, ns string) er
 	}
 
 	return nil
-}
-
-func getResource() v1.ResourceList {
-	r := make(map[v1.ResourceName]resource.Quantity)
-	r[v1.ResourceStorage], _ = resource.ParseQuantity("1Gi")
-	return r
 }
 
 // GetPodsByLabel returns list of pods which match the label
@@ -865,7 +672,10 @@ func GetLocalHostname(config *rest.Config, funcName string) (string, error) {
 		return "", err
 	}
 
-	host, _, _ := net.SplitHostPort(url.Host)
+	host, _, err := net.SplitHostPort(url.Host)
+	if err != nil {
+		return "", err
+	}
 
 	return fmt.Sprintf("%s.%s.nip.io", funcName, host), nil
 }
@@ -877,4 +687,291 @@ func DeleteIngress(client kubernetes.Interface, name, ns string) error {
 		return err
 	}
 	return nil
+}
+
+func splitHandler(handler string) (string, string, error) {
+	str := strings.Split(handler, ".")
+	if len(str) != 2 {
+		return "", "", errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
+	}
+
+	return str[0], str[1], nil
+}
+
+func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+	modName, _, err := splitHandler(funcObj.Spec.Handler)
+	if err != nil {
+		return err
+	}
+
+	fileName := modName
+	_, depName, fileName, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
+	if err != nil {
+		return err
+	}
+
+	configMap := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            funcObj.Metadata.Name,
+			Labels:          funcObj.Metadata.Labels,
+			OwnerReferences: or,
+		},
+		Data: map[string]string{
+			"handler": funcObj.Spec.Handler,
+			fileName:  funcObj.Spec.Function,
+			depName:   funcObj.Spec.Deps,
+		},
+	}
+
+	_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Create(configMap)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		data, err := json.Marshal(configMap)
+		if err != nil {
+			return err
+		}
+		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Patch(configMap.Name, types.StrategicMergePatchType, data)
+	}
+
+	return err
+}
+
+func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+	svc := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            funcObj.Metadata.Name,
+			Labels:          funcObj.Metadata.Labels,
+			OwnerReferences: or,
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Port:       8080,
+					TargetPort: intstr.FromInt(8080),
+					Protocol:   v1.ProtocolTCP,
+				},
+			},
+			Selector: funcObj.Metadata.Labels,
+			Type:     v1.ServiceTypeClusterIP,
+		},
+	}
+	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(svc)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		data, err := json.Marshal(svc)
+		if err != nil {
+			return err
+		}
+		_, err = client.Core().Services(funcObj.Metadata.Namespace).Patch(svc.Name, types.StrategicMergePatchType, data)
+
+	}
+	return err
+}
+
+func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+	//prepare init-container for custom runtime
+	initContainer := v1.Container{}
+	if funcObj.Spec.Deps != "" {
+		initContainer = v1.Container{
+			Name:            "install",
+			Image:           getInitImage(funcObj.Spec.Runtime),
+			Command:         getCommand(funcObj.Spec.Runtime),
+			VolumeMounts:    getVolumeMounts(funcObj.Metadata.Name, funcObj.Spec.Runtime),
+			WorkingDir:      "/requirements",
+			ImagePullPolicy: v1.PullIfNotPresent,
+		}
+	}
+
+	podAnnotations := map[string]string{
+		// Attempt to attract the attention of prometheus.
+		// For runtimes that don't support /metrics,
+		// prometheus will get a 404 and mostly silently
+		// ignore the pod (still displayed in the list of
+		// "targets")
+		"prometheus.io/scrape": "true",
+		"prometheus.io/path":   "/metrics",
+		"prometheus.io/port":   "8080",
+	}
+
+	//add deployment
+	maxUnavailable := intstr.FromInt(0)
+	dpm := &v1beta1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            funcObj.Metadata.Name,
+			Labels:          funcObj.Metadata.Labels,
+			OwnerReferences: or,
+		},
+		Spec: v1beta1.DeploymentSpec{
+			Strategy: v1beta1.DeploymentStrategy{
+				RollingUpdate: &v1beta1.RollingUpdateDeployment{
+					MaxUnavailable: &maxUnavailable,
+				},
+			},
+		},
+	}
+
+	//copy all func's Spec.Template to the deployment
+	tmplCopy, err := api.Scheme.DeepCopy(funcObj.Spec.Template)
+	if err != nil {
+		return err
+	}
+	dpm.Spec.Template = tmplCopy.(v1.PodTemplateSpec)
+
+	//append data to dpm spec
+	if len(dpm.Spec.Template.ObjectMeta.Labels) == 0 {
+		dpm.Spec.Template.ObjectMeta.Labels = make(map[string]string)
+	}
+	for k, v := range funcObj.Metadata.Labels {
+		dpm.Spec.Template.ObjectMeta.Labels[k] = v
+	}
+	if len(dpm.Spec.Template.ObjectMeta.Annotations) == 0 {
+		dpm.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	}
+	for k, v := range podAnnotations {
+		//only append k-v from podAnnotations if it doesn't exist in deployment podTemplateSpec annotation
+		if _, ok := dpm.Spec.Template.ObjectMeta.Annotations[k]; !ok {
+			dpm.Spec.Template.ObjectMeta.Annotations[k] = v
+		}
+	}
+
+	// only append non-empty initContainer
+	if initContainer.Name != "" {
+		dpm.Spec.Template.Spec.InitContainers = append(dpm.Spec.Template.Spec.InitContainers, initContainer)
+	}
+
+	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
+		Name: funcObj.Metadata.Name,
+		VolumeSource: v1.VolumeSource{
+			ConfigMap: &v1.ConfigMapVolumeSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: funcObj.Metadata.Name,
+				},
+			},
+		},
+	})
+	if len(dpm.Spec.Template.Spec.Containers) == 0 {
+		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
+	}
+
+	modName, handlerName, err := splitHandler(funcObj.Spec.Handler)
+	if err != nil {
+		return err
+	}
+
+	imageName, _, _, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
+	if err != nil {
+		return err
+	}
+
+	dpm.Spec.Template.Spec.Containers[0].Image = imageName
+	dpm.Spec.Template.Spec.Containers[0].Name = funcObj.Metadata.Name
+	dpm.Spec.Template.Spec.Containers[0].Ports = append(dpm.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{
+		ContainerPort: 8080,
+	})
+	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
+		v1.EnvVar{
+			Name:  "FUNC_HANDLER",
+			Value: handlerName,
+		},
+		v1.EnvVar{
+			Name:  "MOD_NAME",
+			Value: modName,
+		},
+		v1.EnvVar{
+			Name:  "TOPIC_NAME",
+			Value: funcObj.Spec.Topic,
+		})
+	dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
+		Name:      funcObj.Metadata.Name,
+		MountPath: "/kubeless",
+	})
+
+	// update deployment for custom runtime
+	if funcObj.Spec.Deps != "" {
+		updateDeployment(dpm, funcObj.Spec.Runtime)
+		//TODO: remove this when init containers becomes a stable feature
+		addInitContainerAnnotation(dpm)
+	}
+
+	// add liveness Probe to deployment
+	if funcObj.Spec.Type != pubsubFunc {
+		livenessProbe := &v1.Probe{
+			InitialDelaySeconds: int32(3),
+			PeriodSeconds:       int32(30),
+			Handler: v1.Handler{
+				HTTPGet: &v1.HTTPGetAction{
+					Path: "/healthz",
+					Port: intstr.FromInt(8080),
+				},
+			},
+		}
+		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
+	}
+
+	_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Create(dpm)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		data, err := json.Marshal(dpm)
+		if err != nil {
+			return err
+		}
+		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Patch(dpm.Name, types.StrategicMergePatchType, data)
+		if err != nil {
+			return err
+		}
+
+		// kick existing function pods then it will be recreated
+		// with the new data mount from updated configmap.
+		// TODO: This is a workaround.  Do something better.
+		pods, err := GetPodsByLabel(client, funcObj.Metadata.Namespace, "function", funcObj.Metadata.Name)
+		for _, pod := range pods.Items {
+			err = client.Core().Pods(funcObj.Metadata.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				// non-fatal
+				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", funcObj.Metadata.Namespace, pod.Name, err)
+			}
+		}
+	}
+
+	return err
+}
+
+func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+	job := &v2alpha1.CronJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            fmt.Sprintf("trigger-%s", funcObj.Metadata.Name),
+			Labels:          funcObj.Metadata.Labels,
+			OwnerReferences: or,
+		},
+		Spec: v2alpha1.CronJobSpec{
+			Schedule: funcObj.Spec.Schedule,
+			JobTemplate: v2alpha1.JobTemplateSpec{
+				Spec: batchv1.JobSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{
+								{
+									Image: busybox,
+									Name:  "trigger",
+									Args:  []string{"wget", "-qO-", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.Metadata.Name, funcObj.Metadata.Namespace)},
+								},
+							},
+							RestartPolicy: v1.RestartPolicyOnFailure,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, err := client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Create(job)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		data, err := json.Marshal(job)
+		if err != nil {
+			return err
+		}
+		_, err = client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Patch(job.Name, types.StrategicMergePatchType, data)
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
 }

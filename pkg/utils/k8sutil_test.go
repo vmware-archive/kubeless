@@ -11,6 +11,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/batch/v2alpha1"
 	xv1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
@@ -77,6 +78,31 @@ func TestDeleteK8sResources(t *testing.T) {
 
 	if !hasAction(clientset, "delete", "services") {
 		t.Errorf("failed to delete service")
+	}
+
+	// Test deleting cronjob
+	job := v2alpha1.CronJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "myns",
+			Name:      "trigger-foo",
+		},
+	}
+
+	clientset = fake.NewSimpleClientset(&job, &deploy, &svc, &cm)
+
+	if err := DeleteK8sResources("myns", "foo", clientset); err != nil {
+		t.Fatalf("Deleting resources returned err: %v", err)
+	}
+
+	t.Log("Actions:", clientset.Actions())
+
+	for _, kind := range []string{"cronjobs", "services", "configmaps", "deployments"} {
+		a := findAction(clientset, "delete", kind)
+		if a == nil {
+			t.Errorf("failed to delete %s", kind)
+		} else if ns := a.GetNamespace(); ns != "myns" {
+			t.Errorf("deleted %s from wrong namespace (%s)", kind, ns)
+		}
 	}
 }
 
@@ -208,7 +234,7 @@ func TestEnsureK8sResources(t *testing.T) {
 		},
 	}
 
-	if err := EnsureK8sResources(ns, func1, f1, clientset); err != nil {
+	if err := EnsureK8sResources(f1, clientset); err != nil {
 		t.Fatalf("Creating resources returned err: %v", err)
 	}
 
@@ -236,7 +262,7 @@ func TestEnsureK8sResources(t *testing.T) {
 		t.Errorf("Create wrong deployment object. Expect deployment labels foo=bar but got %s", dpm.Spec.Template.Labels["foo"])
 	}
 
-	if err := EnsureK8sResources(ns, func2, f2, clientset); err != nil {
+	if err := EnsureK8sResources(f2, clientset); err != nil {
 		t.Fatalf("Creating resources returned err: %v", err)
 	}
 	svc, err = clientset.CoreV1().Services(ns).Get(func2, metav1.GetOptions{})

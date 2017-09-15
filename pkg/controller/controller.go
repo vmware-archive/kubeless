@@ -194,7 +194,7 @@ func (c *Controller) processItem(key string) error {
 
 	funcObj := obj.(*spec.Function)
 
-	err = utils.EnsureK8sResources(ns, name, funcObj, c.clientset)
+	err = utils.EnsureK8sResources(funcObj, c.clientset)
 	if err != nil {
 		c.logger.Errorf("Function can not be created/updated: %v", err)
 		return err
