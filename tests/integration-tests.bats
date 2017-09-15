@@ -44,6 +44,9 @@ load ../script/libtest
 @test "Test function: get-ruby" {
   test_kubeless_function get-ruby
 }
+@test "Test function: get-ruby-deps" {
+  test_kubeless_function get-ruby-deps
+}
 @test "Test function: post-python" {
   test_kubeless_function post-python
 }
