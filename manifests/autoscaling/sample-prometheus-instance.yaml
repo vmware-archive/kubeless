@@ -47,7 +47,7 @@ spec:
   serviceAccountName: prometheus
   serviceMonitorSelector:
     matchLabels:
-      service-monitor: sample-metrics-app
+      service-monitor: function
   resources:
     requests:
       memory: 300Mi

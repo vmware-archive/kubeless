@@ -49,7 +49,7 @@ kind: ServiceMonitor
 metadata:
   name: sample-metrics-app
   labels:
-    service-monitor: sample-metrics-app
+    service-monitor: function
 spec:
   selector:
     matchLabels:
