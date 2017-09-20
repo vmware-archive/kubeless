@@ -767,19 +767,6 @@ func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 }
 
 func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
-	//prepare init-container for custom runtime
-	initContainer := v1.Container{}
-	if funcObj.Spec.Deps != "" {
-		initContainer = v1.Container{
-			Name:            "install",
-			Image:           getInitImage(funcObj.Spec.Runtime),
-			Command:         getCommand(funcObj.Spec.Runtime),
-			VolumeMounts:    getVolumeMounts(funcObj.Metadata.Name, funcObj.Spec.Runtime),
-			WorkingDir:      "/requirements",
-			ImagePullPolicy: v1.PullIfNotPresent,
-		}
-	}
-
 	podAnnotations := map[string]string{
 		// Attempt to attract the attention of prometheus.
 		// For runtimes that don't support /metrics,
@@ -832,11 +819,6 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		}
 	}
 
-	// only append non-empty initContainer
-	if initContainer.Name != "" {
-		dpm.Spec.Template.Spec.InitContainers = append(dpm.Spec.Template.Spec.InitContainers, initContainer)
-	}
-
 	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
 		Name: funcObj.Metadata.Name,
 		VolumeSource: v1.VolumeSource{
@@ -883,6 +865,24 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		Name:      funcObj.Metadata.Name,
 		MountPath: "/kubeless",
 	})
+
+	//prepare init-container for custom runtime
+	initContainer := v1.Container{}
+	if funcObj.Spec.Deps != "" {
+		initContainer = v1.Container{
+			Name:            "install",
+			Image:           getInitImage(funcObj.Spec.Runtime),
+			Command:         getCommand(funcObj.Spec.Runtime),
+			VolumeMounts:    getVolumeMounts(funcObj.Metadata.Name, funcObj.Spec.Runtime),
+			WorkingDir:      "/requirements",
+			ImagePullPolicy: v1.PullIfNotPresent,
+		}
+		initContainer.Env = dpm.Spec.Template.Spec.Containers[0].Env
+	}
+	// only append non-empty initContainer
+	if initContainer.Name != "" {
+		dpm.Spec.Template.Spec.InitContainers = append(dpm.Spec.Template.Spec.InitContainers, initContainer)
+	}
 
 	// update deployment for custom runtime
 	if funcObj.Spec.Deps != "" {
