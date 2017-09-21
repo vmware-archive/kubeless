@@ -96,7 +96,7 @@ Make sure your image repository is correctly referenced in the "containers" sess
 
 **Hint:** take a look at the `imagePullPolicy` configuration if you are sending images with tags (e. g. "latest") to the Kubernettes cluster. This option controls the image caching mechanism for Kubernettes and you may enconter problems if new images enters the cluster with the same name. They might not be properly pulled for example. 
 
-### Working on your local brench
+### Working on your local branch
 
 Branch from it:
 
@@ -171,7 +171,9 @@ Or you might wanna check log of a particular function deployed to kubeless.
 $ kubeless function logs <function_name> -f
 ```
 
-## Example of shell script to setup a local environment, build the kubeless binaries and make it available on kubernettes.
+## Scripting build and publishing
+
+Example of shell script to setup a local environment, build the kubeless binaries and make it available on kubernettes.
 
 ```
 #!/bin/bash
@@ -192,7 +194,7 @@ $ kubeless function logs <function_name> -f
 #git remote add upstream https://github.com/DXBrazil/kubeless
 #git remote set-url --push upstream no_push
 #git remote -v
-# git checkout <INCLUDE HERE YOUR BRENCH AND UNCOMMENT>
+# git checkout <INCLUDE HERE YOUR BRANCH AND UNCOMMENT>
 #git fetch
 
 #make binary
