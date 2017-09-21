@@ -454,11 +454,21 @@ func GetReadyPod(pods *v1.PodList) (v1.Pod, error) {
 	return v1.Pod{}, errors.New("There is no pod ready")
 }
 
+// extract the branch number from the runtime string
+func getBranchFromRuntime(runtime string) string {
+	re := regexp.MustCompile("[0-9.]+")
+	return re.FindString(runtime)
+}
+
 // specify image for the init container
 func getInitImage(runtime string) string {
 	switch {
 	case strings.Contains(runtime, "python"):
-		return "tuna/python-pillow:2.7.11-alpine"
+		branch := getBranchFromRuntime(runtime)
+		if branch == "2.7" {
+			return "tuna/python-pillow:2.7.11-alpine"
+		}
+		return "python:" + branch
 	case strings.Contains(runtime, "nodejs"):
 		return "node:6.10-alpine"
 	case strings.Contains(runtime, "ruby"):
@@ -529,7 +539,7 @@ func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
 	case strings.Contains(runtime, "python"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "PYTHONPATH",
-			Value: "/opt/kubeless/pythonpath/lib/python2.7/site-packages",
+			Value: "/opt/kubeless/pythonpath/lib/python" + getBranchFromRuntime(runtime) + "/site-packages",
 		})
 		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
 			Name:      "pythonpath",
