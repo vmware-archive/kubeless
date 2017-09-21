@@ -12,7 +12,7 @@ All the structures that implement  language support are coded in the file `k8sut
 
 If you want to extend it and make another language available (for example .netcore, which is already in progress! :-) it is necessary to change the following components:
 
-## 1. Change the `Const` block string structure
+## 1. Change the Const block string structure
 
 In this block of constants declaration, you sould create an entry pointing to the repository of the Docker container image for the runtime of the new language.
 
@@ -61,7 +61,7 @@ func init() {
         netcore = []runtimeVersion{netcore2}
 ```
 
-## 3. The parameters informed by the client
+## 3. Handle the parameters informed by the client
 
 In the function `GetFunctionData()`, include a selection for the `case` structure to define the extention of the file for functions and a variable that will host the file name informed as a parameter for kubeless bringing the code to be executed.
 
