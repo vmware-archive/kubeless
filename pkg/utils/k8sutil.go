@@ -540,6 +540,17 @@ func getVolumeMounts(name, runtime string) []v1.VolumeMount {
 				MountPath: "/requirements",
 			},
 		}
+       case strings.Contains(runtime, "netcore"):
+                return []v1.VolumeMount{
+                        {
+                                Name:      "netcorepath",
+                                MountPath: "/netcorepath",
+                        },
+                        {
+                                Name:      name,
+                                MountPath: "/requirements",
+                        },
+                }
 	default:
 		return []v1.VolumeMount{}
 	}
@@ -593,7 +604,22 @@ func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
 				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},
 		})
-	}
+        case strings.Contains(runtime, "netcore"):
+                dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
+                        Name:  "DOTNET_HOME",
+                        Value: "/usr/bin/",
+                })
+                dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
+                        Name:      "netcorepath",
+                        MountPath: "/opt/kubeless/netcorepath",
+                })
+                dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
+                        Name: "netcorepath",
+                        VolumeSource: v1.VolumeSource{
+                                EmptyDir: &v1.EmptyDirVolumeSource{},
+                        },
+                })
+        }
 }
 
 // configureClient configures tpr client
