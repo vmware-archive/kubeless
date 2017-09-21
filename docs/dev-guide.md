@@ -2,51 +2,94 @@
 
 This will cover the steps need to be done in order to build your local developement environment for Kubeless.
 
-## Workflow
+## Setting things up
 
-### Fork the repo
+As Kubeless project is mainly developed in the Go Programming Language, the first thing you should do is guarantee that Go is installed and all environment variables are properly set.
+
+In this example we will use Ubuntu Linux 16.04.2 LTS as the target host on where the project will be built.
+
+### Installing Go
+
+* Visit https://golang.org/dl/
+* Download the most recent Go version (here we used 1.9) and unpack the file
+* Check the installation process on https://golang.org/doc/install
+* Set the Go environment variables
+
+````
+export GOROOT=/GoDir/go
+export GOPATH=/GoDir/go/bin
+export PATH=$GOPATH:$PATH
+````
+
+### Create a worning directory for the project
+
+````
+working_dir=$GOROOT/src/github.com/kubeless/
+mkdir -p $working_dir
+````
+
+### Fork the repository
+
 1. Visit the repo: https://github.com/kubeless/kubeless
 2. Click `Fork` button (top right) to establish a cloud-based fork.
 
-### Setup the local directory
-First setting your $GOPATH accordingly. Then following the [Golang workspace instruction](https://golang.org/doc/code.html#Workspaces) to make sure your local Kubeless directory is set correctly. It should be located at:
+### Clone from your fork
 
 ```
-working_dir = $GOPATH/src/github.com/kubeless/
-```
-
-Your $PATH should also be updated:
-
-```
-$ export $PATH=$PATH:$GOPATH/bin
-```
-
-**Create your clone:**
-
-```
-$ mkdir -p working_dir
-$ cd $working_dir
-$ git clone https://github.com/$your_github_username/kubeless.git
-$ cd $working_dir/kubeless
-$ git remote add upstream https://github.com/kubeless/kubeless.git
+working_dir = $GOROOT/src/github.com/kubeless/
+cd $working_dir
+git clone https://github.com/<YOUR FORK>
+cd $working_dir/kubeless
+git remote add upstream https://github.com/kubeless/kubeless.git
 
 # Never push to upstream master
-$ git remote set-url --push upstream no_push
+git remote set-url --push upstream no_push
 # Checking your remote set correctly
-$ git remote -v
+git remote -v
 ```
+
+### Building local binaries
+
+To make the binaries for your platform, run:
+
+```
+cd $working_dir/kubeless
+make binary
+make controller-image
+```
+
+This will instruct "make" to run the scripts to build the kubeless client and the kubeless controller image.
+
+### Uploading your kubeless image to Docker Hub
+
+Usually you will need to upload your controller image to a repository so you can make it available for your Kubernettes cluster, whenever it is running.
+
+To do so, run the commands:
+
+````
+docker login -u=<dockerhubuser> -e=<e-mail>
+docker tag kubeless-controller <your-docker-hub-repo>/kubeless-test:latest
+docker push <your-docker-hub-repo>/MyKubelessController:latest 
+````
+In order to upload your kubeless controller image to Kubernettes, you should use kubectl as follows, informing the yaml file with the required descriptions of your deployment.
+
+````
+kubectl create -f <path-to-yaml-file>
+````
+Make sure your image repository is correctly referenced in the "containers" session on the yaml file.
+
+```
+      containers:
+      - image: fabriciosanchez/kubeless-test:latest
+        imagePullPolicy: Always
+        name: kubeless-controller
+      serviceAccountName: controller-acct
+```
+
+Hint: take a look at the imagePullPolicy configuration if you are sending images with tags (e. g. "latest") to the Kubernettes cluster. This option controls the image caching mechanism for Kubernettes and you may enconter problems if new images enters the cluster with the name. They might not be properly pulled for example. 
 
 ### Working on your local
 **Branching**
-
-Get your local master up-to-date
-
-```
-$ cd $working_dir/kubeless
-$ git fetch upstream
-$ git checkout master
-$ git rebase upstream/master
-```
 
 Branch from it:
 
@@ -143,3 +186,51 @@ $ kubeless function logs <function_name> -f
 We use [Glide](https://github.com/Masterminds/glide) to vendor the dependencies. Take a quick look on README to understand how it works. Packages that Kubeless relying on is listed at [glide.yaml](https://github.com/kubeless/kubeless/blob/master/glide.yaml)
 
 Happy hacking!
+
+### Example of shell script to setup a local environment, build the kubeless binaries and make it available on kubernettes.
+
+```
+#!/bin/bash
+
+
+# Please set GOROOT and GOPATH appropriately before running!
+#rm -rf $GOROOT/src/github.com
+
+#export GOROOT=
+#export GOPATH=
+#export PATH=$GOPATH:$PATH
+
+#working_dir=$GOPATH/src/github.com/kubeless/
+#mkdir -p $working_dir
+#cd $working_dir
+#git clone https://github.com/<INCLUDE HERE YOUR FORK AND UNCOMMENT>
+#cd $working_dir/kubeless
+#git remote add upstream https://github.com/DXBrazil/kubeless
+#git remote set-url --push upstream no_push
+#git remote -v
+# git checkout <INCLUDE HERE YOUR BRENCH AND UNCOMMENT>
+#git fetch
+
+#make binary
+#make controller-image
+
+#docker login -u=<your docker hub user> -e=<your e-mail>
+#docker tag kubeless-controller <yourrepo>/<your-image>
+#docker push <your repo>/<your-image>
+
+#kubectl delete -f <path-to-yaml>
+#kubectl delete namespace kubeless
+
+#a=Terminating
+
+#while [ $a == Terminating ]
+#do
+
+#a=`kubectl get ns | grep Termina | awk '{print $2}'`
+#sleep 5
+
+#done
+
+#kubectl create namespace kubeless
+#kubectl create -f <path-to-yaml>
+```
