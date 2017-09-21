@@ -2,7 +2,7 @@
 
 ## 1. Introduction
 
-Azure Container Services (ACS) is a built-in service offered by Microsoft Azure platform to natively support complex container-based environments. By design, ACS supports Kubernetes as the main Docker conrainers orchestrator in its context. To know more about ACS, please, follow [this link](https://docs.microsoft.com/en-us/azure/container-service/kubernetes/container-service-intro-kubernetes).
+Azure Container Services (ACS) is a built-in service offered by Microsoft Azure platform to natively support complex container-based environments. By design, ACS supports Kubernetes as the main Docker containers orchestrator in its context. To know more about ACS, please, follow [this link](https://docs.microsoft.com/en-us/azure/container-service/kubernetes/container-service-intro-kubernetes).
 
 Kubeless provides a native way to execute serverless functions on top of Kubernetes cluster so, ACS could become an ideal environment to run Kubeless on top of it.
 
