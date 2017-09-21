@@ -77,3 +77,36 @@ In order to demonstrate the debug process I'll use Visual Studio Code. Visual St
 To know more about VS Code, follow [this link](https://code.visualstudio.com/docs).
 
 Microsoft already did a great job describing the processo to configure Delve on top of VS Code. In order to accomplish that, please, follow [this link](https://github.com/Microsoft/vscode-go/wiki/Debugging-Go-code-using-VS-Code).
+
+## 3. Debugging Kubeless
+
+If you was sucessful VS Code debug setup task, you now have a new directory with one file called "launch.json" inside. This file must contain the follow content inside.
+
+```
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Launch",
+			"type": "go",
+			"request": "launch",
+			"mode": "debug",
+			"remotePath": "",
+			"port": 2345,
+			"host": "127.0.0.1",
+			"program": "${workspaceRoot}",
+			"env": {},
+			"args": [],
+			"showLog": true
+		}
+	]
+}
+```
+
+In order to debug a Go code, Delve looks for a "main" method, once that is the method that starts the entire execution flow. This way, could be a good practice replace the value of "program" property (currently "`${workspaceRoot}`") by the static path to the "main" file. In this case, the "program" property could be similar to this:
+
+```
+ "program": "$/Users/{your_user}/Documents/Projects/.../kubeless/cmd/kubeless/"
+```
+
+Done. Now Kubeless code is done to be degugged.
