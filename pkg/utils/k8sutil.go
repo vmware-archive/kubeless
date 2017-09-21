@@ -466,6 +466,7 @@ func getInitImage(runtime string) string {
 	case strings.Contains(runtime, "python"):
 		branch := getBranchFromRuntime(runtime)
 		if branch == "2.7" {
+			// TODO: Migrate the image for python 2.7 to an official source (not alpine-based)
 			return "tuna/python-pillow:2.7.11-alpine"
 		}
 		return "python:" + branch
