@@ -149,7 +149,7 @@ _wait_for_kubeless_kafka_server_ready() {
     echo_info "Waiting for kafka-0 to be ready ..."
     k8s_wait_for_pod_logline "Kafka.*Server.*started" -n kubeless kafka-0
     sleep 10
-    kubeless topic create "${test_topic}"
+    kubeless topic create "${test_topic}" || true
     _wait_for_kubeless_kafka_topic_ready "${test_topic}"
 }
 _wait_for_kubeless_kafka_topic_ready() {
