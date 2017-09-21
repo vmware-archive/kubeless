@@ -126,6 +126,8 @@ func TestGetFunctionData(t *testing.T) {
 	expectedValues := []string{"requirements.txt", "test.py"}
 	check("python2.7", "HTTP", "test", expectedValues, t)
 	check("python2.7", "PubSub", "test", expectedValues, t)
+	check("python3.4", "HTTP", "test", expectedValues, t)
+	check("python3.4", "PubSub", "test", expectedValues, t)
 
 	expectedValues = []string{"package.json", "test.js"}
 	check("nodejs6", "HTTP", "test", expectedValues, t)
@@ -144,7 +146,7 @@ func TestGetFunctionData(t *testing.T) {
 
 	// Throws an error if the runtime version doesn't exist
 	_, _, _, err = GetFunctionData("nodejs3", "HTTP", "test")
-	expectedErrMsg := regexp.MustCompile("The given runtime and version 'nodejs3' does not have a valid image for HTTP based functions. Available runtimes are: python2.7, nodejs6, nodejs8, ruby2.4")
+	expectedErrMsg := regexp.MustCompile("The given runtime and version 'nodejs3' does not have a valid image for HTTP based functions. Available runtimes are: python2.7, python3.4, nodejs6, nodejs8, ruby2.4")
 	if expectedErrMsg.FindString(err.Error()) == "" {
 		t.Fatalf("Retrieving data for 'nodejs3' should return an error")
 	}
