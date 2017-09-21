@@ -62,6 +62,7 @@ const (
 	node8Pubsub    = "bitnami/kubeless-nodejs-event-consumer@sha256:4d005c9c0b462750d9ab7f1305897e7a01143fe869d3b722ed3330560f9c7fb5"
 	ruby24Http     = "bitnami/kubeless-ruby@sha256:97b18ac36bb3aa9529231ea565b339ec00d2a5225cf7eb010cd5a6188cf72ab5"
 	ruby24Pubsub   = "bitnami/kubeless-ruby-event-consumer@sha256:938a860dbd9b7fb6b4338248a02c92279315c6e42eed0700128b925d3696b606"
+	netcore2Http   = "allantargino/kubeless-netcore:v1"
 	busybox        = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
 	pubsubFunc     = "PubSub"
 	schedFunc      = "Scheduled"
@@ -74,7 +75,7 @@ type runtimeVersion struct {
 	pubsubImage string
 }
 
-var python, node, ruby []runtimeVersion
+var python, node, ruby, netcore []runtimeVersion
 
 func init() {
 	python27 := runtimeVersion{runtimeID: "python", version: "2.7", httpImage: python27Http, pubsubImage: python27Pubsub}
@@ -87,6 +88,9 @@ func init() {
 
 	ruby24 := runtimeVersion{runtimeID: "ruby", version: "2.4", httpImage: ruby24Http, pubsubImage: ruby24Pubsub}
 	ruby = []runtimeVersion{ruby24}
+
+	netcore2 := runtimeVersion{runtimeID: "netcore", version: "2.0", httpImage: netcore2Http, pubsubImage: ""}
+	netcore = []runtimeVersion{netcore2}
 }
 
 // GetClient returns a k8s clientset to the request from inside of cluster
@@ -236,6 +240,10 @@ func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileNa
 		fileName = modName + ".rb"
 		versionsDef = ruby
 		depName = "Gemfile"
+	case runtimeID == "netcore":
+		fileName = modName + ".cs"
+		versionsDef = netcore
+		depName = "project.json"
 	default:
 		err = errors.New("The given runtime is not valid")
 		return
@@ -475,6 +483,8 @@ func getInitImage(runtime string) string {
 		return "node:6.10-alpine"
 	case strings.Contains(runtime, "ruby"):
 		return "bitnami/ruby:2.4"
+	case strings.Contains(runtime, "netcore"):
+		return "microsoft/aspnetcore-build:2.0"
 	default:
 		return ""
 	}
