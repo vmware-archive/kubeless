@@ -21,7 +21,7 @@ export GOPATH=/GoDir/go/bin
 export PATH=$GOPATH:$PATH
 ````
 
-### Create a worning directory for the project
+### Create a working directory for the project
 
 ````
 working_dir=$GOROOT/src/github.com/kubeless/
@@ -60,6 +60,14 @@ make controller-image
 
 This will instruct "make" to run the scripts to build the kubeless client and the kubeless controller image.
 
+You can build kubeless for multiple platforms with:
+
+```
+$ make binary-cross
+```
+
+The binaries accordingly located at `bundles/kubeless_$OS_$arch` folder.
+
 ### Uploading your kubeless image to Docker Hub
 
 Usually you will need to upload your controller image to a repository so you can make it available for your Kubernettes cluster, whenever it is running.
@@ -86,10 +94,9 @@ Make sure your image repository is correctly referenced in the "containers" sess
       serviceAccountName: controller-acct
 ```
 
-Hint: take a look at the imagePullPolicy configuration if you are sending images with tags (e. g. "latest") to the Kubernettes cluster. This option controls the image caching mechanism for Kubernettes and you may enconter problems if new images enters the cluster with the name. They might not be properly pulled for example. 
+**Hint:** take a look at the `imagePullPolicy` configuration if you are sending images with tags (e. g. "latest") to the Kubernettes cluster. This option controls the image caching mechanism for Kubernettes and you may enconter problems if new images enters the cluster with the same name. They might not be properly pulled for example. 
 
-### Working on your local
-**Branching**
+### Working on your local brench
 
 Branch from it:
 
@@ -126,23 +133,6 @@ $ git push origin myfeature
 1. Visit your fork at https://github.com/$your_github_username/kubeless.
 2. Click the `Compare & pull request` button next to your `myfeature` branch.
 3. Make sure you fill up clearly the description, point out the particular issue your PR is mitigating, and ask for code review.
-
-## Building Kubeless
-
-We provided `Makefile` to help building the project.
-
-```
-$ cd $working_dir/kubeless
-$ make binary
-```
-
-You can build kubeless for multiple platforms with:
-
-```
-$ make binary-cross
-```
-
-The binaries accordingly located at `bundles/kubeless_$OS_$arch` folder.
 
 ## Testing kubeless with local minikube
 
@@ -181,13 +171,7 @@ Or you might wanna check log of a particular function deployed to kubeless.
 $ kubeless function logs <function_name> -f
 ```
 
-## Manage dependencies
-
-We use [Glide](https://github.com/Masterminds/glide) to vendor the dependencies. Take a quick look on README to understand how it works. Packages that Kubeless relying on is listed at [glide.yaml](https://github.com/kubeless/kubeless/blob/master/glide.yaml)
-
-Happy hacking!
-
-### Example of shell script to setup a local environment, build the kubeless binaries and make it available on kubernettes.
+## Example of shell script to setup a local environment, build the kubeless binaries and make it available on kubernettes.
 
 ```
 #!/bin/bash
@@ -234,3 +218,8 @@ Happy hacking!
 #kubectl create namespace kubeless
 #kubectl create -f <path-to-yaml>
 ```
+## Manage dependencies
+
+We use [Glide](https://github.com/Masterminds/glide) to vendor the dependencies. Take a quick look on README to understand how it works. Packages that Kubeless relying on is listed at [glide.yaml](https://github.com/kubeless/kubeless/blob/master/glide.yaml)
+
+Happy hacking!
