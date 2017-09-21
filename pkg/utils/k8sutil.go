@@ -62,7 +62,7 @@ const (
 	node8Pubsub    = "bitnami/kubeless-nodejs-event-consumer@sha256:4d005c9c0b462750d9ab7f1305897e7a01143fe869d3b722ed3330560f9c7fb5"
 	ruby24Http     = "bitnami/kubeless-ruby@sha256:97b18ac36bb3aa9529231ea565b339ec00d2a5225cf7eb010cd5a6188cf72ab5"
 	ruby24Pubsub   = "bitnami/kubeless-ruby-event-consumer@sha256:938a860dbd9b7fb6b4338248a02c92279315c6e42eed0700128b925d3696b606"
-	netcore2Http   = "allantargino/kubeless-netcore:v1"
+	netcore2Http   = "allantargino/kubeless-netcore:latest"
 	busybox        = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
 	pubsubFunc     = "PubSub"
 	schedFunc      = "Scheduled"
@@ -540,6 +540,17 @@ func getVolumeMounts(name, runtime string) []v1.VolumeMount {
 				MountPath: "/requirements",
 			},
 		}
+       case strings.Contains(runtime, "netcore"):
+                return []v1.VolumeMount{
+                        {
+                                Name:      "netcorepath",
+                                MountPath: "/netcorepath",
+                        },
+                        {
+                                Name:      name,
+                                MountPath: "/requirements",
+                        },
+                }
 	default:
 		return []v1.VolumeMount{}
 	}
@@ -593,7 +604,22 @@ func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
 				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},
 		})
-	}
+        case strings.Contains(runtime, "netcore"):
+                dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
+                        Name:  "DOTNET_HOME",
+                        Value: "/usr/bin/",
+                })
+                dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
+                        Name:      "netcorepath",
+                        MountPath: "/opt/kubeless/netcorepath",
+                })
+                dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
+                        Name: "netcorepath",
+                        VolumeSource: v1.VolumeSource{
+                                EmptyDir: &v1.EmptyDirVolumeSource{},
+                        },
+                })
+        }
 }
 
 // configureClient configures tpr client
