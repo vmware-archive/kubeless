@@ -745,6 +745,7 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 			return err
 		}
 		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Patch(configMap.Name, types.StrategicMergePatchType, data)
+		return err
 	}
 
 	return err
@@ -776,7 +777,7 @@ func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 			return err
 		}
 		_, err = client.Core().Services(funcObj.Metadata.Namespace).Patch(svc.Name, types.StrategicMergePatchType, data)
-
+		return err
 	}
 	return err
 }
@@ -943,6 +944,7 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", funcObj.Metadata.Namespace, pod.Name, err)
 			}
 		}
+		return err
 	}
 
 	return err
@@ -983,9 +985,7 @@ func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []met
 			return err
 		}
 		_, err = client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Patch(job.Name, types.StrategicMergePatchType, data)
-		if err != nil {
-			return err
-		}
+		return err
 	}
 
 	return err
