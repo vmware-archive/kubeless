@@ -56,6 +56,9 @@ load ../script/libtest
 @test "Test function: post-ruby" {
   test_kubeless_function post-ruby
 }
+@test "Test function: post-dotnetcore" {
+  test_kubeless_function post-dotnetcore
+}
 @test "Test function: get-python-metadata" {
   test_kubeless_function get-python-metadata
 }
