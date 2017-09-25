@@ -5,6 +5,15 @@ get-python:
 get-python-verify:
 	kubeless function call get-python |egrep hello.world
 
+get-python-update:
+	mkdir -p .update
+	echo "def foo():\n    return \"hello world updated\"\n" > .update/helloget.py
+	kubeless function update get-python --runtime python2.7 --handler helloget.foo --from-file .update/helloget.py
+	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python/"
+
+get-python-update-verify:
+	kubeless function call get-python |egrep hello.world.updated
+
 get-python-34:
 	kubeless function deploy get-python --trigger-http --runtime python3.4 --handler helloget.foo --from-file python/helloget.py
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python/"

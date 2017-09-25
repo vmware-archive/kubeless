@@ -37,6 +37,7 @@ load ../script/libtest
 # 'bats' lacks loop support, unroll-them-all ->
 @test "Test function: get-python" {
   test_kubeless_function get-python
+  test_kubeless_function_update get-python
 }
 @test "Test function: get-nodejs" {
   test_kubeless_function get-nodejs

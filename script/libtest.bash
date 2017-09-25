@@ -243,4 +243,12 @@ test_kubeless_function() {
     esac
     make -sC examples ${func}-verify
 }
+
+test_kubeless_function_update() {
+    local func=${1:?} func_topic
+    echo_info "UPDATE: $func"
+    make -sC examples ${func}-update
+    k8s_wait_for_pod_ready -l function=${func}
+    make -sC examples ${func}-update-verify
+}
 # vim: sw=4 ts=4 et si
