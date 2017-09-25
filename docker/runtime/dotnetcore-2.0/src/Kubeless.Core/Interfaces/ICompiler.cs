@@ -3,7 +3,7 @@
     public interface ICompiler
     {
         IParser Parser { get; }
-        IReferencesManager ReferenceManager { get; }
+        IReferencesManager ReferencesManager { get; }
 
         void Compile(IFunction function);
     }

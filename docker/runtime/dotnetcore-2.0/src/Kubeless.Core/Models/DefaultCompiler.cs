@@ -12,18 +12,18 @@ namespace Kubeless.Core.Models
     public class DefaultCompiler : ICompiler
     {
         public IParser Parser { get; }
-        public IReferencesManager ReferenceManager { get; }
+        public IReferencesManager ReferencesManager { get; }
 
         public DefaultCompiler(IParser parser, IReferencesManager referenceManager)
         {
             Parser = parser;
-            ReferenceManager = referenceManager;
+            ReferencesManager = referenceManager;
         }
 
         private CSharpCompilation GetCompilationEngine(string assemblyName, string code)
         {
             var syntaxTree = Parser.ParseText(code);
-            var references = ReferenceManager.GetReferences();
+            var references = ReferencesManager.GetReferences();
             return CreateCompilation(assemblyName, syntaxTree, references);
         }
         

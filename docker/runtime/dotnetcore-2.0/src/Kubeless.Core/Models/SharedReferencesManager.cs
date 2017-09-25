@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 
 namespace Kubeless.Core.Models
 {
-    public class NativeReferencesManager : IReferencesManager
+    public class SharedReferencesManager : IReferencesManager
     {
         private static readonly string SharedPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
             Path.Combine(Environment.GetEnvironmentVariable("ProgramFiles"), @"dotnet\shared\Microsoft.NETCore.App\2.0.0\") :
