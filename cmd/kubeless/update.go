@@ -62,7 +62,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		envs, err := cmd.Flags().GetStringSlice("env")
+		envs, err := cmd.Flags().GetStringArray("env")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -136,6 +136,6 @@ func init() {
 	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
 	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
-	updateCmd.Flags().StringSliceP("env", "", []string{}, "Specify environment variable of the function")
+	updateCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function")
 	updateCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 }
