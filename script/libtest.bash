@@ -53,7 +53,7 @@ k8s_wait_for_pod_ready() {
 k8s_wait_for_uniq_pod() {
     echo_info "Waiting for pod '${@}' to be the only one running ... "
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
-    until [ `kubectl get pod "${@}" | grep Running | wc -l | awk '{print $1}'` -eq "1" ] ; do
+    until [ `kubectl get pod "${@}" | grep 1/1 | wc -l | awk '{print $1}'` -eq "1" ] ; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
