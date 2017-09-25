@@ -40,6 +40,14 @@ get-ruby-deps:
 get-ruby-deps-verify:
 	kubeless function call get-ruby-deps |egrep hello.world
 
+get-dotnetcore:
+	kubeless function deploy get-dotnetcore --trigger-http --runtime dotnetcore2.0 --handler helloget.foo --from-file dotnetcore/helloget.cs 
+	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-dotnetcore/"
+
+get-dotnetcore-verify:
+	kubeless function call get-dotnetcore |egrep hello.world
+
+
 get: get-python get-nodejs get-python-metadata get-ruby get-ruby-deps
 
 post-python:
@@ -62,6 +70,12 @@ post-ruby:
 
 post-ruby-verify:
 	kubeless function call post-ruby --data '{"it-s": "alive"}'|egrep "it.*alive"
+
+post-dotnetcore:
+	kubeless function deploy post-dotnetcore --runtime dotnetcore2.0 --handler hellowithdata.handler --from-file dotnetcore/hellowithdata.cs --trigger-http
+
+post-dotnetcore-verify:
+	kubeless function call post-dotnetcore --data '{"it-s": "alive"}'|egrep "it.*alive"
 
 post: post-python post-nodejs post-ruby
 

@@ -47,6 +47,9 @@ load ../script/libtest
 @test "Test function: get-ruby-deps" {
   test_kubeless_function get-ruby-deps
 }
+@test "Test function: get-dotnetcore" {
+  test_kubeless_function get-dotnetcore
+}
 @test "Test function: post-python" {
   test_kubeless_function post-python
 }
@@ -55,6 +58,9 @@ load ../script/libtest
 }
 @test "Test function: post-ruby" {
   test_kubeless_function post-ruby
+}
+@test "Test function: post-dotnetcore" {
+  test_kubeless_function post-dotnetcore
 }
 @test "Test function: get-python-metadata" {
   test_kubeless_function get-python-metadata
