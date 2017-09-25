@@ -50,6 +50,14 @@ k8s_wait_for_pod_ready() {
         sleep 1
     done
 }
+k8s_wait_for_uniq_pod() {
+    echo_info "Waiting for pod '${@}' to be the only one running ... "
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    until [ `kubectl get pod "${@}" | grep Running | wc -l | awk '{print $1}'` -eq "1" ] ; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
+}
 k8s_wait_for_pod_gone() {
     echo_info "Waiting for pod '${@}' to be gone ... "
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
@@ -248,7 +256,7 @@ test_kubeless_function_update() {
     local func=${1:?} func_topic
     echo_info "UPDATE: $func"
     make -sC examples ${func}-update
-    k8s_wait_for_pod_ready -l function=${func}
+    k8s_wait_for_uniq_pod -l function=${func}
     make -sC examples ${func}-update-verify
 }
 # vim: sw=4 ts=4 et si
