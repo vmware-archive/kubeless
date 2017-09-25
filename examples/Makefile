@@ -64,10 +64,10 @@ post-ruby-verify:
 	kubeless function call post-ruby --data '{"it-s": "alive"}'|egrep "it.*alive"
 
 post-dotnetcore:
-	kubeless function deploy post-dotnetcore --runtime netcore2.0  --handler mycode.execute --from-file dotnetcore/mycode.cs --trigger-http
+	kubeless function deploy post-dotnetcore --runtime dotnetcore2.0 --handler mycode.execute --from-file dotnetcore/mycode.cs --trigger-http
 
 post-dotnetcore-verify:
-	kubeless function call post-dotnetcore --data '{"message": "Hello World!"}' | grep 42
+	kubeless function call post-dotnetcore | grep 42
 
 post: post-python post-nodejs post-ruby
 
