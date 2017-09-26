@@ -7,7 +7,7 @@ local kubeless = import "kubeless.jsonnet";
 local controller_account = kubeless.controller_account;
 local controller_roles = [{
   apiGroups: ["*"],
-  resources: ["services", "deployments", "functions", "configmaps"],
+  resources: ["services", "deployments", "functions", "configmaps", "pods", "replicasets"],
   verbs: ["*"]
 }];
 

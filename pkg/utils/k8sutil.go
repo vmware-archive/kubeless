@@ -776,7 +776,8 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 
 	_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Create(configMap)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		data, err := json.Marshal(configMap)
+		var data []byte
+		data, err = json.Marshal(configMap)
 		if err != nil {
 			return err
 		}
@@ -807,12 +808,12 @@ func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 	}
 	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(svc)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		data, err := json.Marshal(svc)
+		var data []byte
+		data, err = json.Marshal(svc)
 		if err != nil {
 			return err
 		}
 		_, err = client.Core().Services(funcObj.Metadata.Namespace).Patch(svc.Name, types.StrategicMergePatchType, data)
-
 	}
 	return err
 }
@@ -959,7 +960,8 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 	_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		data, err := json.Marshal(dpm)
+		var data []byte
+		data, err = json.Marshal(dpm)
 		if err != nil {
 			return err
 		}
@@ -971,7 +973,11 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		// kick existing function pods then it will be recreated
 		// with the new data mount from updated configmap.
 		// TODO: This is a workaround.  Do something better.
-		pods, err := GetPodsByLabel(client, funcObj.Metadata.Namespace, "function", funcObj.Metadata.Name)
+		var pods *v1.PodList
+		pods, err = GetPodsByLabel(client, funcObj.Metadata.Namespace, "function", funcObj.Metadata.Name)
+		if err != nil {
+			return err
+		}
 		for _, pod := range pods.Items {
 			err = client.Core().Pods(funcObj.Metadata.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 			if err != nil && !k8sErrors.IsNotFound(err) {
@@ -1014,14 +1020,12 @@ func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []met
 
 	_, err := client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Create(job)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		data, err := json.Marshal(job)
+		var data []byte
+		data, err = json.Marshal(job)
 		if err != nil {
 			return err
 		}
 		_, err = client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Patch(job.Name, types.StrategicMergePatchType, data)
-		if err != nil {
-			return err
-		}
 	}
 
 	return err
