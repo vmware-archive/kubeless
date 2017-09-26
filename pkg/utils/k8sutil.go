@@ -782,7 +782,6 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 			return err
 		}
 		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Patch(configMap.Name, types.StrategicMergePatchType, data)
-		return err
 	}
 
 	return err
@@ -815,7 +814,6 @@ func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 			return err
 		}
 		_, err = client.Core().Services(funcObj.Metadata.Namespace).Patch(svc.Name, types.StrategicMergePatchType, data)
-		return err
 	}
 	return err
 }
