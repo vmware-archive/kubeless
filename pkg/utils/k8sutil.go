@@ -740,12 +740,12 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 
 	_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Create(configMap)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var data []byte
-		data, err = json.Marshal(configMap)
-		if err != nil {
-			return err
+		data, patchErr := json.Marshal(configMap)
+		if patchErr != nil {
+			return patchErr
 		}
-		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Patch(configMap.Name, types.StrategicMergePatchType, data)
+		_, patchErr = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Patch(configMap.Name, types.StrategicMergePatchType, data)
+		return patchErr
 	}
 
 	return err
@@ -772,12 +772,12 @@ func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 	}
 	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(svc)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var data []byte
-		data, err = json.Marshal(svc)
-		if err != nil {
-			return err
+		data, patchErr := json.Marshal(svc)
+		if patchErr != nil {
+			return patchErr
 		}
-		_, err = client.Core().Services(funcObj.Metadata.Namespace).Patch(svc.Name, types.StrategicMergePatchType, data)
+		_, patchErr = client.Core().Services(funcObj.Metadata.Namespace).Patch(svc.Name, types.StrategicMergePatchType, data)
+		return patchErr
 	}
 	return err
 }
@@ -924,27 +924,27 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 	_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var data []byte
-		data, err = json.Marshal(dpm)
-		if err != nil {
+		data, redeployErr := json.Marshal(dpm)
+		if redeployErr != nil {
 			return err
 		}
-		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Patch(dpm.Name, types.StrategicMergePatchType, data)
-		if err != nil {
+		_, redeployErr = client.Extensions().Deployments(funcObj.Metadata.Namespace).Patch(dpm.Name, types.StrategicMergePatchType, data)
+		if redeployErr != nil {
 			return err
 		}
 
 		// kick existing function pods then it will be recreated
 		// with the new data mount from updated configmap.
 		// TODO: This is a workaround.  Do something better.
-		pods, err := GetPodsByLabel(client, funcObj.Metadata.Namespace, "function", funcObj.Metadata.Name)
+		pods, redeployErr := GetPodsByLabel(client, funcObj.Metadata.Namespace, "function", funcObj.Metadata.Name)
 		for _, pod := range pods.Items {
-			err = client.Core().Pods(funcObj.Metadata.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
-			if err != nil && !k8sErrors.IsNotFound(err) {
+			redeployErr = client.Core().Pods(funcObj.Metadata.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+			if redeployErr != nil && !k8sErrors.IsNotFound(redeployErr) {
 				// non-fatal
-				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", funcObj.Metadata.Namespace, pod.Name, err)
+				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", funcObj.Metadata.Namespace, pod.Name, redeployErr)
 			}
 		}
+		return redeployErr
 	}
 
 	return err
@@ -980,12 +980,12 @@ func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []met
 
 	_, err := client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Create(job)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var data []byte
-		data, err = json.Marshal(job)
-		if err != nil {
-			return err
+		data, patchErr := json.Marshal(job)
+		if patchErr != nil {
+			return patchErr
 		}
-		_, err = client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Patch(job.Name, types.StrategicMergePatchType, data)
+		_, patchErr = client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Patch(job.Name, types.StrategicMergePatchType, data)
+		return patchErr
 	}
 
 	return err
