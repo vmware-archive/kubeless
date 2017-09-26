@@ -24,7 +24,7 @@ KUBECFG_BIN=$(which kubecfg)
 : ${KUBECTL_BIN:?ERROR: missing binary: kubectl}
 : ${KUBECFG_BIN:?ERROR: missing binary: kubecfg}
 
-export TEST_MAX_WAIT_SEC=120
+export TEST_MAX_WAIT_SEC=240
 
 # Workaround 'bats' lack of forced output support, dup() stderr fd
 exec 9>&2
