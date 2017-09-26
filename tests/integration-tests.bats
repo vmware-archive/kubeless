@@ -37,6 +37,7 @@ load ../script/libtest
 # 'bats' lacks loop support, unroll-them-all ->
 @test "Test function: get-python" {
   test_kubeless_function get-python
+  test_kubeless_function_update get-python
 }
 @test "Test function: get-nodejs" {
   test_kubeless_function get-nodejs
@@ -73,9 +74,5 @@ load ../script/libtest
 }
 @test "Test function: pubsub-ruby" {
   test_kubeless_function pubsub-ruby
-}
-@test "Test function update: get-python" {
-  test_kubeless_function get-python
-  test_kubeless_function_update get-python
 }
 # vim: ts=2 sw=2 si et syntax=sh
