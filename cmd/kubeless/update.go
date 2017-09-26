@@ -67,6 +67,11 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		runtimeImage, err := cmd.Flags().GetString("runtime-image")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		mem, err := cmd.Flags().GetString("memory")
 		if err != nil {
 			logrus.Fatal(err)
@@ -82,9 +87,16 @@ var updateCmd = &cobra.Command{
 				logrus.Fatalf("Wrong format of the memory value: %v", err)
 			}
 		}
-		funcContent, err := readFile(file)
-		if err != nil {
-			logrus.Fatalf("Unable to read file %s: %v", file, err)
+		funcContent := ""
+		if len(file) != 0 {
+			funcContent, err = readFile(file)
+			if err != nil {
+				logrus.Fatalf("Unable to read file %s: %v", file, err)
+			}
+		} else {
+			if len(runtimeImage) == 0 {
+				logrus.Fatalf("You should specify either a file containing your function or a runtime image")
+			}
 		}
 
 		resource := map[v1.ResourceName]resource.Quantity{
@@ -123,6 +135,10 @@ var updateCmd = &cobra.Command{
 			},
 		}
 
+		if len(runtimeImage) != 0 {
+			f.Spec.Template.Spec.Containers[0].Image = runtimeImage
+		}
+
 		err = utils.UpdateK8sCustomResource(f)
 		if err != nil {
 			logrus.Fatal(err)
@@ -138,4 +154,5 @@ func init() {
 	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
 	updateCmd.Flags().StringSliceP("env", "", []string{}, "Specify environment variable of the function")
 	updateCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
+	updateCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
 }

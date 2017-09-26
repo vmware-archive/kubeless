@@ -75,4 +75,8 @@ load ../script/libtest
 @test "Test function: pubsub-ruby" {
   test_kubeless_function pubsub-ruby
 }
+@test "Test custom runtime image" {
+  test_kubeless_function webserver
+  test_kubeless_function_update webserver
+}
 # vim: ts=2 sw=2 si et syntax=sh

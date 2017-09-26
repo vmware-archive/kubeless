@@ -89,6 +89,11 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		runtimeImage, err := cmd.Flags().GetString("runtime-image")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		mem, err := cmd.Flags().GetString("memory")
 		if err != nil {
 			logrus.Fatal(err)
@@ -112,9 +117,16 @@ var deployCmd = &cobra.Command{
 			topic = ""
 		}
 
-		funcContent, err := readFile(file)
-		if err != nil {
-			logrus.Fatalf("Unable to read file %s: %v", file, err)
+		funcContent := ""
+		if len(file) != 0 {
+			funcContent, err = readFile(file)
+			if err != nil {
+				logrus.Fatalf("Unable to read file %s: %v", file, err)
+			}
+		} else {
+			if len(runtimeImage) == 0 {
+				logrus.Fatalf("You should specify either a file containing your function or a runtime image")
+			}
 		}
 
 		f := &spec.Function{
@@ -151,6 +163,9 @@ var deployCmd = &cobra.Command{
 				Requests: resource,
 			}
 		}
+		if len(runtimeImage) != 0 {
+			f.Spec.Template.Spec.Containers[0].Image = runtimeImage
+		}
 
 		// add dependencies file to func spec
 		if deps != "" {
@@ -185,4 +200,5 @@ func init() {
 	deployCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory, which is measured in bytes, for the function. It is expressed as a plain integer or a fixed-point interger with one of these suffies: E, P, T, G, M, K, Ei, Pi, Ti, Gi, Mi, Ki")
 	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
+	deployCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
 }

@@ -216,17 +216,8 @@ func getAvailableRuntimes(imageType string) []string {
 	return runtimeList
 }
 
-// GetFunctionData given a runtime returns an Image ID, the dependencies filename and the function filename
-func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileName string, err error) {
-	err = nil
-	imageName = ""
-	depName = ""
-	fileName = ""
-
+func getRuntimeProperties(runtime, modName string) (fileName, depName string, versionsDef []runtimeVersion, err error) {
 	runtimeID := regexp.MustCompile("[a-zA-Z]+").FindString(runtime)
-	version := regexp.MustCompile("[0-9.]+").FindString(runtime)
-
-	var versionsDef []runtimeVersion
 	switch {
 	case runtimeID == "python":
 		fileName = modName + ".py"
@@ -248,6 +239,22 @@ func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileNa
 		err = errors.New("The given runtime is not valid")
 		return
 	}
+	return
+}
+
+// GetFunctionData given a runtime returns an Image ID, the dependencies filename and the function filename
+func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileName string, err error) {
+	err = nil
+	imageName = ""
+	var versionsDef []runtimeVersion
+
+	version := regexp.MustCompile("[0-9.]+").FindString(runtime)
+
+	fileName, depName, versionsDef, err = getRuntimeProperties(runtime, modName)
+	if err != nil {
+		return
+	}
+
 	imageNameEnvVar := ""
 	if ftype == pubsubFunc {
 		imageNameEnvVar = strings.ToUpper(runtime) + "_PUBSUB_RUNTIME"
@@ -375,7 +382,7 @@ func CreateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
 			}
 		}
 	} else {
-		return fmt.Errorf("Function has already existed")
+		return fmt.Errorf("Function %s already existed", f.Metadata.Name)
 	}
 
 	return nil
@@ -750,15 +757,23 @@ func splitHandler(handler string) (string, string, error) {
 }
 
 func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
-	modName, _, err := splitHandler(funcObj.Spec.Handler)
-	if err != nil {
-		return err
-	}
+	configMapData := map[string]string{}
+	var err error
+	if funcObj.Spec.Handler != "" {
+		modName, _, err := splitHandler(funcObj.Spec.Handler)
+		if err != nil {
+			return err
+		}
+		_, depName, fileName, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
+		if err != nil {
+			return err
+		}
 
-	fileName := modName
-	_, depName, fileName, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
-	if err != nil {
-		return err
+		configMapData = map[string]string{
+			"handler": funcObj.Spec.Handler,
+			fileName:  funcObj.Spec.Function,
+			depName:   funcObj.Spec.Deps,
+		}
 	}
 
 	configMap := &v1.ConfigMap{
@@ -767,11 +782,7 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 			Labels:          funcObj.Metadata.Labels,
 			OwnerReferences: or,
 		},
-		Data: map[string]string{
-			"handler": funcObj.Spec.Handler,
-			fileName:  funcObj.Spec.Function,
-			depName:   funcObj.Spec.Deps,
-		},
+		Data: configMapData,
 	}
 
 	_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Create(configMap)
@@ -782,6 +793,10 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 			return err
 		}
 		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Patch(configMap.Name, types.StrategicMergePatchType, data)
+		if err != nil && k8sErrors.IsAlreadyExists(err) {
+			// The configmap may already exist and there is nothing to update
+			return nil
+		}
 	}
 
 	return err
@@ -814,6 +829,10 @@ func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 			return err
 		}
 		_, err = client.Core().Services(funcObj.Metadata.Namespace).Patch(svc.Name, types.StrategicMergePatchType, data)
+		if err != nil && k8sErrors.IsAlreadyExists(err) {
+			// The service may already exist and there is nothing to update
+			return nil
+		}
 	}
 	return err
 }
@@ -885,30 +904,35 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
 	}
 
-	modName, handlerName, err := splitHandler(funcObj.Spec.Handler)
-	if err != nil {
-		return err
+	//only resolve the image name if it has not been already set
+	if funcObj.Spec.Handler != "" {
+		modName, handlerName, err := splitHandler(funcObj.Spec.Handler)
+		if err != nil {
+			return err
+		}
+		if dpm.Spec.Template.Spec.Containers[0].Image == "" {
+			imageName, _, _, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
+			if err != nil {
+				return err
+			}
+			dpm.Spec.Template.Spec.Containers[0].Image = imageName
+		}
+		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
+			v1.EnvVar{
+				Name:  "FUNC_HANDLER",
+				Value: handlerName,
+			},
+			v1.EnvVar{
+				Name:  "MOD_NAME",
+				Value: modName,
+			})
 	}
 
-	imageName, _, _, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
-	if err != nil {
-		return err
-	}
-
-	dpm.Spec.Template.Spec.Containers[0].Image = imageName
 	dpm.Spec.Template.Spec.Containers[0].Name = funcObj.Metadata.Name
 	dpm.Spec.Template.Spec.Containers[0].Ports = append(dpm.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{
 		ContainerPort: 8080,
 	})
 	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
-		v1.EnvVar{
-			Name:  "FUNC_HANDLER",
-			Value: handlerName,
-		},
-		v1.EnvVar{
-			Name:  "MOD_NAME",
-			Value: modName,
-		},
 		v1.EnvVar{
 			Name:  "TOPIC_NAME",
 			Value: funcObj.Spec.Topic,
@@ -921,6 +945,11 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 	//prepare init-container for custom runtime
 	initContainer := v1.Container{}
 	if funcObj.Spec.Deps != "" {
+		// ensure that the runtime is supported for installing dependencies
+		_, _, _, err = getRuntimeProperties(funcObj.Spec.Runtime, "")
+		if err != nil {
+			return err
+		}
 		initContainer = v1.Container{
 			Name:            "install",
 			Image:           getInitImage(funcObj.Spec.Runtime),
@@ -930,17 +959,14 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			ImagePullPolicy: v1.PullIfNotPresent,
 		}
 		initContainer.Env = dpm.Spec.Template.Spec.Containers[0].Env
+		// update deployment for custom runtime
+		updateDeployment(dpm, funcObj.Spec.Runtime)
+		//TODO: remove this when init containers becomes a stable feature
+		addInitContainerAnnotation(dpm)
 	}
 	// only append non-empty initContainer
 	if initContainer.Name != "" {
 		dpm.Spec.Template.Spec.InitContainers = append(dpm.Spec.Template.Spec.InitContainers, initContainer)
-	}
-
-	// update deployment for custom runtime
-	if funcObj.Spec.Deps != "" {
-		updateDeployment(dpm, funcObj.Spec.Runtime)
-		//TODO: remove this when init containers becomes a stable feature
-		addInitContainerAnnotation(dpm)
 	}
 
 	// add liveness Probe to deployment
