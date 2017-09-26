@@ -46,7 +46,7 @@ k8s_wait_for_pod_ready() {
     echo_info "Waiting for pod '${@}' to be ready ... "
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     until kubectl get pod "${@}" |&grep -q Running; do
-        kubectl get pod "${@}"
+        kubectl get pod "${@}" >&9
         echo "Timeout $cnt seconds"
         ((cnt=cnt-1)) || return 1
         sleep 1
