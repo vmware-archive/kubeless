@@ -7,8 +7,6 @@
 
 Kubeless stands out as we use a ThirdPartyResource (now called [Custom Resource Definition](https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/)) to be able to create functions as custom kubernetes resources. We then run an in-cluster controller that watches these custom resources and launches _runtimes_ on-demand. The controller dynamically injects the functions code into the runtimes and make them available over HTTP or via a PubSub mechanism.
 
-As event system, we currently use [Kafka](https://kafka.apache.org) and bundle a kafka setup in the Kubeless namespace for development. Help to support additional event framework like [nats.io](http://nats.io/) would be more than welcome.
-
 Kubeless is purely open-source and non-affiliated to any commercial organization. Chime in at anytime, we would love the help and feedback !
 
 ## Screencasts
@@ -17,6 +15,10 @@ Click on the picture below to see a screencast demonstrating event based functio
 
 [![screencast](https://img.youtube.com/vi/AxZuQIJUX4s/0.jpg)](https://www.youtube.com/watch?v=AxZuQIJUX4s)
 
+Click on this next picture to see a screencast demonstrating our [serverless](https://serverless.com/framework/docs/providers/kubeless/) plugin:
+
+[![serverless](https://img.youtube.com/vi/ROA7Ig7tD5s/0.jpg)](https://www.youtube.com/watch?v=ROA7Ig7tD5s)
+
 ## Tools
 
 * A [UI](https://github.com/kubeless/kubeless-ui) available. It can run locally or in-cluster.
@@ -24,7 +26,7 @@ Click on the picture below to see a screencast demonstrating event based functio
 
 ## Installation
 
-Download `kubeless` cli from the [release page](https://github.com/kubeless/kubeless/releases). Then using one of yaml manifests found in the release package to deploy kubeless. It will create a _kubeless_ namespace and a _function_ ThirdPartyResource. You will see a _kubeless_ controller, and _kafka_, _zookeeper_ statefulset running.
+Download `kubeless` cli from the [release page](https://github.com/kubeless/kubeless/releases). Then use one of yaml manifests found in the release package to deploy kubeless. It will create a _kubeless_ namespace and a _function_ ThirdPartyResource. You will see a _kubeless_ controller, and _kafka_, _zookeeper_ statefulset running.
 
 There are several kubeless manifests being shipped for multiple k8s environments (non-rbac, rbac and openshift), please consider to pick up the correct one:
 
@@ -185,7 +187,7 @@ Also checkout the [functions repository](https://github.com/kubeless/functions).
 
 fecth the project:
 ```console
-$ got get -d github.com/kubeless/kubeless
+$ go get -d github.com/kubeless/kubeless
 $ cd $GOPATH/src/github.com/kubeless/kubeless/
 ```
 
