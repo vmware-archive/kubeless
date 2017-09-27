@@ -29,41 +29,31 @@ Right now the runtimes that support this kind of events are Python and NodeJS.
 Kubeless runtimes are exposing metrics at `/metrics` endpoint and these metrics will be collected by Prometheus. We also include a prometheus setup in [`manifests/monitoring`](https://github.com/kubeless/kubeless/blob/master/manifests/monitoring/prometheus.yaml) to help you easier set it up. The metrics collected are: Number of calls, succeeded and error executions and the time spent per call.
 
 # Custom Runtime
-We are providing a way to define custom runtime in form of a container image. That means you have to manage how your runtime starts and looks for injected function and executes it. Kubeless injects the function into runtime container via a [Kubernetes ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configmap/) object mounted at `/kubeless` folder, so make sure your runtime looks for function at that folder. The custom runtime doesn't supported in Kubeless CLI yet but you create function TPR object directly from kubectl as below steps:
+We are providing a way to define custom runtime in form of a container image. This way you are able to use any language or any binary with Kubeless as far as the image satisfies the following conditions:
+ - It runs a web server listening in the port 8080
+ - It exposes the endpoint `/healthz` to perform the container [liveness probe](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/)
+ - (Optional) It serves [Prometheus](https://prometheus.io) metrics in the endpoint `/metrics`
 
-1) You define your function TPR object in yaml/json format
-
-- point out the custom runtime image at `spec.template.spec.containers[0].image`
-- include function body at `spec.function`
-- handler _should_ be in format of `function_name.function_name`
-- be aware of supporting runtime versions: python2.7, nodejs6, nodejs8, ruby2.4
-
-```
-$ cat function.yaml
-apiVersion: k8s.io/v1
-kind: Function
-metadata:
-  name: get-python
-  namespace: default
-spec:
-  deps: ""
-  function: |
-    def foo():
-        return "hello world"
-  handler: foo.foo
-  runtime: python2.7
-  template:
-    spec:
-      containers:
-      - image: "tuna/kubeless-python:0.0.6"
-  topic: ""
-  type: HTTP
+To deploy the container image you just need to specify it using the Kubeless CLI:
+```console
+$ kubeless function deploy --runtime-image bitnami/tomcat:9.0 webserver
+$ kubeless function ls
+NAME     	NAMESPACE	HANDLER         	RUNTIME  	TYPE	TOPIC
+webserver	default  	                	         	HTTP
 ```
 
-2) Deploy function
-
+Now you can call your function like any other:
+```console
+$ kubeless function call webserver
+...
+<h2>If you're seeing this, you've successfully installed Tomcat. Congratulations!</h2>
 ```
-$ kubectl create -f function.yaml
+
+Note that you can also use your own image for one of the supported runtimes. That means you have to manage how your runtime starts and looks for the injected function and executes it. Kubeless injects the function into runtime container via a [Kubernetes ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configmap/) object mounted at `/kubeless` folder, so make sure your runtime looks for function at that folder.
+
+You can deploy your function just specifying the runtime image:
+```console
+$ kubeless function deploy --runtime-image tuna/kubeless-python:0.0.6 --from-file ./handler.py --handler handler.hello --runtime python2.7 --trigger-http hello
 $ kubeless function ls
 NAME      	NAMESPACE	HANDLER     	RUNTIME  	TYPE	TOPIC
 get-python	default  	foo.foo	      python2.7	HTTP
