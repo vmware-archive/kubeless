@@ -491,12 +491,22 @@ func getInitImage(runtime string) string {
 }
 
 // specify command for the init container
-func getCommand(runtime string) []string {
+func getCommand(runtime string, env []v1.EnvVar) []string {
 	switch {
 	case strings.Contains(runtime, "python"):
 		return []string{"pip", "install", "--prefix=/pythonpath", "-r", "/requirements/requirements.txt"}
 	case strings.Contains(runtime, "nodejs"):
-		return []string{"/bin/sh", "-c", "cp package.json /nodepath && npm install --prefix=/nodepath"}
+		registry := "https://registry.npmjs.org"
+		scope := ""
+		for _, v := range env {
+			if v.Name == "NPM_REGISTRY" {
+				registry = v.Value
+			}
+			if v.Name == "NPM_SCOPE" {
+				scope = v.Value + ":"
+			}
+		}
+		return []string{"/bin/sh", "-c", "cp package.json /nodepath && npm config set " + scope + "registry " + registry + " && npm install --prefix=/nodepath"}
 	case strings.Contains(runtime, "ruby"):
 		return []string{"bundle", "install", "--path", "/rubypath"}
 	default:
@@ -924,7 +934,7 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		initContainer = v1.Container{
 			Name:            "install",
 			Image:           getInitImage(funcObj.Spec.Runtime),
-			Command:         getCommand(funcObj.Spec.Runtime),
+			Command:         getCommand(funcObj.Spec.Runtime, dpm.Spec.Template.Spec.Containers[0].Env),
 			VolumeMounts:    getVolumeMounts(funcObj.Metadata.Name, funcObj.Spec.Runtime),
 			WorkingDir:      "/requirements",
 			ImagePullPolicy: v1.PullIfNotPresent,
