@@ -131,8 +131,8 @@ Messages need to be JSON messages. A function can be as simple as:
 
 ```python
 def foobar(context):
-    print context.json
-    return context.json
+    print context
+    return context
 ```
 
 You create it the same way than an _HTTP_ function except that you specify a `--trigger-topic`.
