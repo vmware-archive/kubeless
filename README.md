@@ -127,12 +127,12 @@ Kubeless also supports [ingress](https://kubernetes.io/docs/concepts/services-ne
 
 ### PubSub function
 
-Messages need to be JSON messages. A function can be as simple as:
+A function can be as simple as:
 
 ```python
 def foobar(context):
-    print context.json
-    return context.json
+    print context
+    return context
 ```
 
 You create it the same way than an _HTTP_ function except that you specify a `--trigger-topic`.
@@ -142,6 +142,17 @@ $ kubeless function deploy test --runtime python2.7 \
                                 --handler test.foobar \
                                 --from-file test.py \
                                 --trigger-topic test-topic
+```
+
+After that you can invoke them publishing messages in that topic:
+```console
+$ kubeless topic publish --topic test-topic --data "Hello World!"
+```
+
+You can check the result in the pod logs:
+```console
+$ kubectl logs test-695251588-cxwmc
+Hello World!
 ```
 
 ### Other commands
