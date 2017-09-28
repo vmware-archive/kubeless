@@ -27,13 +27,11 @@ func TestParseLabel(t *testing.T) {
 		"foo=bar",
 		"bar:foo",
 		"foobar",
-		"qux=bar,baz",
 	}
 	expected := map[string]string{
 		"foo":    "bar",
 		"bar":    "foo",
 		"foobar": "",
-		"qux":    "bar,baz",
 	}
 	actual := parseLabel(labels)
 	if eq := reflect.DeepEqual(expected, actual); !eq {
@@ -47,7 +45,6 @@ func TestParseEnv(t *testing.T) {
 		"bar:foo",
 		"foobar",
 		"foo=bar=baz",
-		"qux=bar,baz",
 	}
 	expected := []v1.EnvVar{
 		{
@@ -65,10 +62,6 @@ func TestParseEnv(t *testing.T) {
 		{
 			Name:  "foo",
 			Value: "bar=baz",
-		},
-		{
-			Name:  "qux",
-			Value: "bar,baz",
 		},
 	}
 	actual := parseEnv(envs)
