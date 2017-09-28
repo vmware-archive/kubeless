@@ -216,8 +216,11 @@ func getAvailableRuntimes(imageType string) []string {
 	return runtimeList
 }
 
-func getRuntimeProperties(runtime, modName string) (fileName, depName string, versionsDef []runtimeVersion, err error) {
+// GetRuntimeProperties returns runtime specific information
+func GetRuntimeProperties(runtime, modName string) (fileName, depName, httpImage, pubsubImage string, err error) {
 	runtimeID := regexp.MustCompile("[a-zA-Z]+").FindString(runtime)
+	version := regexp.MustCompile("[0-9.]+").FindString(runtime)
+	var versionsDef []runtimeVersion
 	switch {
 	case runtimeID == "python":
 		fileName = modName + ".py"
@@ -239,47 +242,47 @@ func getRuntimeProperties(runtime, modName string) (fileName, depName string, ve
 		err = errors.New("The given runtime is not valid")
 		return
 	}
+	foundImage := false
+	for i := range versionsDef {
+		if versionsDef[i].version == version {
+			httpImage = versionsDef[i].httpImage
+			pubsubImage = versionsDef[i].pubsubImage
+			foundImage = true
+			break
+		}
+	}
+	if !foundImage {
+		err = errors.New("The runtime " + runtimeID + " doesn't have an available image for the given version " + version)
+	}
 	return
 }
 
 // GetFunctionData given a runtime returns an Image ID, the dependencies filename and the function filename
 func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileName string, err error) {
-	err = nil
-	imageName = ""
-	var versionsDef []runtimeVersion
-
-	version := regexp.MustCompile("[0-9.]+").FindString(runtime)
-
-	fileName, depName, versionsDef, err = getRuntimeProperties(runtime, modName)
+	runtimeID := regexp.MustCompile("[a-zA-Z]+").FindString(runtime)
+	fileName, depName, httpImage, pubsubImage, err := GetRuntimeProperties(runtime, modName)
 	if err != nil {
 		return
 	}
 
 	imageNameEnvVar := ""
 	if ftype == pubsubFunc {
-		imageNameEnvVar = strings.ToUpper(runtime) + "_PUBSUB_RUNTIME"
+		imageNameEnvVar = strings.ToUpper(runtimeID) + "_PUBSUB_RUNTIME"
 	} else {
-		imageNameEnvVar = strings.ToUpper(runtime) + "_RUNTIME"
+		imageNameEnvVar = strings.ToUpper(runtimeID) + "_RUNTIME"
 	}
 	if imageName = os.Getenv(imageNameEnvVar); imageName == "" {
-		rVersion := runtimeVersion{"", "", "", ""}
-		for i := range versionsDef {
-			if versionsDef[i].version == version {
-				rVersion = versionsDef[i]
-				break
-			}
-		}
 		if ftype == pubsubFunc {
-			if rVersion.pubsubImage == "" {
+			if pubsubImage == "" {
 				err = errors.New("The given runtime and version '" + runtime + "does not have a valid image for event based functions. Available runtimes are: " + strings.Join(getAvailableRuntimes("PubSub")[:], ", "))
 			} else {
-				imageName = rVersion.pubsubImage
+				imageName = pubsubImage
 			}
 		} else {
-			if rVersion.httpImage == "" {
+			if httpImage == "" {
 				err = errors.New("The given runtime and version '" + runtime + "' does not have a valid image for HTTP based functions. Available runtimes are: " + strings.Join(getAvailableRuntimes("HTTP")[:], ", "))
 			} else {
-				imageName = rVersion.httpImage
+				imageName = httpImage
 			}
 		}
 	}
@@ -747,7 +750,8 @@ func DeleteIngress(client kubernetes.Interface, name, ns string) error {
 	return nil
 }
 
-func splitHandler(handler string) (string, string, error) {
+// SplitHandler the handler string into file name and function name
+func SplitHandler(handler string) (string, string, error) {
 	str := strings.Split(handler, ".")
 	if len(str) != 2 {
 		return "", "", errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
@@ -760,7 +764,7 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 	configMapData := map[string]string{}
 	var err error
 	if funcObj.Spec.Handler != "" {
-		modName, _, err := splitHandler(funcObj.Spec.Handler)
+		modName, _, err := SplitHandler(funcObj.Spec.Handler)
 		if err != nil {
 			return err
 		}
@@ -906,7 +910,7 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 	//only resolve the image name if it has not been already set
 	if funcObj.Spec.Handler != "" {
-		modName, handlerName, err := splitHandler(funcObj.Spec.Handler)
+		modName, handlerName, err := SplitHandler(funcObj.Spec.Handler)
 		if err != nil {
 			return err
 		}
@@ -946,7 +950,7 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 	initContainer := v1.Container{}
 	if funcObj.Spec.Deps != "" {
 		// ensure that the runtime is supported for installing dependencies
-		_, _, _, err = getRuntimeProperties(funcObj.Spec.Runtime, "")
+		_, _, _, _, err = GetRuntimeProperties(funcObj.Spec.Runtime, "")
 		if err != nil {
 			return err
 		}

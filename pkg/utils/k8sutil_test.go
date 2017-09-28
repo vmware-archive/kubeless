@@ -146,16 +146,16 @@ func TestGetFunctionData(t *testing.T) {
 
 	// Throws an error if the runtime version doesn't exist
 	_, _, _, err = GetFunctionData("nodejs3", "HTTP", "test")
-	expectedErrMsg := regexp.MustCompile("The given runtime and version 'nodejs3' does not have a valid image for HTTP based functions. Available runtimes are: python2.7, python3.4, nodejs6, nodejs8, ruby2.4")
+	expectedErrMsg := regexp.MustCompile("The runtime nodejs doesn't have an available image for the given version 3")
 	if expectedErrMsg.FindString(err.Error()) == "" {
 		t.Fatalf("Retrieving data for 'nodejs3' should return an error")
 	}
 
 	expectedImageName := "ruby-test-image"
 	os.Setenv("RUBY_RUNTIME", expectedImageName)
-	imageR, _, _, errR := GetFunctionData("ruby", "HTTP", "test")
+	imageR, _, _, errR := GetFunctionData("ruby2.4", "HTTP", "test")
 	if errR != nil {
-		t.Fatalf("Retrieving the image returned err: %v", err)
+		t.Fatalf("Retrieving the image returned err: %v", errR)
 	}
 	if imageR != expectedImageName {
 		t.Fatalf("Expecting " + imageR + " to be set to " + expectedImageName)
@@ -164,9 +164,9 @@ func TestGetFunctionData(t *testing.T) {
 
 	expectedImageName = "ruby-pubsub-test-image"
 	os.Setenv("RUBY_PUBSUB_RUNTIME", "ruby-pubsub-test-image")
-	imageR, _, _, errR = GetFunctionData("ruby", "PubSub", "test")
+	imageR, _, _, errR = GetFunctionData("ruby2.4", "PubSub", "test")
 	if errR != nil {
-		t.Fatalf("Retrieving the image returned err: %v", err)
+		t.Fatalf("Retrieving the image returned err: %v", errR)
 	}
 	if imageR != expectedImageName {
 		t.Fatalf("Expecting " + imageR + " to be set to " + expectedImageName)
