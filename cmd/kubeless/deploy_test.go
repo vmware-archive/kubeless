@@ -22,7 +22,7 @@ import (
 	"testing"
 )
 
-func TestParseLabel(t *testing.T) {
+func TestDeployParseLabel(t *testing.T) {
 	labels := []string{
 		"foo=bar",
 		"bar:foo",
@@ -41,7 +41,7 @@ func TestParseLabel(t *testing.T) {
 	}
 }
 
-func TestParseEnv(t *testing.T) {
+func TestDeployParseEnv(t *testing.T) {
 	envs := []string{
 		"foo=bar",
 		"bar:foo",
