@@ -45,6 +45,7 @@ func TestParseEnv(t *testing.T) {
 		"bar:foo",
 		"foobar",
 		"foo=bar=baz",
+		"qux=bar,baz",
 	}
 	expected := []v1.EnvVar{
 		{
@@ -62,6 +63,10 @@ func TestParseEnv(t *testing.T) {
 		{
 			Name:  "foo",
 			Value: "bar=baz",
+		},
+		{
+			Name:  "qux",
+			Value: "bar,baz",
 		},
 	}
 	actual := parseEnv(envs)
