@@ -2,7 +2,7 @@
 
 This function is triggered when an object is added to a bucket and sends an Slack message
 
-You need a SLACK_API_TOKEN
+You need a [SLACK_API_TOKEN](https://api.slack.com/custom-integrations/legacy-tokens)
 
 ## Store token
 
