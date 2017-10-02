@@ -62,7 +62,7 @@ mc ls localminio/<bucket_name>
 
 ## Use Kubeless to echo Minio events
 
-Write a echo function (this function example is also available [python folder](../python/pubsub.py)):
+Write a echo function (this function example is also available in the [python folder](../python/pubsub.py)):
 
 ```
 def handler(context):
