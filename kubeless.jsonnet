@@ -120,6 +120,24 @@ local kafkaVolumeCT = [
   }
 ];
 
+local zooVolumeCT = [
+  {
+    "metadata": {
+      "name": "zookeeper"
+    },
+    "spec": {
+      "accessModes": [
+        "ReadWriteOnce"
+      ],
+      "resources": {
+        "requests": {
+          "storage": "1Gi"
+        }
+      }
+    }
+  }
+];
+
 local kafkaSts =
   statefulset.default("kafka", namespace) +
   statefulset.spec({serviceName: "broker"}) +
@@ -131,7 +149,8 @@ local zookeeperSts =
   statefulset.default("zoo", namespace) +
   statefulset.spec({serviceName: "zoo"}) +
   {spec+: {template: {metadata: {labels: zookeeperLabel}}}} +
-  {spec+: {template+: {spec: {containers: [zookeeperContainer], volumes: [{name: "zookeeper", emptyDir: {}}]}}}};
+  {spec+: {volumeClaimTemplates: zooVolumeCT}} +
+  {spec+: {template+: {spec: {containers: [zookeeperContainer]}}}};
 
 local kafkaSvc =
   service.default("kafka", namespace) +
