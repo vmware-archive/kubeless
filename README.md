@@ -37,7 +37,7 @@ There are several kubeless manifests being shipped for multiple k8s environments
 For example, this below is a show case of deploying kubeless to a non-RBAC Kubernetes cluster.
 
 ```console
-$ export RELEASE=v0.1.0
+$ export RELEASE=v0.2.1
 $ kubectl create ns kubeless
 $ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 
