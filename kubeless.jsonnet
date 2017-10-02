@@ -64,7 +64,7 @@ local zookeeperPorts = [
 ];
 
 local kafkaContainer =
-  container.default("broker", "bitnami/kafka@sha256:ef0b1332408c0361d457852622d3a180f3609b9d98f1a85a9a809adaecfe9b52") +
+  container.default("broker", "bitnami/kafka@sha256:44fbc18518e7028ce87d4bec276c54b6a2cd2c2ece0c8575418d35cad0270a9c") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(kafkaEnv) +
   container.ports({containerPort: 9092}) +
@@ -120,18 +120,42 @@ local kafkaVolumeCT = [
   }
 ];
 
+local zooVolumeCT = [
+  {
+    "metadata": {
+      "name": "zookeeper"
+    },
+    "spec": {
+      "accessModes": [
+        "ReadWriteOnce"
+      ],
+      "resources": {
+        "requests": {
+          "storage": "1Gi"
+        }
+      }
+    }
+  }
+];
+
+local securityCTX = {
+  "runAsUser": 1001,
+  "fsGroup": 1001
+};
+
 local kafkaSts =
   statefulset.default("kafka", namespace) +
   statefulset.spec({serviceName: "broker"}) +
   {spec+: {template: {metadata: {labels: kafkaLabel}}}} +
   {spec+: {volumeClaimTemplates: kafkaVolumeCT}} +
-  {spec+: {template+: {spec: {containers: [kafkaContainer]}}}};
+  {spec+: {template+: {spec: {securityContext: securityCTX, containers: [kafkaContainer]}}}};
 
 local zookeeperSts =
   statefulset.default("zoo", namespace) +
   statefulset.spec({serviceName: "zoo"}) +
   {spec+: {template: {metadata: {labels: zookeeperLabel}}}} +
-  {spec+: {template+: {spec: {containers: [zookeeperContainer], volumes: [{name: "zookeeper", emptyDir: {}}]}}}};
+  {spec+: {volumeClaimTemplates: zooVolumeCT}} +
+  {spec+: {template+: {spec: {securityContext: securityCTX, containers: [zookeeperContainer]}}}};
 
 local kafkaSvc =
   service.default("kafka", namespace) +
