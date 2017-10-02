@@ -86,10 +86,22 @@ You create it with:
 
 ```console
 $ kubeless function deploy get-python --runtime python2.7 \
-                                --handler test.foobar \
                                 --from-file test.py \
+                                --handler test.foobar \
                                 --trigger-http
 ```
+
+Let's dissect the command:
+ - `get-python`: This is the name of the function we want to deploy.
+ - `--runtime python2.7`: This is the runtime we want to use to run our function.
+ - `--from-file test.py`: This is the file containing the function code.
+ - `--handler test.foobar`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `foobar` from the file `test.py`.
+ - `--trigger-http`: This sets the function trigger. The available options are:
+   - `--trigger-http` to trigger the function using HTTP requests.
+   - `--trigger-topic` to trigger the function with a certain Kafka topic. See the [next example](#pubsub-function).
+   - `--schedule` to trigger the function following a certain schedule using Cron notation. F.e. `--schedule "*/10 * * * *"` would trigger the function every 10 minutes.
+
+You can find the rest of options available when deploying a function executing `kubeless function deploy --help`
 
 You will see the function custom resource created:
 
