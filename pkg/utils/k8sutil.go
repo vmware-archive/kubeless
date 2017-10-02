@@ -76,6 +76,7 @@ type runtimeVersion struct {
 }
 
 var python, node, ruby, dotnetcore []runtimeVersion
+var availableRuntimes [][]runtimeVersion
 
 func init() {
 	python27 := runtimeVersion{runtimeID: "python", version: "2.7", httpImage: python27Http, pubsubImage: python27Pubsub}
@@ -91,6 +92,19 @@ func init() {
 
 	dotnetcore2 := runtimeVersion{runtimeID: "dotnetcore", version: "2.0", httpImage: dotnetcore2Http, pubsubImage: ""}
 	dotnetcore = []runtimeVersion{dotnetcore2}
+
+	availableRuntimes = [][]runtimeVersion{python, node, ruby, dotnetcore}
+}
+
+// GetRuntimes returns the list of available runtimes as strings
+func GetRuntimes() []string {
+	result := []string{}
+	for _, languages := range availableRuntimes {
+		for _, runtime := range languages {
+			result = append(result, runtime.runtimeID+runtime.version)
+		}
+	}
+	return result
 }
 
 // GetClient returns a k8s clientset to the request from inside of cluster

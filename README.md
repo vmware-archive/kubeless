@@ -93,7 +93,7 @@ $ kubeless function deploy get-python --runtime python2.7 \
 
 Let's dissect the command:
  - `get-python`: This is the name of the function we want to deploy.
- - `--runtime python2.7`: This is the runtime we want to use to run our function.
+ - `--runtime python2.7`: This is the runtime we want to use to run our function. Available runtimes are shown in the help information.
  - `--from-file test.py`: This is the file containing the function code.
  - `--handler test.foobar`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `foobar` from the file `test.py`.
  - `--trigger-http`: This sets the function trigger. The available options are:

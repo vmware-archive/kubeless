@@ -3,6 +3,7 @@ package utils
 import (
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/kubeless/kubeless/pkg/spec"
@@ -392,5 +393,13 @@ func TestGetLocalHostname(t *testing.T) {
 
 	if expectedHostName != actualHostName {
 		t.Errorf("Expected %s but got %s", expectedHostName, actualHostName)
+	}
+}
+
+func TestGetRuntimes(t *testing.T) {
+	runtimes := strings.Join(GetRuntimes(), ", ")
+	expectedRuntimes := "python2.7, python3.4, nodejs6, nodejs8, ruby2.4, dotnetcore2.0"
+	if runtimes != expectedRuntimes {
+		t.Errorf("Expected %s but got %s", expectedRuntimes, runtimes)
 	}
 }
