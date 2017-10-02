@@ -1,6 +1,6 @@
 # Send messages on objects upload to a bucket
 
-This function is triggered when an object is added to a bucket and sends an Slack message
+This function is triggered when an object is added to a bucket and sends a Slack message
 
 You need a [SLACK_API_TOKEN](https://api.slack.com/custom-integrations/legacy-tokens)
 

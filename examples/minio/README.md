@@ -43,7 +43,7 @@ mc config host add localminio $(minikube service minio-minio-svc --url) foobar f
 
 Open minio in a web browser:
 ```
-minikube services minio-minio-svc
+minikube service minio-minio-svc
 ```
 
 Login to the Minio UI using `foobar` as Access Key and `foobarfoo` as Secret Key. Once you are logged in create two buckets: one called `foobar` and another one `ocr`.
@@ -62,7 +62,7 @@ mc ls localminio/<bucket_name>
 
 ## Use Kubeless to echo Minio events
 
-Write a echo function
+Write a echo function (this function example is also available [python folder](../python/pubsub.py)):
 
 ```
 def handler(context):
