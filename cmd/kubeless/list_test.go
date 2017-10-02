@@ -96,10 +96,10 @@ func TestList(t *testing.T) {
 				Spec: spec.FunctionSpec{
 					Handler:  "bhandler",
 					Function: "bfunction",
-					Runtime:  "bruntime",
+					Runtime:  "nodejs6",
 					Type:     "btype",
 					Topic:    "btopic",
-					Deps:     "bdeps",
+					Deps:     "{\"dependencies\": {\"test\": \"^1.0.0\"}}",
 					Template: v1.PodTemplateSpec{
 						Spec: v1.PodSpec{
 							Containers: []v1.Container{
@@ -170,6 +170,10 @@ func TestList(t *testing.T) {
 	}
 	if strings.Contains(output, "bar") {
 		t.Errorf("table output mentions unrequested function bar")
+	}
+
+	if strings.Contains(output, "test: ^1.0.0") {
+		t.Errorf("table output doesn't show parsed dependencies")
 	}
 
 	// TODO: Actually validate the output of the following.
