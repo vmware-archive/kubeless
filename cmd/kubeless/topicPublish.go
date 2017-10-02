@@ -43,12 +43,8 @@ var topicPublishCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		body := fmt.Sprintf(`echo %s > /tmp/msg.txt`, data)
+		body := fmt.Sprintf(`echo '%s' | /opt/bitnami/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic %s`, data, topic)
 		command := []string{"bash", "-c", body}
-		execCommand(command, ctlNamespace)
-
-		body = fmt.Sprintf(`/opt/bitnami/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic %s < /tmp/msg.txt`, topic)
-		command = []string{"bash", "-c", body}
 		execCommand(command, ctlNamespace)
 	},
 }
