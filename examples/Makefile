@@ -111,10 +111,9 @@ pubsub-nodejs:
 	kubeless function deploy pubsub-nodejs --trigger-topic s3-nodejs --runtime nodejs6 --handler pubsub.handler --from-file nodejs/helloevent.js
 
 pubsub-nodejs-verify:
-	$(eval RANDOM := $(shell mktemp -u -p entry -t XXXXXXXX))
-	$(eval DATA := {"test": "$(RANDOM)"})
-	kubeless topic publish --topic s3-nodejs --data '$(DATA)' 
-	bash -c 'grep -q \'$(DATA)\' <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-nodejs))'
+	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
+	kubeless topic publish --topic s3-nodejs --data '{"test": "$(DATA)"}' 
+	bash -c 'grep -q "{\"test\": \"$(DATA)\"}" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-nodejs))'
 
 pubsub-ruby:
 	kubeless topic create s3-ruby
