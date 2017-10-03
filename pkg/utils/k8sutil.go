@@ -252,7 +252,7 @@ func GetRuntimeProperties(runtime, modName string) (fileName, depName, httpImage
 		}
 	}
 	if !foundImage {
-		err = errors.New("The runtime " + runtimeID + " doesn't have an available image for the given version " + version)
+		err = fmt.Errorf("The runtime %s doesn't have an available image for the given version %s", runtimeID, version)
 	}
 	return
 }
@@ -274,13 +274,13 @@ func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileNa
 	if imageName = os.Getenv(imageNameEnvVar); imageName == "" {
 		if ftype == pubsubFunc {
 			if pubsubImage == "" {
-				err = errors.New("The given runtime and version '" + runtime + "does not have a valid image for event based functions. Available runtimes are: " + strings.Join(getAvailableRuntimes("PubSub")[:], ", "))
+				err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for event based functions. Available runtimes are: %s", runtime, strings.Join(getAvailableRuntimes("PubSub")[:], ", "))
 			} else {
 				imageName = pubsubImage
 			}
 		} else {
 			if httpImage == "" {
-				err = errors.New("The given runtime and version '" + runtime + "' does not have a valid image for HTTP based functions. Available runtimes are: " + strings.Join(getAvailableRuntimes("HTTP")[:], ", "))
+				err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for HTTP based functions. Available runtimes are: %s", runtime, strings.Join(getAvailableRuntimes("HTTP")[:], ", "))
 			} else {
 				imageName = httpImage
 			}

@@ -46,7 +46,7 @@ func ValidateDeploymentInputs(flags *pflag.FlagSet) error {
 		mandatoryFlags := []string{"runtime", "handler", "from-file"}
 		for i := range mandatoryFlags {
 			if f, _ := flags.GetString(mandatoryFlags[i]); len(f) == 0 {
-				return fmt.Errorf("It is necessary to specify --%s deploying a function", mandatoryFlags[i])
+				return fmt.Errorf("It is necessary to specify --%s when deploying a function", mandatoryFlags[i])
 			}
 		}
 		// Check that the handler has the correct format
