@@ -37,58 +37,111 @@ var updateCmd = &cobra.Command{
 		}
 		funcName := args[0]
 
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		tprClient, err := utils.GetTPRClientOutOfCluster()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		previousFunction, err := utils.GetK8sCustomResource(tprClient, funcName, ns)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		handler, err := cmd.Flags().GetString("handler")
 		if err != nil {
 			logrus.Fatal(err)
+		}
+		if handler == "" {
+			handler = previousFunction.Spec.Handler
 		}
 
 		file, err := cmd.Flags().GetString("from-file")
 		if err != nil {
 			logrus.Fatal(err)
 		}
-
-		ns, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			logrus.Fatal(err)
+		funcContent := previousFunction.Spec.Function
+		if file != "" {
+			funcContent, err = readFile(file)
+			if err != nil {
+				logrus.Fatalf("Unable to read file %s: %v", file, err)
+			}
 		}
 
 		runtime, err := cmd.Flags().GetString("runtime")
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		if runtime == "" {
+			runtime = previousFunction.Spec.Runtime
+		}
+
+		triggerHTTP, err := cmd.Flags().GetBool("trigger-http")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		schedule, err := cmd.Flags().GetString("schedule")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		topic, err := cmd.Flags().GetString("trigger-topic")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		funcType := previousFunction.Spec.Type
+		switch {
+		case triggerHTTP:
+			funcType = "HTTP"
+			topic = ""
+		case schedule != "":
+			funcType = "Scheduled"
+			topic = ""
+		}
 
 		labels, err := cmd.Flags().GetStringSlice("label")
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		funcLabels := parseLabel(labels)
+		if len(funcLabels) == 0 {
+			funcLabels = previousFunction.Metadata.Labels
+		}
 
 		envs, err := cmd.Flags().GetStringSlice("env")
+		funcEnv := parseEnv(envs)
 		if err != nil {
 			logrus.Fatal(err)
+		}
+		if len(funcEnv) == 0 {
+			funcEnv = previousFunction.Spec.Template.Spec.Containers[0].Env
 		}
 
 		mem, err := cmd.Flags().GetString("memory")
 		if err != nil {
 			logrus.Fatal(err)
 		}
-
-		funcType := "HTTP"
-		funcLabels := parseLabel(labels)
-		funcEnv := parseEnv(envs)
 		funcMem := resource.Quantity{}
+		resources := v1.ResourceRequirements{}
 		if mem != "" {
 			funcMem, err = parseMemory(mem)
 			if err != nil {
 				logrus.Fatalf("Wrong format of the memory value: %v", err)
 			}
-		}
-		funcContent, err := readFile(file)
-		if err != nil {
-			logrus.Fatalf("Unable to read file %s: %v", file, err)
-		}
-
-		resource := map[v1.ResourceName]resource.Quantity{
-			v1.ResourceMemory: funcMem,
+			resource := map[v1.ResourceName]resource.Quantity{
+				v1.ResourceMemory: funcMem,
+			}
+			resources = v1.ResourceRequirements{
+				Limits:   resource,
+				Requests: resource,
+			}
+		} else {
+			resources = previousFunction.Spec.Template.Spec.Containers[0].Resources
 		}
 
 		f := &spec.Function{
@@ -106,16 +159,14 @@ var updateCmd = &cobra.Command{
 				Runtime:  runtime,
 				Type:     funcType,
 				Function: funcContent,
-				Topic:    "",
+				Topic:    topic,
+				Schedule: schedule,
 				Template: v1.PodTemplateSpec{
 					Spec: v1.PodSpec{
 						Containers: []v1.Container{
 							{
-								Env: funcEnv,
-								Resources: v1.ResourceRequirements{
-									Limits:   resource,
-									Requests: resource,
-								},
+								Env:       funcEnv,
+								Resources: resources,
 							},
 						},
 					},
@@ -138,4 +189,7 @@ func init() {
 	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
 	updateCmd.Flags().StringSliceP("env", "", []string{}, "Specify environment variable of the function")
 	updateCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
+	updateCmd.Flags().StringP("trigger-topic", "", "kubeless", "Deploy a pubsub function to Kubeless")
+	updateCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
+	updateCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 }

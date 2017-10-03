@@ -381,6 +381,16 @@ func CreateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
 	return nil
 }
 
+// GetK8sCustomResource returns an existing function definition
+func GetK8sCustomResource(tprClient rest.Interface, name, namespace string) (f spec.Function, err error) {
+	err = tprClient.Get().
+		Resource("functions").
+		Namespace(namespace).
+		Name(name).
+		Do().Into(&f)
+	return
+}
+
 // UpdateK8sCustomResource applies changes to the function custom object
 func UpdateK8sCustomResource(f *spec.Function) error {
 	fa := cmdutil.NewFactory(nil)
