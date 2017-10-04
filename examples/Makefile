@@ -104,7 +104,7 @@ pubsub-python-update:
 pubsub-python-update-verify:
 	$(eval DATA2 := $(shell mktemp -u -p entry -t XXXXXXXX))
 	kubeless topic publish --topic s3-python-2 --data "$(DATA2)"
-	bash -c 'grep -q "$(DATA2)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-python))'
+	bash -c 'grep -q "$(DATA2)" <(timeout 180 kubectl logs -f $$(kubectl get po -oname|grep pubsub-python))'
 
 pubsub-python34:
 	kubeless topic create s3-python34
