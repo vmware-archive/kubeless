@@ -42,11 +42,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		tprClient, err := utils.GetTPRClientOutOfCluster()
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		previousFunction, err := utils.GetK8sCustomResource(tprClient, funcName, ns)
+		previousFunction, err := utils.GetFunction(funcName, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}
