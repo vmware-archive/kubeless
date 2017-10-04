@@ -3,6 +3,7 @@ package utils
 import (
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/kubeless/kubeless/pkg/spec"
@@ -179,6 +180,7 @@ func TestEnsureK8sResources(t *testing.T) {
 	ns := "myns"
 	func1 := "foo1"
 	func2 := "foo2"
+	func3 := "foo3"
 
 	funcLabels := map[string]string{
 		"foo": "bar",
@@ -227,6 +229,42 @@ func TestEnsureK8sResources(t *testing.T) {
 								{
 									Name:  "foo",
 									Value: "bar",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	f3 := &spec.Function{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "k8s.io/v1",
+		},
+		Metadata: metav1.ObjectMeta{
+			Name:      func3,
+			Namespace: ns,
+			Labels:    funcLabels,
+		},
+		Spec: spec.FunctionSpec{
+			Handler: "foo.bar",
+			Runtime: "nodejs6",
+			Deps:    "sample",
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Env: []v1.EnvVar{
+								{
+									Name:  "NPM_REGISTRY",
+									Value: "http://my-registry.com",
+								},
+								{
+									Name:  "NPM_SCOPE",
+									Value: "@kubeless",
 								},
 							},
 						},
@@ -299,6 +337,17 @@ func TestEnsureK8sResources(t *testing.T) {
 		}
 	} else {
 		t.Errorf("Deployment annotation doesn't contain key bar")
+	}
+
+	if err := EnsureK8sResources(f3, clientset); err != nil {
+		t.Fatalf("Creating resources returned err: %v", err)
+	}
+	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get(func3, metav1.GetOptions{})
+	if len(dpm.Spec.Template.Spec.InitContainers) == 0 {
+		t.Errorf("Init container should be defined when dependencies are specified")
+	}
+	if match, _ := regexp.MatchString("npm config set @kubeless:registry http://my-registry.com", strings.Join(dpm.Spec.Template.Spec.InitContainers[0].Command, " ")); !match {
+		t.Errorf("Unable to set the NPM registry")
 	}
 }
 
@@ -392,5 +441,13 @@ func TestGetLocalHostname(t *testing.T) {
 
 	if expectedHostName != actualHostName {
 		t.Errorf("Expected %s but got %s", expectedHostName, actualHostName)
+	}
+}
+
+func TestGetRuntimes(t *testing.T) {
+	runtimes := strings.Join(GetRuntimes(), ", ")
+	expectedRuntimes := "python2.7, python3.4, nodejs6, nodejs8, ruby2.4, dotnetcore2.0"
+	if runtimes != expectedRuntimes {
+		t.Errorf("Expected %s but got %s", expectedRuntimes, runtimes)
 	}
 }

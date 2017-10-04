@@ -37,7 +37,7 @@ There are several kubeless manifests being shipped for multiple k8s environments
 For example, this below is a show case of deploying kubeless to a non-RBAC Kubernetes cluster.
 
 ```console
-$ export RELEASE=v0.1.0
+$ export RELEASE=v0.2.1
 $ kubectl create ns kubeless
 $ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 
@@ -86,10 +86,22 @@ You create it with:
 
 ```console
 $ kubeless function deploy get-python --runtime python2.7 \
-                                --handler test.foobar \
                                 --from-file test.py \
+                                --handler test.foobar \
                                 --trigger-http
 ```
+
+Let's dissect the command:
+ - `get-python`: This is the name of the function we want to deploy.
+ - `--runtime python2.7`: This is the runtime we want to use to run our function. Available runtimes are shown in the help information.
+ - `--from-file test.py`: This is the file containing the function code.
+ - `--handler test.foobar`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `foobar` from the file `test.py`.
+ - `--trigger-http`: This sets the function trigger. The available options are:
+   - `--trigger-http` to trigger the function using HTTP requests.
+   - `--trigger-topic` to trigger the function with a certain Kafka topic. See the [next example](#pubsub-function).
+   - `--schedule` to trigger the function following a certain schedule using Cron notation. F.e. `--schedule "*/10 * * * *"` would trigger the function every 10 minutes.
+
+You can find the rest of options available when deploying a function executing `kubeless function deploy --help`
 
 You will see the function custom resource created:
 
@@ -127,12 +139,12 @@ Kubeless also supports [ingress](https://kubernetes.io/docs/concepts/services-ne
 
 ### PubSub function
 
-Messages need to be JSON messages. A function can be as simple as:
+A function can be as simple as:
 
 ```python
 def foobar(context):
-    print context.json
-    return context.json
+    print context
+    return context
 ```
 
 You create it the same way than an _HTTP_ function except that you specify a `--trigger-topic`.
@@ -142,6 +154,17 @@ $ kubeless function deploy test --runtime python2.7 \
                                 --handler test.foobar \
                                 --from-file test.py \
                                 --trigger-topic test-topic
+```
+
+After that you can invoke them publishing messages in that topic:
+```console
+$ kubeless topic publish --topic test-topic --data "Hello World!"
+```
+
+You can check the result in the pod logs:
+```console
+$ kubectl logs test-695251588-cxwmc
+Hello World!
 ```
 
 ### Other commands
