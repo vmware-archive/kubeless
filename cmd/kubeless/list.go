@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/ghodss/yaml"
@@ -97,13 +98,35 @@ func doList(w io.Writer, tprClient rest.Interface, ns, output string, args []str
 	return printFunctions(w, list, output)
 }
 
+func parseDeps(deps, runtime string) (res string, err error) {
+	if deps != "" {
+		if strings.Contains(runtime, "nodejs") {
+			pkgjson := make(map[string]interface{})
+			err = json.Unmarshal([]byte(deps), &pkgjson)
+			if err != nil {
+				return
+			}
+			if pkgjson["dependencies"] != nil {
+				dependencies := []string{}
+				for pkg, ver := range pkgjson["dependencies"].(map[string]interface{}) {
+					dependencies = append(dependencies, pkg+": "+ver.(string))
+				}
+				res = strings.Join(dependencies, "\n")
+			}
+		} else {
+			res = deps
+		}
+	}
+	return
+}
+
 // printFunctions formats the output of function list
 func printFunctions(w io.Writer, functions []*spec.Function, output string) error {
 	if output == "" {
 		table := uitable.New()
 		table.MaxColWidth = 50
 		table.Wrap = true
-		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC")
+		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "DEPENDENCIES")
 		for _, f := range functions {
 			n := f.Metadata.Name
 			h := f.Spec.Handler
@@ -111,20 +134,28 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 			t := f.Spec.Type
 			tp := f.Spec.Topic
 			ns := f.Metadata.Namespace
-			table.AddRow(n, ns, h, r, t, tp)
+			deps, err := parseDeps(f.Spec.Deps, r)
+			if err != nil {
+				return err
+			}
+			table.AddRow(n, ns, h, r, t, tp, deps)
 		}
 		fmt.Fprintln(w, table)
 	} else if output == "wide" {
 		table := uitable.New()
 		table.MaxColWidth = 50
 		table.Wrap = true
-		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "MEMORY", "ENV", "LABEL", "SCHEDULE")
+		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "DEPENDENCIES", "MEMORY", "ENV", "LABEL", "SCHEDULE")
 		for _, f := range functions {
 			n := f.Metadata.Name
 			h := f.Spec.Handler
 			r := f.Spec.Runtime
 			t := f.Spec.Type
 			tp := f.Spec.Topic
+			deps, err := parseDeps(f.Spec.Deps, r)
+			if err != nil {
+				return err
+			}
 			s := f.Spec.Schedule
 			ns := f.Metadata.Namespace
 			mem := ""
@@ -147,7 +178,7 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 				}
 				label = buffer.String()
 			}
-			table.AddRow(n, ns, h, r, t, tp, mem, env, label, s)
+			table.AddRow(n, ns, h, r, t, tp, deps, mem, env, label, s)
 		}
 		fmt.Fprintln(w, table)
 	} else {

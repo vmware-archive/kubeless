@@ -121,8 +121,8 @@ pubsub-nodejs:
 
 pubsub-nodejs-verify:
 	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
-	kubeless topic publish --topic s3-nodejs --data "$(DATA)"
-	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-nodejs))'
+	kubeless topic publish --topic s3-nodejs --data '{"test": "$(DATA)"}' 
+	bash -c 'grep -q "{\"test\": \"$(DATA)\"}" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-nodejs))'
 
 pubsub-ruby:
 	kubeless topic create s3-ruby
