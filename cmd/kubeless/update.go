@@ -18,7 +18,6 @@ package main
 
 import (
 	"github.com/Sirupsen/logrus"
-	"github.com/kubeless/kubeless/cmd/kubeless/cmdUtils"
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
@@ -94,10 +93,6 @@ var updateCmd = &cobra.Command{
 			if err != nil {
 				logrus.Fatalf("Unable to read file %s: %v", file, err)
 			}
-		}
-		err = cmdUtils.ValidateDeploymentInputs(cmd.Flags())
-		if err != nil {
-			logrus.Fatal(err)
 		}
 
 		resource := map[v1.ResourceName]resource.Quantity{

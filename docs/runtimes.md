@@ -49,9 +49,22 @@ $ kubeless function call webserver
 <h2>If you're seeing this, you've successfully installed Tomcat. Congratulations!</h2>
 ```
 
-Note that you can also use your own image for one of the supported runtimes. That means you have to manage how your runtime starts and looks for the injected function and executes it. Kubeless injects the function into runtime container via a [Kubernetes ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configmap/) object mounted at `/kubeless` folder, so make sure your runtime looks for function at that folder.
+Note that you can also use your own image and inject different functions. That means you have to manage how your runtime starts and looks for the injected function and executes it. Kubeless injects the function into the runtime container via a [Kubernetes ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configmap/) object mounted at `/kubeless` folder, so make sure your runtime looks for function at that folder. Let's see an example:
 
-You can deploy your function just specifying the runtime image:
+First we need to create a base image. For this example we will use the Python web server that you can find [in the runtimes folder](../docker/runtime/python-2.7/http-trigger/kubeless.py). We will use the following Dockerfile:
+
+```dockerfile
+FROM python:2.7-slim
+
+RUN pip install bottle==0.12.13 cherrypy==8.9.1 wsgi-request-logger prometheus_client lxml
+
+ADD kubeless.py /
+
+EXPOSE 8080
+CMD ["python", "/kubeless.py"]
+```
+
+Once you have built the image you need to push it to a registry to make it available within your cluster. Finally you can call the `deploy` command specifying the custom runtime image and the function you want to inject:
 ```console
 $ kubeless function deploy --runtime-image tuna/kubeless-python:0.0.6 --from-file ./handler.py --handler handler.hello --runtime python2.7 --trigger-http hello
 $ kubeless function ls
@@ -64,3 +77,5 @@ Forwarding from [::1]:30000 -> 8080
 Handling connection for 30000
 hello world
 ```
+
+Note that it is possible to specify `--dependencies` as well when using custom images and install them using an Init container but that is only possible for the supported runtimes. You can get the list of supported runtimes executing `kubeless function deploy --help`.

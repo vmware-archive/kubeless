@@ -216,53 +216,53 @@ func getAvailableRuntimes(imageType string) []string {
 	return runtimeList
 }
 
-// GetRuntimeProperties returns runtime specific information
-func GetRuntimeProperties(runtime, modName string) (fileName, depName, httpImage, pubsubImage string, err error) {
-	runtimeID := regexp.MustCompile("[a-zA-Z]+").FindString(runtime)
-	version := regexp.MustCompile("[0-9.]+").FindString(runtime)
-	var versionsDef []runtimeVersion
+// GetFunctionFileNames returns the function and dependencies filename
+func GetFunctionFileNames(runtime, modName string) (fileName, depName string) {
 	switch {
-	case runtimeID == "python":
+	case strings.Contains(runtime, "python"):
 		fileName = modName + ".py"
-		versionsDef = python
 		depName = "requirements.txt"
-	case runtimeID == "nodejs":
+	case strings.Contains(runtime, "nodejs"):
 		fileName = modName + ".js"
-		versionsDef = node
 		depName = "package.json"
-	case runtimeID == "ruby":
+	case strings.Contains(runtime, "ruby"):
 		fileName = modName + ".rb"
-		versionsDef = ruby
 		depName = "Gemfile"
-	case runtimeID == "dotnetcore":
+	case strings.Contains(runtime, "dotnetcore"):
 		fileName = modName + ".cs"
-		versionsDef = dotnetcore
 		depName = "requirements.xml"
 	default:
-		err = errors.New("The given runtime is not valid")
-		return
-	}
-	foundImage := false
-	for i := range versionsDef {
-		if versionsDef[i].version == version {
-			httpImage = versionsDef[i].httpImage
-			pubsubImage = versionsDef[i].pubsubImage
-			foundImage = true
-			break
-		}
-	}
-	if !foundImage {
-		err = fmt.Errorf("The runtime %s doesn't have an available image for the given version %s", runtimeID, version)
+		fileName = modName
+		depName = ""
 	}
 	return
 }
 
-// GetFunctionData given a runtime returns an Image ID, the dependencies filename and the function filename
-func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileName string, err error) {
+// GetFunctionImage returns the image ID depending on the runtime, its version and function type
+func GetFunctionImage(runtime, ftype string) (imageName string, err error) {
 	runtimeID := regexp.MustCompile("[a-zA-Z]+").FindString(runtime)
-	fileName, depName, httpImage, pubsubImage, err := GetRuntimeProperties(runtime, modName)
-	if err != nil {
+	version := regexp.MustCompile("[0-9.]+").FindString(runtime)
+	var versionsDef []runtimeVersion
+	var httpImage, pubsubImage string
+	switch {
+	case runtimeID == "python":
+		versionsDef = python
+	case runtimeID == "nodejs":
+		versionsDef = node
+	case runtimeID == "ruby":
+		versionsDef = ruby
+	case runtimeID == "dotnetcore":
+		versionsDef = dotnetcore
+	default:
+		err = errors.New("The given runtime is not valid")
 		return
+	}
+
+	for i := range versionsDef {
+		if versionsDef[i].version == version {
+			httpImage = versionsDef[i].httpImage
+			pubsubImage = versionsDef[i].pubsubImage
+		}
 	}
 
 	imageNameEnvVar := ""
@@ -768,7 +768,7 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 		if err != nil {
 			return err
 		}
-		_, depName, fileName, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
+		depName, fileName := GetFunctionFileNames(funcObj.Spec.Runtime, modName)
 		if err != nil {
 			return err
 		}
@@ -915,7 +915,7 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			return err
 		}
 		if dpm.Spec.Template.Spec.Containers[0].Image == "" {
-			imageName, _, _, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
+			imageName, err := GetFunctionImage(funcObj.Spec.Runtime, funcObj.Spec.Type)
 			if err != nil {
 				return err
 			}
@@ -950,9 +950,9 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 	initContainer := v1.Container{}
 	if funcObj.Spec.Deps != "" {
 		// ensure that the runtime is supported for installing dependencies
-		_, _, _, _, err = GetRuntimeProperties(funcObj.Spec.Runtime, "")
-		if err != nil {
-			return err
+		_, deps := GetFunctionFileNames(funcObj.Spec.Runtime, "")
+		if deps == "" {
+			return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
 		}
 		initContainer = v1.Container{
 			Name:            "install",
