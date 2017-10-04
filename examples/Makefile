@@ -98,11 +98,7 @@ pubsub-python-verify:
 	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-python))'
 
 pubsub-python-update:
-	kubeless topic create s3-python-1
-	kubeless function deploy pubsub-python --trigger-topic s3-python-1 --runtime python2.7 --handler pubsub.handler --from-file python/pubsub.py
-	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
-	kubeless topic publish --topic s3-python-1 --data "$(DATA)"
-	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-python))'
+	kubeless topic create s3-python-2
 	kubeless function update pubsub-python --trigger-topic s3-python-2
 
 pubsub-python-update-verify:
