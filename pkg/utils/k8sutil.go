@@ -774,8 +774,7 @@ func DeleteIngress(client kubernetes.Interface, name, ns string) error {
 	return nil
 }
 
-// SplitHandler the handler string into file name and function name
-func SplitHandler(handler string) (string, string, error) {
+func splitHandler(handler string) (string, string, error) {
 	str := strings.Split(handler, ".")
 	if len(str) != 2 {
 		return "", "", errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
@@ -788,7 +787,7 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 	configMapData := map[string]string{}
 	var err error
 	if funcObj.Spec.Handler != "" {
-		modName, _, err := SplitHandler(funcObj.Spec.Handler)
+		modName, _, err := splitHandler(funcObj.Spec.Handler)
 		if err != nil {
 			return err
 		}
@@ -931,12 +930,12 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
 	}
 
-	//only resolve the image name if it has not been already set
 	if funcObj.Spec.Handler != "" {
-		modName, handlerName, err := SplitHandler(funcObj.Spec.Handler)
+		modName, handlerName, err := splitHandler(funcObj.Spec.Handler)
 		if err != nil {
 			return err
 		}
+		//only resolve the image name if it has not been already set
 		if dpm.Spec.Template.Spec.Containers[0].Image == "" {
 			imageName, err := GetFunctionImage(funcObj.Spec.Runtime, funcObj.Spec.Type)
 			if err != nil {
