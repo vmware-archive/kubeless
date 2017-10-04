@@ -791,7 +791,7 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 		if err != nil {
 			return err
 		}
-		depName, fileName := GetFunctionFileNames(funcObj.Spec.Runtime, modName)
+		fileName, depName := GetFunctionFileNames(funcObj.Spec.Runtime, modName)
 
 		configMapData = map[string]string{
 			"handler": funcObj.Spec.Handler,
