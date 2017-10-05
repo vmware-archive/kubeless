@@ -258,8 +258,8 @@ test_kubeless_function_update() {
     local func=${1:?} func_topic
     echo_info "UPDATE: $func"
     make -sC examples ${func}-update
-    k8s_wait_for_uniq_pod -l function=${func}
     sleep 10
+    k8s_wait_for_uniq_pod -l function=${func}
     make -sC examples ${func}-update-verify
 }
 # vim: sw=4 ts=4 et si
