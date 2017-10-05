@@ -137,7 +137,6 @@ kubeless_function_delete() {
     local func=${1:?}; shift
     echo_info "Deleting function "${func}" in case still present ... "
     kubeless function ls |grep -w "${func}" && kubeless function delete "${func}" >& /dev/null || true
-    kubectl delete all -l function="${func}" > /dev/null || true
     k8s_wait_for_pod_gone -l function="${func}"
 }
 kubeless_function_deploy() {

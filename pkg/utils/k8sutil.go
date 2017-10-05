@@ -348,7 +348,7 @@ func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
 	}
 
 	// delete deployment
-	deletePolicy := metav1.DeletePropagationForeground
+	deletePolicy := metav1.DeletePropagationBackground
 	err = client.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
