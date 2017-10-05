@@ -99,14 +99,12 @@ pubsub-python-verify:
 
 pubsub-python-update:
 	kubeless topic create s3-python-2
-	sleep 10
 	kubeless function update pubsub-python --trigger-topic s3-python-2
-	sleep 10
 
 pubsub-python-update-verify:
 	$(eval DATA2 := $(shell mktemp -u -p entry -t XXXXXXXX))
 	kubeless topic publish --topic s3-python-2 --data "$(DATA2)"
-	kubectl describe pod $$(kubectl get po -oname|grep pubsub-python)
+	kubectl describe $$(kubectl get po -oname|grep pubsub-python)
 	bash -c 'grep -q "$(DATA2)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-python))' || true
 	kubectl logs -n kubeless kafka-0
 	kubeless topic publish --topic s3-python-2 --data "$(DATA2)"
