@@ -39,7 +39,10 @@ Right now the runtimes that support this kind of events are Python and NodeJS.
 ## Monitoring functions
 Kubeless runtimes are exposing metrics at `/metrics` endpoint and these metrics will be collected by Prometheus. We also include a prometheus setup in [`manifests/monitoring`](https://github.com/kubeless/kubeless/blob/master/manifests/monitoring/prometheus.yaml) to help you easier set it up. The metrics collected are: Number of calls, succeeded and error executions and the time spent per call.
 
-# Custom Runtime
+# Custom Runtime (Alpha)
+
+> NOTE: This feature is under heavy development and may change in the future
+
 We are providing a way to define custom runtime in form of a container image. This way you are able to use any language or any binary with Kubeless as far as the image satisfies the following conditions:
  - It runs a web server listening in the port 8080
  - It exposes the endpoint `/healthz` to perform the container [liveness probe](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/)
@@ -90,3 +93,5 @@ hello world
 ```
 
 Note that it is possible to specify `--dependencies` as well when using custom images and install them using an Init container but that is only possible for the supported runtimes. You can get the list of supported runtimes executing `kubeless function deploy --help`.
+
+When using a runtime not supported your function will be stored as `/kubeless/function` without extension. For example, injecting a file `my-function.jar` would result in the file being mounted as `/kubeless/my-fuction`).
