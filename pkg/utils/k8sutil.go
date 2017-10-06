@@ -494,7 +494,7 @@ func getInitImage(runtime string) string {
 		}
 		return "python:" + branch
 	case strings.Contains(runtime, "nodejs"):
-		return "node:6.10-alpine"
+		return "node:6.10"
 	case strings.Contains(runtime, "ruby"):
 		return "bitnami/ruby:2.4"
 	case strings.Contains(runtime, "dotnetcore"):
@@ -505,26 +505,31 @@ func getInitImage(runtime string) string {
 }
 
 // specify command for the init container
-func getCommand(runtime string, env []v1.EnvVar) []string {
-	switch {
-	case strings.Contains(runtime, "python"):
-		return []string{"pip", "install", "--prefix=/pythonpath", "-r", "/requirements/requirements.txt"}
-	case strings.Contains(runtime, "nodejs"):
-		registry := "https://registry.npmjs.org"
-		scope := ""
-		for _, v := range env {
-			if v.Name == "NPM_REGISTRY" {
-				registry = v.Value
+func getCommand(functionFile, runtime, dependencies string, env []v1.EnvVar) []string {
+	command := []string{"curl", "http://minio-minio-svc.default:9000/functions/" + functionFile, "-o", "/requirements/" + functionFile}
+	if dependencies != "" {
+		switch {
+		case strings.Contains(runtime, "python"):
+			return append(command, []string{"&&", "pip", "install", "--prefix=/pythonpath", "-r", "/requirements/requirements.txt"}...)
+		case strings.Contains(runtime, "nodejs"):
+			registry := "https://registry.npmjs.org"
+			scope := ""
+			for _, v := range env {
+				if v.Name == "NPM_REGISTRY" {
+					registry = v.Value
+				}
+				if v.Name == "NPM_SCOPE" {
+					scope = v.Value + ":"
+				}
 			}
-			if v.Name == "NPM_SCOPE" {
-				scope = v.Value + ":"
-			}
+			return append(command, []string{"&&", "/bin/sh", "-c", "cp package.json /nodepath && npm config set " + scope + "registry " + registry + " && npm install --prefix=/nodepath"}...)
+		case strings.Contains(runtime, "ruby"):
+			return append(command, []string{"&&", "bundle", "install", "--path", "/rubypath"}...)
+		default:
+			return command
 		}
-		return []string{"/bin/sh", "-c", "cp package.json /nodepath && npm config set " + scope + "registry " + registry + " && npm install --prefix=/nodepath"}
-	case strings.Contains(runtime, "ruby"):
-		return []string{"bundle", "install", "--path", "/rubypath"}
-	default:
-		return []string{}
+	} else {
+		return command
 	}
 }
 
@@ -779,8 +784,8 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 		return err
 	}
 
-	fileName := modName
-	_, depName, fileName, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
+	// fileName := modName
+	_, depName, _, err := GetFunctionData(funcObj.Spec.Runtime, funcObj.Spec.Type, modName)
 	if err != nil {
 		return err
 	}
@@ -793,8 +798,8 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 		},
 		Data: map[string]string{
 			"handler": funcObj.Spec.Handler,
-			fileName:  funcObj.Spec.Function,
-			depName:   funcObj.Spec.Deps,
+			// fileName:  funcObj.Spec.Function,
+			depName: funcObj.Spec.Deps,
 		},
 	}
 
@@ -943,29 +948,25 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 	})
 
 	//prepare init-container for custom runtime
-	initContainer := v1.Container{}
-	if funcObj.Spec.Deps != "" {
-		initContainer = v1.Container{
-			Name:            "install",
-			Image:           getInitImage(funcObj.Spec.Runtime),
-			Command:         getCommand(funcObj.Spec.Runtime, dpm.Spec.Template.Spec.Containers[0].Env),
-			VolumeMounts:    getVolumeMounts(funcObj.Metadata.Name, funcObj.Spec.Runtime),
-			WorkingDir:      "/requirements",
-			ImagePullPolicy: v1.PullIfNotPresent,
-		}
-		initContainer.Env = dpm.Spec.Template.Spec.Containers[0].Env
+	initContainer := v1.Container{
+		Name:            "install",
+		Image:           getInitImage(funcObj.Spec.Runtime),
+		Command:         getCommand(funcObj.Spec.Function, funcObj.Spec.Runtime, funcObj.Spec.Deps, dpm.Spec.Template.Spec.Containers[0].Env),
+		VolumeMounts:    getVolumeMounts(funcObj.Metadata.Name, funcObj.Spec.Runtime),
+		WorkingDir:      "/requirements",
+		ImagePullPolicy: v1.PullIfNotPresent,
 	}
+	initContainer.Env = dpm.Spec.Template.Spec.Containers[0].Env
+
 	// only append non-empty initContainer
 	if initContainer.Name != "" {
 		dpm.Spec.Template.Spec.InitContainers = append(dpm.Spec.Template.Spec.InitContainers, initContainer)
 	}
 
 	// update deployment for custom runtime
-	if funcObj.Spec.Deps != "" {
-		updateDeployment(dpm, funcObj.Spec.Runtime)
-		//TODO: remove this when init containers becomes a stable feature
-		addInitContainerAnnotation(dpm)
-	}
+	updateDeployment(dpm, funcObj.Spec.Runtime)
+	//TODO: remove this when init containers becomes a stable feature
+	addInitContainerAnnotation(dpm)
 
 	// add liveness Probe to deployment
 	if funcObj.Spec.Type != pubsubFunc {
