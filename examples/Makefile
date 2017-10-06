@@ -125,3 +125,17 @@ pubsub-ruby-verify:
 	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-ruby))'
 
 post: pubsub-python pubsub-nodejs pubsub-ruby
+
+webserver:
+	kubeless function deploy --env APACHE_HTTP_PORT_NUMBER=8080 --runtime-image bitnami/apache:2.4.27-r0 webserver
+
+webserver-verify:
+	kubeless function call webserver |egrep "It works!"
+
+webserver-update:
+	kubeless function update --env NGINX_HTTP_PORT_NUMBER=8080 --runtime-image bitnami/nginx:1.12.1-r2 webserver
+	sleep 5 # Give nginx a few seconds to initialize
+
+webserver-update-verify:
+	kubeless function call webserver |egrep "Welcome to nginx!"
+

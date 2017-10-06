@@ -107,14 +107,8 @@ func TestDeleteK8sResources(t *testing.T) {
 	}
 }
 
-func check(runtime, ftype, fname string, values []string, t *testing.T) {
-	imageName, depName, fileName, err := GetFunctionData(runtime, ftype, fname)
-	if err != nil {
-		t.Fatalf("Retrieving the image returned err: %v", err)
-	}
-	if imageName == "" {
-		t.Fatalf("Retrieving the image returned an empty Image ID")
-	}
+func check(runtime, fname string, values []string, t *testing.T) {
+	fileName, depName := GetFunctionFileNames(runtime, fname)
 	if depName != values[0] {
 		t.Fatalf("Retrieving the image returned a wrong dependencies file. Received " + depName + " while expecting " + values[0])
 	}
@@ -122,41 +116,42 @@ func check(runtime, ftype, fname string, values []string, t *testing.T) {
 		t.Fatalf("Retrieving the image returned a wrong file name. Received " + fileName + " while expecting " + values[1])
 	}
 }
-func TestGetFunctionData(t *testing.T) {
 
+func TestGetFunctionFileNames(t *testing.T) {
 	expectedValues := []string{"requirements.txt", "test.py"}
-	check("python2.7", "HTTP", "test", expectedValues, t)
-	check("python2.7", "PubSub", "test", expectedValues, t)
-	check("python3.4", "HTTP", "test", expectedValues, t)
-	check("python3.4", "PubSub", "test", expectedValues, t)
+	check("python2.7", "test", expectedValues, t)
+	check("python3.4", "test", expectedValues, t)
 
 	expectedValues = []string{"package.json", "test.js"}
-	check("nodejs6", "HTTP", "test", expectedValues, t)
-	check("nodejs6", "PubSub", "test", expectedValues, t)
-	check("nodejs8", "HTTP", "test", expectedValues, t)
-	check("nodejs8", "PubSub", "test", expectedValues, t)
+	check("nodejs6", "test", expectedValues, t)
+	check("nodejs8", "test", expectedValues, t)
 
 	expectedValues = []string{"Gemfile", "test.rb"}
-	check("ruby2.4", "HTTP", "test", expectedValues, t)
+	check("ruby2.4", "test", expectedValues, t)
 
+	expectedValues = []string{"requirements.xml", "test.cs"}
+	check("dotnetcore2.0", "test", expectedValues, t)
+}
+
+func TestGetFunctionImage(t *testing.T) {
 	// Throws an error if the runtime doesn't exist
-	_, _, _, err := GetFunctionData("unexistent", "HTTP", "test")
+	_, err := GetFunctionImage("unexistent", "HTTP")
 	if err == nil {
 		t.Fatalf("Retrieving data for 'unexistent' should return an error")
 	}
 
 	// Throws an error if the runtime version doesn't exist
-	_, _, _, err = GetFunctionData("nodejs3", "HTTP", "test")
-	expectedErrMsg := regexp.MustCompile("The given runtime and version 'nodejs3' does not have a valid image for HTTP based functions. Available runtimes are: python2.7, python3.4, nodejs6, nodejs8, ruby2.4")
+	_, err = GetFunctionImage("nodejs3", "HTTP")
+	expectedErrMsg := regexp.MustCompile("The given runtime and version 'nodejs3' does not have a valid image")
 	if expectedErrMsg.FindString(err.Error()) == "" {
 		t.Fatalf("Retrieving data for 'nodejs3' should return an error")
 	}
 
 	expectedImageName := "ruby-test-image"
 	os.Setenv("RUBY_RUNTIME", expectedImageName)
-	imageR, _, _, errR := GetFunctionData("ruby", "HTTP", "test")
+	imageR, errR := GetFunctionImage("ruby2.4", "HTTP")
 	if errR != nil {
-		t.Fatalf("Retrieving the image returned err: %v", err)
+		t.Fatalf("Retrieving the image returned err: %v", errR)
 	}
 	if imageR != expectedImageName {
 		t.Fatalf("Expecting " + imageR + " to be set to " + expectedImageName)
@@ -165,9 +160,9 @@ func TestGetFunctionData(t *testing.T) {
 
 	expectedImageName = "ruby-pubsub-test-image"
 	os.Setenv("RUBY_PUBSUB_RUNTIME", "ruby-pubsub-test-image")
-	imageR, _, _, errR = GetFunctionData("ruby", "PubSub", "test")
+	imageR, errR = GetFunctionImage("ruby2.4", "PubSub")
 	if errR != nil {
-		t.Fatalf("Retrieving the image returned err: %v", err)
+		t.Fatalf("Retrieving the image returned err: %v", errR)
 	}
 	if imageR != expectedImageName {
 		t.Fatalf("Expecting " + imageR + " to be set to " + expectedImageName)
@@ -179,8 +174,6 @@ func TestEnsureK8sResources(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	ns := "myns"
 	func1 := "foo1"
-	func2 := "foo2"
-	func3 := "foo3"
 
 	funcLabels := map[string]string{
 		"foo": "bar",
@@ -205,6 +198,35 @@ func TestEnsureK8sResources(t *testing.T) {
 		},
 	}
 
+	if err := EnsureK8sResources(f1, clientset); err != nil {
+		t.Fatalf("Creating resources returned err: %v", err)
+	}
+
+	svc, err := clientset.CoreV1().Services(ns).Get(func1, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create svc object: %v", err)
+	}
+	if svc.ObjectMeta.Name != func1 {
+		t.Errorf("Create wrong svc object. Expect svc name is %s but got %s", func1, svc.ObjectMeta.Name)
+	}
+
+	cm, err := clientset.CoreV1().ConfigMaps(ns).Get(func1, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create configmap object: %v", err)
+	}
+	if cm.Data["handler"] != "foo.bar" {
+		t.Errorf("Create wrong configmap object. Expect configmap data handler is foo.bar but got %s", cm.Data["handler"])
+	}
+
+	dpm, err := clientset.ExtensionsV1beta1().Deployments(ns).Get(func1, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Can't create deployment object: %v", err)
+	}
+	if dpm.Spec.Template.Labels["foo"] != "bar" {
+		t.Errorf("Create wrong deployment object. Expect deployment labels foo=bar but got %s", dpm.Spec.Template.Labels["foo"])
+	}
+
+	func2 := "foo2"
 	f2 := &spec.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
@@ -237,71 +259,6 @@ func TestEnsureK8sResources(t *testing.T) {
 			},
 		},
 	}
-
-	f3 := &spec.Function{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Function",
-			APIVersion: "k8s.io/v1",
-		},
-		Metadata: metav1.ObjectMeta{
-			Name:      func3,
-			Namespace: ns,
-			Labels:    funcLabels,
-		},
-		Spec: spec.FunctionSpec{
-			Handler: "foo.bar",
-			Runtime: "nodejs6",
-			Deps:    "sample",
-			Template: v1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{},
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						{
-							Env: []v1.EnvVar{
-								{
-									Name:  "NPM_REGISTRY",
-									Value: "http://my-registry.com",
-								},
-								{
-									Name:  "NPM_SCOPE",
-									Value: "@kubeless",
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	if err := EnsureK8sResources(f1, clientset); err != nil {
-		t.Fatalf("Creating resources returned err: %v", err)
-	}
-
-	svc, err := clientset.CoreV1().Services(ns).Get(func1, metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("Can't create svc object: %v", err)
-	}
-	if svc.ObjectMeta.Name != func1 {
-		t.Errorf("Create wrong svc object. Expect svc name is %s but got %s", func1, svc.ObjectMeta.Name)
-	}
-
-	cm, err := clientset.CoreV1().ConfigMaps(ns).Get(func1, metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("Can't create configmap object: %v", err)
-	}
-	if cm.Data["handler"] != "foo.bar" {
-		t.Errorf("Create wrong configmap object. Expect configmap data handler is foo.bar but got %s", cm.Data["handler"])
-	}
-
-	dpm, err := clientset.ExtensionsV1beta1().Deployments(ns).Get(func1, metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("Can't create deployment object: %v", err)
-	}
-	if dpm.Spec.Template.Labels["foo"] != "bar" {
-		t.Errorf("Create wrong deployment object. Expect deployment labels foo=bar but got %s", dpm.Spec.Template.Labels["foo"])
-	}
-
 	if err := EnsureK8sResources(f2, clientset); err != nil {
 		t.Fatalf("Creating resources returned err: %v", err)
 	}
@@ -339,6 +296,42 @@ func TestEnsureK8sResources(t *testing.T) {
 		t.Errorf("Deployment annotation doesn't contain key bar")
 	}
 
+	func3 := "foo3"
+	f3 := &spec.Function{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "k8s.io/v1",
+		},
+		Metadata: metav1.ObjectMeta{
+			Name:      func3,
+			Namespace: ns,
+			Labels:    funcLabels,
+		},
+		Spec: spec.FunctionSpec{
+			Handler: "foo.bar",
+			Runtime: "nodejs6",
+			Deps:    "sample",
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Env: []v1.EnvVar{
+								{
+									Name:  "NPM_REGISTRY",
+									Value: "http://my-registry.com",
+								},
+								{
+									Name:  "NPM_SCOPE",
+									Value: "@kubeless",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 	if err := EnsureK8sResources(f3, clientset); err != nil {
 		t.Fatalf("Creating resources returned err: %v", err)
 	}
@@ -348,6 +341,65 @@ func TestEnsureK8sResources(t *testing.T) {
 	}
 	if match, _ := regexp.MatchString("npm config set @kubeless:registry http://my-registry.com", strings.Join(dpm.Spec.Template.Spec.InitContainers[0].Command, " ")); !match {
 		t.Errorf("Unable to set the NPM registry")
+	}
+
+	func4 := "foo4"
+	f4 := &spec.Function{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "k8s.io/v1",
+		},
+		Metadata: metav1.ObjectMeta{
+			Name:      func4,
+			Namespace: ns,
+			Labels:    funcLabels,
+		},
+		Spec: spec.FunctionSpec{
+			Handler: "foo.bar",
+			Runtime: "python2.6",
+			Deps:    "sample",
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "custom-image",
+						},
+					},
+				},
+			},
+		},
+	}
+	if err := EnsureK8sResources(f4, clientset); err != nil {
+		t.Fatalf("Creating resources returned err: %v", err)
+	}
+	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get(func4, metav1.GetOptions{})
+	if len(dpm.Spec.Template.Spec.InitContainers) == 0 {
+		t.Errorf("Init container should be defined when dependencies are specified")
+	}
+	if match, _ := regexp.MatchString("custom-image", dpm.Spec.Template.Spec.Containers[0].Image); !match {
+		t.Errorf("Unable to set a custom image ID")
+	}
+
+	func5 := "foo5"
+	f5 := &spec.Function{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "k8s.io/v1",
+		},
+		Metadata: metav1.ObjectMeta{
+			Name:      func5,
+			Namespace: ns,
+			Labels:    funcLabels,
+		},
+		Spec: spec.FunctionSpec{
+			Handler: "foo.bar",
+			Runtime: "csharp",
+			Deps:    "sample",
+		},
+	}
+	if err := EnsureK8sResources(f5, clientset); err == nil {
+		t.Fatalf("Creating resources for an unsupported runtime with dependencies should return an error")
 	}
 }
 
