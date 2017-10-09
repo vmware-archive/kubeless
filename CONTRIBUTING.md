@@ -5,7 +5,7 @@
 
 ### Setup your development environment
 
-Consult the [Developer's guide](dev-guide.md) to setup yourself up.
+Consult the [Developer's guide](./docs/dev-guide.md) to setup yourself up.
 
 ### Contributing a patch
 
