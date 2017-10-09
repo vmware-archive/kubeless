@@ -259,6 +259,12 @@ test_kubeless_function_update() {
     make -sC examples ${func}-update
     sleep 10
     k8s_wait_for_uniq_pod -l function=${func}
-    make -sC examples ${func}-update-verify
+    n=0
+    until [ $n -ge 3 ]
+    do
+      make -sC examples ${func}-update-verify && break
+      n=$[$n+1]
+      sleep 55
+    done
 }
 # vim: sw=4 ts=4 et si
