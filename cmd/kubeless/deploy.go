@@ -23,10 +23,7 @@ import (
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 var deployCmd = &cobra.Command{
@@ -58,13 +55,11 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		funcLabels := parseLabel(labels)
 
 		envs, err := cmd.Flags().GetStringArray("env")
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		funcEnv := parseEnv(envs)
 
 		runtime, err := cmd.Flags().GetString("runtime")
 		if err != nil {
@@ -100,24 +95,6 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		resource := map[v1.ResourceName]resource.Quantity{}
-		if mem != "" {
-			funcMem, err := parseMemory(mem)
-			if err != nil {
-				logrus.Fatalf("Wrong format of the memory value: %v", err)
-			}
-			resource[v1.ResourceMemory] = funcMem
-		}
-
-		funcType := "PubSub"
-		switch {
-		case triggerHTTP:
-			funcType = "HTTP"
-			topic = ""
-		case schedule != "":
-			funcType = "Scheduled"
-			topic = ""
-		}
 
 		funcContent := ""
 		if len(file) != 0 {
@@ -127,51 +104,17 @@ var deployCmd = &cobra.Command{
 			}
 		}
 
-		f := &spec.Function{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Function",
-				APIVersion: "k8s.io/v1",
-			},
-			Metadata: metav1.ObjectMeta{
-				Name:      funcName,
-				Namespace: ns,
-				Labels:    funcLabels,
-			},
-			Spec: spec.FunctionSpec{
-				Handler:  handler,
-				Runtime:  runtime,
-				Type:     funcType,
-				Function: funcContent,
-				Topic:    topic,
-				Schedule: schedule,
-				Template: v1.PodTemplateSpec{
-					Spec: v1.PodSpec{
-						Containers: []v1.Container{{}},
-					},
-				},
-			},
-		}
-
-		if len(funcEnv) != 0 {
-			f.Spec.Template.Spec.Containers[0].Env = funcEnv
-		}
-		if len(resource) != 0 {
-			f.Spec.Template.Spec.Containers[0].Resources = v1.ResourceRequirements{
-				Limits:   resource,
-				Requests: resource,
-			}
-		}
-		if len(runtimeImage) != 0 {
-			f.Spec.Template.Spec.Containers[0].Image = runtimeImage
-		}
-
-		// add dependencies file to func spec
+		funcDeps := ""
 		if deps != "" {
-			funcDeps, err := readFile(deps)
+			funcDeps, err = readFile(deps)
 			if err != nil {
 				logrus.Fatalf("Unable to read file %s: %v", deps, err)
 			}
-			f.Spec.Deps = funcDeps
+		}
+
+		f, err := getFunctionDescription(funcName, ns, handler, funcContent, funcDeps, runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, spec.Function{})
+		if err != nil {
+			logrus.Fatal(err)
 		}
 
 		tprClient, err := utils.GetTPRClientOutOfCluster()

@@ -97,6 +97,13 @@ pubsub-python-verify:
 	kubeless topic publish --topic s3-python --data "$(DATA)"
 	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-python))'
 
+pubsub-python-update:
+	kubeless topic create s3-python-2
+	kubeless function update pubsub-python --trigger-topic s3-python-2
+
+pubsub-python-update-verify:
+	kubectl describe $$(kubectl get po -oname|grep pubsub-python) | grep -e "TOPIC_NAME:\s*s3-python-2"
+
 pubsub-python34:
 	kubeless topic create s3-python34
 	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub.handler --from-file python/pubsub.py

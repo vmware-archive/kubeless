@@ -38,7 +38,7 @@ load ../script/libtest
 @test "Test function: get-python" {
   test_kubeless_function get-python
   test_kubeless_function_update get-python
-}
+} 
 @test "Test function: get-nodejs" {
   test_kubeless_function get-nodejs
 }
@@ -68,6 +68,7 @@ load ../script/libtest
 }
 @test "Test function: pubsub-python" {
   test_kubeless_function pubsub-python
+  test_kubeless_function_update pubsub-python
 }
 @test "Test function: pubsub-nodejs" {
   test_kubeless_function pubsub-nodejs
