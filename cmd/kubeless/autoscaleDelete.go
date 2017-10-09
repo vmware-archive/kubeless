@@ -40,5 +40,10 @@ var autoscaleDeleteCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+
+		err = utils.DeleteServiceMonitor(asName, ns)
+		if err != nil {
+			logrus.Fatal(err)
+		}
 	},
 }

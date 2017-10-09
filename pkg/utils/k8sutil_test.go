@@ -12,8 +12,8 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/batch/v2alpha1"
 	av2alpha1 "k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
+	"k8s.io/client-go/pkg/apis/batch/v2alpha1"
 	xv1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
@@ -519,12 +519,6 @@ func TestCreateAutoscaleResource(t *testing.T) {
 	}
 	if hpa.Spec.ScaleTargetRef.Name != "foo" {
 		t.Fatalf("Creating wrong scale target name")
-	}
-
-	if err := CreateAutoscale(clientset, "foo", "myns", "qps", min, max, "10k"); err != nil {
-		if !k8sErrors.IsAlreadyExists(err) {
-			t.Fatalf("Expect object is already exists, got %v", err)
-		}
 	}
 }
 

@@ -197,6 +197,7 @@ func GetTPRClientOutOfCluster() (*rest.RESTClient, error) {
 	return tprclient, nil
 }
 
+//GetServiceMonitorClientOutOfCluster returns sm client to the request from outside of cluster
 func GetServiceMonitorClientOutOfCluster() (*monitoringv1alpha1.MonitoringV1alpha1Client, error) {
 	config, err := BuildOutOfClusterConfig()
 	if err != nil {
@@ -1180,6 +1181,20 @@ func DeleteAutoscale(client kubernetes.Interface, name, ns string) error {
 	return nil
 }
 
+// DeleteServiceMonitor cleans the sm if it exists
+func DeleteServiceMonitor(name, ns string) error {
+	smclient, err := GetServiceMonitorClientOutOfCluster()
+	if err != nil {
+		return err
+	}
+	err = smclient.ServiceMonitors(ns).Delete(name, &metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+
+	return nil
+}
+
 func createServiceMonitor(funcName, ns string) error {
 	smclient, err := GetServiceMonitorClientOutOfCluster()
 	if err != nil {
@@ -1216,7 +1231,7 @@ func createServiceMonitor(funcName, ns string) error {
 			}
 		}
 		return nil
-	} else {
-		return errors.New("service monitor has already existed")
 	}
+
+	return errors.New("service monitor has already existed")
 }
