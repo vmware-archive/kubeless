@@ -235,16 +235,6 @@ test_must_pass_with_rbac_roles() {
     _call_simple_function 0
 }
 
-retry() {
-    n=0
-    until [ $n -ge 3 ]
-    do
-      "$@" && break
-      n=$[$n+1]
-      sleep 5
-    done
-}
-
 test_kubeless_function() {
     local func=${1:?} func_topic
     echo_info "TEST: $func"
@@ -260,8 +250,7 @@ test_kubeless_function() {
             echo_info "FUNC TOPIC: $func_topic"
             _wait_for_kubeless_kafka_topic_ready ${func_topic:?};;
     esac
-    # TODO: Remove retries when not using PortForwarding
-    retry make -sC examples ${func}-verify
+    make -sC examples ${func}-verify
 }
 
 test_kubeless_function_update() {
@@ -270,7 +259,6 @@ test_kubeless_function_update() {
     make -sC examples ${func}-update
     sleep 10
     k8s_wait_for_uniq_pod -l function=${func}
-    # TODO: Remove retries when not using PortForwarding
-    retry make -sC examples ${func}-update-verify
+    make -sC examples ${func}-update-verify
 }
 # vim: sw=4 ts=4 et si

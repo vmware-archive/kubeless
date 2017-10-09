@@ -21,22 +21,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
-	"net/http"
 	"net/url"
-	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
 	k8scmd "k8s.io/kubernetes/pkg/kubectl/cmd"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 const (
@@ -90,92 +88,21 @@ var callCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		f := cmdutil.NewFactory(nil)
-		k8sClient, err := f.RESTClient()
+		tprClient, err := utils.GetTPRClientOutOfCluster()
+		url := "/api/v1/proxy/namespaces/" + ns + "/services/" + funcName + "/"
+
+		req := &rest.Request{}
+		if get {
+			req = tprClient.Get().AbsPath(url)
+		} else {
+			req = tprClient.Post().AbsPath(url).Body(bytes.NewBuffer(jsonStr)).SetHeader("Content-Type", "application/json")
+		}
+		res, err := req.Do().Raw()
 		if err != nil {
-			logrus.Fatalf("Connection failed: %v", err)
+			// Properly interpret line breaks
+			logrus.Fatal(strings.Replace(err.Error(), `\n`, "\n", -1))
 		}
-		clientset, err := f.ClientSet()
-		if err != nil {
-			logrus.Fatalf("Connection failed: %v", err)
-		}
-		k8sClientConfig, err := f.ClientConfig()
-		if err != nil {
-			logrus.Fatalf("Connection failed: %v", err)
-		}
-
-		//FIXME: we should only use restClient from client-go but now still have to use the old client for pf call
-		k8sClientSet := utils.GetClientOutOfCluster()
-		pods, err := utils.GetPodsByLabel(k8sClientSet, ns, "function", funcName)
-		if err != nil {
-			logrus.Fatalf("Can't find the function pod: %v", err)
-		}
-		readyPod, err := utils.GetReadyPod(pods)
-		if err != nil {
-			logrus.Fatalf("Can't find the function pod: %v", err)
-		}
-
-		port, err := getLocalPort()
-		if err != nil {
-			logrus.Fatalf("Connection failed: %v", err)
-		}
-		portSlice := []string{port + ":8080"}
-
-		go func() {
-			pfo := k8scmd.PortForwardOptions{
-				RESTClient: k8sClient,
-				Namespace:  ns,
-				Config:     k8sClientConfig,
-				PodName:    readyPod.Name,
-				PodClient:  clientset.Core(),
-				Ports:      portSlice,
-				PortForwarder: &defaultPortForwarder{
-					cmdOut: os.Stdout,
-					cmdErr: os.Stderr,
-				},
-				StopChannel:  make(chan struct{}, 1),
-				ReadyChannel: make(chan struct{}),
-			}
-
-			err = pfo.RunPortForward()
-			if err != nil {
-				logrus.Fatalf("Connection failed: %v", err)
-			}
-
-		}()
-
-		retries := 0
-		httpClient := &http.Client{}
-		resp := &http.Response{}
-		req := &http.Request{}
-		url := fmt.Sprintf("http://localhost:%s", port)
-
-		for {
-			if get {
-				req, _ = http.NewRequest("GET", url, nil)
-			} else {
-				req, _ = http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
-				req.Header.Set("Content-Type", "application/json")
-			}
-			resp, err = httpClient.Do(req)
-
-			if err == nil {
-				htmlData, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					logrus.Fatalf("Response data is incorrect: %v", err)
-				}
-				fmt.Println(string(htmlData))
-				resp.Body.Close()
-				break
-			} else {
-				fmt.Println("Connecting to function...")
-				retries++
-				if retries == maxRetries {
-					logrus.Fatalf("Can not connect to function. Please check your network connection!!!")
-				}
-				time.Sleep(defaultTimeSleep)
-			}
-		}
+		fmt.Println(string(res))
 	},
 }
 
