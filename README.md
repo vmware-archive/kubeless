@@ -37,7 +37,7 @@ There are several kubeless manifests being shipped for multiple k8s environments
 For example, this below is a show case of deploying kubeless to a non-RBAC Kubernetes cluster.
 
 ```console
-$ export RELEASE=v0.2.1
+$ export RELEASE=v0.2.2
 $ kubectl create ns kubeless
 $ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 
@@ -212,7 +212,7 @@ to build kubeless.
 
 There are other solutions, like [fission](http://fission.io) and [funktion](https://github.com/fabric8io/funktion). There is also an incubating project at the ASF: [OpenWhisk](https://github.com/openwhisk/openwhisk). We believe however, that Kubeless is the most Kubernetes native of all.
 
-Kubeless uses k8s primitives, there is no additional API server or API router/gateway. Kubernetes users will quickly understand how it works and be able to leverage their existing logging and monitorig setup as well as their troubleshooting skills.
+Kubeless uses k8s primitives, there is no additional API server or API router/gateway. Kubernetes users will quickly understand how it works and be able to leverage their existing logging and monitoring setup as well as their troubleshooting skills.
 
 ## _Roadmap_
 
