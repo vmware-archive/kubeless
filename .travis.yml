@@ -68,7 +68,7 @@ before_deploy:
       sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
       sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
     fi
-  - export RELEASE_NOTES=$(./scripts/release_notes.sh $TRAVIS_TAG)
+  - export RELEASE_NOTES=$(./script/release_notes.sh ${TRAVIS_TAG})
 
 deploy:
   provider: releases
@@ -82,7 +82,7 @@ deploy:
     - bundles/kubeless_*.zip
   skip_cleanup: true
   overwrite: true
-  body: "${RELEASE_NOTES}"
+  body: ${RELEASE_NOTES}
   draft: true
   on:
     tags: true
