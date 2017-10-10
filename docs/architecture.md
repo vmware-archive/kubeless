@@ -101,10 +101,12 @@ Kubeless CLI is written in Go as well, using the popular cli library `github.com
 In order to help you getting a better feeling before you start diving into the project, we would give you the 10,000 foot view of the source code directory structure.
 
 ```
+- chart: chart to deploy Kubeless with Helm
 - cmd: contains kubeless cli implementation and kubeless-controller.
 - docker: contains artifacts for building the kubeless-controller and runtime images.
 - docs: contains documentations.
 - examples: contains some samples of running function with kubeless.
+- manifests: collection of manifests for development
 - pkg: contains shared packages.
     - controller: kubeless controller implementation.
     - function: kubeless function crud.
