@@ -5,7 +5,7 @@
 
 `kubeless` is a Kubernetes-native serverless framework that lets you deploy small bits of code without having to worry about the underlying infrastructure plumbing. It leverages Kubernetes resources to provide auto-scaling, API routing, monitoring, troubleshooting and more.
 
-Kubeless stands out as we use a ThirdPartyResource (now called [Custom Resource Definition](https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/)) to be able to create functions as custom kubernetes resources. We then run an in-cluster controller that watches these custom resources and launches _runtimes_ on-demand. The controller dynamically injects the functions code into the runtimes and make them available over HTTP or via a PubSub mechanism.
+Kubeless stands out as we use a [Custom Resource Definition](https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/) to be able to create functions as custom kubernetes resources. We then run an in-cluster controller that watches these custom resources and launches _runtimes_ on-demand. The controller dynamically injects the functions code into the runtimes and make them available over HTTP or via a PubSub mechanism.
 
 Kubeless is purely open-source and non-affiliated to any commercial organization. Chime in at anytime, we would love the help and feedback !
 
@@ -26,7 +26,7 @@ Click on this next picture to see a screencast demonstrating our [serverless](ht
 
 ## Installation
 
-Download `kubeless` cli from the [release page](https://github.com/kubeless/kubeless/releases). Then use one of yaml manifests found in the release package to deploy kubeless. It will create a _kubeless_ namespace and a _function_ ThirdPartyResource. You will see a _kubeless_ controller, and _kafka_, _zookeeper_ statefulset running.
+Download `kubeless` cli from the [release page](https://github.com/kubeless/kubeless/releases). Then use one of yaml manifests found in the release package to deploy kubeless. It will create a _kubeless_ namespace and a _functions_ Custom Resource Definition. You will see a _kubeless_ controller, and _kafka_, _zookeeper_ statefulset running.
 
 There are several kubeless manifests being shipped for multiple k8s environments (non-rbac, rbac and openshift), please consider to pick up the correct one:
 
@@ -56,9 +56,9 @@ NAME      DESIRED   CURRENT   AGE
 kafka     1         1         1m
 zoo       1         1         1m
 
-$ kubectl get thirdpartyresource
-NAME             DESCRIPTION                                     VERSION(S)
-function.k8s.io   Kubeless: Serverless framework for Kubernetes   v1
+$ kubectl get customresourcedefinition
+NAME               KIND
+functions.k8s.io   CustomResourceDefinition.v1beta1.apiextensions.k8s.io
 
 $ kubectl get functions
 ```
