@@ -12,6 +12,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
+	av2alpha1 "k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 	"k8s.io/client-go/pkg/apis/batch/v2alpha1"
 	xv1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
@@ -501,5 +502,45 @@ func TestGetRuntimes(t *testing.T) {
 	expectedRuntimes := "python2.7, python3.4, nodejs6, nodejs8, ruby2.4, dotnetcore2.0"
 	if runtimes != expectedRuntimes {
 		t.Errorf("Expected %s but got %s", expectedRuntimes, runtimes)
+	}
+}
+
+func TestCreateAutoscaleResource(t *testing.T) {
+	min := int32(1)
+	max := int32(10)
+	clientset := fake.NewSimpleClientset()
+	if err := CreateAutoscale(clientset, "foo", "myns", "cpu", min, max, "50"); err != nil {
+		t.Fatalf("Creating autoscale returned err: %v", err)
+	}
+
+	hpa, err := clientset.AutoscalingV2alpha1().HorizontalPodAutoscalers("myns").Get("foo", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Creating autoscale returned err: %v", err)
+	}
+	if hpa.Spec.ScaleTargetRef.Name != "foo" {
+		t.Fatalf("Creating wrong scale target name")
+	}
+}
+
+func TestDeleteAutoscaleResource(t *testing.T) {
+	myNsFoo := metav1.ObjectMeta{
+		Namespace: "myns",
+		Name:      "foo",
+	}
+
+	as := av2alpha1.HorizontalPodAutoscaler{
+		ObjectMeta: myNsFoo,
+	}
+
+	clientset := fake.NewSimpleClientset(&as)
+	if err := DeleteAutoscale(clientset, "foo", "myns"); err != nil {
+		t.Fatalf("Deleting autoscale returned err: %v", err)
+	}
+	a := clientset.Actions()
+	if ns := a[0].GetNamespace(); ns != "myns" {
+		t.Errorf("deleted autoscale from wrong namespace (%s)", ns)
+	}
+	if name := a[0].(ktesting.DeleteAction).GetName(); name != "foo" {
+		t.Errorf("deleted autoscale with wrong name (%s)", name)
 	}
 }

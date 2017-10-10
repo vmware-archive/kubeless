@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -34,13 +35,15 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 	batchv1 "k8s.io/client-go/pkg/apis/batch/v1"
-	"k8s.io/client-go/pkg/apis/batch/v2alpha1"
+	batchv2alpha1 "k8s.io/client-go/pkg/apis/batch/v2alpha1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -49,6 +52,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/kubernetes/pkg/kubectl/cmd"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+
+	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 )
 
 const (
@@ -179,7 +184,7 @@ func GetTPRClient() (*rest.RESTClient, error) {
 func GetTPRClientOutOfCluster() (*rest.RESTClient, error) {
 	tprconfig, err := BuildOutOfClusterConfig()
 	if err != nil {
-		logrus.Fatalf("Can not get kubernetes config: %v", err)
+		return nil, err
 	}
 
 	configureClient(tprconfig)
@@ -190,6 +195,20 @@ func GetTPRClientOutOfCluster() (*rest.RESTClient, error) {
 	}
 
 	return tprclient, nil
+}
+
+//GetServiceMonitorClientOutOfCluster returns sm client to the request from outside of cluster
+func GetServiceMonitorClientOutOfCluster() (*monitoringv1alpha1.MonitoringV1alpha1Client, error) {
+	config, err := BuildOutOfClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := monitoringv1alpha1.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }
 
 // GetFunction returns specification of a function
@@ -447,7 +466,7 @@ func DeleteK8sCustomResource(tprClient *rest.RESTClient, funcName, ns string) er
 		Do().Into(&f)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
-			return fmt.Errorf("The function doesn't exist")
+			return errors.New("The function doesn't exist")
 		}
 	}
 
@@ -838,6 +857,7 @@ func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
 				{
+					Name:       "function-port",
 					Port:       8080,
 					TargetPort: intstr.FromInt(8080),
 					Protocol:   v1.ProtocolTCP,
@@ -1043,15 +1063,15 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 }
 
 func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
-	job := &v2alpha1.CronJob{
+	job := &batchv2alpha1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            fmt.Sprintf("trigger-%s", funcObj.Metadata.Name),
 			Labels:          funcObj.Metadata.Labels,
 			OwnerReferences: or,
 		},
-		Spec: v2alpha1.CronJobSpec{
+		Spec: batchv2alpha1.CronJobSpec{
 			Schedule: funcObj.Spec.Schedule,
-			JobTemplate: v2alpha1.JobTemplateSpec{
+			JobTemplate: batchv2alpha1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
 					Template: v1.PodTemplateSpec{
 						Spec: v1.PodSpec{
@@ -1081,4 +1101,137 @@ func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []met
 	}
 
 	return err
+}
+
+// CreateAutoscale creates HPA object for function
+func CreateAutoscale(client kubernetes.Interface, funcName, ns, metric string, min, max int32, value string) error {
+	m := []v2alpha1.MetricSpec{}
+	switch metric {
+	case "cpu":
+		i, err := strconv.ParseInt(value, 10, 32)
+		if err != nil {
+			return err
+		}
+		i32 := int32(i)
+		m = []v2alpha1.MetricSpec{
+			{
+				Type: v2alpha1.ResourceMetricSourceType,
+				Resource: &v2alpha1.ResourceMetricSource{
+					Name: v1.ResourceCPU,
+					TargetAverageUtilization: &i32,
+				},
+			},
+		}
+	case "qps":
+		q, err := resource.ParseQuantity(value)
+		if err != nil {
+			return err
+		}
+		m = []v2alpha1.MetricSpec{
+			{
+				Type: v2alpha1.ObjectMetricSourceType,
+				Object: &v2alpha1.ObjectMetricSource{
+					MetricName:  "function_calls",
+					TargetValue: q,
+					Target: v2alpha1.CrossVersionObjectReference{
+						Kind: "Service",
+						Name: funcName,
+					},
+				},
+			},
+		}
+		err = createServiceMonitor(funcName, ns)
+		if err != nil {
+			return err
+		}
+	default:
+		return errors.New("metric is not supported")
+	}
+
+	hpa := &v2alpha1.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      funcName,
+			Namespace: ns,
+		},
+		Spec: v2alpha1.HorizontalPodAutoscalerSpec{
+			ScaleTargetRef: v2alpha1.CrossVersionObjectReference{
+				Kind: "Deployment",
+				Name: funcName,
+			},
+			MinReplicas: &min,
+			MaxReplicas: max,
+			Metrics:     m,
+		},
+	}
+
+	_, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).Create(hpa)
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
+// DeleteAutoscale deletes an autoscale rule
+func DeleteAutoscale(client kubernetes.Interface, name, ns string) error {
+	err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).Delete(name, &metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+	return nil
+}
+
+// DeleteServiceMonitor cleans the sm if it exists
+func DeleteServiceMonitor(name, ns string) error {
+	smclient, err := GetServiceMonitorClientOutOfCluster()
+	if err != nil {
+		return err
+	}
+	err = smclient.ServiceMonitors(ns).Delete(name, &metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+
+	return nil
+}
+
+func createServiceMonitor(funcName, ns string) error {
+	smclient, err := GetServiceMonitorClientOutOfCluster()
+	if err != nil {
+		return err
+	}
+
+	_, err = smclient.ServiceMonitors(ns).Get(funcName)
+	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			s := &monitoringv1alpha1.ServiceMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      funcName,
+					Namespace: ns,
+					Labels: map[string]string{
+						"service-monitor": "function",
+					},
+				},
+				Spec: monitoringv1alpha1.ServiceMonitorSpec{
+					Selector: metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"function": funcName,
+						},
+					},
+					Endpoints: []monitoringv1alpha1.Endpoint{
+						{
+							Port: "function-port",
+						},
+					},
+				},
+			}
+			_, err = smclient.ServiceMonitors(ns).Create(s)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	return errors.New("service monitor has already existed")
 }
