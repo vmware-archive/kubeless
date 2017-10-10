@@ -2,10 +2,8 @@ language: go
 
 os:
   - linux
-  - osx
 
 go:
-  - 1.7
   - 1.8.3
 
 go_import_path: github.com/kubeless/kubeless
@@ -50,10 +48,8 @@ script:
 
 after_success:
   - |
-    if [[ "$TRAVIS_OS_NAME" == linux && \
-          "$TRAVIS_BRANCH" == master && \
-          "$TRAVIS_PULL_REQUEST" == false && \
-          "$TRAVIS_GO_VERSION" == 1.8.3 ]]; then
+    if [[ "$TRAVIS_BRANCH" == master && \
+          "$TRAVIS_PULL_REQUEST" == false ]]; then
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
       docker tag $CONTROLLER_IMAGE ${CONTROLLER_IMAGE_NAME}:latest
       docker push ${CONTROLLER_IMAGE_NAME}:latest
@@ -72,6 +68,7 @@ before_deploy:
       sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
       sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
     fi
+  - export RELEASE_NOTES=$(./script/release_notes.sh ${TRAVIS_TAG})
 
 deploy:
   provider: releases
@@ -85,9 +82,9 @@ deploy:
     - bundles/kubeless_*.zip
   skip_cleanup: true
   overwrite: true
+  body: ${RELEASE_NOTES}
+  draft: true
   on:
     tags: true
     repo: kubeless/kubeless
-    go: 1.8.3
-    os: linux
     condition: $CGO_ENABLED = 0

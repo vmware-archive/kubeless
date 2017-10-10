@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+if [ -z "${KUBECONFIG}" ]; then
+    export KUBECONFIG=~/.kube/config
+fi
+
+if [ -z "${NAMESPACE}" ]; then
+    NAMESPACE=monitoring
+fi
+
+kubectl create namespace "$NAMESPACE"
+
+kctl() {
+    kubectl --namespace "$NAMESPACE" "$@"
+}
+
+kctl apply -f manifests/prometheus-operator
+
+# Wait for TPRs to be ready.
+printf "Waiting for Operator to register third party objects..."
+until kctl get servicemonitor > /dev/null 2>&1; do sleep 1; printf "."; done
+until kctl get prometheus > /dev/null 2>&1; do sleep 1; printf "."; done
+until kctl get alertmanager > /dev/null 2>&1; do sleep 1; printf "."; done
+echo "done!"
+
+kctl apply -f manifests/node-exporter
+kctl apply -f manifests/kube-state-metrics
+kctl apply -f manifests/grafana/grafana-credentials.yaml
+kctl apply -f manifests/grafana
+kctl apply -f manifests/prometheus/
+kctl apply -f manifests/alertmanager/
+
