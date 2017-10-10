@@ -73,7 +73,7 @@ before_deploy:
 deploy:
   provider: releases
   api_key:
-    secure: "daSVcUjHGO5L1SlyX3+GOz/Hv4KqkC/ObdRAbr7n7bvZUQewN5ll9Q5z5gvOI9z+zY9nnYFVppaOLfdWGjSldxjepwdHFB0F/oBXVwD+l7WOWacpq8+0+Zm71gG31YMl9ImkgmFll9WwXcG/2MLSGUsyBInGLzyRT0l5OhG6PNWLO3p7YZBKr9ihF3nxeRucfwn2uMUuyVnlEyBCyqmpxeKMNK3J9FY9j3jTmTmRQCBc9UEGGcX2p7R+LtLEvg/nxllVZyHQYc6UhuXWC6imx1mo6NAsVNSvbgJ0ufWrwcd+43XmU5eO8IPMlkb/EVgzp40XWoMrsxQZLEhnkLuApLFMdgn3ioJynBmtYiP3mQZ67Dt5zQiA7+UW/D+1CVjb7hVTzk76Vm4oEEq1KUs2xnA+kaUKprTLrlW4EusiSqKPZWG+hrqlC6VGYTSpQBtx9Hgo5yHZ0r5zoNCrXy3ISsCf8ublH+eiQ5tQ4pFD42AlLKGOQEpL6cvu2zl7+KZfWDqXG8dnjni7aguuPEdXnUm/bsv7JWKwFFV8CHfmBuWruU+VG1iVvSOmATlwQgb72ZsE+bJw5nFWTbrsVeK+hXSBk1tiWWDJzYEC9e81hFKxw8ltPHnG+dos941FXjNVG81L6TcuCgc42Ca4Kf7ICirjdmCKT3e7FW60IFw8SLM="
+    secure: "nVgmSH4ClqCfwG81zCpegnP35V/O7ymDNpkiCthN/Bm+QKyqIME3FCceJ5dtuaQJEiAVkvSM7EI0nYw7pw7+AqcRsBbUcUwI1ZFIihEbmsH5wIDXBYEELRfy8FBy1rFw1HWySnbSCBEiWj8OnPupI2+xYHkNmdN6Z6TkHViY9T15+LfcUJ/mwICeSTy6/orjT9TenGPhJKbNrCvMBwUzfSoxLXZQkvJBhC5HB1As0Lh9vLfI6PxCch2mThlwxRa8r2jQAf5KP4P/fsFnQJsTpVi+l2SBoYvufvI8IvvfF9loO/mv8kuxkpAMwA7quoaafzHbu+In3nCSQeAOBqNkaQMM4fYYxIdZUA7hC7ex4VSXEd3IqlDEFREOW8qqrb/io/ai80nGvPlpv1C+IMQu3OssKM0aDf2WM3GRftPN+wJnhRvVxTKr26GI8zGIz0tG2JKv5zLi6c4PR/sgLZ46K6lx+GYcb8Q94KAhqulkhBRDw6jYzTrg8EpDdiUACr1yJH/qSWqO0W7a8Sbp9xOIec8c4aezacSLC2bhn4yYutLlXjuv8uU61ilfmRtq3YVycTrttaTXHqRZGiujBW24Ks21yuk1nhAm9BhuT8ryjc9uQH/LbVLtX/KMsjb1IZuw9O0yGTobheR731rbz8wuWEpJTYsUkZSFmseARP7Sa/s="
   file_glob: true
   file:
     - kubeless-${TRAVIS_TAG}.yaml
@@ -81,6 +81,7 @@ deploy:
     - kubeless-openshift-${TRAVIS_TAG}.yaml
     - bundles/kubeless_*.zip
   skip_cleanup: true
+  name: ${TRAVIS_TAG}
   overwrite: true
   body: ${RELEASE_NOTES}
   draft: true
