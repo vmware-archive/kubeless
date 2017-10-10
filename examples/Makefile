@@ -137,6 +137,7 @@ webserver:
 	kubeless function deploy --env APACHE_HTTP_PORT_NUMBER=8080 --runtime-image bitnami/apache:2.4.27-r0 webserver
 
 webserver-verify:
+	kubeless function call webserver
 	kubeless function call webserver |egrep "It works!"
 
 webserver-update:
