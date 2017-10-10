@@ -15,7 +15,7 @@ env:
     - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller
     - CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}
     - CGO_ENABLED=0
-
+    - secure: udyr8Hfn6GBubiQgAK99rGK1VbqvgmqVhxoXvaQhAw3YISB2SMiwH4p6r/RIQKT8Liu9T0jaG8NI7KeN6w2UbY0SbBuMgR0+ZoXAs2Cb/JvVptIaJH1CUxN4Gjyr6w23n/XVHfaqgmvsiG4h86QdOUV4HAwWoaalrL+LnkOBEHSYwokmpiniJYgt05dLdv/YZdqtJyVz/4yG/Z5xWGspicEww6MgeLAfWquC7hVJxfaxVR+ZbWy2MIKgWlDtFxcBXYAcVLeCywJ7dn2n22q1MMYkr64HNLSXrJzlD+nZZXETMeiYD/NLwScQDTH81RFh5rwXZSfFpC7UklSuY3RBm8uWQZ5PHyAXeBhEf7ayQVykSpNbLERc6I/lgUA1A1EOLCkTxNxbn2E7Yz2dBBSeCkXktZUyqf9W5OkjAN2QsQ1ex1aqnXZDcZABvZz0FbtcmzyG40FSlnXifKayJGtUxdkwMEdW0WVt5PZYk73TW8Unyd63YD8yR4gR4t7qux6YGz6AXvvIyhXvgP9d8W0nEFpo1xCkTo+y/Gh5RDjv5An/x2R6OUiF5E55BN/eQYIVC7d8AksaSn9pgA3qjyeN/fmNvszTbDhZ9u2bTWgWVKzNWSinEmuf32ge9L82sKw+RG29rKTbaFgedY+t8hZCE4lDEfYXYlxehAwy1zfu6u4=
 before_install:
   - set -e
   - sudo apt-get install -y jshon
@@ -69,12 +69,12 @@ before_deploy:
       sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
       sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
     fi
-  - export RELEASE_NOTES=$(jshon $(./script/release_notes.sh ${TRAVIS_TAG}))
+  - export RELEASE_NOTES=$(jshon -s "$(./script/release_notes.sh ${TRAVIS_TAG})")
 
 deploy:
   provider: releases
   api_key:
-    secure: "nVgmSH4ClqCfwG81zCpegnP35V/O7ymDNpkiCthN/Bm+QKyqIME3FCceJ5dtuaQJEiAVkvSM7EI0nYw7pw7+AqcRsBbUcUwI1ZFIihEbmsH5wIDXBYEELRfy8FBy1rFw1HWySnbSCBEiWj8OnPupI2+xYHkNmdN6Z6TkHViY9T15+LfcUJ/mwICeSTy6/orjT9TenGPhJKbNrCvMBwUzfSoxLXZQkvJBhC5HB1As0Lh9vLfI6PxCch2mThlwxRa8r2jQAf5KP4P/fsFnQJsTpVi+l2SBoYvufvI8IvvfF9loO/mv8kuxkpAMwA7quoaafzHbu+In3nCSQeAOBqNkaQMM4fYYxIdZUA7hC7ex4VSXEd3IqlDEFREOW8qqrb/io/ai80nGvPlpv1C+IMQu3OssKM0aDf2WM3GRftPN+wJnhRvVxTKr26GI8zGIz0tG2JKv5zLi6c4PR/sgLZ46K6lx+GYcb8Q94KAhqulkhBRDw6jYzTrg8EpDdiUACr1yJH/qSWqO0W7a8Sbp9xOIec8c4aezacSLC2bhn4yYutLlXjuv8uU61ilfmRtq3YVycTrttaTXHqRZGiujBW24Ks21yuk1nhAm9BhuT8ryjc9uQH/LbVLtX/KMsjb1IZuw9O0yGTobheR731rbz8wuWEpJTYsUkZSFmseARP7Sa/s="
+    secure: "udyr8Hfn6GBubiQgAK99rGK1VbqvgmqVhxoXvaQhAw3YISB2SMiwH4p6r/RIQKT8Liu9T0jaG8NI7KeN6w2UbY0SbBuMgR0+ZoXAs2Cb/JvVptIaJH1CUxN4Gjyr6w23n/XVHfaqgmvsiG4h86QdOUV4HAwWoaalrL+LnkOBEHSYwokmpiniJYgt05dLdv/YZdqtJyVz/4yG/Z5xWGspicEww6MgeLAfWquC7hVJxfaxVR+ZbWy2MIKgWlDtFxcBXYAcVLeCywJ7dn2n22q1MMYkr64HNLSXrJzlD+nZZXETMeiYD/NLwScQDTH81RFh5rwXZSfFpC7UklSuY3RBm8uWQZ5PHyAXeBhEf7ayQVykSpNbLERc6I/lgUA1A1EOLCkTxNxbn2E7Yz2dBBSeCkXktZUyqf9W5OkjAN2QsQ1ex1aqnXZDcZABvZz0FbtcmzyG40FSlnXifKayJGtUxdkwMEdW0WVt5PZYk73TW8Unyd63YD8yR4gR4t7qux6YGz6AXvvIyhXvgP9d8W0nEFpo1xCkTo+y/Gh5RDjv5An/x2R6OUiF5E55BN/eQYIVC7d8AksaSn9pgA3qjyeN/fmNvszTbDhZ9u2bTWgWVKzNWSinEmuf32ge9L82sKw+RG29rKTbaFgedY+t8hZCE4lDEfYXYlxehAwy1zfu6u4="
   file_glob: true
   file:
     - kubeless-${TRAVIS_TAG}.yaml
@@ -84,9 +84,11 @@ deploy:
   skip_cleanup: true
   name: ${TRAVIS_TAG}
   overwrite: true
-  body: ${RELEASE_NOTES}
   draft: true
   on:
     tags: true
     repo: kubeless/kubeless
     condition: $CGO_ENABLED = 0
+
+after_deploy:
+  - ./script/upload_release_notes.sh ${TRAVIS_TAG}
