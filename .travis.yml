@@ -18,6 +18,7 @@ env:
 
 before_install:
   - set -e
+  - sudo apt-get install -y jshon
 
 install:
   - go get github.com/mitchellh/gox github.com/golang/lint/golint
