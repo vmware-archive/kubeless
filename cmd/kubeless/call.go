@@ -31,6 +31,7 @@ import (
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
@@ -89,7 +90,17 @@ var callCmd = &cobra.Command{
 		}
 
 		tprClient, err := utils.GetTPRClientOutOfCluster()
-		url := "/api/v1/proxy/namespaces/" + ns + "/services/" + funcName + "/"
+		svc := v1.Service{}
+		tprClient.Get().AbsPath("/api/v1/namespaces/" + ns + "/services/" + funcName + "/").Do().Into(&svc)
+		if svc.ObjectMeta.Name != funcName {
+			logrus.Fatalf("Unable to find the service for %s", funcName)
+		}
+
+		port := strconv.Itoa(int(svc.Spec.Ports[0].Port))
+		if svc.Spec.Ports[0].Name != "" {
+			port = svc.Spec.Ports[0].Name
+		}
+		url := "/api/v1/proxy/namespaces/" + ns + "/services/" + funcName + ":" + port + "/"
 
 		req := &rest.Request{}
 		if get {
@@ -100,6 +111,7 @@ var callCmd = &cobra.Command{
 		res, err := req.Do().Raw()
 		if err != nil {
 			// Properly interpret line breaks
+			logrus.Error(string(res))
 			logrus.Fatal(strings.Replace(err.Error(), `\n`, "\n", -1))
 		}
 		fmt.Println(string(res))
