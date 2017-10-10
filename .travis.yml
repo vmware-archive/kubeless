@@ -68,7 +68,7 @@ before_deploy:
       sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
       sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
     fi
-  - export RELEASE_NOTES=$(./script/release_notes.sh ${TRAVIS_TAG})
+  - export RELEASE_NOTES=$(jshon $(./script/release_notes.sh ${TRAVIS_TAG}))
 
 deploy:
   provider: releases
