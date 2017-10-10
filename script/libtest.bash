@@ -58,7 +58,6 @@ k8s_wait_for_uniq_pod() {
         sleep 1
     done
     k8s_wait_for_pod_ready "${@}"
-    kubectl get all
     echo "Finished waiting"
 }
 k8s_wait_for_pod_gone() {

@@ -10,7 +10,6 @@ get-python-update:
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python/"
 
 get-python-update-verify:
-	kubeless function call get-python
 	kubeless function call get-python |egrep hello.world.updated
 
 get-python-34:
