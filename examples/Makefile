@@ -6,7 +6,7 @@ get-python-verify:
 	kubeless function call get-python |egrep hello.world
 
 get-python-update:
-	printf 'def foo():\n%4sreturn "hello world updated"\n' | kubeless function update get-python --runtime python2.7 --handler helloget.foo --from-file /dev/stdin
+	printf 'def foo():\n%4sreturn "hello world updated"\n' | kubeless function update get-python --from-file /dev/stdin
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python/"
 
 get-python-update-verify:

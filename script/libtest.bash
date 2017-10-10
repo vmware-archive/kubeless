@@ -24,7 +24,7 @@ KUBECFG_BIN=$(which kubecfg)
 : ${KUBECTL_BIN:?ERROR: missing binary: kubectl}
 : ${KUBECFG_BIN:?ERROR: missing binary: kubecfg}
 
-export TEST_MAX_WAIT_SEC=120
+export TEST_MAX_WAIT_SEC=360
 
 # Workaround 'bats' lack of forced output support, dup() stderr fd
 exec 9>&2
@@ -235,16 +235,6 @@ test_must_pass_with_rbac_roles() {
     _call_simple_function 0
 }
 
-retry() {
-    n=0
-    until [ $n -ge 3 ]
-    do
-      "$@" && break
-      n=$[$n+1]
-      sleep 5
-    done
-}
-
 test_kubeless_function() {
     local func=${1:?} func_topic
     echo_info "TEST: $func"
@@ -253,15 +243,14 @@ test_kubeless_function() {
     esac
     kubeless_function_delete ${func}
     make -sC examples ${func}
-    k8s_wait_for_pod_ready -l function=${func}
+    k8s_wait_for_pod_ready -l function=${func} || return 1
     case "${func}" in
         *pubsub*)
             func_topic=$(kubeless function describe "${func}" -o yaml|sed -n 's/topic: //p')
             echo_info "FUNC TOPIC: $func_topic"
             _wait_for_kubeless_kafka_topic_ready ${func_topic:?};;
     esac
-    # TODO: Remove retries when not using PortForwarding
-    retry make -sC examples ${func}-verify
+    make -sC examples ${func}-verify
 }
 
 test_kubeless_function_update() {
@@ -269,8 +258,7 @@ test_kubeless_function_update() {
     echo_info "UPDATE: $func"
     make -sC examples ${func}-update
     sleep 10
-    k8s_wait_for_uniq_pod -l function=${func}
-    # TODO: Remove retries when not using PortForwarding
-    retry make -sC examples ${func}-update-verify
+    k8s_wait_for_uniq_pod -l function=${func} || return 1
+    make -sC examples ${func}-update-verify
 }
 # vim: sw=4 ts=4 et si
