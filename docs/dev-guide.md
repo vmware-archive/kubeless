@@ -1,7 +1,7 @@
 # Kubeless developer guide
 
 This will cover the steps need to be done in order to build your local
-developement environment for Kubeless.
+development environment for Kubeless.
 
 ## Setting things up
 
@@ -76,7 +76,7 @@ The binaries accordingly located at `bundles/kubeless_$OS_$arch` folder.
 ### Uploading your kubeless image to Docker Hub
 
 Usually you will need to upload your controller image to a repository so you
-can make it available for your Kubernettes cluster, whenever it is running.
+can make it available for your Kubernetes cluster, whenever it is running.
 
 To do so, run the commands:
 
@@ -85,7 +85,7 @@ docker login -u=<dockerhubuser> -e=<e-mail>
 docker tag kubeless-controller <your-docker-hub-repo>/kubeless-test:latest
 docker push <your-docker-hub-repo>/MyKubelessController:latest
 ````
-In order to upload your kubeless controller image to Kubernettes, you should
+In order to upload your kubeless controller image to Kubernetes, you should
 use kubectl as follows, informing the yaml file with the required descriptions
 of your deployment.
 
@@ -104,8 +104,8 @@ session on the yaml file.
 ```
 
 **Hint:** take a look at the `imagePullPolicy` configuration if you are sending
-images with tags (e. g. "latest") to the Kubernettes cluster. This option
-controls the image caching mechanism for Kubernettes and you may enconter
+images with tags (e. g. "latest") to the Kubernetes cluster. This option
+controls the image caching mechanism for Kubernetes and you may encounter
 problems if new images enters the cluster with the same name. They might not be
 properly pulled for example.
 
@@ -161,7 +161,10 @@ You can choose to start minikube vm with your preferred VM driver (virtualbox
 xhyve vmwarefusion)
 
 ```
-$ kubeless install
+# Install Kubeless
+$ export RELEASE=v0.2.2
+$ kubectl create ns kubeless
+$ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 
 # Verify the installation
 $ kubectl get po --all-namespaces
@@ -242,8 +245,8 @@ binaries and make it available on kubernetes.
 ## Manage dependencies
 
 We use [Glide](https://github.com/Masterminds/glide) to vendor the
-dependencies. Take a quick look on README to understand how it works. Packages
-that Kubeless relying on is listed at
-[glide.yaml](https://github.com/kubeless/kubeless/blob/master/glide.yaml)
+dependencies. Take a quick look at the README to understand how it works. Packages
+that Kubeless relies on are listed at
+[glide.yaml](https://github.com/kubeless/kubeless/blob/master/glide.yaml).
 
 Happy hacking!
