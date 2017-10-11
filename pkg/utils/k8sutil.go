@@ -25,7 +25,9 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 
@@ -131,7 +133,11 @@ func GetClient() kubernetes.Interface {
 func BuildOutOfClusterConfig() (*rest.Config, error) {
 	kubeconfigPath := os.Getenv("KUBECONFIG")
 	if kubeconfigPath == "" {
-		kubeconfigPath = os.Getenv("HOME") + "/.kube/config"
+		env := "HOME"
+		if goruntime.GOOS == "windows" {
+			env = "USERPROFILE"
+		}
+		kubeconfigPath = filepath.Join(os.Getenv(env), ".kube", "config")
 	}
 	return clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 }
