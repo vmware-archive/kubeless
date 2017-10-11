@@ -9,7 +9,7 @@ function commit_list {
   git fetch --tags
   local previous_tag=`curl -s https://api.github.com/repos/$REPO_DOMAIN/$REPO_NAME/tags | jq --raw-output '.[1].name'`
   local release_notes=`git log $previous_tag..$tag --oneline`
-  local parsed_release_notes=$(echo "$release_notes" | sed -n -e 'H;${x;s/\n/\\n- /g;s/^\\n//;p;}')
+  local parsed_release_notes=$(echo "$release_notes" | sed -n -e 'H;${x;s/\n/\\n- /g;s/^\\n//;s/"/\\"/g;p;}')
   echo $parsed_release_notes
 }
 
@@ -39,9 +39,9 @@ curl -sL https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-rb
 
 function release_tag {
   local tag=$1
-  local get_release_notes=$(get_release_notes $tag)
+  local release_notes=$(get_release_notes $tag)
   local release_id=$(curl -s https://api.github.com/repos/$REPO_DOMAIN/$REPO_NAME/releases | jq  --raw-output '.[0].id')
-  local release=`curl -H "Authorization: token $ACCESS_TOKEN" --request PATCH --data "{
+  local release=`curl -H "Authorization: token $ACCESS_TOKEN" -s --request PATCH --data "{
     \"tag_name\": \"$tag\",
     \"target_commitish\": \"master\",
     \"name\": \"$tag\",
@@ -49,7 +49,7 @@ function release_tag {
     \"draft\": true,
     \"prerelease\": false
   }" https://api.github.com/repos/$REPO_DOMAIN/$REPO_NAME/releases/$release_id`
-  echo $release | jq ".id"
+  echo $release
 }
 
 if [[ -z "$REPO_NAME" || -z "$REPO_DOMAIN" ]]; then
