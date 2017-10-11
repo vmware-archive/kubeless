@@ -215,6 +215,16 @@ verify_rbac_mode() {
     echo "ERROR: Please run w/RBAC, eg minikube as: minikube start --extra-config=apiserver.Authorization.Mode=RBAC"
     return 1
 }
+wait_for_endpoint() {
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    echo_info "Waiting for the endpoint ${endpoint}' to be ready ..."
+    local func=${1:?}
+    local endpoint=$(kubectl get endpoints -l function=$func | grep $func | awk '{print $2}')
+    until curl $endpoint; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
+}
 test_must_fail_without_rbac_roles() {
     echo_info "RBAC TEST: function deploy/call must fail without RBAC roles"
     _delete_simple_function
@@ -235,7 +245,7 @@ test_must_pass_with_rbac_roles() {
     _call_simple_function 0
 }
 
-test_kubeless_function() {
+deploy_function() {
     local func=${1:?} func_topic
     echo_info "TEST: $func"
     case "${func}" in
@@ -243,22 +253,35 @@ test_kubeless_function() {
     esac
     kubeless_function_delete ${func}
     make -sC examples ${func}
-    k8s_wait_for_pod_ready -l function=${func} || return 1
+    k8s_wait_for_pod_ready -l function=${func}
     case "${func}" in
         *pubsub*)
             func_topic=$(kubeless function describe "${func}" -o yaml|sed -n 's/topic: //p')
             echo_info "FUNC TOPIC: $func_topic"
             _wait_for_kubeless_kafka_topic_ready ${func_topic:?};;
     esac
+}
+verify_function() {
+    local func=${1:?}
     make -sC examples ${func}-verify
 }
-
-test_kubeless_function_update() {
+test_kubeless_function() {
+    local func=${1:?}
+    deploy_function $func
+    verify_function $func
+}
+update_function() {
     local func=${1:?} func_topic
     echo_info "UPDATE: $func"
     make -sC examples ${func}-update
     sleep 10
-    k8s_wait_for_uniq_pod -l function=${func} || return 1
+    k8s_wait_for_uniq_pod -l function=${func}
+}
+verify_update_function() {
     make -sC examples ${func}-update-verify
+}
+test_kubeless_function_update() {
+    local func=${1:?}
+    verify_update_function $func
 }
 # vim: sw=4 ts=4 et si

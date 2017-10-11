@@ -77,7 +77,11 @@ load ../script/libtest
   test_kubeless_function pubsub-ruby
 }
 @test "Test custom runtime image" {
-  test_kubeless_function webserver
-  test_kubeless_function_update webserver
+  deploy_function webserver
+  wait_for_endpoint webserver
+  verify_function webserver
+  update_function webserver
+  wait_for_endpoint
+  verify_update_function webserver
 }
 # vim: ts=2 sw=2 si et syntax=sh

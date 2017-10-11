@@ -137,12 +137,10 @@ webserver:
 	kubeless function deploy --env APACHE_HTTP_PORT_NUMBER=8080 --runtime-image bitnami/apache:2.4.27-r0 webserver
 
 webserver-verify:
-	kubeless function call webserver
 	kubeless function call webserver |egrep "It works!"
 
 webserver-update:
 	kubeless function update --env NGINX_HTTP_PORT_NUMBER=8080 --runtime-image bitnami/nginx:1.12.1-r2 webserver
-	sleep 5 # Give nginx a few seconds to initialize
 
 webserver-update-verify:
 	kubeless function call webserver |egrep "Welcome to nginx!"
