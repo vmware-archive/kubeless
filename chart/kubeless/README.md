@@ -2,7 +2,7 @@
 
 It installs:
 
-* The TPR
+* The CRD
 * The controller
 * The UI
 * A single node Kafka and Zookeeper setup

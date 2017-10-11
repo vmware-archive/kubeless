@@ -8,4 +8,4 @@ kubectl delete svc --namespace kubeless broker
 kubectl delete svc --namespace kubeless kafka
 kubectl delete svc --namespace kubeless zoo
 kubectl delete svc --namespace kubeless zookeeper
-#kubectl delete thirdpartyresources function.k8s.io
+#kubectl delete customresourcedefinition function.k8s.io
