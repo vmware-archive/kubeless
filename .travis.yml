@@ -18,7 +18,6 @@ env:
     - secure: udyr8Hfn6GBubiQgAK99rGK1VbqvgmqVhxoXvaQhAw3YISB2SMiwH4p6r/RIQKT8Liu9T0jaG8NI7KeN6w2UbY0SbBuMgR0+ZoXAs2Cb/JvVptIaJH1CUxN4Gjyr6w23n/XVHfaqgmvsiG4h86QdOUV4HAwWoaalrL+LnkOBEHSYwokmpiniJYgt05dLdv/YZdqtJyVz/4yG/Z5xWGspicEww6MgeLAfWquC7hVJxfaxVR+ZbWy2MIKgWlDtFxcBXYAcVLeCywJ7dn2n22q1MMYkr64HNLSXrJzlD+nZZXETMeiYD/NLwScQDTH81RFh5rwXZSfFpC7UklSuY3RBm8uWQZ5PHyAXeBhEf7ayQVykSpNbLERc6I/lgUA1A1EOLCkTxNxbn2E7Yz2dBBSeCkXktZUyqf9W5OkjAN2QsQ1ex1aqnXZDcZABvZz0FbtcmzyG40FSlnXifKayJGtUxdkwMEdW0WVt5PZYk73TW8Unyd63YD8yR4gR4t7qux6YGz6AXvvIyhXvgP9d8W0nEFpo1xCkTo+y/Gh5RDjv5An/x2R6OUiF5E55BN/eQYIVC7d8AksaSn9pgA3qjyeN/fmNvszTbDhZ9u2bTWgWVKzNWSinEmuf32ge9L82sKw+RG29rKTbaFgedY+t8hZCE4lDEfYXYlxehAwy1zfu6u4=
 before_install:
   - set -e
-  - sudo apt-get install -y jshon
 
 install:
   - go get github.com/mitchellh/gox github.com/golang/lint/golint
@@ -69,12 +68,11 @@ before_deploy:
       sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
       sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
     fi
-  - export RELEASE_NOTES=$(jshon -s "$(./script/release_notes.sh ${TRAVIS_TAG})")
 
 deploy:
   provider: releases
   api_key:
-    secure: "udyr8Hfn6GBubiQgAK99rGK1VbqvgmqVhxoXvaQhAw3YISB2SMiwH4p6r/RIQKT8Liu9T0jaG8NI7KeN6w2UbY0SbBuMgR0+ZoXAs2Cb/JvVptIaJH1CUxN4Gjyr6w23n/XVHfaqgmvsiG4h86QdOUV4HAwWoaalrL+LnkOBEHSYwokmpiniJYgt05dLdv/YZdqtJyVz/4yG/Z5xWGspicEww6MgeLAfWquC7hVJxfaxVR+ZbWy2MIKgWlDtFxcBXYAcVLeCywJ7dn2n22q1MMYkr64HNLSXrJzlD+nZZXETMeiYD/NLwScQDTH81RFh5rwXZSfFpC7UklSuY3RBm8uWQZ5PHyAXeBhEf7ayQVykSpNbLERc6I/lgUA1A1EOLCkTxNxbn2E7Yz2dBBSeCkXktZUyqf9W5OkjAN2QsQ1ex1aqnXZDcZABvZz0FbtcmzyG40FSlnXifKayJGtUxdkwMEdW0WVt5PZYk73TW8Unyd63YD8yR4gR4t7qux6YGz6AXvvIyhXvgP9d8W0nEFpo1xCkTo+y/Gh5RDjv5An/x2R6OUiF5E55BN/eQYIVC7d8AksaSn9pgA3qjyeN/fmNvszTbDhZ9u2bTWgWVKzNWSinEmuf32ge9L82sKw+RG29rKTbaFgedY+t8hZCE4lDEfYXYlxehAwy1zfu6u4="
+    secure: rOXYYMxdFrP7mtExHLK+IOwW7LmV8Y7pJjiOx023F/z0HeyJLcFDY4Mvr6n+nIjf8idPnINARYiHH0eBTDAKNsBhpod+QPexO3gy8bWAbZS6c1wQtV6EuKKfDhvsLQdylh+9pBrtC71GMxBzGWKzcs2dxHZULNrjDxqA99JMWpkzJRVcaU0D9c68aUVIXdI90NTEWG+yuAUw+qWaHIDGNDylS3/5DXs+PNV75ExuL3dWxXJQlEK7+l60/0rMNm+VZIX/5T3YE/cfdXoD2wl82umjzNzoBk2emo2MfHtCyxf+XYBEDZeRHZHZSOg3HCOcRmbKKzOLNkvaSMlyT4celiZoOrR1vASbxzJOBcW+QkCoJ5QAxXwZD7KJk0V89AOv6YR2skMbG7a7+tzkeZ8VHZny7VMgrTBi6bYxZDV1+v28Xm0R/GWnot2W/Nk92mHyVyh3XifMrOHTgXb6G6iIpCypj0i6Ktr9p8uZEhUTqcpljAcRQdnMNHaWWPttM5T3IW94iROdymPwo65FJukHQv/h3GjYB0P1jagBZfbcYQNX/wEjZ3tIVknYfXfRlZXTQjj29DAynGTbw8q07iRR2eNiDUQAS54JQnXOewUtmVRo9maIjxUs4XEE3/IsRNXpwMKGCOP+fjHeL8XtDwrRzmw8nS0LcnooKpMCaOYD4hA=
   file_glob: true
   file:
     - kubeless-${TRAVIS_TAG}.yaml
