@@ -80,9 +80,7 @@ deploy:
     - kubeless-openshift-${TRAVIS_TAG}.yaml
     - bundles/kubeless_*.zip
   skip_cleanup: true
-  name: ${TRAVIS_TAG}
   overwrite: true
-  draft: true
   on:
     tags: true
     repo: kubeless/kubeless
