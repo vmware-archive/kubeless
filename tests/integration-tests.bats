@@ -81,7 +81,7 @@ load ../script/libtest
   wait_for_endpoint webserver
   verify_function webserver
   update_function webserver
-  wait_for_endpoint
+  wait_for_endpoint webserver
   verify_update_function webserver
 }
 # vim: ts=2 sw=2 si et syntax=sh

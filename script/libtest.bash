@@ -216,11 +216,11 @@ verify_rbac_mode() {
     return 1
 }
 wait_for_endpoint() {
-    local -i cnt=${TEST_MAX_WAIT_SEC:?}
-    echo_info "Waiting for the endpoint ${endpoint}' to be ready ..."
     local func=${1:?}
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
     local endpoint=$(kubectl get endpoints -l function=$func | grep $func | awk '{print $2}')
-    until curl $endpoint; do
+    echo_info "Waiting for the endpoint ${endpoint}' to be ready ..."
+    until curl -s $endpoint; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
@@ -278,10 +278,12 @@ update_function() {
     k8s_wait_for_uniq_pod -l function=${func}
 }
 verify_update_function() {
+    local func=${1:?}
     make -sC examples ${func}-update-verify
 }
 test_kubeless_function_update() {
     local func=${1:?}
+    update_function $func
     verify_update_function $func
 }
 # vim: sw=4 ts=4 et si
