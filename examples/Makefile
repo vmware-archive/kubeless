@@ -141,7 +141,6 @@ webserver-verify:
 
 webserver-update:
 	kubeless function update --env NGINX_HTTP_PORT_NUMBER=8080 --runtime-image bitnami/nginx:1.12.1-r2 webserver
-	sleep 5 # Give nginx a few seconds to initialize
 
 webserver-update-verify:
 	kubeless function call webserver |egrep "Welcome to nginx!"
