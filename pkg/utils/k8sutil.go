@@ -69,7 +69,7 @@ const (
 	ruby24Pubsub    = "bitnami/kubeless-ruby-event-consumer@sha256:938a860dbd9b7fb6b4338248a02c92279315c6e42eed0700128b925d3696b606"
 	dotnetcore2Http = "allantargino/kubeless-dotnetcore@sha256:d321dc4b2c420988d98cdaa22c733743e423f57d1153c89c2b99ff0d944e8a63"
 	busybox         = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
-        bash43http    = "aljannuzzi/kubeless-bash@sha256:e03ab6d09b0e4fab59fbc48d7a41b98977efaafc1253b86d9627b1cab940f2b8"
+	bash43http      = "aljannuzzi/kubeless-bash@sha256:e03ab6d09b0e4fab59fbc48d7a41b98977efaafc1253b86d9627b1cab940f2b8"
 	pubsubFunc      = "PubSub"
 	schedFunc       = "Scheduled"
 )
@@ -99,9 +99,8 @@ func init() {
 	dotnetcore2 := runtimeVersion{runtimeID: "dotnetcore", version: "2.0", httpImage: dotnetcore2Http, pubsubImage: ""}
 	dotnetcore = []runtimeVersion{dotnetcore2}
 
-        bash43 := runtimeVersion{runtimeID: "bash", version: "4.3", httpImage: bash43http, pubsubImage: ""}
-        bash = []runtimeVersion{bash43}
-
+	bash43 := runtimeVersion{runtimeID: "bash", version: "4.3", httpImage: bash43http, pubsubImage: ""}
+	bash = []runtimeVersion{bash43}
 
 	availableRuntimes = [][]runtimeVersion{python, node, ruby, dotnetcore}
 }
@@ -269,9 +268,9 @@ func GetFunctionFileNames(runtime, modName string) (fileName, depName string) {
 	case strings.Contains(runtime, "dotnetcore"):
 		fileName = modName + ".cs"
 		depName = "requirements.xml"
-        case strings.Contains(runtime, "bash"):
-                fileName = modName + ".sh"
-                depName = "requirements.txt"
+	case strings.Contains(runtime, "bash"):
+		fileName = modName + ".sh"
+		depName = "requirements.txt"
 	default:
 		fileName = modName
 		depName = ""
@@ -294,8 +293,8 @@ func GetFunctionImage(runtime, ftype string) (imageName string, err error) {
 		versionsDef = ruby
 	case runtimeID == "dotnetcore":
 		versionsDef = dotnetcore
-        case runtimeID == "bash":
-                versionsDef = bash
+	case runtimeID == "bash":
+		versionsDef = bash
 	default:
 		err = errors.New("The given runtime is not valid")
 		return
@@ -538,8 +537,8 @@ func getInitImage(runtime string) string {
 		return "bitnami/ruby:2.4"
 	case strings.Contains(runtime, "dotnetcore"):
 		return "microsoft/aspnetcore-build:2.0"
-        case strings.Contains(runtime, "bash"):
-                return "tuna/python-pillow:2.7.11-alpine"
+	case strings.Contains(runtime, "bash"):
+		return "tuna/python-pillow:2.7.11-alpine"
 	default:
 		return ""
 	}
@@ -616,17 +615,17 @@ func getVolumeMounts(name, runtime string) []v1.VolumeMount {
 				MountPath: "/requirements",
 			},
 		}
-       case strings.Contains(runtime, "bash"):
-                return []v1.VolumeMount{
-                        {
-                                Name:      "bashpath",
-                                MountPath: "/bashpath",
-                        },
-                        {
-                                Name:      name,
-                                MountPath: "/requirements",
-                        },
-                }
+	case strings.Contains(runtime, "bash"):
+		return []v1.VolumeMount{
+			{
+				Name:      "bashpath",
+				MountPath: "/bashpath",
+			},
+			{
+				Name:      name,
+				MountPath: "/requirements",
+			},
+		}
 	default:
 		return []v1.VolumeMount{}
 	}
@@ -696,20 +695,22 @@ func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
 			},
 		})
 	case strings.Contains(runtime, "bash"):
-                dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-                        Name:  "BASH_HOME",
-                        Value: "/usr/bin/",
-                })
-                dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-                        Name:      "bashpath",
-                        MountPath: "/opt/kubeless/bashpath",
-                })
-                dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
-                        Name: "bashpath",
-                        VolumeSource: v1.VolumeSource{
-                                EmptyDir: &v1.EmptyDirVolumeSource{},
-                        },
-                })
+		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
+			Name:  "BASH_HOME",
+			Value: "/usr/bin/",
+		})
+		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
+			Name:      "bashpath",
+			MountPath: "/opt/kubeless/bashpath",
+		})
+		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
+			Name: "bashpath",
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		})
+	}
+}
 
 // configureClient configures tpr client
 func configureClient(config *rest.Config) {
