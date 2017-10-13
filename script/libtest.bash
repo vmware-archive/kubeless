@@ -72,7 +72,7 @@ k8s_wait_for_pod_logline() {
     local string="${1:?}"; shift
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     echo_info "Waiting for '${@}' to show logline '${string}' ..."
-    until kubectl logs "${@}"|&grep -q "${string}"; do
+    until kubectl logs --tail=100 "${@}"|&grep -q "${string}"; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
