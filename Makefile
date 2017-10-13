@@ -12,11 +12,8 @@ BUNDLES = bundles
 GO_PACKAGES = ./cmd/... ./pkg/... ./version/...
 GO_FILES := $(shell find $(shell $(GO) list -f '{{.Dir}}' $(GO_PACKAGES)) -name \*.go)
 
-mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
-current_dir := $(dir $(mkfile_path))
-
-export KUBECFG_JPATH := $(current_dir)ksonnet-lib
-export PATH := $(PATH):$(current_dir)/bats/bin
+export KUBECFG_JPATH := $(CURDIR)/ksonnet-lib
+export PATH := $(PATH):$(CURDIR)/bats/bin
 
 .PHONY: all
 
@@ -75,11 +72,6 @@ minikube-rbac-test:
 fmt:
 	$(GOFMT) -s -w $(GO_FILES)
 
-
-HAS_GOX         := $(shell which gox)
-HAS_GOLINT      := $(shell which golint)
-HAS_KUBECFG     := $(shell which kubecfg)
-
 bats:
 	git clone --depth=1 https://github.com/sstephenson/bats.git
 
@@ -89,15 +81,10 @@ ksonnet-lib:
 .PHONY: bootstrap
 bootstrap: bats ksonnet-lib
 
-ifndef HAS_GOX
 	go get github.com/mitchellh/gox
-endif
-
-ifndef HAS_GOLINT
 	go get github.com/golang/lint/golint
-endif
 
-ifndef HAS_KUBECFG
-	wget -O $$GOPATH/bin/kubecfg https://github.com/ksonnet/kubecfg/releases/download/v0.4.0/kubecfg-$$(go env GOOS)-$$(go env GOARCH)
-	chmod +x $$GOPATH/bin/kubecfg
-endif
+	@if ! which kubecfg >/dev/null; then \
+	wget -O $$GOPATH/bin/kubecfg https://github.com/ksonnet/kubecfg/releases/download/v0.4.0/kubecfg-$$(go env GOOS)-$$(go env GOARCH); \
+	chmod +x $$GOPATH/bin/kubecfg; \
+	fi
