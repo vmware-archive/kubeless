@@ -52,6 +52,16 @@ git remote set-url --push upstream no_push
 git remote -v
 ```
 
+### Bootstraping your local dev environment
+
+To get all the needed tools to build and test, run:
+
+```
+cd $working_dir/kubeless
+make bootstrap
+```
+
+
 ### Building local binaries
 
 To make the binaries for your platform, run:

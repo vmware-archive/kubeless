@@ -20,15 +20,7 @@ before_install:
   - set -e
 
 install:
-  - go get github.com/mitchellh/gox github.com/golang/lint/golint
-  - >-
-    wget -O $GOPATH/bin/kubecfg
-    https://github.com/ksonnet/kubecfg/releases/download/v0.4.0/kubecfg-$(go env GOOS)-$(go env GOARCH)
-  - chmod +x $GOPATH/bin/kubecfg
-  - git clone --depth=1 https://github.com/ksonnet/ksonnet-lib.git
-  - export KUBECFG_JPATH=$PWD/ksonnet-lib
-  - git clone --depth=1 https://github.com/sstephenson/bats.git bats
-  - export PATH=$PATH:$PWD/bats/bin
+  - make bootstrap
 
 script:
   - make test

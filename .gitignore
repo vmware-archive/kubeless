@@ -139,5 +139,11 @@ artifacts/
 *.nuget.targets
 
 
+# Kubeless specific
+bats/
 bundles/
 docker/controller/kubeless-controller
+ksonnet-lib/
+kubeless-openshift.yaml
+kubeless-rbac.yaml
+kubeless.yaml

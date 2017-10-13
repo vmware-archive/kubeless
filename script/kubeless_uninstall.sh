@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 kubectl get po --all-namespaces
 kubectl delete statefulsets --namespace kubeless kafka
