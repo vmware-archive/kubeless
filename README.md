@@ -102,7 +102,7 @@ Let's dissect the command:
 * `--runtime python2.7`: This is the runtime we want to use to run our function. Available runtimes are shown in the help information.
 * `--from-file test.py`: This is the file containing the function code.
 * `--handler test.foobar`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `foobar` from the file `test.py`.
-* `--trigger-http`: This sets the function trigger. 
+* `--trigger-http`: This sets the function trigger.
 
 Other available trigger options are:
 
@@ -131,12 +131,15 @@ $ kubeless function call get-python --data '{"echo": "echo echo"}'
 {"echo": "echo echo"}
 ```
 
-Or you can curl it directly if you run `kubectl proxy` first. For example:
+Or you can curl directly with `kubectl proxy`
+using an [apiserver proxy
+URL](https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#manually-constructing-apiserver-proxy-urls).
+For example:
 
 ```console
 $ kubectl proxy -p 8080 &
 
-$ curl --data '{"Another": "Echo"}' localhost:8080/api/v1/proxy/namespaces/default/services/get-python/ --header "Content-Type:application/json"
+$ curl -L --data '{"Another": "Echo"}' localhost:8080/api/v1/proxy/namespaces/default/services/get-python:function-port/ --header "Content-Type:application/json"
 {"Another": "Echo"}
 ```
 
@@ -231,7 +234,7 @@ We would love to get your help, feel free to land a hand. We are currently looki
 
 * Add other runtimes, currently Python, NodeJS, Ruby and .Net Core are supported. We are also providing a way to use custom runtime. Please check [this doc](./docs/runtimes.md) for more details.
 * Investigate other messaging bus (e.g nats.io)
-* Use a standard interface for events 
+* Use a standard interface for events
 * Optimize for functions startup time
 * Add distributed tracing (maybe using istio)
 * Decouple the triggers and runtimes
