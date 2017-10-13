@@ -26,18 +26,22 @@ Click on this next picture to see a screencast demonstrating our [serverless](ht
 
 ## Installation
 
-Download `kubeless` cli from the [release page](https://github.com/kubeless/kubeless/releases). Then use one of yaml manifests found in the release package to deploy kubeless. It will create a _kubeless_ namespace and a _functions_ Custom Resource Definition. You will see a _kubeless_ controller, and _kafka_, _zookeeper_ statefulset running.
+Installation is made of three steps:
 
-There are several kubeless manifests being shipped for multiple k8s environments (non-rbac, rbac and openshift), please consider to pick up the correct one:
+* Download the `kubeless` CLI from the [release page](https://github.com/kubeless/kubeless/releases). (OSX users can also use [brew](https://github.com/kubeless/)).
+* Create a `kubeless` namespace (used by default)
+* Then use one of the YAML manifests found in the release page to deploy kubeless. It will create a _functions_ Custom Resource Definition and launch a controller. You will see a _kubeless_ controller, a _kafka_ and a _zookeeper_ statefulset appear and shortly get in running state.
 
-* `kubeless-$RELEASE.yaml` is used for non-RBAC Kubernetes cluster.
-* `kubeless-rbac-$RELEASE.yaml` is used for RBAC-enabled Kubernetes cluster.
-* `kubeless-openshift-$RELEASE.yaml` is used to deploy Kubeless to OpenShift (1.5+).
+There are several kubeless manifests being shipped for multiple k8s environments (non-rbac, rbac and openshift), pick the one that corresponds to your environment:
+
+* [`kubeless-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.3/kubeless-v0.2.3.yaml) is used for non-RBAC Kubernetes cluster.
+* [`kubeless-rbac-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.3/kubeless-rbac-v0.2.3.yaml) is used for RBAC-enabled Kubernetes cluster.
+* [`kubeless-openshift-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.3/kubeless-openshift-v0.2.3.yaml) is used to deploy Kubeless to OpenShift (1.5+).
 
 For example, this below is a show case of deploying kubeless to a non-RBAC Kubernetes cluster.
 
 ```console
-$ export RELEASE=v0.2.2
+$ export RELEASE=v0.2.3
 $ kubectl create ns kubeless
 $ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 
@@ -67,10 +71,11 @@ You are now ready to create functions.
 
 ## Usage
 
-You can use the CLI to create a function. Functions have two possible types:
+You can use the CLI to create a function. Functions have three possible types:
 
-* http trigger (function will expose an HTTP endpoint)
-* pubsub trigger (function will consume event on a specific topic)
+* http triggered (function will expose an HTTP endpoint)
+* pubsub triggered (function will consume event on a specific topic)
+* schedule triggered (function will be called on a cron schedule)
 
 ### HTTP function
 
@@ -92,14 +97,18 @@ $ kubeless function deploy get-python --runtime python2.7 \
 ```
 
 Let's dissect the command:
- - `get-python`: This is the name of the function we want to deploy.
- - `--runtime python2.7`: This is the runtime we want to use to run our function. Available runtimes are shown in the help information.
- - `--from-file test.py`: This is the file containing the function code.
- - `--handler test.foobar`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `foobar` from the file `test.py`.
- - `--trigger-http`: This sets the function trigger. The available options are:
-   - `--trigger-http` to trigger the function using HTTP requests.
-   - `--trigger-topic` to trigger the function with a certain Kafka topic. See the [next example](#pubsub-function).
-   - `--schedule` to trigger the function following a certain schedule using Cron notation. F.e. `--schedule "*/10 * * * *"` would trigger the function every 10 minutes.
+
+* `get-python`: This is the name of the function we want to deploy.
+* `--runtime python2.7`: This is the runtime we want to use to run our function. Available runtimes are shown in the help information.
+* `--from-file test.py`: This is the file containing the function code.
+* `--handler test.foobar`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `foobar` from the file `test.py`.
+* `--trigger-http`: This sets the function trigger. 
+
+Other available trigger options are:
+
+* `--trigger-http` to trigger the function using HTTP requests.
+* `--trigger-topic` to trigger the function with a certain Kafka topic. See the [next example](#pubsub-function).
+* `--schedule` to trigger the function following a certain schedule using Cron notation. F.e. `--schedule "*/10 * * * *"` would trigger the function every 10 minutes.
 
 You can find the rest of options available when deploying a function executing `kubeless function deploy --help`
 
@@ -119,14 +128,10 @@ You can then call the function with:
 
 ```console
 $ kubeless function call get-python --data '{"echo": "echo echo"}'
-Connecting to function...
-Forwarding from 127.0.0.1:30000 -> 8080
-Forwarding from [::1]:30000 -> 8080
-Handling connection for 30000
 {"echo": "echo echo"}
 ```
 
-Or you can curl directly with `kubectl proxy`, for example:
+Or you can curl it directly if you run `kubectl proxy` first. For example:
 
 ```console
 $ kubectl proxy -p 8080 &
@@ -156,12 +161,15 @@ $ kubeless function deploy test --runtime python2.7 \
                                 --trigger-topic test-topic
 ```
 
-After that you can invoke them publishing messages in that topic:
+After that you can invoke them publishing messages in that topic. To allow you to easily manage topics `kubeless` provides a convenience function `kubeless topic`. You can create/delete and publish to a topic easily.
+
 ```console
+$ kubeless topic create test-topic
 $ kubeless topic publish --topic test-topic --data "Hello World!"
 ```
 
 You can check the result in the pod logs:
+
 ```console
 $ kubectl logs test-695251588-cxwmc
 Hello World!
@@ -218,9 +226,9 @@ Kubeless uses k8s primitives, there is no additional API server or API router/ga
 
 We would love to get your help, feel free to land a hand. We are currently looking to implement the following high level features:
 
-* Add other runtimes, currently Python, NodeJS and Ruby are supported. We are also providing a way to use custom runtime. Please check [this doc](./docs/runtimes.md) for more details.
+* Add other runtimes, currently Python, NodeJS, Ruby and .Net Core are supported. We are also providing a way to use custom runtime. Please check [this doc](./docs/runtimes.md) for more details.
 * Investigate other messaging bus (e.g nats.io)
-* Instrument the runtimes via Prometheus to be able to create pod autoscalers automatically (e.g use custom metrics not just CPU)
+* Use a standard interface for events 
 * Optimize for functions startup time
 * Add distributed tracing (maybe using istio)
-* Break out the triggers and runtimes
+* Decouple the triggers and runtimes
