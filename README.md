@@ -205,7 +205,10 @@ $ kubeless topic ls
 
 See the [examples](./examples) directory for a list of various examples. Minio, SLACK, Twitter etc ...
 
-Also checkout the [functions repository](https://github.com/kubeless/functions).
+Also checkout the [functions repository](https://github.com/kubeless/functions),
+where we're building a library of ready to use kubeless examples, including an
+[incubator](https://github.com/kubeless/functions/tree/master/incubator)
+to encourage contributions from the community - **your PR is welcome** ! :)
 
 ## Documentation
 
