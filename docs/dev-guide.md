@@ -52,7 +52,7 @@ git remote set-url --push upstream no_push
 git remote -v
 ```
 
-### Bootstraping your local dev environment
+### Bootstrapping your local dev environment
 
 To get all the needed tools to build and test, run:
 
