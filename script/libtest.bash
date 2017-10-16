@@ -48,15 +48,19 @@ k8s_wait_for_pod_ready() {
         sleep 1
     done
 }
-k8s_wait_for_uniq_pod() {
-    echo_info "Waiting for pod '${@}' to be the only one running ... "
+k8s_wait_for_pod_count() {
+    local pod_cnt=${1:?}; shift
+    echo_info "Waiting for pod '${@}' to have count==${pod_cnt} running ... "
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
-    until [[ $(kubectl get pod "${@}" -ogo-template='{{.items|len}}') == 1 ]]; do
+    until [[ $(kubectl get pod "${@}" -ogo-template='{{.items|len}}') == ${pod_cnt} ]]; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
     k8s_wait_for_pod_ready "${@}"
     echo "Finished waiting"
+}
+k8s_wait_for_uniq_pod() {
+    k8s_wait_for_pod_count 1 "$@"
 }
 k8s_wait_for_pod_gone() {
     echo_info "Waiting for pod '${@}' to be gone ... "
@@ -283,5 +287,28 @@ test_kubeless_function_update() {
     local func=${1:?}
     update_function $func
     verify_update_function $func
+}
+test_kubeless_ingress() {
+    local func=${1:?} domain=example.com act_ingress exp_ingress
+    echo_info "TEST: ingress ${func}"
+    kubeless ingress create ing-${func} --function ${func} --hostname ${func}.${domain}
+    kubeless ingress list | fgrep -w ing-${func}
+    act_ingress=$(kubectl get ingress ing-${func} -ojsonpath='{range .spec.rules[*]}{@.host}:{@.http.paths[*].backend.serviceName}')
+    exp_ingress="${func}.${domain}:${func}"
+    [[ ${act_ingress} == ${exp_ingress} ]]
+    kubeless ingress delete ing-${func}
+}
+test_kubeless_autoscale() {
+    local func=${1:?} exp_autoscale act_autoscale
+    # Use some fixed values
+    local val=10 num=3
+    echo_info "TEST: autoscale ${func}"
+    kubeless autoscale create ${func} --value ${val:?} --min ${num:?} --max ${num:?}
+    kubeless autoscale list | fgrep -w ${func}
+    act_autoscale=$(kubectl get horizontalpodautoscaler -ojsonpath='{range .items[*].spec}{@.scaleTargetRef.name}:{@.targetCPUUtilizationPercentage}:{@.minReplicas}:{@.maxReplicas}{end}')
+    exp_autoscale="${func}:${val}:${num}:${num}"
+    [[ ${act_autoscale} == ${exp_autoscale} ]]
+    k8s_wait_for_pod_count ${num} -l function="${func}"
+    kubeless autoscale delete ${func}
 }
 # vim: sw=4 ts=4 et si
