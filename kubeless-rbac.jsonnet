@@ -5,11 +5,33 @@ local objectMeta = k.core.v1.objectMeta;
 
 local kubeless = import "kubeless.jsonnet";
 local controller_account = kubeless.controller_account;
-local controller_roles = [{
-  apiGroups: ["*"],
-  resources: ["services", "deployments", "functions", "configmaps", "pods", "replicasets"],
-  verbs: ["*"]
-}];
+local controller_roles = [
+  {
+    apiGroups: [""],
+    resources: ["services", "configmaps"],
+    verbs: ["create", "get", "delete", "list", "update", "patch"],
+  },
+  {
+    apiGroups: ["apps", "extensions"],
+    resources: ["deployments"],
+    verbs: ["create", "get", "delete", "list", "update", "patch"],
+  },
+  {
+    apiGroups: ["extensions"],
+    resources: ["replicasets"],
+    verbs: ["create", "get", "delete", "list", "update"],
+  },
+  {
+    apiGroups: [""],
+    resources: ["pods"],
+    verbs: ["list", "delete"],
+  },
+  {
+    apiGroups: ["k8s.io"],
+    resources: ["functions"],
+    verbs: ["*"],
+  },
+];
 
 local controllerAccount = kubeless.controllerAccount;
 
