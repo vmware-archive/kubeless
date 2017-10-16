@@ -17,11 +17,6 @@ local controller_roles = [
     verbs: ["create", "get", "delete", "list", "update", "patch"],
   },
   {
-    apiGroups: ["extensions"],
-    resources: ["replicasets"],
-    verbs: ["create", "get", "delete", "list", "update"],
-  },
-  {
     apiGroups: [""],
     resources: ["pods"],
     verbs: ["list", "delete"],
