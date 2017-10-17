@@ -258,7 +258,7 @@ func GetFunctionFileNames(runtime, modName string) (fileName, depName string) {
 	switch {
 	case strings.Contains(runtime, "python"):
 		fileName = modName + ".py"
-		depName = "requirements"
+		depName = "requirements.txt"
 	case strings.Contains(runtime, "nodejs"):
 		fileName = modName + ".js"
 		depName = "package.json"
