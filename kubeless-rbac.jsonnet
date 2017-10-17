@@ -24,7 +24,7 @@ local controller_roles = [
   {
     apiGroups: ["k8s.io"],
     resources: ["functions"],
-    verbs: ["*"],
+    verbs: ["get", "list", "watch"],
   },
 ];
 
