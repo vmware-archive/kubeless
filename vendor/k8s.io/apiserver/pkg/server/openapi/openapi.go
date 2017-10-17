@@ -17,8 +17,6 @@ limitations under the License.
 package openapi
 
 import (
-	"crypto/sha512"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -28,35 +26,28 @@ import (
 	"github.com/go-openapi/spec"
 
 	"k8s.io/apimachinery/pkg/openapi"
+	"k8s.io/apimachinery/pkg/util/json"
+	genericmux "k8s.io/apiserver/pkg/server/mux"
 	"k8s.io/apiserver/pkg/util/trie"
 )
 
 const (
-	OpenAPIVersion  = "2.0"
-	extensionPrefix = "x-kubernetes-"
-
-	JSON_EXT = ".json"
-
-	MIME_JSON = "application/json"
-	// TODO(mehdy): change @68f4ded to a version tag when gnostic add version tags.
-	MIME_PB    = "application/com.github.googleapis.gnostic.OpenAPIv2@68f4ded+protobuf"
-	MIME_PB_GZ = "application/x-gzip"
+	OpenAPIVersion = "2.0"
 )
 
 type openAPI struct {
 	config       *openapi.Config
 	swagger      *spec.Swagger
 	protocolList []string
+	servePath    string
 	definitions  map[string]openapi.OpenAPIDefinition
 }
 
-func computeEtag(data []byte) string {
-	return fmt.Sprintf("\"%X\"", sha512.Sum512(data))
-}
-
-func BuildSwaggerSpec(webServices []*restful.WebService, config *openapi.Config) (*spec.Swagger, error) {
+// RegisterOpenAPIService registers a handler to provides standard OpenAPI specification.
+func RegisterOpenAPIService(servePath string, webServices []*restful.WebService, config *openapi.Config, mux *genericmux.PathRecorderMux) (err error) {
 	o := openAPI{
-		config: config,
+		config:    config,
+		servePath: servePath,
 		swagger: &spec.Swagger{
 			SwaggerProps: spec.SwaggerProps{
 				Swagger:     OpenAPIVersion,
@@ -67,28 +58,36 @@ func BuildSwaggerSpec(webServices []*restful.WebService, config *openapi.Config)
 		},
 	}
 
-	err := o.init(webServices)
+	err = o.init(webServices)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return o.swagger, nil
+	mux.UnlistedHandleFunc(servePath, func(w http.ResponseWriter, r *http.Request) {
+		resp := restful.NewResponse(w)
+		if r.URL.Path != servePath {
+			resp.WriteErrorString(http.StatusNotFound, "Path not found!")
+		}
+		// TODO: we can cache json string and return it here.
+		resp.WriteAsJson(o.swagger)
+	})
+	return nil
 }
 
 func (o *openAPI) init(webServices []*restful.WebService) error {
 	if o.config.GetOperationIDAndTags == nil {
-		o.config.GetOperationIDAndTags = func(r *restful.Route) (string, []string, error) {
+		o.config.GetOperationIDAndTags = func(_ string, r *restful.Route) (string, []string, error) {
 			return r.Operation, nil, nil
 		}
 	}
 	if o.config.GetDefinitionName == nil {
-		o.config.GetDefinitionName = func(name string) (string, spec.Extensions) {
+		o.config.GetDefinitionName = func(_, name string) (string, spec.Extensions) {
 			return name[strings.LastIndex(name, "/")+1:], nil
 		}
 	}
 	o.definitions = o.config.GetDefinitions(func(name string) spec.Ref {
-		defName, _ := o.config.GetDefinitionName(name)
-		return spec.MustCreateRef(DEFINITION_PREFIX + openapi.EscapeJsonPointer(defName))
+		defName, _ := o.config.GetDefinitionName(o.servePath, name)
+		return spec.MustCreateRef("#/definitions/" + openapi.EscapeJsonPointer(defName))
 	})
 	if o.config.CommonResponses == nil {
 		o.config.CommonResponses = map[int]spec.Response{}
@@ -107,7 +106,6 @@ func (o *openAPI) init(webServices []*restful.WebService) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -123,7 +121,7 @@ func getCanonicalizeTypeName(t reflect.Type) string {
 }
 
 func (o *openAPI) buildDefinitionRecursively(name string) error {
-	uniqueName, extensions := o.config.GetDefinitionName(name)
+	uniqueName, extensions := o.config.GetDefinitionName(o.servePath, name)
 	if _, ok := o.swagger.Definitions[uniqueName]; ok {
 		return nil
 	}
@@ -134,9 +132,7 @@ func (o *openAPI) buildDefinitionRecursively(name string) error {
 			SwaggerSchemaProps: item.Schema.SwaggerSchemaProps,
 		}
 		if extensions != nil {
-			if schema.Extensions == nil {
-				schema.Extensions = spec.Extensions{}
-			}
+			schema.Extensions = spec.Extensions{}
 			for k, v := range extensions {
 				schema.Extensions[k] = v
 			}
@@ -165,8 +161,8 @@ func (o *openAPI) buildDefinitionForType(sample interface{}) (string, error) {
 	if err := o.buildDefinitionRecursively(name); err != nil {
 		return "", err
 	}
-	defName, _ := o.config.GetDefinitionName(name)
-	return DEFINITION_PREFIX + openapi.EscapeJsonPointer(defName), nil
+	defName, _ := o.config.GetDefinitionName(o.servePath, name)
+	return "#/definitions/" + openapi.EscapeJsonPointer(defName), nil
 }
 
 // buildPaths builds OpenAPI paths using go-restful's web services.
@@ -261,15 +257,7 @@ func (o *openAPI) buildOperations(route restful.Route, inPathCommonParamsMap map
 			},
 		},
 	}
-	for k, v := range route.Metadata {
-		if strings.HasPrefix(k, extensionPrefix) {
-			if ret.Extensions == nil {
-				ret.Extensions = spec.Extensions{}
-			}
-			ret.Extensions.Add(k, v)
-		}
-	}
-	if ret.ID, ret.Tags, err = o.config.GetOperationIDAndTags(&route); err != nil {
+	if ret.ID, ret.Tags, err = o.config.GetOperationIDAndTags(o.servePath, &route); err != nil {
 		return ret, err
 	}
 
@@ -408,7 +396,7 @@ func (o *openAPI) buildParameter(restParam restful.ParameterData, bodySample int
 	case restful.HeaderParameterKind:
 		ret.In = "header"
 	case restful.FormParameterKind:
-		ret.In = "formData"
+		ret.In = "form"
 	default:
 		return ret, fmt.Errorf("unknown restful operation kind : %v", restParam.Kind)
 	}

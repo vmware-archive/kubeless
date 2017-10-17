@@ -35,7 +35,6 @@ import (
 	examplev1 "k8s.io/apiserver/pkg/apis/example/v1"
 	"k8s.io/apiserver/pkg/storage"
 	storagetests "k8s.io/apiserver/pkg/storage/tests"
-	"k8s.io/apiserver/pkg/storage/value"
 
 	"github.com/coreos/etcd/integration"
 	"golang.org/x/net/context"
@@ -57,19 +56,13 @@ type prefixTransformer struct {
 	err    error
 }
 
-func (p prefixTransformer) TransformFromStorage(b []byte, ctx value.Context) ([]byte, bool, error) {
-	if ctx == nil {
-		panic("no context provided")
-	}
+func (p prefixTransformer) TransformFromStorage(b []byte) ([]byte, bool, error) {
 	if !bytes.HasPrefix(b, p.prefix) {
 		return nil, false, fmt.Errorf("value does not have expected prefix: %s", string(b))
 	}
 	return bytes.TrimPrefix(b, p.prefix), p.stale, p.err
 }
-func (p prefixTransformer) TransformToStorage(b []byte, ctx value.Context) ([]byte, error) {
-	if ctx == nil {
-		panic("no context provided")
-	}
+func (p prefixTransformer) TransformToStorage(b []byte) ([]byte, error) {
 	if len(b) > 0 {
 		return append(append([]byte{}, p.prefix...), b...), p.err
 	}
@@ -285,9 +278,9 @@ func TestGetToList(t *testing.T) {
 		pred: storage.SelectionPredicate{
 			Label: labels.Everything(),
 			Field: fields.ParseSelectorOrDie("metadata.name!=" + storedObj.Name),
-			GetAttrs: func(obj runtime.Object) (labels.Set, fields.Set, bool, error) {
+			GetAttrs: func(obj runtime.Object) (labels.Set, fields.Set, error) {
 				pod := obj.(*example.Pod)
-				return nil, fields.Set{"metadata.name": pod.Name}, pod.Initializers != nil, nil
+				return nil, fields.Set{"metadata.name": pod.Name}, nil
 			},
 		},
 		expectedOut: nil,
@@ -644,9 +637,9 @@ func TestList(t *testing.T) {
 		pred: storage.SelectionPredicate{
 			Label: labels.Everything(),
 			Field: fields.ParseSelectorOrDie("metadata.name!=" + preset[0].storedObj.Name),
-			GetAttrs: func(obj runtime.Object) (labels.Set, fields.Set, bool, error) {
+			GetAttrs: func(obj runtime.Object) (labels.Set, fields.Set, error) {
 				pod := obj.(*example.Pod)
-				return nil, fields.Set{"metadata.name": pod.Name}, pod.Initializers != nil, nil
+				return nil, fields.Set{"metadata.name": pod.Name}, nil
 			},
 		},
 		expectedOut: nil,

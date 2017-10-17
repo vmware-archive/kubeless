@@ -40,32 +40,27 @@ func MediaTypesForSerializer(ns runtime.NegotiatedSerializer) (mediaTypes, strea
 	return mediaTypes, streamMediaTypes
 }
 
-func NegotiateOutputMediaType(req *http.Request, ns runtime.NegotiatedSerializer, restrictions EndpointRestrictions) (MediaTypeOptions, runtime.SerializerInfo, error) {
-	mediaType, ok := NegotiateMediaTypeOptions(req.Header.Get("Accept"), AcceptedMediaTypesForEndpoint(ns), restrictions)
+func NegotiateOutputSerializer(req *http.Request, ns runtime.NegotiatedSerializer) (runtime.SerializerInfo, error) {
+	mediaType, ok := negotiateMediaTypeOptions(req.Header.Get("Accept"), acceptedMediaTypesForEndpoint(ns), defaultEndpointRestrictions)
 	if !ok {
 		supported, _ := MediaTypesForSerializer(ns)
-		return mediaType, runtime.SerializerInfo{}, NewNotAcceptableError(supported)
+		return runtime.SerializerInfo{}, errNotAcceptable{supported}
 	}
 	// TODO: move into resthandler
-	info := mediaType.Accepted.Serializer
-	if (mediaType.Pretty || isPrettyPrint(req)) && info.PrettySerializer != nil {
+	info := mediaType.accepted.Serializer
+	if (mediaType.pretty || isPrettyPrint(req)) && info.PrettySerializer != nil {
 		info.Serializer = info.PrettySerializer
 	}
-	return mediaType, info, nil
-}
-
-func NegotiateOutputSerializer(req *http.Request, ns runtime.NegotiatedSerializer) (runtime.SerializerInfo, error) {
-	_, info, err := NegotiateOutputMediaType(req, ns, DefaultEndpointRestrictions)
-	return info, err
+	return info, nil
 }
 
 func NegotiateOutputStreamSerializer(req *http.Request, ns runtime.NegotiatedSerializer) (runtime.SerializerInfo, error) {
-	mediaType, ok := NegotiateMediaTypeOptions(req.Header.Get("Accept"), AcceptedMediaTypesForEndpoint(ns), DefaultEndpointRestrictions)
-	if !ok || mediaType.Accepted.Serializer.StreamSerializer == nil {
+	mediaType, ok := negotiateMediaTypeOptions(req.Header.Get("Accept"), acceptedMediaTypesForEndpoint(ns), defaultEndpointRestrictions)
+	if !ok || mediaType.accepted.Serializer.StreamSerializer == nil {
 		_, supported := MediaTypesForSerializer(ns)
-		return runtime.SerializerInfo{}, NewNotAcceptableError(supported)
+		return runtime.SerializerInfo{}, errNotAcceptable{supported}
 	}
-	return mediaType.Accepted.Serializer, nil
+	return mediaType.accepted.Serializer, nil
 }
 
 func NegotiateInputSerializer(req *http.Request, ns runtime.NegotiatedSerializer) (runtime.SerializerInfo, error) {
@@ -77,7 +72,7 @@ func NegotiateInputSerializer(req *http.Request, ns runtime.NegotiatedSerializer
 	mediaType, _, err := mime.ParseMediaType(mediaType)
 	if err != nil {
 		_, supported := MediaTypesForSerializer(ns)
-		return runtime.SerializerInfo{}, NewUnsupportedMediaTypeError(supported)
+		return runtime.SerializerInfo{}, errUnsupportedMediaType{supported}
 	}
 
 	for _, info := range mediaTypes {
@@ -88,7 +83,7 @@ func NegotiateInputSerializer(req *http.Request, ns runtime.NegotiatedSerializer
 	}
 
 	_, supported := MediaTypesForSerializer(ns)
-	return runtime.SerializerInfo{}, NewUnsupportedMediaTypeError(supported)
+	return runtime.SerializerInfo{}, errUnsupportedMediaType{supported}
 }
 
 // isPrettyPrint returns true if the "pretty" query parameter is true or if the User-Agent
@@ -136,9 +131,9 @@ func negotiate(header string, alternatives []string) (goautoneg.Accept, bool) {
 	return goautoneg.Accept{}, false
 }
 
-// EndpointRestrictions is an interface that allows content-type negotiation
+// endpointRestrictions is an interface that allows content-type negotiation
 // to verify server support for specific options
-type EndpointRestrictions interface {
+type endpointRestrictions interface {
 	// AllowsConversion should return true if the specified group version kind
 	// is an allowed target object.
 	AllowsConversion(schema.GroupVersionKind) bool
@@ -150,7 +145,7 @@ type EndpointRestrictions interface {
 	AllowsStreamSchema(schema string) bool
 }
 
-var DefaultEndpointRestrictions = emptyEndpointRestrictions{}
+var defaultEndpointRestrictions = emptyEndpointRestrictions{}
 
 type emptyEndpointRestrictions struct{}
 
@@ -158,9 +153,9 @@ func (emptyEndpointRestrictions) AllowsConversion(schema.GroupVersionKind) bool 
 func (emptyEndpointRestrictions) AllowsServerVersion(string) bool               { return false }
 func (emptyEndpointRestrictions) AllowsStreamSchema(s string) bool              { return s == "watch" }
 
-// AcceptedMediaType contains information about a valid media type that the
+// acceptedMediaType contains information about a valid media type that the
 // server can serialize.
-type AcceptedMediaType struct {
+type acceptedMediaType struct {
 	// Type is the first part of the media type ("application")
 	Type string
 	// SubType is the second part of the media type ("json")
@@ -169,40 +164,40 @@ type AcceptedMediaType struct {
 	Serializer runtime.SerializerInfo
 }
 
-// MediaTypeOptions describes information for a given media type that may alter
+// mediaTypeOptions describes information for a given media type that may alter
 // the server response
-type MediaTypeOptions struct {
+type mediaTypeOptions struct {
 	// pretty is true if the requested representation should be formatted for human
 	// viewing
-	Pretty bool
+	pretty bool
 
 	// stream, if set, indicates that a streaming protocol variant of this encoding
 	// is desired. The only currently supported value is watch which returns versioned
 	// events. In the future, this may refer to other stream protocols.
-	Stream string
+	stream string
 
 	// convert is a request to alter the type of object returned by the server from the
 	// normal response
-	Convert *schema.GroupVersionKind
+	convert *schema.GroupVersionKind
 	// useServerVersion is an optional version for the server group
-	UseServerVersion string
+	useServerVersion string
 
 	// export is true if the representation requested should exclude fields the server
 	// has set
-	Export bool
+	export bool
 
 	// unrecognized is a list of all unrecognized keys
-	Unrecognized []string
+	unrecognized []string
 
 	// the accepted media type from the client
-	Accepted *AcceptedMediaType
+	accepted *acceptedMediaType
 }
 
 // acceptMediaTypeOptions returns an options object that matches the provided media type params. If
 // it returns false, the provided options are not allowed and the media type must be skipped.  These
 // parameters are unversioned and may not be changed.
-func acceptMediaTypeOptions(params map[string]string, accepts *AcceptedMediaType, endpoint EndpointRestrictions) (MediaTypeOptions, bool) {
-	var options MediaTypeOptions
+func acceptMediaTypeOptions(params map[string]string, accepts *acceptedMediaType, endpoint endpointRestrictions) (mediaTypeOptions, bool) {
+	var options mediaTypeOptions
 
 	// extract all known parameters
 	for k, v := range params {
@@ -210,65 +205,66 @@ func acceptMediaTypeOptions(params map[string]string, accepts *AcceptedMediaType
 
 		// controls transformation of the object when returned
 		case "as":
-			if options.Convert == nil {
-				options.Convert = &schema.GroupVersionKind{}
+			if options.convert == nil {
+				options.convert = &schema.GroupVersionKind{}
 			}
-			options.Convert.Kind = v
+			options.convert.Kind = v
 		case "g":
-			if options.Convert == nil {
-				options.Convert = &schema.GroupVersionKind{}
+			if options.convert == nil {
+				options.convert = &schema.GroupVersionKind{}
 			}
-			options.Convert.Group = v
+			options.convert.Group = v
 		case "v":
-			if options.Convert == nil {
-				options.Convert = &schema.GroupVersionKind{}
+			if options.convert == nil {
+				options.convert = &schema.GroupVersionKind{}
 			}
-			options.Convert.Version = v
+			options.convert.Version = v
 
 		// controls the streaming schema
 		case "stream":
 			if len(v) > 0 && (accepts.Serializer.StreamSerializer == nil || !endpoint.AllowsStreamSchema(v)) {
-				return MediaTypeOptions{}, false
+				return mediaTypeOptions{}, false
 			}
-			options.Stream = v
+			options.stream = v
 
 		// controls the version of the server API group used
 		// for generic output
 		case "sv":
 			if len(v) > 0 && !endpoint.AllowsServerVersion(v) {
-				return MediaTypeOptions{}, false
+				return mediaTypeOptions{}, false
 			}
-			options.UseServerVersion = v
+			options.useServerVersion = v
 
 		// if specified, the server should transform the returned
 		// output and remove fields that are always server specified,
 		// or which fit the default behavior.
 		case "export":
-			options.Export = v == "1"
+			options.export = v == "1"
 
 		// if specified, the pretty serializer will be used
 		case "pretty":
-			options.Pretty = v == "1"
+			options.pretty = v == "1"
 
 		default:
-			options.Unrecognized = append(options.Unrecognized, k)
+			options.unrecognized = append(options.unrecognized, k)
 		}
 	}
 
-	if options.Convert != nil && !endpoint.AllowsConversion(*options.Convert) {
-		return MediaTypeOptions{}, false
+	if options.convert != nil && !endpoint.AllowsConversion(*options.convert) {
+		return mediaTypeOptions{}, false
 	}
 
-	options.Accepted = accepts
+	options.accepted = accepts
+
 	return options, true
 }
 
-// NegotiateMediaTypeOptions returns the most appropriate content type given the accept header and
+// negotiateMediaTypeOptions returns the most appropriate content type given the accept header and
 // a list of alternatives along with the accepted media type parameters.
-func NegotiateMediaTypeOptions(header string, accepted []AcceptedMediaType, endpoint EndpointRestrictions) (MediaTypeOptions, bool) {
+func negotiateMediaTypeOptions(header string, accepted []acceptedMediaType, endpoint endpointRestrictions) (mediaTypeOptions, bool) {
 	if len(header) == 0 && len(accepted) > 0 {
-		return MediaTypeOptions{
-			Accepted: &accepted[0],
+		return mediaTypeOptions{
+			accepted: &accepted[0],
 		}, true
 	}
 
@@ -286,19 +282,19 @@ func NegotiateMediaTypeOptions(header string, accepted []AcceptedMediaType, endp
 			}
 		}
 	}
-	return MediaTypeOptions{}, false
+	return mediaTypeOptions{}, false
 }
 
-// AcceptedMediaTypesForEndpoint returns an array of structs that are used to efficiently check which
+// acceptedMediaTypesForEndpoint returns an array of structs that are used to efficiently check which
 // allowed media types the server exposes.
-func AcceptedMediaTypesForEndpoint(ns runtime.NegotiatedSerializer) []AcceptedMediaType {
-	var acceptedMediaTypes []AcceptedMediaType
+func acceptedMediaTypesForEndpoint(ns runtime.NegotiatedSerializer) []acceptedMediaType {
+	var acceptedMediaTypes []acceptedMediaType
 	for _, info := range ns.SupportedMediaTypes() {
 		segments := strings.SplitN(info.MediaType, "/", 2)
 		if len(segments) == 1 {
 			segments = append(segments, "*")
 		}
-		t := AcceptedMediaType{
+		t := acceptedMediaType{
 			Type:       segments[0],
 			SubType:    segments[1],
 			Serializer: info,

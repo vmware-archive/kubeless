@@ -28,8 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/server/healthz"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/apiserver/pkg/server/mux"
 	"k8s.io/client-go/rest"
 )
 
@@ -39,12 +38,8 @@ func TestNewWithDelegate(t *testing.T) {
 	delegateConfig.RequestContextMapper = genericapirequest.NewRequestContextMapper()
 	delegateConfig.LegacyAPIGroupPrefixes = sets.NewString("/api")
 	delegateConfig.LoopbackClientConfig = &rest.Config{}
+	delegateConfig.FallThroughHandler = mux.NewPathRecorderMux()
 	delegateConfig.SwaggerConfig = DefaultSwaggerConfig()
-	clientset := fake.NewSimpleClientset()
-	if clientset == nil {
-		t.Fatal("unable to create fake client set")
-	}
-	delegateConfig.SharedInformerFactory = informers.NewSharedInformerFactory(clientset, delegateConfig.LoopbackClientConfig.Timeout)
 
 	delegateHealthzCalled := false
 	delegateConfig.HealthzChecks = append(delegateConfig.HealthzChecks, healthz.NamedCheck("delegate-health", func(r *http.Request) error {
@@ -52,13 +47,14 @@ func TestNewWithDelegate(t *testing.T) {
 		return fmt.Errorf("delegate failed healthcheck")
 	}))
 
-	delegateServer, err := delegateConfig.SkipComplete().New("test", EmptyDelegate)
+	delegateConfig.FallThroughHandler.HandleFunc("/foo", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	})
+
+	delegateServer, err := delegateConfig.SkipComplete().New()
 	if err != nil {
 		t.Fatal(err)
 	}
-	delegateServer.Handler.NonGoRestfulMux.HandleFunc("/foo", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusForbidden)
-	})
 
 	delegateServer.AddPostStartHook("delegate-post-start-hook", func(context PostStartHookContext) error {
 		return nil
@@ -72,8 +68,8 @@ func TestNewWithDelegate(t *testing.T) {
 	wrappingConfig.RequestContextMapper = genericapirequest.NewRequestContextMapper()
 	wrappingConfig.LegacyAPIGroupPrefixes = sets.NewString("/api")
 	wrappingConfig.LoopbackClientConfig = &rest.Config{}
+	wrappingConfig.FallThroughHandler = mux.NewPathRecorderMux()
 	wrappingConfig.SwaggerConfig = DefaultSwaggerConfig()
-	wrappingConfig.SharedInformerFactory = informers.NewSharedInformerFactory(clientset, wrappingConfig.LoopbackClientConfig.Timeout)
 
 	wrappingHealthzCalled := false
 	wrappingConfig.HealthzChecks = append(wrappingConfig.HealthzChecks, healthz.NamedCheck("wrapping-health", func(r *http.Request) error {
@@ -81,13 +77,14 @@ func TestNewWithDelegate(t *testing.T) {
 		return fmt.Errorf("wrapping failed healthcheck")
 	}))
 
-	wrappingServer, err := wrappingConfig.Complete().New("test", delegateServer)
+	wrappingConfig.FallThroughHandler.HandleFunc("/bar", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+
+	wrappingServer, err := wrappingConfig.Complete().NewWithDelegate(delegateServer)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wrappingServer.Handler.NonGoRestfulMux.HandleFunc("/bar", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
-	})
 
 	wrappingServer.AddPostStartHook("wrapping-post-start-hook", func(context PostStartHookContext) error {
 		return nil
@@ -96,7 +93,7 @@ func TestNewWithDelegate(t *testing.T) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	wrappingServer.PrepareRun()
-	wrappingServer.RunPostStartHooks(stopCh)
+	wrappingServer.RunPostStartHooks()
 
 	server := httptest.NewServer(wrappingServer.Handler)
 	defer server.Close()
@@ -110,16 +107,14 @@ func TestNewWithDelegate(t *testing.T) {
     "/healthz/delegate-health",
     "/healthz/ping",
     "/healthz/poststarthook/delegate-post-start-hook",
-    "/healthz/poststarthook/generic-apiserver-start-informers",
     "/healthz/poststarthook/wrapping-post-start-hook",
     "/healthz/wrapping-health",
-    "/swaggerapi"
+    "/swaggerapi/"
   ]
 }`, t)
 	checkPath(server.URL+"/healthz", http.StatusInternalServerError, `[+]ping ok
 [-]wrapping-health failed: reason withheld
 [-]delegate-health failed: reason withheld
-[+]poststarthook/generic-apiserver-start-informers ok
 [+]poststarthook/delegate-post-start-hook ok
 [+]poststarthook/wrapping-post-start-hook ok
 healthz check failed

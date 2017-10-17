@@ -21,14 +21,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"strings"
 	"sync"
 	"testing"
 
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/endpoints/request"
-	authenticationapi "k8s.io/client-go/pkg/apis/authentication/v1"
+	authenticationapi "k8s.io/client-go/pkg/apis/authentication"
 )
 
 type impersonateAuthorizer struct{}
@@ -216,7 +215,7 @@ func TestImpersonationFilter(t *testing.T) {
 			impersonationUserExtras: map[string][]string{"scopes": {"scope-a", "scope-b"}},
 			expectedUser: &user.DefaultInfo{
 				Name:   "system:admin",
-				Groups: []string{"system:authenticated"},
+				Groups: []string{},
 				Extra:  map[string][]string{"scopes": {"scope-a", "scope-b"}},
 			},
 			expectedCode: http.StatusOK,
@@ -230,7 +229,7 @@ func TestImpersonationFilter(t *testing.T) {
 			impersonationUser: "tester",
 			expectedUser: &user.DefaultInfo{
 				Name:   "tester",
-				Groups: []string{"system:authenticated"},
+				Groups: []string{},
 				Extra:  map[string][]string{},
 			},
 			expectedCode: http.StatusOK,
@@ -258,48 +257,7 @@ func TestImpersonationFilter(t *testing.T) {
 			impersonationUser: "system:serviceaccount:foo:default",
 			expectedUser: &user.DefaultInfo{
 				Name:   "system:serviceaccount:foo:default",
-				Groups: []string{"system:serviceaccounts", "system:serviceaccounts:foo", "system:authenticated"},
-				Extra:  map[string][]string{},
-			},
-			expectedCode: http.StatusOK,
-		},
-		{
-			name: "anonymous-username-prevents-adding-authenticated-group",
-			user: &user.DefaultInfo{
-				Name: "system:admin",
-			},
-			impersonationUser: "system:anonymous",
-			expectedUser: &user.DefaultInfo{
-				Name:   "system:anonymous",
-				Groups: []string{},
-				Extra:  map[string][]string{},
-			},
-			expectedCode: http.StatusOK,
-		},
-		{
-			name: "unauthenticated-group-prevents-adding-authenticated-group",
-			user: &user.DefaultInfo{
-				Name: "system:admin",
-			},
-			impersonationUser:   "unknown",
-			impersonationGroups: []string{"system:unauthenticated"},
-			expectedUser: &user.DefaultInfo{
-				Name:   "unknown",
-				Groups: []string{"system:unauthenticated"},
-				Extra:  map[string][]string{},
-			},
-			expectedCode: http.StatusOK,
-		},
-		{
-			name: "unauthenticated-group-prevents-double-adding-authenticated-group",
-			user: &user.DefaultInfo{
-				Name: "system:admin",
-			},
-			impersonationUser:   "unknown",
-			impersonationGroups: []string{"system:authenticated"},
-			expectedUser: &user.DefaultInfo{
-				Name:   "unknown",
-				Groups: []string{"system:authenticated"},
+				Groups: []string{"system:serviceaccounts", "system:serviceaccounts:foo"},
 				Extra:  map[string][]string{},
 			},
 			expectedCode: http.StatusOK,
@@ -320,19 +278,6 @@ func TestImpersonationFilter(t *testing.T) {
 		}
 
 		actualUser = user
-
-		if _, ok := req.Header[authenticationapi.ImpersonateUserHeader]; ok {
-			t.Fatal("user header still present")
-		}
-		if _, ok := req.Header[authenticationapi.ImpersonateGroupHeader]; ok {
-			t.Fatal("group header still present")
-		}
-		for key := range req.Header {
-			if strings.HasPrefix(key, authenticationapi.ImpersonateUserExtraHeaderPrefix) {
-				t.Fatalf("extra header still present: %v", key)
-			}
-		}
-
 	})
 	handler := func(delegate http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -374,9 +319,7 @@ func TestImpersonationFilter(t *testing.T) {
 			t.Errorf("%s: unexpected error: %v", tc.name, err)
 			continue
 		}
-		if len(tc.impersonationUser) > 0 {
-			req.Header.Add(authenticationapi.ImpersonateUserHeader, tc.impersonationUser)
-		}
+		req.Header.Add(authenticationapi.ImpersonateUserHeader, tc.impersonationUser)
 		for _, group := range tc.impersonationGroups {
 			req.Header.Add(authenticationapi.ImpersonateGroupHeader, group)
 		}

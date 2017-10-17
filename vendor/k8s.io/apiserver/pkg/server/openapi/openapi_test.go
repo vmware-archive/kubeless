@@ -17,7 +17,6 @@ limitations under the License.
 package openapi
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -187,7 +186,6 @@ func getConfig(fullMethods bool) (*openapi.Config, *restful.Container) {
 			InfoProps: spec.InfoProps{
 				Title:       "TestAPI",
 				Description: "Test API",
-				Version:     "unversioned",
 			},
 		},
 		GetDefinitions: func(_ openapi.ReferenceCallback) map[string]openapi.OpenAPIDefinition {
@@ -200,12 +198,12 @@ func getConfig(fullMethods bool) (*openapi.Config, *restful.Container) {
 				"k8s.io/apiserver/pkg/server/openapi/go_default_test.TestOutput": *TestOutput{}.OpenAPIDefinition(),
 			}
 		},
-		GetDefinitionName: func(name string) (string, spec.Extensions) {
+		GetDefinitionName: func(_ string, name string) (string, spec.Extensions) {
 			friendlyName := name[strings.LastIndex(name, "/")+1:]
 			if strings.HasPrefix(friendlyName, "go_default_test") {
 				friendlyName = "openapi" + friendlyName[len("go_default_test"):]
 			}
-			return friendlyName, spec.Extensions{"x-test2": "test2"}
+			return friendlyName, nil
 		},
 	}, container
 }
@@ -331,7 +329,7 @@ func getAdditionalTestParameters() []spec.Parameter {
 		ParamProps: spec.ParamProps{
 			Name:        "fparam",
 			Description: "a test form parameter",
-			In:          "formData",
+			In:          "form",
 		},
 		SimpleSchema: spec.SimpleSchema{
 			Type: "number",
@@ -390,8 +388,7 @@ func getTestInputDefinition() spec.Schema {
 		},
 		VendorExtensible: spec.VendorExtensible{
 			Extensions: spec.Extensions{
-				"x-test":  "test",
-				"x-test2": "test2",
+				"x-test": "test",
 			},
 		},
 	}
@@ -417,11 +414,6 @@ func getTestOutputDefinition() spec.Schema {
 				},
 			},
 		},
-		VendorExtensible: spec.VendorExtensible{
-			Extensions: spec.Extensions{
-				"x-test2": "test2",
-			},
-		},
 	}
 }
 
@@ -433,7 +425,6 @@ func TestBuildSwaggerSpec(t *testing.T) {
 				InfoProps: spec.InfoProps{
 					Title:       "TestAPI",
 					Description: "Test API",
-					Version:     "unversioned",
 				},
 			},
 			Swagger: "2.0",
@@ -450,16 +441,7 @@ func TestBuildSwaggerSpec(t *testing.T) {
 		},
 	}
 	err := o.init(container.RegisteredWebServices())
-	if !assert.NoError(err) {
-		return
+	if assert.NoError(err) {
+		assert.Equal(expected, o.swagger)
 	}
-	expected_json, err := json.Marshal(expected)
-	if !assert.NoError(err) {
-		return
-	}
-	actual_json, err := json.Marshal(o.swagger)
-	if !assert.NoError(err) {
-		return
-	}
-	assert.Equal(string(expected_json), string(actual_json))
 }
