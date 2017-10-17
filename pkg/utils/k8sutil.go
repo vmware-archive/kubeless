@@ -69,7 +69,7 @@ const (
 	ruby24Pubsub    = "bitnami/kubeless-ruby-event-consumer@sha256:938a860dbd9b7fb6b4338248a02c92279315c6e42eed0700128b925d3696b606"
 	dotnetcore2Http = "allantargino/kubeless-dotnetcore@sha256:d321dc4b2c420988d98cdaa22c733743e423f57d1153c89c2b99ff0d944e8a63"
 	busybox         = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
-	bash43http      = "aljannuzzi/kubeless-bash@sha256:e03ab6d09b0e4fab59fbc48d7a41b98977efaafc1253b86d9627b1cab940f2b8"
+	bash43http      = "aljannuzzi/kubeless-bash@sha256:462251db19c784c2eee36855eb903d4bfa694287c8a882e91e230b7ee292ffbb"
 	pubsubFunc      = "PubSub"
 	schedFunc       = "Scheduled"
 )
@@ -258,7 +258,7 @@ func GetFunctionFileNames(runtime, modName string) (fileName, depName string) {
 	switch {
 	case strings.Contains(runtime, "python"):
 		fileName = modName + ".py"
-		depName = "requirements.txt"
+		depName = "requirements"
 	case strings.Contains(runtime, "nodejs"):
 		fileName = modName + ".js"
 		depName = "package.json"
@@ -537,8 +537,6 @@ func getInitImage(runtime string) string {
 		return "bitnami/ruby:2.4"
 	case strings.Contains(runtime, "dotnetcore"):
 		return "microsoft/aspnetcore-build:2.0"
-	case strings.Contains(runtime, "bash"):
-		return "tuna/python-pillow:2.7.11-alpine"
 	default:
 		return ""
 	}
@@ -615,17 +613,6 @@ func getVolumeMounts(name, runtime string) []v1.VolumeMount {
 				MountPath: "/requirements",
 			},
 		}
-	case strings.Contains(runtime, "bash"):
-		return []v1.VolumeMount{
-			{
-				Name:      "bashpath",
-				MountPath: "/bashpath",
-			},
-			{
-				Name:      name,
-				MountPath: "/requirements",
-			},
-		}
 	default:
 		return []v1.VolumeMount{}
 	}
@@ -690,21 +677,6 @@ func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
 		})
 		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
 			Name: "dotnetcorepath",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
-		})
-	case strings.Contains(runtime, "bash"):
-		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-			Name:  "BASH_HOME",
-			Value: "/usr/bin/",
-		})
-		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      "bashpath",
-			MountPath: "/opt/kubeless/bashpath",
-		})
-		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: "bashpath",
 			VolumeSource: v1.VolumeSource{
 				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},
@@ -1027,7 +999,7 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 	//prepare init-container for custom runtime
 	initContainer := v1.Container{}
-	if funcObj.Spec.Deps != "" {
+	if funcObj.Spec.Deps != "" && funcObj.Spec.Runtime != "bash" { 
 		// ensure that the runtime is supported for installing dependencies
 		_, deps := GetFunctionFileNames(funcObj.Spec.Runtime, "")
 		if deps == "" {

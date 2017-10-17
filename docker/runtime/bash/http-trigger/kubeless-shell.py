@@ -2,20 +2,15 @@
 
 from subprocess import call
 import bottle
+import subprocess
 import os
 import prometheus_client as prom
 
 app = application = bottle.app()
 
-cmdline = '/kubeless/' + os.getenv('MOD_NAME') + '.sh'
-cmdlineprep = 'chmod -R 755 /kubeless'
-
 def func(osparam):
-    global cmdline
-    if osparam:
-	cmdline = cmdline + ' ' + osparam
-    call(cmdlineprep, shell=True)
-    call(cmdline, shell=True)
+    cmdline = 'source /kubeless/%s.sh && %s %s' % (os.getenv('MOD_NAME'), os.getenv('FUNC_HANDLER'), osparam if osparam else '')
+    subprocess.check_call('bash -c "' + cmdline + '"', shell=True)
 
 func_calls = prom.Counter('function_calls_total',
                            'Number of calls to user function',
@@ -33,7 +28,6 @@ def handler():
     req = bottle.request
     method = req.method
     func_calls.labels(method).inc()
-    print str(bottle.request)
     with func_errors.labels(method).count_exceptions():
         with func_hist.labels(method).time():
             if method == 'GET':

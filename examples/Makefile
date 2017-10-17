@@ -54,6 +54,12 @@ get-dotnetcore:
 get-dotnetcore-verify:
 	kubeless function call get-dotnetcore |egrep hello.world
 
+get-bash:
+	kubeless function deploy get-bash --trigger-http --runtime bash4.3 --handler helloget.foo --from-file bash/helloget.sh
+	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-bash/"	
+
+get-bash-verify:
+	kubeless function call get-bash
 
 get: get-python get-nodejs get-python-metadata get-ruby get-ruby-deps
 
