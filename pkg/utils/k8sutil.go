@@ -784,10 +784,12 @@ func GetLocalHostname(config *rest.Config, funcName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	host, _, err := net.SplitHostPort(url.Host)
-	if err != nil {
-		return "", err
+	host := url.Host
+	if strings.Contains(url.Host, ":") {
+		host, _, err = net.SplitHostPort(url.Host)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	return fmt.Sprintf("%s.%s.nip.io", funcName, host), nil
