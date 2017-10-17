@@ -270,7 +270,7 @@ func GetFunctionFileNames(runtime, modName string) (fileName, depName string) {
 		depName = "requirements.xml"
 	case strings.Contains(runtime, "bash"):
 		fileName = modName + ".sh"
-		depName = "requirements.txt"
+		depName = "requirements"
 	default:
 		fileName = modName
 		depName = ""
