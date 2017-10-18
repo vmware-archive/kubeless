@@ -17,11 +17,9 @@ limitations under the License.
 package utils
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/url"
 	"os"
@@ -51,8 +49,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/kubernetes/pkg/kubectl/cmd"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 )
@@ -421,35 +417,17 @@ func CreateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
 }
 
 // UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(f *spec.Function) error {
-	fa := cmdutil.NewFactory(nil)
-	funcJSON, err := json.Marshal(f)
+func UpdateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
+	data, err := json.Marshal(f)
 	if err != nil {
 		return err
 	}
-
-	// TODO: looking for a way to not writing to temp file
-	filename := os.TempDir() + "/.func.json"
-	err = ioutil.WriteFile(filename, funcJSON, 0644)
-	if err != nil {
-		return err
-	}
-
-	buf := bytes.NewBuffer([]byte{})
-	buferr := bytes.NewBuffer([]byte{})
-	applyCmd := cmd.NewCmdApply(fa, buf, buferr)
-
-	applyCmd.Flags().Set("filename", filename)
-	applyCmd.Flags().Set("output", "name")
-	applyCmd.Run(applyCmd, []string{})
-
-	// remove temp func file
-	err = os.Remove(filename)
-	if err != nil {
-		return err
-	}
-
-	return err
+	return tprClient.Patch(types.MergePatchType).
+		Namespace(f.Metadata.Namespace).
+		Resource("functions").
+		Name(f.Metadata.Name).
+		Body(data).
+		Do().Error()
 }
 
 // DeleteK8sCustomResource will delete custom function object
