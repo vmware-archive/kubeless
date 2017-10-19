@@ -2,16 +2,10 @@ package: github.com/kubeless/kubeless
 import:
 - package: github.com/Sirupsen/logrus
 - package: github.com/spf13/cobra
-- package: gopkg.in/yaml.v2
-- package: k8s.io/kubernetes
-  version: fff5156092b56e6bd60fff75aad4dc9de6b6ef37
-  subpackages:
-  - pkg/kubectl/cmd
-  - pkg/kubectl/cmd/util
+- package: k8s.io/apimachinery
+  version: 85ace5365f33b16fc735c866a12e3c765b9700f2
 - package: k8s.io/client-go
   version: v3.0.0
-- package: github.com/docker/spdystream
-- package: github.com/renstrom/dedent
 - package: github.com/gosuri/uitable
 - package: github.com/coreos/prometheus-operator
   version: v0.10.1
