@@ -17,14 +17,15 @@ limitations under the License.
 package main
 
 import (
-	"os"
+	"fmt"
+	"io"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-
-	k8scmd "k8s.io/kubernetes/pkg/kubectl/cmd"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/rest"
 )
 
 var topicCreateCmd = &cobra.Command{
@@ -39,52 +40,66 @@ var topicCreateCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-
 		topicName := args[0]
-		command := []string{"bash", "/opt/bitnami/kafka/bin/kafka-topics.sh", "--zookeeper", "zookeeper." + ctlNamespace + ":2181", "--replication-factor", "1", "--partitions", "1", "--create", "--topic", topicName}
 
-		execCommand(command, ctlNamespace)
+		conf, err := utils.BuildOutOfClusterConfig()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		k8sClientSet := utils.GetClientOutOfCluster()
+
+		err = createTopic(conf, k8sClientSet, ctlNamespace, topicName, cmd.OutOrStdout())
+		if err != nil {
+			logrus.Fatal(err)
+		}
 	},
+}
+
+func createTopic(conf *rest.Config, clientset kubernetes.Interface, ctlNamespace, topicName string, out io.Writer) error {
+	command := []string{
+		"bash", "/opt/bitnami/kafka/bin/kafka-topics.sh",
+		"--zookeeper", "zookeeper." + ctlNamespace + ":2181",
+		"--replication-factor", "1",
+		"--partitions", "1",
+		"--create",
+		"--topic", topicName,
+	}
+	return execCommand(conf, clientset, ctlNamespace, command, out)
 }
 
 // wrapper of kubectl exec
 // execCommand executes a command to kafka pod
-func execCommand(command []string, ctlNamespace string) {
-	f := cmdutil.NewFactory(nil)
-
-	k8sClientSet := utils.GetClientOutOfCluster()
+func execCommand(conf *rest.Config, k8sClientSet kubernetes.Interface, ctlNamespace string, command []string, out io.Writer) error {
 	pods, err := utils.GetPodsByLabel(k8sClientSet, ctlNamespace, "kubeless", "kafka")
 	if err != nil {
-		logrus.Fatalf("Can't find the kafka pod: %v", err)
+		return fmt.Errorf("Can't find the kafka pod: %v", err)
 	} else if len(pods.Items) == 0 {
-		logrus.Fatalln("Can't find any kafka pod")
+		return fmt.Errorf("Can't find any kafka pod")
 	}
-	params := &k8scmd.ExecOptions{
-		StreamOptions: k8scmd.StreamOptions{
-			Namespace:     ctlNamespace,
-			PodName:       pods.Items[0].Name,
-			ContainerName: "broker",
-			In:            nil,
-			Out:           os.Stdout,
-			Err:           os.Stderr,
-			TTY:           false,
-		},
-		Executor: &k8scmd.DefaultRemoteExecutor{},
-		Command:  command,
-	}
-	config, err := f.ClientConfig()
-	if err != nil {
-		logrus.Fatalln(err)
-	}
-	params.Config = config
 
-	fClientset, err := f.ClientSet()
+	cmd := utils.Cmd{
+		Stdout: out,
+		Stderr: out,
+	}
+	rt, err := utils.ExecRoundTripper(conf, cmd.RoundTripCallback)
 	if err != nil {
-		logrus.Fatalln(err)
+		return err
 	}
-	params.PodClient = fClientset.Core()
 
-	if err := params.Run(); err != nil {
-		logrus.Fatalln(err)
+	opts := v1.PodExecOptions{
+		Stdin:     false,
+		Stdout:    true,
+		Stderr:    true,
+		Container: "broker",
+		Command:   command,
 	}
+
+	req, err := utils.Exec(k8sClientSet.Core(), pods.Items[0].Name, ctlNamespace, opts)
+	if err != nil {
+		return err
+	}
+
+	_, err = rt.RoundTrip(req)
+	return err
 }

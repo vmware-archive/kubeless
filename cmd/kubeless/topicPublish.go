@@ -18,9 +18,14 @@ package main
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/rest"
 )
 
 var topicPublishCmd = &cobra.Command{
@@ -43,10 +48,69 @@ var topicPublishCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		body := fmt.Sprintf(`echo '%s' | /opt/bitnami/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic %s`, data, topic)
-		command := []string{"bash", "-c", body}
-		execCommand(command, ctlNamespace)
+		conf, err := utils.BuildOutOfClusterConfig()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		k8sClientSet := utils.GetClientOutOfCluster()
+
+		err = publishTopic(conf, k8sClientSet, ctlNamespace, topic, data, cmd.OutOrStdout())
+		if err != nil {
+			logrus.Fatal(err)
+		}
 	},
+}
+
+func publishTopic(conf *rest.Config, clientset kubernetes.Interface, namespace, topic, data string, out io.Writer) error {
+	command := []string{
+		"bash", "/opt/bitnami/kafka/bin/kafka-console-producer.sh",
+		"--broker-list", "localhost:9092",
+		"--topic", topic,
+	}
+
+	// Can't just use `execCommand` since we want to specify stdin
+	// TODO(gus): refactor better.
+
+	pods, err := utils.GetPodsByLabel(clientset, namespace, "kubeless", "kafka")
+	if err != nil {
+		return fmt.Errorf("Can't find the kafka pod: %v", err)
+	} else if len(pods.Items) == 0 {
+		return fmt.Errorf("Can't find any kafka pod")
+	}
+
+	pRead, pWrite := io.Pipe()
+	cmd := utils.Cmd{
+		Stdin:  pRead,
+		Stdout: out,
+		Stderr: out,
+	}
+	rt, err := utils.ExecRoundTripper(conf, cmd.RoundTripCallback)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		io.WriteString(pWrite, data+"\n")
+		pWrite.Close()
+	}()
+
+	opts := v1.PodExecOptions{
+		Stdin:     true,
+		Stdout:    true,
+		Stderr:    true,
+		TTY:       true,
+		Container: "broker",
+		Command:   command,
+	}
+
+	req, err := utils.Exec(clientset.Core(), pods.Items[0].Name, namespace, opts)
+	if err != nil {
+		return err
+	}
+
+	_, err = rt.RoundTrip(req)
+	return err
 }
 
 func init() {
