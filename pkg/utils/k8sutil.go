@@ -408,26 +408,13 @@ func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
 
 // CreateK8sCustomResource will create a custom function object
 func CreateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
-	err := tprClient.Get().
+	err := tprClient.Post().
 		Resource("functions").
 		Namespace(f.Metadata.Namespace).
-		Name(f.Metadata.Name).
-		Do().Into(f)
+		Body(f).
+		Do().Error()
 	if err != nil {
-		if k8sErrors.IsNotFound(err) {
-			var result spec.Function
-			err = tprClient.Post().
-				Resource("functions").
-				Namespace(f.Metadata.Namespace).
-				Body(f).
-				Do().Into(&result)
-
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		return fmt.Errorf("Function %s already existed", f.Metadata.Name)
+		return err
 	}
 
 	return nil
@@ -467,23 +454,11 @@ func UpdateK8sCustomResource(f *spec.Function) error {
 
 // DeleteK8sCustomResource will delete custom function object
 func DeleteK8sCustomResource(tprClient *rest.RESTClient, funcName, ns string) error {
-	var f spec.Function
-	err := tprClient.Get().
+	err := tprClient.Delete().
 		Resource("functions").
 		Namespace(ns).
 		Name(funcName).
-		Do().Into(&f)
-	if err != nil {
-		if k8sErrors.IsNotFound(err) {
-			return errors.New("The function doesn't exist")
-		}
-	}
-
-	err = tprClient.Delete().
-		Resource("functions").
-		Namespace(ns).
-		Name(funcName).
-		Do().Into(&f)
+		Do().Error()
 
 	if err != nil {
 		return err
