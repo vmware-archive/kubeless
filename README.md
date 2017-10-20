@@ -5,7 +5,7 @@
 
 `kubeless` is a Kubernetes-native serverless framework that lets you deploy small bits of code without having to worry about the underlying infrastructure plumbing. It leverages Kubernetes resources to provide auto-scaling, API routing, monitoring, troubleshooting and more.
 
-Kubeless stands out as we use a ThirdPartyResource (now called [Custom Resource Definition](https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/)) to be able to create functions as custom kubernetes resources. We then run an in-cluster controller that watches these custom resources and launches _runtimes_ on-demand. The controller dynamically injects the functions code into the runtimes and make them available over HTTP or via a PubSub mechanism.
+Kubeless stands out as we use a [Custom Resource Definition](https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/) to be able to create functions as custom kubernetes resources. We then run an in-cluster controller that watches these custom resources and launches _runtimes_ on-demand. The controller dynamically injects the functions code into the runtimes and make them available over HTTP or via a PubSub mechanism.
 
 Kubeless is purely open-source and non-affiliated to any commercial organization. Chime in at anytime, we would love the help and feedback !
 
@@ -26,18 +26,22 @@ Click on this next picture to see a screencast demonstrating our [serverless](ht
 
 ## Installation
 
-Download `kubeless` cli from the [release page](https://github.com/kubeless/kubeless/releases). Then use one of yaml manifests found in the release package to deploy kubeless. It will create a _kubeless_ namespace and a _function_ ThirdPartyResource. You will see a _kubeless_ controller, and _kafka_, _zookeeper_ statefulset running.
+Installation is made of three steps:
 
-There are several kubeless manifests being shipped for multiple k8s environments (non-rbac, rbac and openshift), please consider to pick up the correct one:
+* Download the `kubeless` CLI from the [release page](https://github.com/kubeless/kubeless/releases). (OSX users can also use [brew](https://brew.sh/): `brew install kubeless/tap/kubeless`).
+* Create a `kubeless` namespace (used by default)
+* Then use one of the YAML manifests found in the release page to deploy kubeless. It will create a _functions_ Custom Resource Definition and launch a controller. You will see a _kubeless_ controller, a _kafka_ and a _zookeeper_ statefulset appear and shortly get in running state.
 
-* `kubeless-$RELEASE.yaml` is used for non-RBAC Kubernetes cluster.
-* `kubeless-rbac-$RELEASE.yaml` is used for RBAC-enabled Kubernetes cluster.
-* `kubeless-openshift-$RELEASE.yaml` is used to deploy Kubeless to OpenShift (1.5+).
+There are several kubeless manifests being shipped for multiple k8s environments (non-rbac, rbac and openshift), pick the one that corresponds to your environment:
+
+* [`kubeless-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.3/kubeless-v0.2.3.yaml) is used for non-RBAC Kubernetes cluster.
+* [`kubeless-rbac-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.3/kubeless-rbac-v0.2.3.yaml) is used for RBAC-enabled Kubernetes cluster.
+* [`kubeless-openshift-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.3/kubeless-openshift-v0.2.3.yaml) is used to deploy Kubeless to OpenShift (1.5+).
 
 For example, this below is a show case of deploying kubeless to a non-RBAC Kubernetes cluster.
 
 ```console
-$ export RELEASE=v0.2.1
+$ export RELEASE=v0.2.3
 $ kubectl create ns kubeless
 $ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 
@@ -56,9 +60,9 @@ NAME      DESIRED   CURRENT   AGE
 kafka     1         1         1m
 zoo       1         1         1m
 
-$ kubectl get thirdpartyresource
-NAME             DESCRIPTION                                     VERSION(S)
-function.k8s.io   Kubeless: Serverless framework for Kubernetes   v1
+$ kubectl get customresourcedefinition
+NAME               KIND
+functions.k8s.io   CustomResourceDefinition.v1beta1.apiextensions.k8s.io
 
 $ kubectl get functions
 ```
@@ -67,10 +71,11 @@ You are now ready to create functions.
 
 ## Usage
 
-You can use the CLI to create a function. Functions have two possible types:
+You can use the CLI to create a function. Functions have three possible types:
 
-* http trigger (function will expose an HTTP endpoint)
-* pubsub trigger (function will consume event on a specific topic)
+* http triggered (function will expose an HTTP endpoint)
+* pubsub triggered (function will consume event on a specific topic)
+* schedule triggered (function will be called on a cron schedule)
 
 ### HTTP function
 
@@ -92,14 +97,18 @@ $ kubeless function deploy get-python --runtime python2.7 \
 ```
 
 Let's dissect the command:
- - `get-python`: This is the name of the function we want to deploy.
- - `--runtime python2.7`: This is the runtime we want to use to run our function. Available runtimes are shown in the help information.
- - `--from-file test.py`: This is the file containing the function code.
- - `--handler test.foobar`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `foobar` from the file `test.py`.
- - `--trigger-http`: This sets the function trigger. The available options are:
-   - `--trigger-http` to trigger the function using HTTP requests.
-   - `--trigger-topic` to trigger the function with a certain Kafka topic. See the [next example](#pubsub-function).
-   - `--schedule` to trigger the function following a certain schedule using Cron notation. F.e. `--schedule "*/10 * * * *"` would trigger the function every 10 minutes.
+
+* `get-python`: This is the name of the function we want to deploy.
+* `--runtime python2.7`: This is the runtime we want to use to run our function. Available runtimes are shown in the help information.
+* `--from-file test.py`: This is the file containing the function code.
+* `--handler test.foobar`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `foobar` from the file `test.py`.
+* `--trigger-http`: This sets the function trigger. 
+
+Other available trigger options are:
+
+* `--trigger-http` to trigger the function using HTTP requests.
+* `--trigger-topic` to trigger the function with a certain Kafka topic. See the [next example](#pubsub-function).
+* `--schedule` to trigger the function following a certain schedule using Cron notation. F.e. `--schedule "*/10 * * * *"` would trigger the function every 10 minutes.
 
 You can find the rest of options available when deploying a function executing `kubeless function deploy --help`
 
@@ -119,14 +128,10 @@ You can then call the function with:
 
 ```console
 $ kubeless function call get-python --data '{"echo": "echo echo"}'
-Connecting to function...
-Forwarding from 127.0.0.1:30000 -> 8080
-Forwarding from [::1]:30000 -> 8080
-Handling connection for 30000
 {"echo": "echo echo"}
 ```
 
-Or you can curl directly with `kubectl proxy`, for example:
+Or you can curl it directly if you run `kubectl proxy` first. For example:
 
 ```console
 $ kubectl proxy -p 8080 &
@@ -156,12 +161,15 @@ $ kubeless function deploy test --runtime python2.7 \
                                 --trigger-topic test-topic
 ```
 
-After that you can invoke them publishing messages in that topic:
+After that you can invoke them publishing messages in that topic. To allow you to easily manage topics `kubeless` provides a convenience function `kubeless topic`. You can create/delete and publish to a topic easily.
+
 ```console
+$ kubeless topic create test-topic
 $ kubeless topic publish --topic test-topic --data "Hello World!"
 ```
 
 You can check the result in the pod logs:
+
 ```console
 $ kubectl logs test-695251588-cxwmc
 Hello World!
@@ -197,51 +205,33 @@ $ kubeless topic ls
 
 See the [examples](./examples) directory for a list of various examples. Minio, SLACK, Twitter etc ...
 
-Also checkout the [functions repository](https://github.com/kubeless/functions).
+Also checkout the [functions repository](https://github.com/kubeless/functions),
+where we're building a library of ready to use kubeless examples, including an
+[incubator](https://github.com/kubeless/functions/tree/master/incubator)
+to encourage contributions from the community - **your PR is welcome** ! :)
+
+## Documentation
+
+More details can be found in the complete [Documentation](docs/index.md)
 
 ## Building
 
-### Building with go
-
-* You need go v1.7+
-* To cross compile the kubeless command you will need [gox](https://github.com/mitchellh/gox) set up in your environment
-* We use make to build the project. 
-* Ensure you have a GOPATH setup
-
-fecth the project:
-```console
-$ go get -d github.com/kubeless/kubeless
-$ cd $GOPATH/src/github.com/kubeless/kubeless/
-```
-
-build for your local system kubeless and kubeless-controller:
-```console
-$ make binary
-```
-
-You can build kubeless (cli) for multiple platforms with:
-```console
-$ make binary-cross
-```
-To build a deployable kubeless-controller docker image:
-```console
-$ make controller-image
-$ docker tag kubeless-controller [your_image_name] 
-```
+Consult the [developer's guide](docs/dev-guide.md) for a complete set of instruction
+to build kubeless.
 
 ## Comparison
 
 There are other solutions, like [fission](http://fission.io) and [funktion](https://github.com/fabric8io/funktion). There is also an incubating project at the ASF: [OpenWhisk](https://github.com/openwhisk/openwhisk). We believe however, that Kubeless is the most Kubernetes native of all.
 
-Kubeless uses k8s primitives, there is no additional API server or API router/gateway. Kubernetes users will quickly understand how it works and be able to leverage their existing logging and monitorig setup as well as their troubleshooting skills.
+Kubeless uses k8s primitives, there is no additional API server or API router/gateway. Kubernetes users will quickly understand how it works and be able to leverage their existing logging and monitoring setup as well as their troubleshooting skills.
 
 ## _Roadmap_
 
 We would love to get your help, feel free to land a hand. We are currently looking to implement the following high level features:
 
-* Add other runtimes, currently Python, NodeJS and Ruby are supported. We are also providing a way to use custom runtime. Please check [this doc](./docs/runtimes.md) for more details.
+* Add other runtimes, currently Python, NodeJS, Ruby and .Net Core are supported. We are also providing a way to use custom runtime. Please check [this doc](./docs/runtimes.md) for more details.
 * Investigate other messaging bus (e.g nats.io)
-* Instrument the runtimes via Prometheus to be able to create pod autoscalers automatically (e.g use custom metrics not just CPU)
+* Use a standard interface for events 
 * Optimize for functions startup time
 * Add distributed tracing (maybe using istio)
-* Break out the triggers and runtimes
+* Decouple the triggers and runtimes

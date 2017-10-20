@@ -1,12 +1,16 @@
 # Kubeless developer guide
 
-This will cover the steps need to be done in order to build your local developement environment for Kubeless.
+This will cover the steps need to be done in order to build your local
+development environment for Kubeless.
 
 ## Setting things up
 
-As Kubeless project is mainly developed in the Go Programming Language, the first thing you should do is guarantee that Go is installed and all environment variables are properly set.
+As Kubeless project is mainly developed in the Go Programming Language, the
+first thing you should do is guarantee that Go is installed and all environment
+variables are properly set.
 
-In this example we will use Ubuntu Linux 16.04.2 LTS as the target host on where the project will be built.
+In this example we will use Ubuntu Linux 16.04.2 LTS as the target host on
+where the project will be built.
 
 ### Installing Go
 
@@ -48,6 +52,16 @@ git remote set-url --push upstream no_push
 git remote -v
 ```
 
+### Bootstrapping your local dev environment
+
+To get all the needed tools to build and test, run:
+
+```
+cd $working_dir/kubeless
+make bootstrap
+```
+
+
 ### Building local binaries
 
 To make the binaries for your platform, run:
@@ -58,7 +72,8 @@ make binary
 make controller-image
 ```
 
-This will instruct "make" to run the scripts to build the kubeless client and the kubeless controller image.
+This will instruct "make" to run the scripts to build the kubeless client and
+the kubeless controller image.
 
 You can build kubeless for multiple platforms with:
 
@@ -70,21 +85,25 @@ The binaries accordingly located at `bundles/kubeless_$OS_$arch` folder.
 
 ### Uploading your kubeless image to Docker Hub
 
-Usually you will need to upload your controller image to a repository so you can make it available for your Kubernettes cluster, whenever it is running.
+Usually you will need to upload your controller image to a repository so you
+can make it available for your Kubernetes cluster, whenever it is running.
 
 To do so, run the commands:
 
 ````
 docker login -u=<dockerhubuser> -e=<e-mail>
 docker tag kubeless-controller <your-docker-hub-repo>/kubeless-test:latest
-docker push <your-docker-hub-repo>/MyKubelessController:latest 
+docker push <your-docker-hub-repo>/MyKubelessController:latest
 ````
-In order to upload your kubeless controller image to Kubernettes, you should use kubectl as follows, informing the yaml file with the required descriptions of your deployment.
+In order to upload your kubeless controller image to Kubernetes, you should
+use kubectl as follows, informing the yaml file with the required descriptions
+of your deployment.
 
 ````
 kubectl create -f <path-to-yaml-file>
 ````
-Make sure your image repository is correctly referenced in the "containers" session on the yaml file.
+Make sure your image repository is correctly referenced in the "containers"
+session on the yaml file.
 
 ```
       containers:
@@ -94,7 +113,11 @@ Make sure your image repository is correctly referenced in the "containers" sess
       serviceAccountName: controller-acct
 ```
 
-**Hint:** take a look at the `imagePullPolicy` configuration if you are sending images with tags (e. g. "latest") to the Kubernettes cluster. This option controls the image caching mechanism for Kubernettes and you may enconter problems if new images enters the cluster with the same name. They might not be properly pulled for example. 
+**Hint:** take a look at the `imagePullPolicy` configuration if you are sending
+images with tags (e. g. "latest") to the Kubernetes cluster. This option
+controls the image caching mechanism for Kubernetes and you may encounter
+problems if new images enters the cluster with the same name. They might not be
+properly pulled for example.
 
 ### Working on your local branch
 
@@ -128,24 +151,30 @@ Likely you go back and edit/build/test some more then `commit --amend` in a few 
 $ git push origin myfeature
 ```
 
-### Creat a pull request
+### Create a pull request
 
 1. Visit your fork at https://github.com/$your_github_username/kubeless.
 2. Click the `Compare & pull request` button next to your `myfeature` branch.
-3. Make sure you fill up clearly the description, point out the particular issue your PR is mitigating, and ask for code review.
+3. Make sure you fill up clearly the description, point out the particular
+   issue your PR is mitigating, and ask for code review.
 
 ## Testing kubeless with local minikube
 
-The simplest way to try kubeless is deploying it with [minikube](https://github.com/kubernetes/minikube)
+The simplest way to try kubeless is deploying it with
+[minikube](https://github.com/kubernetes/minikube)
 
 ```
 $ minikube start
 ```
 
-You can choose to start minikube vm with your preferred VM driver (virtualbox xhyve vmwarefusion)
+You can choose to start minikube vm with your preferred VM driver (virtualbox
+xhyve vmwarefusion)
 
 ```
-$ kubeless install
+# Install Kubeless
+$ export RELEASE=v0.2.2
+$ kubectl create ns kubeless
+$ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 
 # Verify the installation
 $ kubectl get po --all-namespaces
@@ -159,7 +188,9 @@ kubeless      kafka-controller-2158053540-3q6pv      2/2       Running   2      
 kubeless      kubeless-controller-2330759281-d0l4v   2/2       Running   4          11h
 ```
 
-Make sure your have `kubeless-controller` and `kafka-controller` running at the default `kubeless` namespace. For problems you might have with kubeless-controller, remember to take a look at its log:
+Make sure your have `kubeless-controller` and `kafka-controller` running at the
+default `kubeless` namespace. For problems you might have with
+kubeless-controller, remember to take a look at its log:
 
 ```
 $ kubectl logs kubeless-controller-2330759281-d0l4v -n kubeless -c kubeless -f
@@ -173,7 +204,8 @@ $ kubeless function logs <function_name> -f
 
 ## Scripting build and publishing
 
-Example of shell script to setup a local environment, build the kubeless binaries and make it available on kubernettes.
+Example of shell script to setup a local environment, build the kubeless
+binaries and make it available on kubernetes.
 
 ```
 #!/bin/bash
@@ -222,6 +254,9 @@ Example of shell script to setup a local environment, build the kubeless binarie
 ```
 ## Manage dependencies
 
-We use [Glide](https://github.com/Masterminds/glide) to vendor the dependencies. Take a quick look on README to understand how it works. Packages that Kubeless relying on is listed at [glide.yaml](https://github.com/kubeless/kubeless/blob/master/glide.yaml)
+We use [Glide](https://github.com/Masterminds/glide) to vendor the
+dependencies. Take a quick look at the README to understand how it works. Packages
+that Kubeless relies on are listed at
+[glide.yaml](https://github.com/kubeless/kubeless/blob/master/glide.yaml).
 
 Happy hacking!

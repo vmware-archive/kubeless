@@ -4,7 +4,7 @@ Kubeless leverages [Kubernetes ingress](https://kubernetes.io/docs/concepts/serv
 
 ## Ingress controller
 
-In order to create route for function in Kubeless, you must have an Ingress controller running. There are several options to deploy it. You can deploy it manually via the [manifest](https://github.com/kubeless/kubeless/manifests/ingress/ingress-controller-http-only.yaml) we provide. If you are on GKE, you can try [this](https://github.com/kubernetes/ingress/tree/master/controllers/gce). Minikube also provide an addon for ingress, enable it with this command `minikube addons enable ingress`. Please note that if you're intending to use our provided manifest on minikube, please disable the ingress addon.
+In order to create route for function in Kubeless, you must have an Ingress controller running. There are several options to deploy it. You can deploy it manually via the [manifest](https://github.com/kubeless/kubeless/blob/master/manifests/ingress/ingress-controller-http-only.yaml) we provide. If you are on GKE, you can try [this](https://github.com/kubernetes/ingress-gce). Minikube also provide an addon for ingress, enable it with this command `minikube addons enable ingress`. Please note that if you're intending to use our provided manifest on minikube, please disable the ingress addon.
 
 ## Deploy function with Kubeless CLI
 

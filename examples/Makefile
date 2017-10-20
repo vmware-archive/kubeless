@@ -6,7 +6,7 @@ get-python-verify:
 	kubeless function call get-python |egrep hello.world
 
 get-python-update:
-	printf 'def foo():\n%4sreturn "hello world updated"\n' | kubeless function update get-python --runtime python2.7 --handler helloget.foo --from-file /dev/stdin
+	printf 'def foo():\n%4sreturn "hello world updated"\n' | kubeless function update get-python --from-file /dev/stdin
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python/"
 
 get-python-update-verify:
@@ -97,6 +97,13 @@ pubsub-python-verify:
 	kubeless topic publish --topic s3-python --data "$(DATA)"
 	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-python))'
 
+pubsub-python-update:
+	kubeless topic create s3-python-2
+	kubeless function update pubsub-python --trigger-topic s3-python-2
+
+pubsub-python-update-verify:
+	kubectl describe $$(kubectl get po -oname|grep pubsub-python) | grep -e "TOPIC_NAME:\s*s3-python-2"
+
 pubsub-python34:
 	kubeless topic create s3-python34
 	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub.handler --from-file python/pubsub.py
@@ -125,3 +132,16 @@ pubsub-ruby-verify:
 	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-ruby))'
 
 post: pubsub-python pubsub-nodejs pubsub-ruby
+
+webserver:
+	kubeless function deploy --env APACHE_HTTP_PORT_NUMBER=8080 --runtime-image bitnami/apache:2.4.27-r0 webserver
+
+webserver-verify:
+	kubeless function call webserver |egrep "It works!"
+
+webserver-update:
+	kubeless function update --env NGINX_HTTP_PORT_NUMBER=8080 --runtime-image bitnami/nginx:1.12.1-r2 webserver
+
+webserver-update-verify:
+	kubeless function call webserver |egrep "Welcome to nginx!"
+

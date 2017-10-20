@@ -44,8 +44,11 @@ These below configurations must be set:
 2) configure controller manager to use the metrics APIs via their REST clients by these settings in `kube-controller-manager`:
 ```
 --horizontal-pod-autoscaler-use-rest-clients=true
+--horizontal-pod-autoscaler-sync-period=10s
 --master=<apiserver-address>:<port> //port should be 8080
 ```
+
+The `horizontal-pod-autoscaler-sync-period` parameter set the interval time (in second) that the HPA controller synchronizes the number of pods. By default it's 30s. Sometimes we might want to optimize this parameter to make the HPA controller reacts faster.
 
 3) the autoscaling for custom metrics is supported in HPA since v1.7 via `autoscaling/v2alpha1` API. It needs to be enabled by setting the `runtime-config` in `kube-apiserver`:
 ```

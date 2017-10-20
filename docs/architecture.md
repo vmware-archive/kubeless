@@ -6,34 +6,63 @@ This doc covers the architectural design of Kubeless and directory structure of 
 
 Kubeless leverages multiple concepts of Kubernetes in order to support deploy functions on top of it. In details, we have been using:
 
-- Third party resources (TPR) to simulate function's metadata
+- Custom Resource Definitions (CRD) to simulate function's metadata
 - Deployment / Pod to run the corresponding runtime.
 - Config map to inject function's code to the runtime pod.
 - Service to expose function.
 - Init container to load the dependencies that function might have.
 
-When install kubeless, there is a TPR endpoint being deploy called `function.k8s.io`:
+When install kubeless, there is a CRD endpoint being deploy called `function.k8s.io`:
 
 ```
-$ kubectl get thirdpartyresource -o yaml
+$ kubectl get customresourcedefinition -o yaml
 apiVersion: v1
 items:
-- apiVersion: extensions/v1beta1
-  description: 'Kubeless: Serverless framework for Kubernetes'
-  kind: ThirdPartyResource
+- apiVersion: apiextensions.k8s.io/v1beta1
+  kind: CustomResourceDefinition
   metadata:
-    creationTimestamp: 2017-03-23T11:55:41Z
-    name: function.k8s.io
-    resourceVersion: "123126"
-    selfLink: /apis/extensions/v1beta1/thirdpartyresourcesfunction.k8s.io
-    uid: a3933b1f-0fbf-11e7-b235-12d427b26198
-  versions:
-  - name: v1
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apiextensions.k8s.io/v1beta1","description":"Kubernetes Native Serverless Framework","kind":"CustomResourceDefinition","metadata":{"annotations":{},"name":"functions.k8s.io","namespace":""},"spec":{"group":"k8s.io","names":{"kind":"Function","plural":"functions","singular":"function"},"scope":"Namespaced","version":"v1"}}
+    creationTimestamp: 2017-10-10T14:51:37Z
+    name: functions.k8s.io
+    namespace: ""
+    resourceVersion: "7943"
+    selfLink: /apis/apiextensions.k8s.io/v1beta1/customresourcedefinitions/functions.k8s.io
+    uid: 846770f8-adca-11e7-b48e-0a580a160058
+  spec:
+    group: k8s.io
+    names:
+      kind: Function
+      listKind: FunctionList
+      plural: functions
+      singular: function
+    scope: Namespaced
+    version: v1
+  status:
+    acceptedNames:
+      kind: Function
+      listKind: FunctionList
+      plural: functions
+      singular: function
+    conditions:
+    - lastTransitionTime: null
+      message: no conflicts found
+      reason: NoConflicts
+      status: "True"
+      type: NamesAccepted
+    - lastTransitionTime: 2017-10-10T14:51:37Z
+      message: the initial names have been accepted
+      reason: InitialNamesAccepted
+      status: "True"
+      type: Established
 kind: List
-metadata: {}
+metadata:
+  resourceVersion: ""
+  selfLink: ""
 ```
 
-Then function custom objects will be created under this thirdparty endpoint. A function object looks like this:
+Then function custom objects will be created under this CRD endpoint. A function object looks like this:
 
 ```
 $ kubectl get function -o yaml
@@ -42,24 +71,37 @@ items:
 - apiVersion: k8s.io/v1
   kind: Function
   metadata:
-    creationTimestamp: 2017-03-27T13:56:02Z
+    clusterName: ""
+    creationTimestamp: 2017-10-10T16:09:06Z
+    deletionGracePeriodSeconds: null
+    deletionTimestamp: null
     name: get-python
     namespace: default
-    resourceVersion: "146417"
+    resourceVersion: "13299"
     selfLink: /apis/k8s.io/v1/namespaces/default/functions/get-python
-    uid: 1d08377f-12f5-11e7-953d-0eaf474e070b
+    uid: 5759e3f3-add5-11e7-b48e-0a580a160058
   spec:
     deps: ""
     function: |
-      import json
-      def foo():
-          return "hello world"
-    handler: helloget.foo
+      def foobar(context):
+         print context.json
+         return context.json
+    handler: test.foobar
     runtime: python2.7
+    schedule: ""
+    template:
+      metadata:
+        creationTimestamp: null
+      spec:
+        containers:
+        - name: ""
+          resources: {}
     topic: ""
     type: HTTP
 kind: List
-metadata: {}
+metadata:
+  resourceVersion: ""
+  selfLink: ""
 ```
 
 `function.spec` contains function's metadata including code, handler, runtime, type (http or pubsub) and probably its dependency file.
@@ -94,17 +136,19 @@ Diving into these above commands for more details.
 
 Kubeless controller is written in Go programming language, and uses the Kubernetes go client to interact with the Kubernetes API server. Detailed implementation of the controller could be found at https://github.com/kubeless/kubeless/blob/master/pkg/controller/controller.go#L113
 
-Kubeless CLI is written in Go as well, using the popular cli library `github.com/spf13/cobra`. Basically it is a bundle of HTTP requests and kubectl commands. We send http requests to the Kubernetes API server in order to 'crud' TPR objects. Other actions are just wrapping up `kubectl port-forward`, `kubectl exec` and `kubectl logs` in order to make direct call to function, inject message to Kafka controller or get function log. Checkout https://github.com/kubeless/kubeless/tree/master/cmd/kubeless for more details.
+Kubeless CLI is written in Go as well, using the popular cli library `github.com/spf13/cobra`. Basically it is a bundle of HTTP requests and kubectl commands. We send http requests to the Kubernetes API server in order to 'crud' CRD objects. Other actions are just wrapping up `kubectl port-forward`, `kubectl exec` and `kubectl logs` in order to make direct call to function, inject message to Kafka controller or get function log. Checkout https://github.com/kubeless/kubeless/tree/master/cmd/kubeless for more details.
 
 ## Directory structure
 
 In order to help you getting a better feeling before you start diving into the project, we would give you the 10,000 foot view of the source code directory structure.
 
 ```
+- chart: chart to deploy Kubeless with Helm
 - cmd: contains kubeless cli implementation and kubeless-controller.
 - docker: contains artifacts for building the kubeless-controller and runtime images.
 - docs: contains documentations.
 - examples: contains some samples of running function with kubeless.
+- manifests: collection of manifests for development
 - pkg: contains shared packages.
     - controller: kubeless controller implementation.
     - function: kubeless function crud.

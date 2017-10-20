@@ -17,17 +17,12 @@ limitations under the License.
 package main
 
 import (
-	"path"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 var updateCmd = &cobra.Command{
@@ -40,6 +35,11 @@ var updateCmd = &cobra.Command{
 		}
 		funcName := args[0]
 
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		handler, err := cmd.Flags().GetString("handler")
 		if err != nil {
 			logrus.Fatal(err)
@@ -50,12 +50,22 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		ns, err := cmd.Flags().GetString("namespace")
+		runtime, err := cmd.Flags().GetString("runtime")
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		runtime, err := cmd.Flags().GetString("runtime")
+		triggerHTTP, err := cmd.Flags().GetBool("trigger-http")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		schedule, err := cmd.Flags().GetString("schedule")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		topic, err := cmd.Flags().GetString("trigger-topic")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -69,68 +79,31 @@ var updateCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		runtimeImage, err := cmd.Flags().GetString("runtime-image")
+		if err != nil {
+			logrus.Fatal(err)
+		}
 
 		mem, err := cmd.Flags().GetString("memory")
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		funcType := "HTTP"
-		funcLabels := parseLabel(labels)
-		funcEnv := parseEnv(envs)
-		funcMem := resource.Quantity{}
-		if mem != "" {
-			funcMem, err = parseMemory(mem)
-			if err != nil {
-				logrus.Fatalf("Wrong format of the memory value: %v", err)
-			}
-		}
-		resource := map[v1.ResourceName]resource.Quantity{
-			v1.ResourceMemory: funcMem,
-		}
-
-		checksum, err := uploadFunction(file)
+		previousFunction, err := utils.GetFunction(funcName, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		f := &spec.Function{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Function",
-				APIVersion: "k8s.io/v1",
-			},
-			Metadata: metav1.ObjectMeta{
-				Name:      funcName,
-				Namespace: ns,
-				Labels:    funcLabels,
-			},
-			Spec: spec.FunctionSpec{
-				Handler:  handler,
-				Runtime:  runtime,
-				Type:     funcType,
-				File:     path.Base(file),
-				Checksum: checksum,
-				Topic:    "",
-				Template: v1.PodTemplateSpec{
-					Spec: v1.PodSpec{
-						Containers: []v1.Container{
-							{
-								Env: funcEnv,
-								Resources: v1.ResourceRequirements{
-									Limits:   resource,
-									Requests: resource,
-								},
-							},
-						},
-					},
-				},
-			},
+		f, err := getFunctionDescription(funcName, ns, handler, file, "", runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, previousFunction)
+		if err != nil {
+			logrus.Fatal(err)
 		}
 
 		err = utils.UpdateK8sCustomResource(f)
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		logrus.Infof("Function %s submitted for deployment", funcName)
 	},
 }
 
@@ -142,4 +115,8 @@ func init() {
 	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
 	updateCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function")
 	updateCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
+	updateCmd.Flags().StringP("trigger-topic", "", "", "Deploy a pubsub function to Kubeless")
+	updateCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
+	updateCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
+	updateCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
 }

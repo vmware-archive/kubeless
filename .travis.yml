@@ -2,10 +2,8 @@ language: go
 
 os:
   - linux
-  - osx
 
 go:
-  - 1.7
   - 1.8.3
 
 go_import_path: github.com/kubeless/kubeless
@@ -17,20 +15,12 @@ env:
     - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller
     - CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}
     - CGO_ENABLED=0
-
+    - secure: QTXmAe9Z5WkWq8KDvcP5JauyYrYaupywLUQjlE2SJWuD1wvgcQxPlkWF5NpSAL70TqnGhkmCmsfQBdJ+T59/yYjTldfnFumkp1dABdIURFPQc8h7IeF+evSSmwgaGwTc7bRPu9cprH1yflwyAEQmnzKGkT91ZHszZxfyMDFKPcFJhBdz2lcOsJRIetgrMOBS0sguZVnnY08okq6F0DEDk3SYT9RoPN0/NjyerPpxJ7arS2bN02R6ogBZM7LiTUF6aFuA3vaVKZarVBXYL5ZDr0HvHcSuT0T8F+CGDM7KALldOWgrNbDiVLXBliwRpQbxmKMti7gSftym77MYZHvfq7kKWNrJ/CkV0yXIBrvC0+CQ8Q6E7+dx6pD5HRPB4KGTvAJASZPpysDOcLvjIJh6UvCnQ6I0anoIeK3Socm3NQeEYr6gLVOtZfoiIL1D27NgOEtgviEMQ/haNW9x6O6LT4K/j5NAjm/mcW4/h5Z7vJHBnIbEVsXCe5hj8QmoH1hJvkRcgT5eB5E5dCidt+hMed/cD/ERb1XG1fnK6uBHLS3+sm86ZEyMu7/uI2OQkBtvhPthdcPsCB6rnJMdkIg2vq981vlxA7d2uWhhLX8lfhKMKLEhZtNJPBdcXNvo6a5GxbhHWlPIH7wli2be9t/UuZBRuSINnN4HBAXKWD364lo=
 before_install:
   - set -e
 
 install:
-  - go get github.com/mitchellh/gox github.com/golang/lint/golint
-  - >-
-    wget -O $GOPATH/bin/kubecfg
-    https://github.com/ksonnet/kubecfg/releases/download/v0.4.0/kubecfg-$(go env GOOS)-$(go env GOARCH)
-  - chmod +x $GOPATH/bin/kubecfg
-  - git clone --depth=1 https://github.com/ksonnet/ksonnet-lib.git
-  - export KUBECFG_JPATH=$PWD/ksonnet-lib
-  - git clone --depth=1 https://github.com/sstephenson/bats.git bats
-  - export PATH=$PATH:$PWD/bats/bin
+  - make bootstrap
 
 script:
   - make test
@@ -50,10 +40,8 @@ script:
 
 after_success:
   - |
-    if [[ "$TRAVIS_OS_NAME" == linux && \
-          "$TRAVIS_BRANCH" == master && \
-          "$TRAVIS_PULL_REQUEST" == false && \
-          "$TRAVIS_GO_VERSION" == 1.8.3 ]]; then
+    if [[ "$TRAVIS_BRANCH" == master && \
+          "$TRAVIS_PULL_REQUEST" == false ]]; then
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
       docker tag $CONTROLLER_IMAGE ${CONTROLLER_IMAGE_NAME}:latest
       docker push ${CONTROLLER_IMAGE_NAME}:latest
@@ -76,7 +64,7 @@ before_deploy:
 deploy:
   provider: releases
   api_key:
-    secure: "daSVcUjHGO5L1SlyX3+GOz/Hv4KqkC/ObdRAbr7n7bvZUQewN5ll9Q5z5gvOI9z+zY9nnYFVppaOLfdWGjSldxjepwdHFB0F/oBXVwD+l7WOWacpq8+0+Zm71gG31YMl9ImkgmFll9WwXcG/2MLSGUsyBInGLzyRT0l5OhG6PNWLO3p7YZBKr9ihF3nxeRucfwn2uMUuyVnlEyBCyqmpxeKMNK3J9FY9j3jTmTmRQCBc9UEGGcX2p7R+LtLEvg/nxllVZyHQYc6UhuXWC6imx1mo6NAsVNSvbgJ0ufWrwcd+43XmU5eO8IPMlkb/EVgzp40XWoMrsxQZLEhnkLuApLFMdgn3ioJynBmtYiP3mQZ67Dt5zQiA7+UW/D+1CVjb7hVTzk76Vm4oEEq1KUs2xnA+kaUKprTLrlW4EusiSqKPZWG+hrqlC6VGYTSpQBtx9Hgo5yHZ0r5zoNCrXy3ISsCf8ublH+eiQ5tQ4pFD42AlLKGOQEpL6cvu2zl7+KZfWDqXG8dnjni7aguuPEdXnUm/bsv7JWKwFFV8CHfmBuWruU+VG1iVvSOmATlwQgb72ZsE+bJw5nFWTbrsVeK+hXSBk1tiWWDJzYEC9e81hFKxw8ltPHnG+dos941FXjNVG81L6TcuCgc42Ca4Kf7ICirjdmCKT3e7FW60IFw8SLM="
+    secure: rOXYYMxdFrP7mtExHLK+IOwW7LmV8Y7pJjiOx023F/z0HeyJLcFDY4Mvr6n+nIjf8idPnINARYiHH0eBTDAKNsBhpod+QPexO3gy8bWAbZS6c1wQtV6EuKKfDhvsLQdylh+9pBrtC71GMxBzGWKzcs2dxHZULNrjDxqA99JMWpkzJRVcaU0D9c68aUVIXdI90NTEWG+yuAUw+qWaHIDGNDylS3/5DXs+PNV75ExuL3dWxXJQlEK7+l60/0rMNm+VZIX/5T3YE/cfdXoD2wl82umjzNzoBk2emo2MfHtCyxf+XYBEDZeRHZHZSOg3HCOcRmbKKzOLNkvaSMlyT4celiZoOrR1vASbxzJOBcW+QkCoJ5QAxXwZD7KJk0V89AOv6YR2skMbG7a7+tzkeZ8VHZny7VMgrTBi6bYxZDV1+v28Xm0R/GWnot2W/Nk92mHyVyh3XifMrOHTgXb6G6iIpCypj0i6Ktr9p8uZEhUTqcpljAcRQdnMNHaWWPttM5T3IW94iROdymPwo65FJukHQv/h3GjYB0P1jagBZfbcYQNX/wEjZ3tIVknYfXfRlZXTQjj29DAynGTbw8q07iRR2eNiDUQAS54JQnXOewUtmVRo9maIjxUs4XEE3/IsRNXpwMKGCOP+fjHeL8XtDwrRzmw8nS0LcnooKpMCaOYD4hA=
   file_glob: true
   file:
     - kubeless-${TRAVIS_TAG}.yaml
@@ -88,6 +76,7 @@ deploy:
   on:
     tags: true
     repo: kubeless/kubeless
-    go: 1.8.3
-    os: linux
     condition: $CGO_ENABLED = 0
+
+after_deploy:
+  - ./script/upload_release_notes.sh ${TRAVIS_TAG}

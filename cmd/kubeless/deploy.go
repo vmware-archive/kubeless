@@ -17,17 +17,13 @@ limitations under the License.
 package main
 
 import (
-	"path"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 var deployCmd = &cobra.Command{
@@ -59,13 +55,11 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		funcLabels := parseLabel(labels)
 
 		envs, err := cmd.Flags().GetStringArray("env")
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		funcEnv := parseEnv(envs)
 
 		runtime, err := cmd.Flags().GetString("runtime")
 		if err != nil {
@@ -92,76 +86,27 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		runtimeImage, err := cmd.Flags().GetString("runtime-image")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		mem, err := cmd.Flags().GetString("memory")
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		resource := map[v1.ResourceName]resource.Quantity{}
-		if mem != "" {
-			funcMem, err := parseMemory(mem)
-			if err != nil {
-				logrus.Fatalf("Wrong format of the memory value: %v", err)
-			}
-			resource[v1.ResourceMemory] = funcMem
-		}
 
-		funcType := "PubSub"
-		switch {
-		case triggerHTTP:
-			funcType = "HTTP"
-			topic = ""
-		case schedule != "":
-			funcType = "Scheduled"
-			topic = ""
-		}
-		checksum, err := uploadFunction(file)
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
-		f := &spec.Function{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Function",
-				APIVersion: "k8s.io/v1",
-			},
-			Metadata: metav1.ObjectMeta{
-				Name:      funcName,
-				Namespace: ns,
-				Labels:    funcLabels,
-			},
-			Spec: spec.FunctionSpec{
-				Handler:  handler,
-				Runtime:  runtime,
-				Type:     funcType,
-				File:     path.Base(file),
-				Checksum: checksum,
-				Topic:    topic,
-				Schedule: schedule,
-				Template: v1.PodTemplateSpec{
-					Spec: v1.PodSpec{
-						Containers: []v1.Container{{}},
-					},
-				},
-			},
-		}
-
-		if len(funcEnv) != 0 {
-			f.Spec.Template.Spec.Containers[0].Env = funcEnv
-		}
-		if len(resource) != 0 {
-			f.Spec.Template.Spec.Containers[0].Resources = v1.ResourceRequirements{
-				Limits:   resource,
-				Requests: resource,
-			}
-		}
-
-		// add dependencies file to func spec
+		funcDeps := ""
 		if deps != "" {
-			funcDeps, err := readFile(deps)
+			funcDeps, err = readFile(deps)
 			if err != nil {
 				logrus.Fatalf("Unable to read file %s: %v", deps, err)
 			}
-			f.Spec.Deps = funcDeps
+		}
+
+		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, spec.Function{})
+		if err != nil {
+			logrus.Fatal(err)
 		}
 
 		tprClient, err := utils.GetTPRClientOutOfCluster()
@@ -189,4 +134,5 @@ func init() {
 	deployCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory, which is measured in bytes, for the function. It is expressed as a plain integer or a fixed-point interger with one of these suffies: E, P, T, G, M, K, Ei, Pi, Ti, Gi, Mi, Ki")
 	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
+	deployCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
 }

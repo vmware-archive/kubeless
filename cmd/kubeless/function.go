@@ -28,9 +28,11 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/minio/minio-go"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -51,6 +53,7 @@ func init() {
 	functionCmd.AddCommand(logsCmd)
 	functionCmd.AddCommand(describeCmd)
 	functionCmd.AddCommand(updateCmd)
+	functionCmd.AddCommand(autoscaleCmd)
 }
 
 func getKV(input string) (string, string) {
@@ -169,13 +172,126 @@ func uploadFunction(file string) (checksum string, err error) {
 			err = fmt.Errorf("The function %s has an invalid checksum %s", objectName, uploadedSha256)
 			return
 		}
-		logrus.Info("Skipping function storage since %s is already present", file)
+		logrus.Infof("Skipping function storage since %s is already present", file)
 	} else {
 		// Upload the yaml file with FPutObject
 		_, err = minioClient.FPutObject(bucketName, objectName, file, minio.PutObjectOptions{})
 		if err != nil {
 			return
 		}
+	}
+	return
+}
+
+func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function) (f *spec.Function, err error) {
+
+	if handler == "" {
+		handler = defaultFunction.Spec.Handler
+	}
+
+	if file == "" {
+		file = defaultFunction.Spec.File
+	}
+	checksum, err := uploadFunction(file)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	if deps == "" {
+		deps = defaultFunction.Spec.Deps
+	}
+
+	if runtime == "" {
+		runtime = defaultFunction.Spec.Runtime
+	}
+
+	funcType := ""
+	switch {
+	case triggerHTTP:
+		funcType = "HTTP"
+		topic = ""
+		schedule = ""
+		break
+	case schedule != "":
+		funcType = "Scheduled"
+		topic = ""
+		break
+	case topic != "":
+		funcType = "PubSub"
+		schedule = ""
+		break
+	default:
+		funcType = defaultFunction.Spec.Type
+		topic = defaultFunction.Spec.Topic
+		schedule = defaultFunction.Spec.Schedule
+	}
+
+	funcEnv := parseEnv(envs)
+	if len(funcEnv) == 0 && len(defaultFunction.Spec.Template.Spec.Containers) != 0 {
+		funcEnv = defaultFunction.Spec.Template.Spec.Containers[0].Env
+	}
+
+	funcLabels := parseLabel(labels)
+	if len(funcLabels) == 0 {
+		funcLabels = defaultFunction.Metadata.Labels
+	}
+
+	funcMem := resource.Quantity{}
+	resources := v1.ResourceRequirements{}
+	if mem != "" {
+		funcMem, err = parseMemory(mem)
+		if err != nil {
+			err = fmt.Errorf("Wrong format of the memory value: %v", err)
+			return
+		}
+		resource := map[v1.ResourceName]resource.Quantity{
+			v1.ResourceMemory: funcMem,
+		}
+		resources = v1.ResourceRequirements{
+			Limits:   resource,
+			Requests: resource,
+		}
+	} else {
+		if len(defaultFunction.Spec.Template.Spec.Containers) != 0 {
+			resources = defaultFunction.Spec.Template.Spec.Containers[0].Resources
+		}
+	}
+
+	if len(runtimeImage) == 0 && len(defaultFunction.Spec.Template.Spec.Containers) != 0 {
+		runtimeImage = defaultFunction.Spec.Template.Spec.Containers[0].Image
+	}
+
+	f = &spec.Function{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "k8s.io/v1",
+		},
+		Metadata: metav1.ObjectMeta{
+			Name:      funcName,
+			Namespace: ns,
+			Labels:    funcLabels,
+		},
+		Spec: spec.FunctionSpec{
+			Handler:  handler,
+			Runtime:  runtime,
+			Type:     funcType,
+			File:     path.Base(file),
+			Checksum: checksum,
+			Deps:     deps,
+			Topic:    topic,
+			Schedule: schedule,
+			Template: v1.PodTemplateSpec{
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Env:       funcEnv,
+							Resources: resources,
+							Image:     runtimeImage,
+						},
+					},
+				},
+			},
+		},
 	}
 	return
 }
