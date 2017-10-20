@@ -827,6 +827,7 @@ func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 					Name:       "function-port",
 					Port:       8080,
 					TargetPort: intstr.FromInt(8080),
+					NodePort:   0,
 					Protocol:   v1.ProtocolTCP,
 				},
 			},
