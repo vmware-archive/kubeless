@@ -8,28 +8,14 @@ from slackclient import SlackClient
 #pip install kubernetes
 from kubernetes import client, config
 
-# pip install minio
-from minio import Minio
-from minio.error import ResponseError
-
 config.load_incluster_config()
 
 v1=client.CoreV1Api()
 
-#Get minio and slack secrets
+#Get slack secret
 for secrets in v1.list_secret_for_all_namespaces().items:
-    if secrets.metadata.name == 'minio':
-        access_key = base64.b64decode(secrets.data['access_key'])
-        secret_key = base64.b64decode(secrets.data['secret_key'])
     if secrets.metadata.name == 'slack':
         token = base64.b64decode(secrets.data['token'])
-
-
-# Replace the DNS below with the minio service name (helm release name -svc)
-client = Minio('minio-minio-svc:9000',
-                  access_key=access_key,
-                  secret_key=secret_key,
-                  secure=False)
 
 sc = SlackClient(token)
 
