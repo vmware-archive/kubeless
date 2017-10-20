@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -230,12 +231,28 @@ func getAvailableRuntimes(imageType string) []string {
 	return runtimeList
 }
 
+func getRuntimeDepName(runtime string) (depName string, err error) {
+	switch {
+	case strings.Contains(runtime, "python"):
+		depName = "requirements.txt"
+	case strings.Contains(runtime, "nodejs"):
+		depName = "package.json"
+	case strings.Contains(runtime, "ruby"):
+		depName = "Gemfile"
+	case strings.Contains(runtime, "dotnetcore"):
+		depName = "requirements.xml"
+	default:
+		err = errors.New("The given runtime is not valid")
+	}
+	return
+}
+
 // GetFunctionData given a runtime returns an Image ID, the dependencies filename and the function filename
 func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileName string, err error) {
-	err = nil
-	imageName = ""
-	depName = ""
-	fileName = ""
+	depName, err = getRuntimeDepName(runtime)
+	if err != nil {
+		return
+	}
 
 	runtimeID := regexp.MustCompile("[a-zA-Z]+").FindString(runtime)
 	version := regexp.MustCompile("[0-9.]+").FindString(runtime)
@@ -245,19 +262,15 @@ func GetFunctionData(runtime, ftype, modName string) (imageName, depName, fileNa
 	case runtimeID == "python":
 		fileName = modName + ".py"
 		versionsDef = python
-		depName = "requirements.txt"
 	case runtimeID == "nodejs":
 		fileName = modName + ".js"
 		versionsDef = node
-		depName = "package.json"
 	case runtimeID == "ruby":
 		fileName = modName + ".rb"
 		versionsDef = ruby
-		depName = "Gemfile"
 	case runtimeID == "dotnetcore":
 		fileName = modName + ".cs"
 		versionsDef = dotnetcore
-		depName = "requirements.xml"
 	default:
 		err = errors.New("The given runtime is not valid")
 		return
@@ -505,12 +518,40 @@ func getInitImage(runtime string) string {
 }
 
 // specify command for the init container
-func getCommand(functionFile, runtime, dependencies string, env []v1.EnvVar) []string {
-	command := []string{"curl", "http://minio-minio-svc.default:9000/functions/" + functionFile, "-o", "/requirements/" + functionFile}
-	if dependencies != "" {
+func getCommand(functionFile, checksum, runtime, installPath, depsPath string, env []v1.EnvVar) (commandString string, err error) {
+	objectName := functionFile + "." + checksum
+	dest := installPath + "/" + functionFile
+	shaFile := dest + ".sha256"
+	depName, err := getRuntimeDepName(runtime)
+	if err != nil {
+		return
+	}
+	depsFile := depsPath + depName
+
+	command := []string{
+		// Download and configure Minio client
+		"curl -o /tmp/mc https://dl.minio.io/client/mc/release/linux-amd64/archive/mc.RELEASE.2017-06-15T03-38-43Z",
+		"&& chmod +x /tmp/mc",
+		"&& /tmp/mc config host add functions-storage http://minio-minio-svc.default:9000 foobar foobarfoo",
+		// Download function file
+		"&& /tmp/mc cp functions-storage/functions/" + objectName + " " + dest,
+		// Validate checksum
+		"&& echo " + checksum + " " + dest + " > " + shaFile,
+		"&& sha256sum -c " + shaFile,
+	}
+	if filepath.Ext(functionFile) == ".zip" {
+		command = append(
+			command,
+			"&& apt-get update && apt-get install -y unzip", // TODO: Include it in the base images
+			"&& unzip -o "+dest+" -d "+installPath,
+			"&& rm "+dest,
+		)
+	}
+
+	if _, err := os.Stat(depsFile); !os.IsNotExist(err) {
 		switch {
 		case strings.Contains(runtime, "python"):
-			return append(command, []string{"&&", "pip", "install", "--prefix=/pythonpath", "-r", "/requirements/requirements.txt"}...)
+			command = append(command, "&& pip install --prefix="+installPath+" -r "+depsFile)
 		case strings.Contains(runtime, "nodejs"):
 			registry := "https://registry.npmjs.org"
 			scope := ""
@@ -522,71 +563,20 @@ func getCommand(functionFile, runtime, dependencies string, env []v1.EnvVar) []s
 					scope = v.Value + ":"
 				}
 			}
-			return append(command, []string{"&&", "/bin/sh", "-c", "cp package.json /nodepath && npm config set " + scope + "registry " + registry + " && npm install --prefix=/nodepath"}...)
+			command = append(command,
+				"&& npm config set "+scope+"registry "+registry,
+				"&& npm install "+depsPath+" --prefix="+installPath,
+			)
 		case strings.Contains(runtime, "ruby"):
-			return append(command, []string{"&&", "bundle", "install", "--path", "/rubypath"}...)
-		default:
-			return command
+			command = append(command, "&& bundle install --gemfile="+depsFile+" --path="+installPath)
 		}
-	} else {
-		return command
 	}
-}
-
-// specify volumes for the init container
-func getVolumeMounts(name, runtime string) []v1.VolumeMount {
-	switch {
-	case strings.Contains(runtime, "python"):
-		return []v1.VolumeMount{
-			{
-				Name:      "pythonpath",
-				MountPath: "/pythonpath",
-			},
-			{
-				Name:      name,
-				MountPath: "/requirements",
-			},
-		}
-	case strings.Contains(runtime, "nodejs"):
-		return []v1.VolumeMount{
-			{
-				Name:      "nodepath",
-				MountPath: "/nodepath",
-			},
-			{
-				Name:      name,
-				MountPath: "/requirements",
-			},
-		}
-	case strings.Contains(runtime, "ruby"):
-		return []v1.VolumeMount{
-			{
-				Name:      "rubypath",
-				MountPath: "/rubypath",
-			},
-			{
-				Name:      name,
-				MountPath: "/requirements",
-			},
-		}
-	case strings.Contains(runtime, "dotnetcore"):
-		return []v1.VolumeMount{
-			{
-				Name:      "dotnetcorepath",
-				MountPath: "/dotnetcorepath",
-			},
-			{
-				Name:      name,
-				MountPath: "/requirements",
-			},
-		}
-	default:
-		return []v1.VolumeMount{}
-	}
+	commandString = strings.Join(command, " ")
+	return
 }
 
 // update deployment object in case of custom runtime
-func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
+func updateDeployment(dpm *v1beta1.Deployment, depsVolume, runtime string) {
 	switch {
 	case strings.Contains(runtime, "python"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
@@ -594,14 +584,8 @@ func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
 			Value: "/opt/kubeless/pythonpath/lib/python" + getBranchFromRuntime(runtime) + "/site-packages",
 		})
 		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      "pythonpath",
+			Name:      depsVolume,
 			MountPath: "/opt/kubeless/pythonpath",
-		})
-		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: "pythonpath",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
 		})
 	case strings.Contains(runtime, "nodejs"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
@@ -609,14 +593,8 @@ func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
 			Value: "/opt/kubeless/nodepath/node_modules",
 		})
 		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      "nodepath",
+			Name:      depsVolume,
 			MountPath: "/opt/kubeless/nodepath",
-		})
-		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: "nodepath",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
 		})
 	case strings.Contains(runtime, "ruby"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
@@ -624,14 +602,8 @@ func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
 			Value: "/opt/kubeless/rubypath/ruby/2.4.0",
 		})
 		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      "rubypath",
+			Name:      depsVolume,
 			MountPath: "/opt/kubeless/rubypath",
-		})
-		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: "rubypath",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
 		})
 	case strings.Contains(runtime, "dotnetcore"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
@@ -639,14 +611,8 @@ func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
 			Value: "/usr/bin/",
 		})
 		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      "dotnetcorepath",
+			Name:      depsVolume,
 			MountPath: "/opt/kubeless/dotnetcorepath",
-		})
-		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: "dotnetcorepath",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
 		})
 	}
 }
@@ -900,16 +866,30 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		}
 	}
 
-	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
-		Name: funcObj.Metadata.Name,
-		VolumeSource: v1.VolumeSource{
-			ConfigMap: &v1.ConfigMapVolumeSource{
-				LocalObjectReference: v1.LocalObjectReference{
-					Name: funcObj.Metadata.Name,
+	functionVolume := "function"
+	functionPath := "/kubeless"
+	depsVolume := "dependencies"
+	depsPath := "/dependencies"
+	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes,
+		v1.Volume{
+			Name: depsVolume,
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: funcObj.Metadata.Name,
+					},
 				},
 			},
 		},
-	})
+		v1.Volume{
+			Name: functionVolume,
+			VolumeSource: v1.VolumeSource{
+				HostPath: &v1.HostPathVolumeSource{
+					Path: functionPath,
+				},
+			},
+		},
+	)
 	if len(dpm.Spec.Template.Spec.Containers) == 0 {
 		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
 	}
@@ -943,17 +923,38 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			Value: funcObj.Spec.Topic,
 		})
 	dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-		Name:      funcObj.Metadata.Name,
-		MountPath: "/kubeless",
+		Name:      functionVolume,
+		MountPath: functionPath,
 	})
 
 	//prepare init-container for custom runtime
+
+	initCommand, err := getCommand(
+		funcObj.Spec.File,
+		funcObj.Spec.Checksum,
+		funcObj.Spec.Runtime,
+		functionPath,
+		depsPath,
+		dpm.Spec.Template.Spec.Containers[0].Env,
+	)
+	if err != nil {
+		return err
+	}
 	initContainer := v1.Container{
-		Name:            "install",
-		Image:           getInitImage(funcObj.Spec.Runtime),
-		Command:         getCommand(funcObj.Spec.Function, funcObj.Spec.Runtime, funcObj.Spec.Deps, dpm.Spec.Template.Spec.Containers[0].Env),
-		VolumeMounts:    getVolumeMounts(funcObj.Metadata.Name, funcObj.Spec.Runtime),
-		WorkingDir:      "/requirements",
+		Name:    "install",
+		Image:   getInitImage(funcObj.Spec.Runtime),
+		Command: []string{"sh", "-c", initCommand},
+		VolumeMounts: []v1.VolumeMount{
+			{
+				Name:      functionVolume,
+				MountPath: functionPath,
+			},
+			{
+				Name:      depsVolume,
+				MountPath: depsPath,
+			},
+		},
+		WorkingDir:      depsPath,
 		ImagePullPolicy: v1.PullIfNotPresent,
 	}
 	initContainer.Env = dpm.Spec.Template.Spec.Containers[0].Env
@@ -964,7 +965,7 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 	}
 
 	// update deployment for custom runtime
-	updateDeployment(dpm, funcObj.Spec.Runtime)
+	updateDeployment(dpm, depsVolume, funcObj.Spec.Runtime)
 	//TODO: remove this when init containers becomes a stable feature
 	addInitContainerAnnotation(dpm)
 

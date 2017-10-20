@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"path"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -84,13 +85,13 @@ var updateCmd = &cobra.Command{
 				logrus.Fatalf("Wrong format of the memory value: %v", err)
 			}
 		}
-		funcContent, err := readFile(file)
-		if err != nil {
-			logrus.Fatalf("Unable to read file %s: %v", file, err)
-		}
-
 		resource := map[v1.ResourceName]resource.Quantity{
 			v1.ResourceMemory: funcMem,
+		}
+
+		checksum, err := uploadFunction(file)
+		if err != nil {
+			logrus.Fatal(err)
 		}
 
 		f := &spec.Function{
@@ -107,7 +108,8 @@ var updateCmd = &cobra.Command{
 				Handler:  handler,
 				Runtime:  runtime,
 				Type:     funcType,
-				Function: funcContent,
+				File:     path.Base(file),
+				Checksum: checksum,
 				Topic:    "",
 				Template: v1.PodTemplateSpec{
 					Spec: v1.PodSpec{

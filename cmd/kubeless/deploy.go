@@ -17,15 +17,12 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
-	"os"
 	"path"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
-	"github.com/minio/minio-go"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -117,33 +114,7 @@ var deployCmd = &cobra.Command{
 			funcType = "Scheduled"
 			topic = ""
 		}
-
-		// funcContent, err := readFile(file)
-		// if err != nil {
-		// 	logrus.Fatalf("Unable to read file %s: %v", file, err)
-		// }
-		stats, err := os.Stat(file)
-		fmt.Println(stats)
-		if os.IsNotExist(err) {
-			logrus.Fatal(err)
-		}
-		endpoint := "192.168.99.101:30650"
-		accessKeyID := "foobar"
-		secretAccessKey := "foobarfoo"
-		useSSL := false
-		// Initialize minio client object.
-		minioClient, err := minio.New(endpoint, accessKeyID, secretAccessKey, useSSL)
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		// Make a new bucket called mymusic.
-		bucketName := "functions"
-		// Upload the zip file
-		objectName := path.Base(file)
-		// contentType := "application/yaml"
-
-		// Upload the yaml file with FPutObject
-		_, err = minioClient.FPutObject(bucketName, objectName, file, minio.PutObjectOptions{})
+		checksum, err := uploadFunction(file)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -162,7 +133,8 @@ var deployCmd = &cobra.Command{
 				Handler:  handler,
 				Runtime:  runtime,
 				Type:     funcType,
-				Function: path.Base(file),
+				File:     path.Base(file),
+				Checksum: checksum,
 				Topic:    topic,
 				Schedule: schedule,
 				Template: v1.PodTemplateSpec{
@@ -201,6 +173,7 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		logrus.Infof("Function %s submitted for deployment", funcName)
 	},
 }
 

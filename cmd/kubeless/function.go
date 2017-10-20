@@ -17,9 +17,18 @@ limitations under the License.
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io"
 	"io/ioutil"
+	"os"
+	"path"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
+	"github.com/minio/minio-go"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/pkg/api/v1"
@@ -94,4 +103,79 @@ func parseMemory(mem string) (resource.Quantity, error) {
 	}
 
 	return quantity, nil
+}
+
+func getFileSha256(file string) (sha256Sum [32]byte, checksum string, err error) {
+	content, err := ioutil.ReadFile(file)
+	if err != nil {
+		return
+	}
+	h := sha256.New()
+	ff, err := os.Open(file)
+	if err != nil {
+		return
+	}
+	defer ff.Close()
+	_, err = io.Copy(h, ff)
+	if err != nil {
+		return
+	}
+	sha256Sum = sha256.Sum256(content)
+	checksum = hex.EncodeToString(h.Sum(nil))
+	return
+}
+
+func uploadFunction(file string) (checksum string, err error) {
+
+	stats, err := os.Stat(file)
+	if stats.Size() > int64(52428800) { // TODO: Make the max file size configurable
+		err = errors.New("The maximum size of a function is 50MB")
+		return
+	}
+	sha256Sum, checksum, err := getFileSha256(file)
+
+	endpoint := "192.168.99.100:30276"
+	accessKeyID := "foobar"
+	secretAccessKey := "foobarfoo"
+	useSSL := false
+	minioClient, err := minio.New(endpoint, accessKeyID, secretAccessKey, useSSL)
+	if err != nil {
+		return
+	}
+	bucketName := "functions"
+	objectName := path.Base(file) + "." + checksum
+
+	_, getObjectErr := minioClient.StatObject(bucketName, objectName, minio.StatObjectOptions{})
+	if getObjectErr == nil {
+		// File already exists, validate checksum
+		var dir string
+		dir, err = ioutil.TempDir("", "")
+		if err != nil {
+			return
+		}
+		defer os.RemoveAll(dir)
+
+		err = minioClient.FGetObject(bucketName, objectName, path.Join(dir, objectName), minio.GetObjectOptions{})
+		if err != nil {
+			return
+		}
+		var uploadedContent []byte
+		uploadedContent, err = ioutil.ReadFile(path.Join(dir, objectName))
+		if err != nil {
+			return
+		}
+		uploadedSha256 := sha256.Sum256(uploadedContent)
+		if sha256Sum != uploadedSha256 {
+			err = fmt.Errorf("The function %s has an invalid checksum %s", objectName, uploadedSha256)
+			return
+		}
+		logrus.Info("Skipping function storage since %s is already present", file)
+	} else {
+		// Upload the yaml file with FPutObject
+		_, err = minioClient.FPutObject(bucketName, objectName, file, minio.PutObjectOptions{})
+		if err != nil {
+			return
+		}
+	}
+	return
 }
