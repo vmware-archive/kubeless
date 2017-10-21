@@ -22,10 +22,13 @@ sc = SlackClient(token)
 def handler(context):
     msg = "k8s event: %s" % context
 
-    sc.api_call(
+    r = sc.api_call(
                 "chat.postMessage",
                 channel="#bot",
                 text=msg
                )
+    if r.get('ok'):
+        return "Notification successfully sent to Slack"
+    else:
+        return "Error while sending notification to Slack: " + r.get('error')
 
-    return "Notification sent to SLACK"
