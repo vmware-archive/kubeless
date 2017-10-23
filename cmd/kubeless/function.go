@@ -179,7 +179,7 @@ func waitForHTTPServer(host, port string) error {
 		nil,
 	)
 	if err != nil {
-		logrus.Fatalf("unable to make request: %s", err)
+		return err
 	}
 
 	// Execute the request
@@ -194,14 +194,14 @@ func waitForHTTPServer(host, port string) error {
 	return err
 }
 
-func runPortForward(f cmdutil.Factory, k8sClient *rest.RESTClient, podName, port string) {
+func runPortForward(f cmdutil.Factory, k8sClient *rest.RESTClient, podName, port string) (err error) {
 	clientset, err := f.ClientSet()
 	if err != nil {
-		logrus.Fatalf("Connection failed: %v", err)
+		return err
 	}
 	k8sClientConfig, err := f.ClientConfig()
 	if err != nil {
-		logrus.Fatalf("Connection failed: %v", err)
+		return err
 	}
 
 	portSlice := []string{port + ":9000"}
@@ -230,13 +230,14 @@ func runPortForward(f cmdutil.Factory, k8sClient *rest.RESTClient, podName, port
 		}
 
 	}()
+	return
 }
 
-func getMinioURLFromOutsideCluster() string {
+func getMinioURLFromOutsideCluster() (url string, err error) {
 	f := cmdutil.NewFactory(nil)
 	k8sClient, err := f.RESTClient()
 	if err != nil {
-		logrus.Fatalf("Connection failed: %v", err)
+		return
 	}
 
 	pods := &v1.PodList{}
@@ -251,7 +252,7 @@ func getMinioURLFromOutsideCluster() string {
 
 	port, err := getLocalPort()
 	if err != nil {
-		logrus.Fatalf("Connection failed: %v", err)
+		return
 	}
 
 	// Minio requires to serve content at "root" eg. minio.com:9000
@@ -260,9 +261,10 @@ func getMinioURLFromOutsideCluster() string {
 	runPortForward(f, k8sClient, pod.Name, port)
 	err = waitForHTTPServer("localhost", port)
 	if err != nil {
-		logrus.Fatal(err)
+		return
 	}
-	return "localhost:" + port
+	url = "localhost:" + port
+	return
 }
 
 func getMinioObject(minioClient minio.Client, bucket, name string) (object []byte, err error) {
@@ -310,10 +312,13 @@ func uploadFunction(file string) (checksum string, err error) {
 	}
 	sha256Sum, checksum, err := getFileSha256(file)
 
-	endpoint := getMinioURLFromOutsideCluster()
+	endpoint, err := getMinioURLFromOutsideCluster()
+	if err != nil {
+		return
+	}
 	minioClient, err := getMinioClient(endpoint)
 	if err != nil {
-		logrus.Fatal(err)
+		return
 	}
 	bucketName := "functions"
 	objectName := path.Base(file) + "." + checksum
@@ -353,7 +358,7 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, s
 	}
 	checksum, err := uploadFunction(file)
 	if err != nil {
-		logrus.Fatal(err)
+		return
 	}
 
 	if deps == "" {
