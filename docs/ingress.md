@@ -71,6 +71,12 @@ route2    example.com                                         80        6s
 
 But you have to make sure your hostname is configured properly.
 
+You can test the new route with the following command:
+```
+$ curl --data '{"Another": "Echo"}' --header "Host: get-python.192.168.99.100.nip.io" 192.168.99.100/ --header "Content-Type:application/json"
+{"Another": "Echo"}
+```
+
 ## Enable TLS
 
 By default, Kubeless doesn't take care of TLS setup for function. But you can do it manually. There is a [general guideline](https://docs.bitnami.com/kubernetes/how-to/secure-kubernetes-services-with-ingress-tls-letsencrypt/) to enable TLS for your Kubernetes service written by Bitnami folks. In that guide, LetsEncrypt and kube-lego are chosen. When you have it set, you can deploy function and create route with Kubeless CLI normally. Then the last step you have to do is modifying the created ingress object and adding this line to the annotation.

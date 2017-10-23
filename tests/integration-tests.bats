@@ -37,8 +37,16 @@ load ../script/libtest
 # 'bats' lacks loop support, unroll-them-all ->
 @test "Test function: get-python" {
   test_kubeless_function get-python
+}
+@test "Test function update: get-python" {
   test_kubeless_function_update get-python
-} 
+}
+@test "Test function ingress: get-python" {
+  test_kubeless_ingress get-python
+}
+@test "Test function autoscale: get-python" {
+  test_kubeless_autoscale get-python
+}
 @test "Test function: get-nodejs" {
   test_kubeless_function get-nodejs
 }
@@ -68,6 +76,8 @@ load ../script/libtest
 }
 @test "Test function: pubsub-python" {
   test_kubeless_function pubsub-python
+}
+@test "Test function update: pubsub-python" {
   test_kubeless_function_update pubsub-python
 }
 @test "Test function: pubsub-nodejs" {

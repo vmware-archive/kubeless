@@ -20,7 +20,6 @@ import (
 	"bufio"
 	"net"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -39,7 +38,7 @@ var (
 			Name: "apiserver_request_count",
 			Help: "Counter of apiserver requests broken out for each verb, API resource, client, and HTTP response contentType and code.",
 		},
-		[]string{"verb", "resource", "subresource", "client", "contentType", "code"},
+		[]string{"verb", "resource", "client", "contentType", "code"},
 	)
 	requestLatencies = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -48,7 +47,7 @@ var (
 			// Use buckets ranging from 125 ms to 8 seconds.
 			Buckets: prometheus.ExponentialBuckets(125000, 2.0, 7),
 		},
-		[]string{"verb", "resource", "subresource"},
+		[]string{"verb", "resource"},
 	)
 	requestLatenciesSummary = prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
@@ -57,9 +56,8 @@ var (
 			// Make the sliding window of 1h.
 			MaxAge: time.Hour,
 		},
-		[]string{"verb", "resource", "subresource"},
+		[]string{"verb", "resource"},
 	)
-	kubectlExeRegexp = regexp.MustCompile(`^.*((?i:kubectl\.exe))`)
 )
 
 // Register all metrics.
@@ -69,11 +67,11 @@ func Register() {
 	prometheus.MustRegister(requestLatenciesSummary)
 }
 
-func Monitor(verb, resource, subresource *string, client, contentType string, httpCode int, reqStart time.Time) {
+func Monitor(verb, resource *string, client, contentType string, httpCode int, reqStart time.Time) {
 	elapsed := float64((time.Since(reqStart)) / time.Microsecond)
-	requestCounter.WithLabelValues(*verb, *resource, *subresource, client, contentType, codeToString(httpCode)).Inc()
-	requestLatencies.WithLabelValues(*verb, *resource, *subresource).Observe(elapsed)
-	requestLatenciesSummary.WithLabelValues(*verb, *resource, *subresource).Observe(elapsed)
+	requestCounter.WithLabelValues(*verb, *resource, client, contentType, codeToString(httpCode)).Inc()
+	requestLatencies.WithLabelValues(*verb, *resource).Observe(elapsed)
+	requestLatenciesSummary.WithLabelValues(*verb, *resource).Observe(elapsed)
 }
 
 func Reset() {
@@ -84,7 +82,7 @@ func Reset() {
 
 // InstrumentRouteFunc works like Prometheus' InstrumentHandlerFunc but wraps
 // the go-restful RouteFunction instead of a HandlerFunc
-func InstrumentRouteFunc(verb, resource, subresource string, routeFunc restful.RouteFunction) restful.RouteFunction {
+func InstrumentRouteFunc(verb, resource string, routeFunc restful.RouteFunction) restful.RouteFunction {
 	return restful.RouteFunction(func(request *restful.Request, response *restful.Response) {
 		now := time.Now()
 
@@ -103,21 +101,17 @@ func InstrumentRouteFunc(verb, resource, subresource string, routeFunc restful.R
 
 		routeFunc(request, response)
 
-		reportedVerb := verb
 		if verb == "LIST" && strings.ToLower(request.QueryParameter("watch")) == "true" {
-			reportedVerb = "WATCH"
+			verb = "WATCH"
 		}
-		Monitor(&reportedVerb, &resource, &subresource, cleanUserAgent(utilnet.GetHTTPClient(request.Request)), rw.Header().Get("Content-Type"), delegate.status, now)
+		Monitor(&verb, &resource, cleanUserAgent(utilnet.GetHTTPClient(request.Request)), rw.Header().Get("Content-Type"), delegate.status, now)
 	})
 }
 
 func cleanUserAgent(ua string) string {
-	// We collapse all "web browser"-type user agents into one "browser" to reduce metric cardinality.
 	if strings.HasPrefix(ua, "Mozilla/") {
 		return "Browser"
 	}
-	// If an old "kubectl.exe" has passed us its full path, we discard the path portion.
-	ua = kubectlExeRegexp.ReplaceAllString(ua, "$1")
 	return ua
 }
 

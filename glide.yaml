@@ -9,7 +9,7 @@ import:
   - pkg/kubectl/cmd
   - pkg/kubectl/cmd/util
 - package: k8s.io/client-go
-  version: v3.0.0-beta.0
+  version: v3.0.0
 - package: github.com/docker/spdystream
 - package: github.com/renstrom/dedent
 - package: github.com/gosuri/uitable
