@@ -23,17 +23,28 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/spec"
+	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/minio/minio-go"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/portforward"
+	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
+	k8scmd "k8s.io/kubernetes/pkg/kubectl/cmd"
+	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 var functionCmd = &cobra.Command{
@@ -128,6 +139,168 @@ func getFileSha256(file string) (sha256Sum [32]byte, checksum string, err error)
 	return
 }
 
+type defaultPortForwarder struct {
+	cmdOut, cmdErr io.Writer
+}
+
+func (f *defaultPortForwarder) ForwardPorts(method string, url *url.URL, opts k8scmd.PortForwardOptions) error {
+	dialer, err := remotecommand.NewExecutor(opts.Config, method, url)
+	if err != nil {
+		return err
+	}
+	fw, err := portforward.New(dialer, opts.Ports, opts.StopChannel, opts.ReadyChannel, f.cmdOut, f.cmdErr)
+	if err != nil {
+		return err
+	}
+	return fw.ForwardPorts()
+}
+
+func getLocalPort() (string, error) {
+	for i := 30000; i < 65535; i++ {
+		conn, err := net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(i))
+		if err != nil {
+			return strconv.Itoa(i), nil
+		}
+		conn.Close()
+	}
+	return "", errors.New("Can not find an unassigned port")
+}
+
+const (
+	maxRetries       = 5
+	defaultTimeSleep = 1
+)
+
+func waitForHTTPServer(host, port string) error {
+	// Build the request
+	req, err := http.NewRequest(
+		"GET",
+		"http://"+host+":"+port,
+		nil,
+	)
+	if err != nil {
+		logrus.Fatalf("unable to make request: %s", err)
+	}
+
+	// Execute the request
+	resp, err := http.DefaultClient.Do(req)
+	retries := 0
+	for err != nil && retries < maxRetries {
+		retries++
+		time.Sleep(time.Duration(time.Second))
+		resp, err = http.DefaultClient.Do(req)
+	}
+	resp.Body.Close()
+	return err
+}
+
+func runPortForward(f cmdutil.Factory, k8sClient *rest.RESTClient, podName, port string) {
+	clientset, err := f.ClientSet()
+	if err != nil {
+		logrus.Fatalf("Connection failed: %v", err)
+	}
+	k8sClientConfig, err := f.ClientConfig()
+	if err != nil {
+		logrus.Fatalf("Connection failed: %v", err)
+	}
+
+	portSlice := []string{port + ":9000"}
+	go func() {
+		devNull, err := os.Open(os.DevNull)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		pfo := k8scmd.PortForwardOptions{
+			RESTClient: k8sClient,
+			Namespace:  "kubeless",
+			Config:     k8sClientConfig,
+			PodName:    podName,
+			PodClient:  clientset.Core(),
+			Ports:      portSlice,
+			PortForwarder: &defaultPortForwarder{
+				cmdOut: devNull,
+				cmdErr: os.Stderr,
+			},
+			StopChannel:  make(chan struct{}, 1),
+			ReadyChannel: make(chan struct{}),
+		}
+		err = pfo.RunPortForward()
+		if err != nil {
+			logrus.Fatalf("Connection failed: %v", err)
+		}
+
+	}()
+}
+
+func getMinioURLFromOutsideCluster() string {
+	f := cmdutil.NewFactory(nil)
+	k8sClient, err := f.RESTClient()
+	if err != nil {
+		logrus.Fatalf("Connection failed: %v", err)
+	}
+
+	pods := &v1.PodList{}
+	pod := v1.Pod{}
+	k8sClient.Get().Namespace("kubeless").Resource("pods").Do().Into(pods)
+	for i := range pods.Items {
+		if pods.Items[i].Labels["kubeless"] == "minio" {
+			pod = pods.Items[i]
+			break
+		}
+	}
+
+	port, err := getLocalPort()
+	if err != nil {
+		logrus.Fatalf("Connection failed: %v", err)
+	}
+
+	// Minio requires to serve content at "root" eg. minio.com:9000
+	// so instead of using the Kubernetes Proxy we need to run
+	// a port forward to Minio's pod
+	runPortForward(f, k8sClient, pod.Name, port)
+	err = waitForHTTPServer("localhost", port)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	return "localhost:" + port
+}
+
+func getMinioObject(minioClient minio.Client, bucket, name string) (object []byte, err error) {
+	var dir string
+	dir, err = ioutil.TempDir("", "")
+	if err != nil {
+		return
+	}
+	defer os.RemoveAll(dir)
+
+	err = minioClient.FGetObject(bucket, name, path.Join(dir, name), minio.GetObjectOptions{})
+	if err != nil {
+		return
+	}
+	object, err = ioutil.ReadFile(path.Join(dir, name))
+	return
+}
+
+func getMinioClient(endpoint string) (minioClient *minio.Client, err error) {
+	cli, err := utils.GetRestClientOutOfCluster("", "v1", "/api")
+	if err != nil {
+		return
+	}
+	result := &v1.Secret{}
+	cli.Get().
+		Namespace("kubeless").
+		Resource("secrets").
+		Name("minio-key").
+		Do().
+		Into(result)
+
+	accessKeyID := string(result.Data["accesskey"])
+	secretAccessKey := string(result.Data["secretkey"])
+	useSSL := false
+	minioClient, err = minio.New(endpoint, accessKeyID, secretAccessKey, useSSL)
+	return
+}
+
 func uploadFunction(file string) (checksum string, err error) {
 
 	stats, err := os.Stat(file)
@@ -137,13 +310,10 @@ func uploadFunction(file string) (checksum string, err error) {
 	}
 	sha256Sum, checksum, err := getFileSha256(file)
 
-	endpoint := "192.168.99.100:30276"
-	accessKeyID := "foobar"
-	secretAccessKey := "foobarfoo"
-	useSSL := false
-	minioClient, err := minio.New(endpoint, accessKeyID, secretAccessKey, useSSL)
+	endpoint := getMinioURLFromOutsideCluster()
+	minioClient, err := getMinioClient(endpoint)
 	if err != nil {
-		return
+		logrus.Fatal(err)
 	}
 	bucketName := "functions"
 	objectName := path.Base(file) + "." + checksum
@@ -151,23 +321,12 @@ func uploadFunction(file string) (checksum string, err error) {
 	_, getObjectErr := minioClient.StatObject(bucketName, objectName, minio.StatObjectOptions{})
 	if getObjectErr == nil {
 		// File already exists, validate checksum
-		var dir string
-		dir, err = ioutil.TempDir("", "")
+		var previousObject []byte
+		previousObject, err = getMinioObject(*minioClient, bucketName, objectName)
 		if err != nil {
 			return
 		}
-		defer os.RemoveAll(dir)
-
-		err = minioClient.FGetObject(bucketName, objectName, path.Join(dir, objectName), minio.GetObjectOptions{})
-		if err != nil {
-			return
-		}
-		var uploadedContent []byte
-		uploadedContent, err = ioutil.ReadFile(path.Join(dir, objectName))
-		if err != nil {
-			return
-		}
-		uploadedSha256 := sha256.Sum256(uploadedContent)
+		uploadedSha256 := sha256.Sum256(previousObject)
 		if sha256Sum != uploadedSha256 {
 			err = fmt.Errorf("The function %s has an invalid checksum %s", objectName, uploadedSha256)
 			return

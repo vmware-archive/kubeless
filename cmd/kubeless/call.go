@@ -18,14 +18,9 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"io"
-	"net"
-	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/utils"
@@ -33,31 +28,7 @@ import (
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/portforward"
-	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
-	k8scmd "k8s.io/kubernetes/pkg/kubectl/cmd"
 )
-
-const (
-	maxRetries       = 5
-	defaultTimeSleep = 1 * time.Second
-)
-
-type defaultPortForwarder struct {
-	cmdOut, cmdErr io.Writer
-}
-
-func (f *defaultPortForwarder) ForwardPorts(method string, url *url.URL, opts k8scmd.PortForwardOptions) error {
-	dialer, err := remotecommand.NewExecutor(opts.Config, method, url)
-	if err != nil {
-		return err
-	}
-	fw, err := portforward.New(dialer, opts.Ports, opts.StopChannel, opts.ReadyChannel, f.cmdOut, f.cmdErr)
-	if err != nil {
-		return err
-	}
-	return fw.ForwardPorts()
-}
 
 var callCmd = &cobra.Command{
 	Use:   "call <function_name> FLAG",
@@ -122,15 +93,4 @@ func init() {
 	callCmd.Flags().StringP("data", "", "", "Specify data for function")
 	callCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 
-}
-
-func getLocalPort() (string, error) {
-	for i := 30000; i < 65535; i++ {
-		conn, err := net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(i))
-		if err != nil {
-			return strconv.Itoa(i), nil
-		}
-		conn.Close()
-	}
-	return "", errors.New("Can not find an unassigned port")
 }

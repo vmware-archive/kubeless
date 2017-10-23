@@ -1,0 +1,110 @@
+---
+# Source: minio/templates/minio_secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minio-key
+  namespace: kubeless
+  labels:
+    kubeless: minio
+type: Opaque
+data:
+  accesskey: Zm9vYmFy
+  secretkey: Zm9vYmFyZm9v
+---
+# Source: minio/templates/minio_pvc.yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: minio
+  namespace: kubeless
+  annotations:
+    volume.alpha.kubernetes.io/storage-class: default
+spec:
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: "10Gi"
+---
+# Source: minio/templates/minio_svc.yaml
+kind: Service
+apiVersion: v1
+metadata:
+  name: minio
+  namespace: kubeless
+  labels:
+    kubeless: minio
+spec:
+  selector:
+    kubeless: minio
+  ports:
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
+---
+# Source: minio/templates/minio_deployment.yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: kubeless
+  labels:
+    kubeless: minio
+spec:
+  selector:
+    matchLabels:
+      kubeless: minio
+  template:
+    metadata:
+      name: minio
+      labels:
+        kubeless: minio
+      annotations:
+        pod.beta.kubernetes.io/init-containers: '[
+          {
+            "name": "init-myservice",
+            "image": "busybox",
+            "command": ["mkdir", "-p", "/export/functions"],
+            "volumeMounts": [{
+              "name": "export",
+              "mountPath": "/export"
+            }]
+          }
+        ]'
+    spec:
+      volumes:
+        - name: export
+          persistentVolumeClaim:
+            claimName: minio
+      containers:
+        - name: minio
+          image: minio/minio:RELEASE.2017-02-16T01-47-30Z
+          imagePullPolicy: Always
+          command: ["minio"]
+          args: ["server", "/export"]
+          volumeMounts:
+            - name: export
+              mountPath: /export
+          ports:
+            - name: service
+              containerPort: 9000
+          env:
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-key
+                  key: accesskey
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-key
+                  key: secretkey
+          livenessProbe:
+            tcpSocket:
+              port: 9000
+            timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi

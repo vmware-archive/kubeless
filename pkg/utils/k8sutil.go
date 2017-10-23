@@ -179,7 +179,7 @@ func GetTPRClient() (*rest.RESTClient, error) {
 		return nil, err
 	}
 
-	configureClient(tprconfig)
+	configureClient("k8s.io", "v1", "/apis", tprconfig)
 
 	tprclient, err := rest.RESTClientFor(tprconfig)
 	if err != nil {
@@ -189,21 +189,26 @@ func GetTPRClient() (*rest.RESTClient, error) {
 	return tprclient, nil
 }
 
+// GetRestClientOutOfCluster returns a REST client based on a group, API version and path
+func GetRestClientOutOfCluster(group, apiVersion, apiPath string) (*rest.RESTClient, error) {
+	config, err := BuildOutOfClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	configureClient(group, apiVersion, apiPath, config)
+
+	client, err := rest.RESTClientFor(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
 // GetTPRClientOutOfCluster returns tpr client to the request from outside of cluster
 func GetTPRClientOutOfCluster() (*rest.RESTClient, error) {
-	tprconfig, err := BuildOutOfClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	configureClient(tprconfig)
-
-	tprclient, err := rest.RESTClientFor(tprconfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return tprclient, nil
+	return GetRestClientOutOfCluster("k8s.io", "v1", "/apis")
 }
 
 //GetServiceMonitorClientOutOfCluster returns sm client to the request from outside of cluster
@@ -512,7 +517,7 @@ func getInitImage(runtime string) string {
 }
 
 // specify command for the init container
-func getCommand(functionFile, checksum, runtime, installPath, depsPath string, env []v1.EnvVar) (commandString string, err error) {
+func getCommand(functionFile, checksum, runtime, installPath, depsPath, credentialsPath string, env []v1.EnvVar) (commandString string, err error) {
 	objectName := functionFile + "." + checksum
 	dest := installPath + "/" + functionFile
 	shaFile := dest + ".sha256"
@@ -523,7 +528,7 @@ func getCommand(functionFile, checksum, runtime, installPath, depsPath string, e
 		// Download and configure Minio client
 		"curl -o /tmp/mc https://dl.minio.io/client/mc/release/linux-amd64/archive/mc.RELEASE.2017-06-15T03-38-43Z",
 		"&& chmod +x /tmp/mc",
-		"&& /tmp/mc config host add functions-storage http://minio-minio-svc.default:9000 foobar foobarfoo",
+		"&& /tmp/mc config host add functions-storage http://minio.kubeless:9000 $(cat " + credentialsPath + "/accesskey) $(cat " + credentialsPath + "/secretkey)",
 		// Download function file
 		"&& /tmp/mc cp functions-storage/functions/" + objectName + " " + dest,
 		// Validate checksum
@@ -562,6 +567,7 @@ func getCommand(functionFile, checksum, runtime, installPath, depsPath string, e
 			case strings.Contains(runtime, "ruby"):
 				command = append(command, "&& bundle install --gemfile="+depsFile+" --path="+installPath)
 			}
+			command = append(command, "&& cp "+depsFile+" "+installPath)
 		}
 	}
 	commandString = strings.Join(command, " ")
@@ -611,14 +617,14 @@ func updateDeployment(dpm *v1beta1.Deployment, depsVolume, runtime string) {
 }
 
 // configureClient configures tpr client
-func configureClient(config *rest.Config) {
+func configureClient(group, version, apiPath string, config *rest.Config) {
 	groupversion := schema.GroupVersion{
-		Group:   "k8s.io",
-		Version: "v1",
+		Group:   group,
+		Version: version,
 	}
 
 	config.GroupVersion = &groupversion
-	config.APIPath = "/apis"
+	config.APIPath = apiPath
 	config.ContentType = runtime.ContentTypeJSON
 	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
 
@@ -872,6 +878,8 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 	functionPath := "/kubeless"
 	depsVolume := "dependencies"
 	depsPath := "/dependencies"
+	minioCredentials := "minio-key"
+	minioCredentialsPath := "/minio"
 	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes,
 		v1.Volume{
 			Name: depsVolume,
@@ -891,7 +899,31 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 				},
 			},
 		},
+		v1.Volume{
+			Name: minioCredentials,
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: minioCredentials,
+				},
+			},
+		},
 	)
+	// Ensure that the secret is available in the function namespace
+	_, err = client.Core().Secrets(funcObj.Metadata.Namespace).Get(minioCredentials, metav1.GetOptions{})
+	if err != nil && k8sErrors.IsNotFound(err) {
+		// Copy the secret to the function namespace
+		minioSecret, err := client.Core().Secrets("kubeless").Get(minioCredentials, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		minioSecret.Namespace = funcObj.Metadata.Namespace
+		minioSecret.ResourceVersion = ""
+		_, err = client.Core().Secrets(funcObj.Metadata.Namespace).Create(minioSecret)
+		if err != nil {
+			return err
+		}
+	}
+
 	if len(dpm.Spec.Template.Spec.Containers) == 0 {
 		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
 	}
@@ -946,6 +978,7 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		funcObj.Spec.Runtime,
 		functionPath,
 		depsPath,
+		minioCredentialsPath,
 		dpm.Spec.Template.Spec.Containers[0].Env,
 	)
 	if err != nil {
@@ -956,6 +989,10 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		Image:   getInitImage(funcObj.Spec.Runtime),
 		Command: []string{"sh", "-c", initCommand},
 		VolumeMounts: []v1.VolumeMount{
+			{
+				Name:      minioCredentials,
+				MountPath: minioCredentialsPath,
+			},
 			{
 				Name:      functionVolume,
 				MountPath: functionPath,

@@ -113,7 +113,6 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-
 		err = utils.CreateK8sCustomResource(tprClient, f)
 		if err != nil {
 			logrus.Fatal(err)
