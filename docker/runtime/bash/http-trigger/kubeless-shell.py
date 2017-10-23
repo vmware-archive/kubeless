@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from subprocess import call
+from subprocess import Popen, PIPE, STDOUT
 import bottle
 import subprocess
 import os
@@ -8,9 +8,15 @@ import prometheus_client as prom
 
 app = application = bottle.app()
 
+#def func(osparam):
+#    cmdline = 'source /kubeless/%s.sh && %s %s' % (os.getenv('MOD_NAME'), os.getenv('FUNC_HANDLER'), osparam if osparam else '')
+#    subprocess.check_call('bash -c "' + cmdline + '"', shell=True)
+
 def func(osparam):
-    cmdline = 'source /kubeless/%s.sh && %s %s' % (os.getenv('MOD_NAME'), os.getenv('FUNC_HANDLER'), osparam if osparam else '')
-    subprocess.check_call('bash -c "' + cmdline + '"', shell=True)
+    cmdline = '/bin/bash -c "source /kubeless/%s.sh && %s %s "' % (os.getenv('MOD_NAME'), os.getenv('FUNC_HANDLER'), osparam if osparam else '')
+    proc = Popen(cmdline, stdout=PIPE, stderr=STDOUT, shell=True)
+    out = proc.communicate()[0]
+    return out.decode('utf-8')
 
 func_calls = prom.Counter('function_calls_total',
                            'Number of calls to user function',
