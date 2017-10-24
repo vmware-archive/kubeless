@@ -23,30 +23,18 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	// "net"
-	// "net/http"
-	// "net/url"
 	"os"
 	"path"
-	// "strconv"
 	"strings"
 	"time"
 
-	// "github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/spec"
-	// "github.com/kubeless/kubeless/pkg/utils"
-	// "github.com/minio/minio-go"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 	batchv1 "k8s.io/client-go/pkg/apis/batch/v1"
-	// "k8s.io/client-go/rest"
-	// "k8s.io/client-go/tools/portforward"
-	// "k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
-	// k8scmd "k8s.io/kubernetes/pkg/kubectl/cmd"
-	// cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 var functionCmd = &cobra.Command{
@@ -222,8 +210,10 @@ func uploadFunctionToMinio(file, checksum string, cli kubernetes.Interface) (str
 	}
 	// Clean up (delete job)
 	err = cli.BatchV1().Jobs("kubeless").Delete(jobName, &metav1.DeleteOptions{})
-
-	return "http://minio.kubeless:9000/functions/" + fileName, err
+	if err != nil {
+		return "", err
+	}
+	return "http://minio.kubeless:9000/functions/" + fileName, nil
 }
 
 func uploadFunction(file string, cli kubernetes.Interface) (string, string, error) {
@@ -244,18 +234,23 @@ func uploadFunction(file string, cli kubernetes.Interface) (string, string, erro
 	return url, checksum, err
 }
 
-func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function, cli kubernetes.Interface) (f *spec.Function, err error) {
+func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function, cli kubernetes.Interface) (*spec.Function, error) {
 
 	if handler == "" {
 		handler = defaultFunction.Spec.Handler
 	}
 
+	var url, checksum string
 	if file == "" {
 		file = defaultFunction.Spec.File
-	}
-	url, checksum, err := uploadFunction(file, cli)
-	if err != nil {
-		return
+		url = defaultFunction.Spec.URL
+		checksum = defaultFunction.Spec.Checksum
+	} else {
+		var err error
+		url, checksum, err = uploadFunction(file, cli)
+		if err != nil {
+			return &spec.Function{}, err
+		}
 	}
 
 	if deps == "" {
@@ -297,13 +292,12 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, s
 		funcLabels = defaultFunction.Metadata.Labels
 	}
 
-	funcMem := resource.Quantity{}
 	resources := v1.ResourceRequirements{}
 	if mem != "" {
-		funcMem, err = parseMemory(mem)
+		funcMem, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("Wrong format of the memory value: %v", err)
-			return
+			err := fmt.Errorf("Wrong format of the memory value: %v", err)
+			return &spec.Function{}, err
 		}
 		resource := map[v1.ResourceName]resource.Quantity{
 			v1.ResourceMemory: funcMem,
@@ -322,7 +316,7 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, s
 		runtimeImage = defaultFunction.Spec.Template.Spec.Containers[0].Image
 	}
 
-	f = &spec.Function{
+	return &spec.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
 			APIVersion: "k8s.io/v1",
@@ -354,6 +348,5 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, s
 				},
 			},
 		},
-	}
-	return
+	}, nil
 }
