@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -70,6 +71,7 @@ const (
 	ruby24Pubsub    = "bitnami/kubeless-ruby-event-consumer@sha256:938a860dbd9b7fb6b4338248a02c92279315c6e42eed0700128b925d3696b606"
 	dotnetcore2Http = "allantargino/kubeless-dotnetcore@sha256:d321dc4b2c420988d98cdaa22c733743e423f57d1153c89c2b99ff0d944e8a63"
 	busybox         = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
+	unzip           = "andresmgot/kubeless-unzip" // TODO: Publish under official user
 	pubsubFunc      = "PubSub"
 	schedFunc       = "Scheduled"
 )
@@ -496,7 +498,7 @@ func getBranchFromRuntime(runtime string) string {
 }
 
 // specify image for the init container
-func getInitImage(runtime string) string {
+func getInitImagebyRuntime(runtime string) string {
 	switch {
 	case strings.Contains(runtime, "python"):
 		branch := getBranchFromRuntime(runtime)
@@ -516,39 +518,15 @@ func getInitImage(runtime string) string {
 	}
 }
 
-// specify command for the init container
-func getCommand(functionFile, checksum, runtime, installPath, depsPath, credentialsPath string, env []v1.EnvVar) (commandString string, err error) {
-	objectName := functionFile + "." + checksum
-	dest := installPath + "/" + functionFile
-	shaFile := dest + ".sha256"
+func getBuildContainer(runtime, installPath string, env []v1.EnvVar) v1.Container {
 	depName, _ := getRuntimeDepName(runtime)
 	depsFile := depsPath + depName
-
-	command := []string{
-		// Download and configure Minio client
-		"curl -o /tmp/mc https://dl.minio.io/client/mc/release/linux-amd64/archive/mc.RELEASE.2017-06-15T03-38-43Z",
-		"&& chmod +x /tmp/mc",
-		"&& /tmp/mc config host add functions-storage http://minio.kubeless:9000 $(cat " + credentialsPath + "/accesskey) $(cat " + credentialsPath + "/secretkey)",
-		// Download function file
-		"&& /tmp/mc cp functions-storage/functions/" + objectName + " " + dest,
-		// Validate checksum
-		"&& echo " + checksum + " " + dest + " > " + shaFile,
-		"&& sha256sum -c " + shaFile,
-	}
-	if filepath.Ext(functionFile) == ".zip" {
-		command = append(
-			command,
-			"&& apt-get update && apt-get install -y unzip", // TODO: Include it in the base images
-			"&& unzip -o "+dest+" -d "+installPath,
-			"&& rm "+dest,
-		)
-	}
-
+	var command string
 	if depName != "" {
 		if _, err := os.Stat(depsFile); !os.IsNotExist(err) {
 			switch {
 			case strings.Contains(runtime, "python"):
-				command = append(command, "&& pip install --prefix="+installPath+" -r "+depsFile)
+				command = "pip install --prefix=" + installPath + " -r " + depsFile
 			case strings.Contains(runtime, "nodejs"):
 				registry := "https://registry.npmjs.org"
 				scope := ""
@@ -560,18 +538,79 @@ func getCommand(functionFile, checksum, runtime, installPath, depsPath, credenti
 						scope = v.Value + ":"
 					}
 				}
-				command = append(command,
-					"&& npm config set "+scope+"registry "+registry,
-					"&& npm install "+depsPath+" --prefix="+installPath,
-				)
+				command = "npm config set " + scope + "registry " + registry +
+					" && npm install " + depsPath + " --prefix=" + installPath
 			case strings.Contains(runtime, "ruby"):
-				command = append(command, "&& bundle install --gemfile="+depsFile+" --path="+installPath)
+				command = "bundle install --gemfile=" + depsFile + " --path=" + installPath
 			}
-			command = append(command, "&& cp "+depsFile+" "+installPath)
 		}
 	}
-	commandString = strings.Join(command, " ")
-	return
+	return v1.Container{
+		Name:    "install",
+		Image:   getInitImagebyRuntime(runtime),
+		Command: []string{"sh", "-c"},
+		Args:    []string{command},
+		VolumeMounts: []v1.VolumeMount{
+			{
+				Name:      functionVolume,
+				MountPath: functionPath,
+			},
+		},
+		WorkingDir:      functionPath,
+		ImagePullPolicy: v1.PullIfNotPresent,
+		Env:             env,
+	}
+}
+
+func getProvisionContainer(functionFile, checksum, fileURL, runtime, installPath, depsPath string) (v1.Container, error) {
+	dest := path.Join(installPath, functionFile)
+	depName, _ := getRuntimeDepName(runtime)
+	depsFile := path.Join(depsPath, depName)
+
+	prepareCommand := []string{
+		// Download function file
+		"curl -L " + fileURL + " -o " + dest,
+	}
+	// Validate checksum
+	checksumInfo := strings.Split(checksum, ":")
+	switch checksumInfo[0] {
+	case "sha256":
+		shaFile := dest + ".sha256"
+		prepareCommand = append(prepareCommand,
+			"&& echo '"+checksumInfo[1]+"  "+dest+"' > "+shaFile,
+			"&& sha256sum -c "+shaFile,
+		)
+		break
+	default:
+		return v1.Container{}, fmt.Errorf("Unable to verify checksum %s: Unknown format", checksum)
+	}
+	if filepath.Ext(functionFile) == ".zip" {
+		prepareCommand = append(
+			prepareCommand,
+			"&& unzip -o "+dest+" -d "+installPath,
+			"&& rm "+dest,
+		)
+	}
+	// Copy deps file to the installation path
+	prepareCommand = append(prepareCommand, "&& cp "+depsFile+" "+installPath)
+
+	return v1.Container{
+		Name:    "prepare",
+		Image:   unzip,
+		Command: []string{"sh", "-c"},
+		Args:    []string{strings.Join(prepareCommand, " ")},
+		VolumeMounts: []v1.VolumeMount{
+			{
+				Name:      functionVolume,
+				MountPath: functionPath,
+			},
+			{
+				Name:      depsVolume,
+				MountPath: depsPath,
+			},
+		},
+		ImagePullPolicy: v1.PullIfNotPresent,
+	}, nil
 }
 
 // update deployment object in case of custom runtime
@@ -821,6 +860,15 @@ func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 	return err
 }
 
+const (
+	functionVolume       = "function"
+	functionPath         = "/kubeless"
+	depsVolume           = "dependencies"
+	depsPath             = "/dependencies"
+	minioCredentials     = "minio-key"
+	minioCredentialsPath = "/minio"
+)
+
 func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
 	podAnnotations := map[string]string{
 		// Attempt to attract the attention of prometheus.
@@ -874,12 +922,6 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		}
 	}
 
-	functionVolume := "function"
-	functionPath := "/kubeless"
-	depsVolume := "dependencies"
-	depsPath := "/dependencies"
-	minioCredentials := "minio-key"
-	minioCredentialsPath := "/minio"
 	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes,
 		v1.Volume{
 			Name: depsVolume,
@@ -966,55 +1008,33 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		MountPath: functionPath,
 	})
 
-	//prepare init-container for custom runtime
-	// ensure that the runtime is supported for installing dependencies
-	_, err = getRuntimeDepName(funcObj.Spec.Runtime)
-	if funcObj.Spec.Deps != "" && err != nil {
-		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
-	}
-	initCommand, err := getCommand(
+	// prepare init-containers
+	provisionContainer, err := getProvisionContainer(
 		funcObj.Spec.File,
 		funcObj.Spec.Checksum,
+		funcObj.Spec.URL,
 		funcObj.Spec.Runtime,
 		functionPath,
 		depsPath,
-		minioCredentialsPath,
-		dpm.Spec.Template.Spec.Containers[0].Env,
 	)
 	if err != nil {
 		return err
 	}
-	initContainer := v1.Container{
-		Name:    "install",
-		Image:   getInitImage(funcObj.Spec.Runtime),
-		Command: []string{"sh", "-c", initCommand},
-		VolumeMounts: []v1.VolumeMount{
-			{
-				Name:      minioCredentials,
-				MountPath: minioCredentialsPath,
-			},
-			{
-				Name:      functionVolume,
-				MountPath: functionPath,
-			},
-			{
-				Name:      depsVolume,
-				MountPath: depsPath,
-			},
-		},
-		WorkingDir:      depsPath,
-		ImagePullPolicy: v1.PullIfNotPresent,
+	dpm.Spec.Template.Spec.InitContainers = []v1.Container{provisionContainer}
+	// ensure that the runtime is supported for installing dependencies
+	_, err = getRuntimeDepName(funcObj.Spec.Runtime)
+	if funcObj.Spec.Deps != "" && err != nil {
+		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
+	} else if funcObj.Spec.Deps != "" {
+		dpm.Spec.Template.Spec.InitContainers = append(
+			dpm.Spec.Template.Spec.InitContainers,
+			getBuildContainer(funcObj.Spec.Runtime, functionPath, dpm.Spec.Template.Spec.Containers[0].Env),
+		)
+		// update deployment for loading dependencies
+		updateDeployment(dpm, depsVolume, funcObj.Spec.Runtime)
 	}
-	initContainer.Env = dpm.Spec.Template.Spec.Containers[0].Env
-	// update deployment for custom runtime
-	updateDeployment(dpm, depsVolume, funcObj.Spec.Runtime)
 	//TODO: remove this when init containers becomes a stable feature
 	addInitContainerAnnotation(dpm)
-
-	// only append non-empty initContainer
-	if initContainer.Name != "" {
-		dpm.Spec.Template.Spec.InitContainers = append(dpm.Spec.Template.Spec.InitContainers, initContainer)
-	}
 
 	// add liveness Probe to deployment
 	if funcObj.Spec.Type != pubsubFunc {

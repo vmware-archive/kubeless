@@ -94,7 +94,8 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		f, err := getFunctionDescription(funcName, ns, handler, file, "", runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, previousFunction)
+		cli := utils.GetClientOutOfCluster()
+		f, err := getFunctionDescription(funcName, ns, handler, file, "", runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, previousFunction, cli)
 		if err != nil {
 			logrus.Fatal(err)
 		}

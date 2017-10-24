@@ -104,7 +104,8 @@ var deployCmd = &cobra.Command{
 			}
 		}
 
-		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, spec.Function{})
+		cli := utils.GetClientOutOfCluster()
+		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, spec.Function{}, cli)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -113,6 +114,7 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		logrus.Infof("Creating function...")
 		err = utils.CreateK8sCustomResource(tprClient, f)
 		if err != nil {
 			logrus.Fatal(err)

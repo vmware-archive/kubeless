@@ -1,18 +1,9 @@
+# NOTE:
+# It is necessary to first deploy a secret that minio will use
+# for retrieving the username and password. To generate it
+# execute:
+# $ kubectl create secret generic minio-key --namespace kubeless --from-literal=accesskey=<username> --from-literal=secretkey=<password>
 ---
-# Source: minio/templates/minio_secret.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: minio-key
-  namespace: kubeless
-  labels:
-    kubeless: minio
-type: Opaque
-data:
-  accesskey: Zm9vYmFy
-  secretkey: Zm9vYmFyZm9v
----
-# Source: minio/templates/minio_pvc.yaml
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
@@ -27,7 +18,6 @@ spec:
     requests:
       storage: "10Gi"
 ---
-# Source: minio/templates/minio_svc.yaml
 kind: Service
 apiVersion: v1
 metadata:
@@ -43,7 +33,6 @@ spec:
       targetPort: 9000
       protocol: TCP
 ---
-# Source: minio/templates/minio_deployment.yaml
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -108,3 +97,29 @@ spec:
             requests:
               cpu: 250m
               memory: 256Mi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: set-policy
+  namespace: kubeless
+spec:
+  template:
+    metadata:
+      name:  set-policy
+    spec:
+      volumes:
+        - name: keys
+          secret:
+            secretName: minio-key
+      containers:
+      - name:  set-policy
+        image: minio/mc:RELEASE.2017-10-14T00-51-16Z
+        command: ["sh", "-c"]
+        args: [ "\
+          mc config host add minioserver http://minio.kubeless:9000 $(cat /minio-cred/accesskey) $(cat /minio-cred/secretkey) &&  \
+          mc policy download minioserver/functions" ]
+        volumeMounts:
+          - name: keys
+            mountPath: /minio-cred
+      restartPolicy: OnFailure

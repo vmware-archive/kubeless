@@ -31,14 +31,15 @@ type Function struct {
 
 // FunctionSpec contains func specification
 type FunctionSpec struct {
-	Handler  string             `json:"handler"`
-	File     string             `json:"file"`
-	Checksum string             `json:"checksum"`
-	Runtime  string             `json:"runtime"`
-	Type     string             `json:"type"`
-	Topic    string             `json:"topic"`
-	Schedule string             `json:"schedule"`
-	Deps     string             `json:"deps"`
+	Handler  string             `json:"handler"`  // Function handler: "file.function"
+	File     string             `json:"file"`     // Function file name
+	URL      string             `json:"url"`      // URL to download the function content
+	Checksum string             `json:"checksum"` // Checksum of the file
+	Runtime  string             `json:"runtime"`  // Function runtime to use
+	Type     string             `json:"type"`     // Function trigger type
+	Topic    string             `json:"topic"`    // Function topic trigger (for PubSub type)
+	Schedule string             `json:"schedule"` // Function scheduled time (for Schedule type)
+	Deps     string             `json:"deps"`     // Function dependencies
 	Template v1.PodTemplateSpec `json:"template" protobuf:"bytes,3,opt,name=template"`
 }
 

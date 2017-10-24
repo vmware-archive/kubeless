@@ -23,28 +23,30 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
-	"net/http"
-	"net/url"
+	// "net"
+	// "net/http"
+	// "net/url"
 	"os"
 	"path"
-	"strconv"
+	// "strconv"
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	// "github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/spec"
-	"github.com/kubeless/kubeless/pkg/utils"
-	"github.com/minio/minio-go"
+	// "github.com/kubeless/kubeless/pkg/utils"
+	// "github.com/minio/minio-go"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/portforward"
-	"k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
-	k8scmd "k8s.io/kubernetes/pkg/kubectl/cmd"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	batchv1 "k8s.io/client-go/pkg/apis/batch/v1"
+	// "k8s.io/client-go/rest"
+	// "k8s.io/client-go/tools/portforward"
+	// "k8s.io/kubernetes/pkg/client/unversioned/remotecommand"
+	// k8scmd "k8s.io/kubernetes/pkg/kubectl/cmd"
+	// cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
 var functionCmd = &cobra.Command{
@@ -119,235 +121,130 @@ func parseMemory(mem string) (resource.Quantity, error) {
 	return quantity, nil
 }
 
-func getFileSha256(file string) (sha256Sum [32]byte, checksum string, err error) {
-	content, err := ioutil.ReadFile(file)
-	if err != nil {
-		return
-	}
+func getFileSha256(file string) (string, error) {
+	var checksum string
 	h := sha256.New()
 	ff, err := os.Open(file)
 	if err != nil {
-		return
+		return checksum, err
 	}
 	defer ff.Close()
 	_, err = io.Copy(h, ff)
 	if err != nil {
-		return
+		return checksum, err
 	}
-	sha256Sum = sha256.Sum256(content)
 	checksum = hex.EncodeToString(h.Sum(nil))
-	return
+	return checksum, err
 }
 
-type defaultPortForwarder struct {
-	cmdOut, cmdErr io.Writer
-}
-
-func (f *defaultPortForwarder) ForwardPorts(method string, url *url.URL, opts k8scmd.PortForwardOptions) error {
-	dialer, err := remotecommand.NewExecutor(opts.Config, method, url)
-	if err != nil {
-		return err
-	}
-	fw, err := portforward.New(dialer, opts.Ports, opts.StopChannel, opts.ReadyChannel, f.cmdOut, f.cmdErr)
-	if err != nil {
-		return err
-	}
-	return fw.ForwardPorts()
-}
-
-func getLocalPort() (string, error) {
-	for i := 30000; i < 65535; i++ {
-		conn, err := net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(i))
+func waitForCompletedJob(jobName, namespace string, timeout int, cli kubernetes.Interface) error {
+	counter := 0
+	for counter < timeout {
+		j, err := cli.BatchV1().Jobs(namespace).Get(jobName, metav1.GetOptions{})
 		if err != nil {
-			return strconv.Itoa(i), nil
+			return err
 		}
-		conn.Close()
-	}
-	return "", errors.New("Can not find an unassigned port")
-}
-
-const (
-	maxRetries       = 5
-	defaultTimeSleep = 1
-)
-
-func waitForHTTPServer(host, port string) error {
-	// Build the request
-	req, err := http.NewRequest(
-		"GET",
-		"http://"+host+":"+port,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	// Execute the request
-	resp, err := http.DefaultClient.Do(req)
-	retries := 0
-	for err != nil && retries < maxRetries {
-		retries++
+		if j.Status.Failed == 1 {
+			err = fmt.Errorf("Unable to run upload job. Received: %s", j.Status.Conditions[0].Message)
+			return err
+		} else if j.Status.Succeeded == 1 {
+			return nil
+		}
 		time.Sleep(time.Duration(time.Second))
-		resp, err = http.DefaultClient.Do(req)
+		counter++
 	}
-	resp.Body.Close()
-	return err
+	return fmt.Errorf("Upload job has not finished after %s seconds", string(timeout))
 }
 
-func runPortForward(f cmdutil.Factory, k8sClient *rest.RESTClient, podName, port string) (err error) {
-	clientset, err := f.ClientSet()
-	if err != nil {
-		return err
-	}
-	k8sClientConfig, err := f.ClientConfig()
-	if err != nil {
-		return err
-	}
-
-	portSlice := []string{port + ":9000"}
-	go func() {
-		devNull, err := os.Open(os.DevNull)
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		pfo := k8scmd.PortForwardOptions{
-			RESTClient: k8sClient,
-			Namespace:  "kubeless",
-			Config:     k8sClientConfig,
-			PodName:    podName,
-			PodClient:  clientset.Core(),
-			Ports:      portSlice,
-			PortForwarder: &defaultPortForwarder{
-				cmdOut: devNull,
-				cmdErr: os.Stderr,
+func uploadFunctionToMinio(file, checksum string, cli kubernetes.Interface) (string, error) {
+	minioCredentials := "minio-key"
+	jobName := "upload-file"
+	fileName := path.Base(file) + "." + checksum
+	job := batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      jobName,
+			Namespace: "kubeless",
+		},
+		Spec: batchv1.JobSpec{
+			Template: v1.PodTemplateSpec{
+				Spec: v1.PodSpec{
+					Volumes: []v1.Volume{
+						v1.Volume{
+							Name: minioCredentials,
+							VolumeSource: v1.VolumeSource{
+								Secret: &v1.SecretVolumeSource{
+									SecretName: minioCredentials,
+								},
+							},
+						},
+						v1.Volume{
+							Name: "func",
+							VolumeSource: v1.VolumeSource{
+								HostPath: &v1.HostPathVolumeSource{
+									Path: file,
+								},
+							},
+						},
+					},
+					RestartPolicy: v1.RestartPolicyNever,
+					Containers: []v1.Container{
+						v1.Container{
+							Name:  "uploader",
+							Image: "minio/mc:RELEASE.2017-10-14T00-51-16Z",
+							VolumeMounts: []v1.VolumeMount{
+								v1.VolumeMount{
+									Name:      minioCredentials,
+									MountPath: "/minio-cred",
+								},
+								v1.VolumeMount{
+									Name:      "func",
+									MountPath: "/" + path.Base(file),
+								},
+							},
+							Command: []string{"sh", "-c"},
+							Args: []string{
+								"mc config host add minioserver http://minio.kubeless:9000 $(cat /minio-cred/accesskey) $(cat /minio-cred/secretkey); " +
+									"mc cp /" + path.Base(file) + " minioserver/functions/" + fileName,
+							},
+						},
+					},
+				},
 			},
-			StopChannel:  make(chan struct{}, 1),
-			ReadyChannel: make(chan struct{}),
-		}
-		err = pfo.RunPortForward()
-		if err != nil {
-			logrus.Fatalf("Connection failed: %v", err)
-		}
+		},
+	}
+	_, err := cli.BatchV1().Jobs("kubeless").Create(&job)
+	if err != nil {
+		return "", err
+	}
+	err = waitForCompletedJob(jobName, "kubeless", 120, cli)
+	if err != nil {
+		return "", err
+	}
+	// Clean up (delete job)
+	err = cli.BatchV1().Jobs("kubeless").Delete(jobName, &metav1.DeleteOptions{})
 
-	}()
-	return
+	return "http://minio.kubeless:9000/functions/" + fileName, err
 }
 
-func getMinioURLFromOutsideCluster() (url string, err error) {
-	f := cmdutil.NewFactory(nil)
-	k8sClient, err := f.RESTClient()
-	if err != nil {
-		return
-	}
-
-	pods := &v1.PodList{}
-	pod := v1.Pod{}
-	k8sClient.Get().Namespace("kubeless").Resource("pods").Do().Into(pods)
-	for i := range pods.Items {
-		if pods.Items[i].Labels["kubeless"] == "minio" {
-			pod = pods.Items[i]
-			break
-		}
-	}
-
-	port, err := getLocalPort()
-	if err != nil {
-		return
-	}
-
-	// Minio requires to serve content at "root" eg. minio.com:9000
-	// so instead of using the Kubernetes Proxy we need to run
-	// a port forward to Minio's pod
-	runPortForward(f, k8sClient, pod.Name, port)
-	err = waitForHTTPServer("localhost", port)
-	if err != nil {
-		return
-	}
-	url = "localhost:" + port
-	return
-}
-
-func getMinioObject(minioClient minio.Client, bucket, name string) (object []byte, err error) {
-	var dir string
-	dir, err = ioutil.TempDir("", "")
-	if err != nil {
-		return
-	}
-	defer os.RemoveAll(dir)
-
-	err = minioClient.FGetObject(bucket, name, path.Join(dir, name), minio.GetObjectOptions{})
-	if err != nil {
-		return
-	}
-	object, err = ioutil.ReadFile(path.Join(dir, name))
-	return
-}
-
-func getMinioClient(endpoint string) (minioClient *minio.Client, err error) {
-	cli, err := utils.GetRestClientOutOfCluster("", "v1", "/api")
-	if err != nil {
-		return
-	}
-	result := &v1.Secret{}
-	cli.Get().
-		Namespace("kubeless").
-		Resource("secrets").
-		Name("minio-key").
-		Do().
-		Into(result)
-
-	accessKeyID := string(result.Data["accesskey"])
-	secretAccessKey := string(result.Data["secretkey"])
-	useSSL := false
-	minioClient, err = minio.New(endpoint, accessKeyID, secretAccessKey, useSSL)
-	return
-}
-
-func uploadFunction(file string) (checksum string, err error) {
-
+func uploadFunction(file string, cli kubernetes.Interface) (string, string, error) {
+	var checksum string
 	stats, err := os.Stat(file)
 	if stats.Size() > int64(52428800) { // TODO: Make the max file size configurable
 		err = errors.New("The maximum size of a function is 50MB")
-		return
+		return "", "", err
 	}
-	sha256Sum, checksum, err := getFileSha256(file)
-
-	endpoint, err := getMinioURLFromOutsideCluster()
+	checksum, err = getFileSha256(file)
 	if err != nil {
-		return
+		return "", "", err
 	}
-	minioClient, err := getMinioClient(endpoint)
+	url, err := uploadFunctionToMinio(file, checksum, cli)
 	if err != nil {
-		return
+		return "", "", err
 	}
-	bucketName := "functions"
-	objectName := path.Base(file) + "." + checksum
-
-	_, getObjectErr := minioClient.StatObject(bucketName, objectName, minio.StatObjectOptions{})
-	if getObjectErr == nil {
-		// File already exists, validate checksum
-		var previousObject []byte
-		previousObject, err = getMinioObject(*minioClient, bucketName, objectName)
-		if err != nil {
-			return
-		}
-		uploadedSha256 := sha256.Sum256(previousObject)
-		if sha256Sum != uploadedSha256 {
-			err = fmt.Errorf("The function %s has an invalid checksum %s", objectName, uploadedSha256)
-			return
-		}
-		logrus.Infof("Skipping function storage since %s is already present", file)
-	} else {
-		// Upload the yaml file with FPutObject
-		_, err = minioClient.FPutObject(bucketName, objectName, file, minio.PutObjectOptions{})
-		if err != nil {
-			return
-		}
-	}
-	return
+	return url, checksum, err
 }
 
-func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function) (f *spec.Function, err error) {
+func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function, cli kubernetes.Interface) (f *spec.Function, err error) {
 
 	if handler == "" {
 		handler = defaultFunction.Spec.Handler
@@ -356,7 +253,7 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, s
 	if file == "" {
 		file = defaultFunction.Spec.File
 	}
-	checksum, err := uploadFunction(file)
+	url, checksum, err := uploadFunction(file, cli)
 	if err != nil {
 		return
 	}
@@ -440,7 +337,8 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, s
 			Runtime:  runtime,
 			Type:     funcType,
 			File:     path.Base(file),
-			Checksum: checksum,
+			URL:      url,
+			Checksum: "sha256:" + checksum,
 			Deps:     deps,
 			Topic:    topic,
 			Schedule: schedule,
