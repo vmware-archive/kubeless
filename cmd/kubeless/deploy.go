@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"io/ioutil"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -98,10 +99,11 @@ var deployCmd = &cobra.Command{
 
 		funcDeps := ""
 		if deps != "" {
-			funcDeps, err = readFile(deps)
+			bytes, err := ioutil.ReadFile(deps)
 			if err != nil {
 				logrus.Fatalf("Unable to read file %s: %v", deps, err)
 			}
+			funcDeps = string(bytes[:])
 		}
 
 		cli := utils.GetClientOutOfCluster()

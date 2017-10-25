@@ -18,11 +18,13 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -69,14 +71,6 @@ func getKV(input string) (string, string) {
 	}
 
 	return key, value
-}
-
-func readFile(file string) (string, error) {
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		return "", err
-	}
-	return string(data[:]), nil
 }
 
 func parseLabel(labels []string) map[string]string {
@@ -216,10 +210,15 @@ func uploadFunctionToMinio(file, checksum string, cli kubernetes.Interface) (str
 	return "http://minio.kubeless:9000/functions/" + fileName, nil
 }
 
+// Convert MB to Bytes as int64
+func mbtoInt64(mb int) int64 {
+	return int64(mb * 1024 * 1024)
+}
+
 func uploadFunction(file string, cli kubernetes.Interface) (string, string, error) {
 	var checksum string
 	stats, err := os.Stat(file)
-	if stats.Size() > int64(52428800) { // TODO: Make the max file size configurable
+	if stats.Size() > mbtoInt64(50) { // TODO: Make the max file size configurable
 		err = errors.New("The maximum size of a function is 50MB")
 		return "", "", err
 	}
@@ -234,22 +233,65 @@ func uploadFunction(file string, cli kubernetes.Interface) (string, string, erro
 	return url, checksum, err
 }
 
+func isMinioAvailable(cli kubernetes.Interface) bool {
+	_, err := cli.Core().Services("kubeless").Get("minio", metav1.GetOptions{})
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function, cli kubernetes.Interface) (*spec.Function, error) {
 
 	if handler == "" {
 		handler = defaultFunction.Spec.Handler
 	}
 
-	var url, checksum string
+	var function, checksum, contentType string
 	if file == "" {
 		file = defaultFunction.Spec.File
-		url = defaultFunction.Spec.URL
+		contentType = defaultFunction.Spec.ContentType
+		function = defaultFunction.Spec.Function
 		checksum = defaultFunction.Spec.Checksum
 	} else {
 		var err error
-		url, checksum, err = uploadFunction(file, cli)
-		if err != nil {
-			return &spec.Function{}, err
+		if isMinioAvailable(cli) {
+			function, checksum, err = uploadFunction(file, cli)
+			contentType = "URL"
+			if err != nil {
+				return &spec.Function{}, err
+			}
+		} else {
+			// If an object storage service is not available check
+			// that the file is not over 1MB to store it as a Custom Resource
+			stats, err := os.Stat(file)
+			if err != nil {
+				return &spec.Function{}, err
+			}
+			if stats.Size() > mbtoInt64(1) {
+				err = errors.New("Unable to deploy functions over 1MB withouth a storage service")
+				return &spec.Function{}, err
+			}
+			functionBytes, err := ioutil.ReadFile(file)
+			if err != nil {
+				return &spec.Function{}, err
+			}
+			if err != nil {
+				return &spec.Function{}, err
+			}
+			fileType := http.DetectContentType(functionBytes)
+			if strings.Contains(fileType, "text/plain") {
+				function = string(functionBytes[:])
+				contentType = "text"
+			} else {
+				function = base64.StdEncoding.EncodeToString(functionBytes)
+				contentType = "base64"
+			}
+			c, err := getFileSha256(file)
+			checksum = "sha256:" + c
+			if err != nil {
+				return &spec.Function{}, err
+			}
 		}
 	}
 
@@ -327,15 +369,16 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, s
 			Labels:    funcLabels,
 		},
 		Spec: spec.FunctionSpec{
-			Handler:  handler,
-			Runtime:  runtime,
-			Type:     funcType,
-			File:     path.Base(file),
-			URL:      url,
-			Checksum: "sha256:" + checksum,
-			Deps:     deps,
-			Topic:    topic,
-			Schedule: schedule,
+			Handler:     handler,
+			Runtime:     runtime,
+			Type:        funcType,
+			Function:    function,
+			File:        path.Base(file),
+			Checksum:    checksum,
+			ContentType: contentType,
+			Deps:        deps,
+			Topic:       topic,
+			Schedule:    schedule,
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{

@@ -109,7 +109,8 @@ func TestDeleteK8sResources(t *testing.T) {
 }
 
 func check(runtime, fname string, values []string, t *testing.T) {
-	fileName, depName := GetFunctionFileNames(runtime, fname)
+	fileName := getFunctionFileName(fname, runtime)
+	depName, _ := getRuntimeDepName(runtime)
 	if depName != values[0] {
 		t.Fatalf("Retrieving the image returned a wrong dependencies file. Received " + depName + " while expecting " + values[0])
 	}
@@ -172,7 +173,17 @@ func TestGetFunctionImage(t *testing.T) {
 }
 
 func TestEnsureK8sResources(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+
+	myNsFoo := metav1.ObjectMeta{
+		Namespace: "kubeless",
+		Name:      "minio-key",
+	}
+
+	secret := v1.Secret{
+		ObjectMeta: myNsFoo,
+	}
+
+	clientset := fake.NewSimpleClientset(&secret)
 	ns := "myns"
 	func1 := "foo1"
 
@@ -337,10 +348,11 @@ func TestEnsureK8sResources(t *testing.T) {
 		t.Fatalf("Creating resources returned err: %v", err)
 	}
 	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get(func3, metav1.GetOptions{})
-	if len(dpm.Spec.Template.Spec.InitContainers) == 0 {
+	t.Log(dpm.Spec.Template.Spec.InitContainers[1].Args)
+	if len(dpm.Spec.Template.Spec.InitContainers) != 2 {
 		t.Errorf("Init container should be defined when dependencies are specified")
 	}
-	if match, _ := regexp.MatchString("npm config set @kubeless:registry http://my-registry.com", strings.Join(dpm.Spec.Template.Spec.InitContainers[0].Command, " ")); !match {
+	if match, _ := regexp.MatchString("npm config set @kubeless:registry http://my-registry.com", strings.Join(dpm.Spec.Template.Spec.InitContainers[1].Args, " ")); !match {
 		t.Errorf("Unable to set the NPM registry")
 	}
 
@@ -375,10 +387,14 @@ func TestEnsureK8sResources(t *testing.T) {
 		t.Fatalf("Creating resources returned err: %v", err)
 	}
 	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get(func4, metav1.GetOptions{})
-	if len(dpm.Spec.Template.Spec.InitContainers) == 0 {
+	if len(dpm.Spec.Template.Spec.InitContainers) != 2 {
 		t.Errorf("Init container should be defined when dependencies are specified")
 	}
-	if match, _ := regexp.MatchString("custom-image", dpm.Spec.Template.Spec.Containers[0].Image); !match {
+	match, err := regexp.MatchString("custom-image", dpm.Spec.Template.Spec.Containers[0].Image)
+	if err != nil {
+		t.Error(err)
+	}
+	if !match {
 		t.Errorf("Unable to set a custom image ID")
 	}
 

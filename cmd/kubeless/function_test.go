@@ -17,13 +17,17 @@ limitations under the License.
 package main
 
 import (
+	"io/ioutil"
 	"k8s.io/client-go/pkg/api/v1"
+	"os"
+	"path"
 	"reflect"
 	"testing"
 
 	"github.com/kubeless/kubeless/pkg/spec"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestParseLabel(t *testing.T) {
@@ -81,7 +85,18 @@ func TestParseEnv(t *testing.T) {
 
 func TestGetFunctionDescription(t *testing.T) {
 	// It should take parse the given values
-	result, err := getFunctionDescription("test", "default", "file.handler", "function", "dependencies", "runtime", "", "", "test-image", "128Mi", true, []string{"TEST=1"}, []string{"test=1"}, spec.Function{})
+	file, err := ioutil.TempFile("", "test")
+	if err != nil {
+		t.Error(err)
+	}
+	function := "function"
+	_, err = file.WriteString(function)
+	if err != nil {
+		t.Error(err)
+	}
+	defer os.Remove(file.Name()) // clean up
+
+	result, err := getFunctionDescription("test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", true, []string{"TEST=1"}, []string{"test=1"}, spec.Function{}, fake.NewSimpleClientset())
 	if err != nil {
 		t.Error(err)
 	}
@@ -99,13 +114,16 @@ func TestGetFunctionDescription(t *testing.T) {
 			},
 		},
 		Spec: spec.FunctionSpec{
-			Handler:  "file.handler",
-			Runtime:  "runtime",
-			Type:     "HTTP",
-			Function: "function",
-			Deps:     "dependencies",
-			Topic:    "",
-			Schedule: "",
+			Handler:     "file.handler",
+			Runtime:     "runtime",
+			Type:        "HTTP",
+			Function:    "function",
+			Checksum:    "sha256:78f9ac018e554365069108352dacabb7fbd15246edf19400677e3b54fe24e126",
+			File:        path.Base(file.Name()),
+			ContentType: "text",
+			Deps:        "dependencies",
+			Topic:       "",
+			Schedule:    "",
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -134,7 +152,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should take the default values
-	result2, err := getFunctionDescription("test", "default", "", "", "", "", "", "", "", "", false, []string{}, []string{}, expectedFunction)
+	result2, err := getFunctionDescription("test", "default", "", "", "", "", "", "", "", "", false, []string{}, []string{}, expectedFunction, fake.NewSimpleClientset())
 	if err != nil {
 		t.Error(err)
 	}
@@ -143,7 +161,8 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// Given parameters should take precedence from default values
-	result3, err := getFunctionDescription("test", "default", "file.handler2", "function2", "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", false, []string{"TEST=2"}, []string{"test=2"}, expectedFunction)
+	file.WriteString("-modified") // Add text to the file
+	result3, err := getFunctionDescription("test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", false, []string{"TEST=2"}, []string{"test=2"}, expectedFunction, fake.NewSimpleClientset())
 	if err != nil {
 		t.Error(err)
 	}
@@ -161,13 +180,16 @@ func TestGetFunctionDescription(t *testing.T) {
 			},
 		},
 		Spec: spec.FunctionSpec{
-			Handler:  "file.handler2",
-			Runtime:  "runtime2",
-			Type:     "PubSub",
-			Function: "function2",
-			Deps:     "dependencies2",
-			Topic:    "test_topic",
-			Schedule: "",
+			Handler:     "file.handler2",
+			Runtime:     "runtime2",
+			Type:        "PubSub",
+			Function:    "function-modified",
+			File:        path.Base(file.Name()),
+			ContentType: "text",
+			Checksum:    "sha256:1958eb96d7d3cadedd0f327f09322eb7db296afb282ed91aa66cb4ab0dcc3c9f",
+			Deps:        "dependencies2",
+			Topic:       "test_topic",
+			Schedule:    "",
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
