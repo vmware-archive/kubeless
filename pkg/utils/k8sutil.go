@@ -885,6 +885,34 @@ func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 	return err
 }
 
+func prepareMinioSecret(minioSecret *v1.Secret, namespace string, deployment *v1beta1.Deployment, client kubernetes.Interface) error {
+	// Ensure that the secret is available in the function namespace
+	_, err := client.Core().Secrets("kubeless").Get(minioSecret.Name, metav1.GetOptions{})
+	if err != nil && k8sErrors.IsNotFound(err) {
+		// Copy the secret to the function namespace
+		var newSecret *v1.Secret
+		*newSecret = *minioSecret
+		newSecret.Namespace = namespace
+		newSecret.ResourceVersion = ""
+		_, err = client.Core().Secrets(namespace).Create(newSecret)
+		if err != nil {
+			return err
+		}
+	}
+	// Mount the secret in the deployment
+	deployment.Spec.Template.Spec.Volumes = append(deployment.Spec.Template.Spec.Volumes,
+		v1.Volume{
+			Name: minioSecret.Name,
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: minioSecret.Name,
+				},
+			},
+		},
+	)
+	return err
+}
+
 func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
 	const (
 		runtimePath          = "/kubeless"
@@ -946,15 +974,13 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		}
 	}
 
+	// Check if minio is available
+	minioSecret, err := client.Core().Secrets("kubeless").Get(minioCredentials, metav1.GetOptions{})
+	if err == nil {
+		prepareMinioSecret(minioSecret, funcObj.Metadata.Namespace, dpm, client)
+	}
+
 	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes,
-		v1.Volume{
-			Name: minioCredentials,
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
-					SecretName: minioCredentials,
-				},
-			},
-		},
 		v1.Volume{
 			Name: runtimeVolumeName,
 			VolumeSource: v1.VolumeSource{
@@ -981,21 +1007,6 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 	depsVolumeMount := v1.VolumeMount{
 		Name:      depsVolumeName,
 		MountPath: depsPath,
-	}
-	// Ensure that the secret is available in the function namespace
-	_, err = client.Core().Secrets(funcObj.Metadata.Namespace).Get(minioCredentials, metav1.GetOptions{})
-	if err != nil && k8sErrors.IsNotFound(err) {
-		// Copy the secret to the function namespace
-		minioSecret, err := client.Core().Secrets("kubeless").Get(minioCredentials, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		minioSecret.Namespace = funcObj.Metadata.Namespace
-		minioSecret.ResourceVersion = ""
-		_, err = client.Core().Secrets(funcObj.Metadata.Namespace).Create(minioSecret)
-		if err != nil {
-			return err
-		}
 	}
 
 	if len(dpm.Spec.Template.Spec.Containers) == 0 {
@@ -1037,21 +1048,23 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		})
 	dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, runtimeVolumeMount)
 
-	// prepare init-containers
-	provisionContainer, err := getProvisionContainer(
-		funcObj.Spec.Function,
-		funcObj.Spec.Checksum,
-		funcObj.Spec.File,
-		funcObj.Spec.ContentType,
-		funcObj.Spec.Handler,
-		funcObj.Spec.Runtime,
-		runtimeVolumeMount,
-		depsVolumeMount,
-	)
-	if err != nil {
-		return err
+	// prepare init-containers if some function is specified
+	if funcObj.Spec.Function != "" {
+		provisionContainer, err := getProvisionContainer(
+			funcObj.Spec.Function,
+			funcObj.Spec.Checksum,
+			funcObj.Spec.File,
+			funcObj.Spec.ContentType,
+			funcObj.Spec.Handler,
+			funcObj.Spec.Runtime,
+			runtimeVolumeMount,
+			depsVolumeMount,
+		)
+		if err != nil {
+			return err
+		}
+		dpm.Spec.Template.Spec.InitContainers = []v1.Container{provisionContainer}
 	}
-	dpm.Spec.Template.Spec.InitContainers = []v1.Container{provisionContainer}
 	// ensure that the runtime is supported for installing dependencies
 	_, err = getRuntimeDepName(funcObj.Spec.Runtime)
 	if funcObj.Spec.Deps != "" && err != nil {
