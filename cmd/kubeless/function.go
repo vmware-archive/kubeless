@@ -151,7 +151,7 @@ func uploadFunctionToMinio(file, checksum string, cli kubernetes.Interface) (str
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Volumes: []v1.Volume{
-						v1.Volume{
+						{
 							Name: minioCredentials,
 							VolumeSource: v1.VolumeSource{
 								Secret: &v1.SecretVolumeSource{
@@ -159,7 +159,7 @@ func uploadFunctionToMinio(file, checksum string, cli kubernetes.Interface) (str
 								},
 							},
 						},
-						v1.Volume{
+						{
 							Name: "func",
 							VolumeSource: v1.VolumeSource{
 								HostPath: &v1.HostPathVolumeSource{
@@ -170,15 +170,15 @@ func uploadFunctionToMinio(file, checksum string, cli kubernetes.Interface) (str
 					},
 					RestartPolicy: v1.RestartPolicyNever,
 					Containers: []v1.Container{
-						v1.Container{
+						{
 							Name:  "uploader",
 							Image: "minio/mc:RELEASE.2017-10-14T00-51-16Z",
 							VolumeMounts: []v1.VolumeMount{
-								v1.VolumeMount{
+								{
 									Name:      minioCredentials,
 									MountPath: "/minio-cred",
 								},
-								v1.VolumeMount{
+								{
 									Name:      "func",
 									MountPath: "/" + path.Base(file),
 								},
