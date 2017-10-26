@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"os"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -107,71 +107,6 @@ func TestDeleteK8sResources(t *testing.T) {
 		}
 	}
 }
-
-func check(runtime, fname string, values []string, t *testing.T) {
-	fileName := getFunctionFileName(fname, runtime)
-	depName, _ := getRuntimeDepName(runtime)
-	if depName != values[0] {
-		t.Fatalf("Retrieving the image returned a wrong dependencies file. Received " + depName + " while expecting " + values[0])
-	}
-	if fileName != values[1] {
-		t.Fatalf("Retrieving the image returned a wrong file name. Received " + fileName + " while expecting " + values[1])
-	}
-}
-
-func TestGetFunctionFileNames(t *testing.T) {
-	expectedValues := []string{"requirements.txt", "test.py"}
-	check("python2.7", "test", expectedValues, t)
-	check("python3.4", "test", expectedValues, t)
-
-	expectedValues = []string{"package.json", "test.js"}
-	check("nodejs6", "test", expectedValues, t)
-	check("nodejs8", "test", expectedValues, t)
-
-	expectedValues = []string{"Gemfile", "test.rb"}
-	check("ruby2.4", "test", expectedValues, t)
-
-	expectedValues = []string{"requirements.xml", "test.cs"}
-	check("dotnetcore2.0", "test", expectedValues, t)
-}
-
-func TestGetFunctionImage(t *testing.T) {
-	// Throws an error if the runtime doesn't exist
-	_, err := GetFunctionImage("unexistent", "HTTP")
-	if err == nil {
-		t.Fatalf("Retrieving data for 'unexistent' should return an error")
-	}
-
-	// Throws an error if the runtime version doesn't exist
-	_, err = GetFunctionImage("nodejs3", "HTTP")
-	expectedErrMsg := regexp.MustCompile("The given runtime and version 'nodejs3' does not have a valid image")
-	if expectedErrMsg.FindString(err.Error()) == "" {
-		t.Fatalf("Retrieving data for 'nodejs3' should return an error")
-	}
-
-	expectedImageName := "ruby-test-image"
-	os.Setenv("RUBY_RUNTIME", expectedImageName)
-	imageR, errR := GetFunctionImage("ruby2.4", "HTTP")
-	if errR != nil {
-		t.Fatalf("Retrieving the image returned err: %v", errR)
-	}
-	if imageR != expectedImageName {
-		t.Fatalf("Expecting " + imageR + " to be set to " + expectedImageName)
-	}
-	os.Unsetenv("RUBY_RUNTIME")
-
-	expectedImageName = "ruby-pubsub-test-image"
-	os.Setenv("RUBY_PUBSUB_RUNTIME", "ruby-pubsub-test-image")
-	imageR, errR = GetFunctionImage("ruby2.4", "PubSub")
-	if errR != nil {
-		t.Fatalf("Retrieving the image returned err: %v", errR)
-	}
-	if imageR != expectedImageName {
-		t.Fatalf("Expecting " + imageR + " to be set to " + expectedImageName)
-	}
-	os.Unsetenv("RUBY_PUBSUB_RUNTIME")
-}
-
 func TestEnsureK8sResources(t *testing.T) {
 
 	myNsFoo := metav1.ObjectMeta{
@@ -513,14 +448,6 @@ func TestGetLocalHostname(t *testing.T) {
 	}
 }
 
-func TestGetRuntimes(t *testing.T) {
-	runtimes := strings.Join(GetRuntimes(), ", ")
-	expectedRuntimes := "python2.7, python3.4, nodejs6, nodejs8, ruby2.4, dotnetcore2.0"
-	if runtimes != expectedRuntimes {
-		t.Errorf("Expected %s but got %s", expectedRuntimes, runtimes)
-	}
-}
-
 func TestCreateAutoscaleResource(t *testing.T) {
 	min := int32(1)
 	max := int32(10)
@@ -558,5 +485,25 @@ func TestDeleteAutoscaleResource(t *testing.T) {
 	}
 	if name := a[0].(ktesting.DeleteAction).GetName(); name != "foo" {
 		t.Errorf("deleted autoscale with wrong name (%s)", name)
+	}
+}
+
+func TestGetProvisionContainer(t *testing.T) {
+	rvol := v1.VolumeMount{Name: "runtime", MountPath: "/runtime"}
+	dvol := v1.VolumeMount{Name: "deps", MountPath: "/deps"}
+	c, err := getProvisionContainer("test", "sha256:abc1234", "test.func", "text", "test.foo", "python2.7", rvol, dvol)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	expectedContainer := v1.Container{
+		Name:            "prepare",
+		Image:           "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697",
+		Command:         []string{"sh", "-c"},
+		Args:            []string{"cp /deps/test.func /runtime && cp /deps/requirements.txt /runtime && echo 'abc1234  /runtime/test.func' > /runtime/test.func.sha256 && sha256sum -c /runtime/test.func.sha256"},
+		VolumeMounts:    []v1.VolumeMount{rvol, dvol},
+		ImagePullPolicy: v1.PullIfNotPresent,
+	}
+	if !reflect.DeepEqual(expectedContainer, c) {
+		t.Error("Unexpected result")
 	}
 }

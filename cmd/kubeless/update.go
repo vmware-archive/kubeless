@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/kubeless/kubeless/pkg/runtime"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/pkg/api"
@@ -114,7 +115,7 @@ var updateCmd = &cobra.Command{
 }
 
 func init() {
-	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime. Available runtimes are: "+strings.Join(utils.GetRuntimes(), ", "))
+	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime. Available runtimes are: "+strings.Join(runtime.GetRuntimes(), ", "))
 	updateCmd.Flags().StringP("handler", "", "", "Specify handler")
 	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
