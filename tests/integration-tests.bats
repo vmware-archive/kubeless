@@ -86,6 +86,33 @@ load ../script/libtest
 @test "Test function: pubsub-ruby" {
   test_kubeless_function pubsub-ruby
 }
+@test "Test topic list" {
+  _wait_for_kubeless_kafka_server_ready
+  for topic in topic1 topic2; do
+    kubeless topic create $topic
+    _wait_for_kubeless_kafka_topic_ready $topic
+  done
+
+  kubeless topic list >$BATS_TMPDIR/kubeless-topic-list
+  grep -qxF topic1 $BATS_TMPDIR/kubeless-topic-list
+  grep -qxF topic2 $BATS_TMPDIR/kubeless-topic-list
+}
+@test "Test topic delete" {
+  # TODO: fix kakfa setup so topic delete actually does something
+  skip "topic delete does nothing with kafka delete.topic.enable=false"
+
+  _wait_for_kubeless_kafka_server_ready
+  for topic in topic1 topic2; do
+    kubeless topic create $topic
+    _wait_for_kubeless_kafka_topic_ready $topic
+  done
+
+  kubeless topic delete topic2
+
+  kubeless topic list >$BATS_TMPDIR/kubeless-topic-list
+  grep -qxF topic1 $BATS_TMPDIR/kubeless-topic-list
+  ! grep -qxF topic2 $BATS_TMPDIR/kubeless-topic-list
+}
 @test "Test custom runtime image" {
   deploy_function webserver
   wait_for_endpoint webserver

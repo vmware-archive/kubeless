@@ -17,8 +17,13 @@ limitations under the License.
 package main
 
 import (
+	"io"
+
 	"github.com/Sirupsen/logrus"
+	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 var topicListCmd = &cobra.Command{
@@ -31,7 +36,26 @@ var topicListCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		command := []string{"bash", "/opt/bitnami/kafka/bin/kafka-topics.sh", "--zookeeper", "zookeeper." + ctlNamespace + ":2181", "--list"}
-		execCommand(command, ctlNamespace)
+
+		conf, err := utils.BuildOutOfClusterConfig()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		k8sClientSet := utils.GetClientOutOfCluster()
+
+		err = listTopic(conf, k8sClientSet, ctlNamespace, cmd.OutOrStdout())
+		if err != nil {
+			logrus.Fatal(err)
+		}
 	},
+}
+
+func listTopic(conf *rest.Config, clientset kubernetes.Interface, ctlNamespace string, out io.Writer) error {
+	command := []string{
+		"bash", "/opt/bitnami/kafka/bin/kafka-topics.sh",
+		"--zookeeper", "zookeeper." + ctlNamespace + ":2181",
+		"--list",
+	}
+	return execCommand(conf, clientset, ctlNamespace, command, out)
 }
