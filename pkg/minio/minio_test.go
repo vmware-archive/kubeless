@@ -1,16 +1,8 @@
 package minio
 
 import (
-	"fmt"
-	// "io/ioutil"
-	// "k8s.io/client-go/pkg/api/v1"
-	// "os"
-	// "path"
-	// "reflect"
 	"testing"
 
-	// "github.com/kubeless/kubeless/pkg/spec"
-	// "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"

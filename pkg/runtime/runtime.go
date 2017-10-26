@@ -79,6 +79,7 @@ func getAvailableRuntimes(imageType string) []string {
 	return runtimeList
 }
 
+// GetRuntimeDepName returns the common dependency file name of the given runtime
 func GetRuntimeDepName(runtime string) (string, error) {
 	depName := ""
 	switch {
@@ -96,6 +97,7 @@ func GetRuntimeDepName(runtime string) (string, error) {
 	return depName, nil
 }
 
+// GetFunctionFileName returns the file name given a handler ID and a runtime
 func GetFunctionFileName(modName, runtime string) string {
 	fileName := ""
 	switch {
@@ -191,6 +193,7 @@ func getInitImagebyRuntime(runtime string) string {
 	}
 }
 
+// GetBuildContainer returns a Container definition based on a runtime
 func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolume v1.VolumeMount) (v1.Container, error) {
 	depName, err := GetRuntimeDepName(runtime)
 	if err != nil {
@@ -228,7 +231,7 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolum
 	}, nil
 }
 
-// Update deployment object in case of custom runtime
+// UpdateDeployment object in case of custom runtime
 func UpdateDeployment(dpm *v1beta1.Deployment, depsVolume, runtime string) {
 	switch {
 	case strings.Contains(runtime, "python"):

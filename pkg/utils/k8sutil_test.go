@@ -185,8 +185,9 @@ func TestEnsureK8sResources(t *testing.T) {
 			Labels:    funcLabels,
 		},
 		Spec: spec.FunctionSpec{
-			Handler: "foo.bar",
-			Runtime: "python2.7",
+			Function: "function",
+			Handler:  "foo.bar",
+			Runtime:  "python2.7",
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: funcAnno,
@@ -255,9 +256,10 @@ func TestEnsureK8sResources(t *testing.T) {
 			Labels:    funcLabels,
 		},
 		Spec: spec.FunctionSpec{
-			Handler: "foo.bar",
-			Runtime: "nodejs6",
-			Deps:    "sample",
+			Function: "function",
+			Handler:  "foo.bar",
+			Runtime:  "nodejs6",
+			Deps:     "sample",
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: v1.PodSpec{
@@ -283,7 +285,6 @@ func TestEnsureK8sResources(t *testing.T) {
 		t.Fatalf("Creating resources returned err: %v", err)
 	}
 	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get(func3, metav1.GetOptions{})
-	t.Log(dpm.Spec.Template.Spec.InitContainers[1].Args)
 	if len(dpm.Spec.Template.Spec.InitContainers) != 2 {
 		t.Errorf("Init container should be defined when dependencies are specified")
 	}
@@ -303,9 +304,10 @@ func TestEnsureK8sResources(t *testing.T) {
 			Labels:    funcLabels,
 		},
 		Spec: spec.FunctionSpec{
-			Handler: "foo.bar",
-			Runtime: "python2.6",
-			Deps:    "sample",
+			Function: "function",
+			Handler:  "foo.bar",
+			Runtime:  "python2.6",
+			Deps:     "sample",
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{},
 				Spec: v1.PodSpec{

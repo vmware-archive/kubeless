@@ -112,8 +112,8 @@ func TestGetBuildContainer(t *testing.T) {
 
 	// It should return the proper build image for nodejs
 	nodeEnv := []v1.EnvVar{
-		v1.EnvVar{Name: "NPM_REGISTRY", Value: "http://reg.com"},
-		v1.EnvVar{Name: "NPM_SCOPE", Value: "myorg"},
+		{Name: "NPM_REGISTRY", Value: "http://reg.com"},
+		{Name: "NPM_SCOPE", Value: "myorg"},
 	}
 	c, err = GetBuildContainer("nodejs6", nodeEnv, vol1, vol2)
 	if err != nil {
