@@ -48,7 +48,7 @@ get-ruby-deps-verify:
 	kubeless function call get-ruby-deps |egrep hello.world
 
 get-dotnetcore:
-	kubeless function deploy get-dotnetcore --trigger-http --runtime dotnetcore2.0 --handler helloget.foo --from-file dotnetcore/helloget.cs 
+	kubeless function deploy get-dotnetcore --trigger-http --runtime dotnetcore2.0 --handler helloget.foo --from-file dotnetcore/helloget.cs
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-dotnetcore/"
 
 get-dotnetcore-verify:
@@ -119,7 +119,7 @@ pubsub-nodejs:
 
 pubsub-nodejs-verify:
 	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
-	kubeless topic publish --topic s3-nodejs --data '{"test": "$(DATA)"}' 
+	kubeless topic publish --topic s3-nodejs --data '{"test": "$(DATA)"}'
 	bash -c 'grep -q "{\"test\": \"$(DATA)\"}" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-nodejs))'
 
 pubsub-ruby:
@@ -144,4 +144,3 @@ webserver-update:
 
 webserver-update-verify:
 	kubeless function call webserver |egrep "Welcome to nginx!"
-

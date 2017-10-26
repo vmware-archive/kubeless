@@ -17,8 +17,13 @@ limitations under the License.
 package main
 
 import (
+	"io"
+
 	"github.com/Sirupsen/logrus"
+	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 var topicDeleteCmd = &cobra.Command{
@@ -35,8 +40,28 @@ var topicDeleteCmd = &cobra.Command{
 		}
 
 		topicName := args[0]
-		command := []string{"bash", "/opt/bitnami/kafka/bin/kafka-topics.sh", "--zookeeper", "zookeeper." + ctlNamespace + ":2181", "--delete", "--topic", topicName}
 
-		execCommand(command, ctlNamespace)
+		conf, err := utils.BuildOutOfClusterConfig()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		k8sClientSet := utils.GetClientOutOfCluster()
+
+		err = deleteTopic(conf, k8sClientSet, ctlNamespace, topicName, cmd.OutOrStdout())
+		if err != nil {
+			logrus.Fatal(err)
+		}
 	},
+}
+
+func deleteTopic(conf *rest.Config, clientset kubernetes.Interface, ctlNamespace, topicName string, out io.Writer) error {
+	command := []string{
+		"bash", "/opt/bitnami/kafka/bin/kafka-topics.sh",
+		"--zookeeper", "zookeeper." + ctlNamespace + ":2181",
+		"--delete",
+		"--topic", topicName,
+	}
+
+	return execCommand(conf, clientset, ctlNamespace, command, out)
 }
