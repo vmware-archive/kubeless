@@ -256,7 +256,9 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, s
 	} else {
 		var err error
 		if isMinioAvailable(cli) {
-			function, checksum, err = uploadFunction(file, cli)
+			var rawChecksum string
+			function, rawChecksum, err = uploadFunction(file, cli)
+			checksum = "sha256:" + rawChecksum
 			contentType = "URL"
 			if err != nil {
 				return &spec.Function{}, err

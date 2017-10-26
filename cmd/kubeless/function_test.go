@@ -27,7 +27,10 @@ import (
 	"github.com/kubeless/kubeless/pkg/spec"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
+	batchv1 "k8s.io/client-go/pkg/apis/batch/v1"
+	core "k8s.io/client-go/testing"
 )
 
 func TestParseLabel(t *testing.T) {
@@ -166,7 +169,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	parsedMem, _ = parseMemory("256Mi")
+	parsedMem2, _ := parseMemory("256Mi")
 	newFunction := spec.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
@@ -200,10 +203,10 @@ func TestGetFunctionDescription(t *testing.T) {
 							}},
 							Resources: v1.ResourceRequirements{
 								Limits: map[v1.ResourceName]resource.Quantity{
-									v1.ResourceMemory: parsedMem,
+									v1.ResourceMemory: parsedMem2,
 								},
 								Requests: map[v1.ResourceName]resource.Quantity{
-									v1.ResourceMemory: parsedMem,
+									v1.ResourceMemory: parsedMem2,
 								},
 							},
 							Image: "test-image2",
@@ -217,4 +220,80 @@ func TestGetFunctionDescription(t *testing.T) {
 		t.Error("Unexpected result")
 	}
 
+	// It should upload the function if Minio is available
+	minioFakeSvc := v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "kubeless",
+			Name:      "minio",
+		},
+	}
+	uploadFakeJob := batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "kubeless",
+			Name:      "upload-file",
+		},
+		Status: batchv1.JobStatus{
+			Succeeded: 1,
+		},
+	}
+	cli := &fake.Clientset{}
+	cli.Fake.AddReactor("get", "services", func(action core.Action) (bool, runtime.Object, error) {
+		return true, &minioFakeSvc, nil
+	})
+	cli.Fake.AddReactor("get", "jobs", func(action core.Action) (bool, runtime.Object, error) {
+		return true, &uploadFakeJob, nil
+	})
+	result4, err := getFunctionDescription("test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", true, []string{"TEST=1"}, []string{"test=1"}, spec.Function{}, cli)
+	if err != nil {
+		t.Error(err)
+	}
+	expectedFunction = spec.Function{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "k8s.io/v1",
+		},
+		Metadata: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+			Labels: map[string]string{
+				"test": "1",
+			},
+		},
+		Spec: spec.FunctionSpec{
+			Handler:     "file.handler",
+			Runtime:     "runtime",
+			Type:        "HTTP",
+			Function:    "http://minio.kubeless:9000/functions/" + path.Base(file.Name()) + ".1958eb96d7d3cadedd0f327f09322eb7db296afb282ed91aa66cb4ab0dcc3c9f",
+			File:        path.Base(file.Name()),
+			ContentType: "URL",
+			Checksum:    "sha256:1958eb96d7d3cadedd0f327f09322eb7db296afb282ed91aa66cb4ab0dcc3c9f",
+			Deps:        "dependencies",
+			Topic:       "",
+			Schedule:    "",
+			Template: v1.PodTemplateSpec{
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Env: []v1.EnvVar{{
+								Name:  "TEST",
+								Value: "1",
+							}},
+							Resources: v1.ResourceRequirements{
+								Limits: map[v1.ResourceName]resource.Quantity{
+									v1.ResourceMemory: parsedMem,
+								},
+								Requests: map[v1.ResourceName]resource.Quantity{
+									v1.ResourceMemory: parsedMem,
+								},
+							},
+							Image: "test-image",
+						},
+					},
+				},
+			},
+		},
+	}
+	if !reflect.DeepEqual(expectedFunction, *result4) {
+		t.Error("Unexpected result")
+	}
 }
