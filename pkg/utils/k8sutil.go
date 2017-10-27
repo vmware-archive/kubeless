@@ -999,7 +999,7 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 	//prepare init-container for custom runtime
 	initContainer := v1.Container{}
-	if funcObj.Spec.Deps != "" && funcObj.Spec.Runtime != "bash" {
+	if funcObj.Spec.Deps != "" && funcObj.Spec.Runtime != "bash4.3" {
 		// ensure that the runtime is supported for installing dependencies
 		_, deps := GetFunctionFileNames(funcObj.Spec.Runtime, "")
 		if deps == "" {

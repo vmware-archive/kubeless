@@ -56,10 +56,16 @@ get-dotnetcore-verify:
 
 get-bash:
 	kubeless function deploy get-bash --trigger-http --runtime bash4.3 --handler helloget.foo --from-file bash/helloget.sh
-	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-bash/"	
+	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-bash/"
 
 get-bash-verify:
-	kubeless function call get-bash
+	kubeless function call get-bash | egrep "Hello"
+
+bash-git-init:
+	kubeless function deploy git-init --trigger-http --runtime bash4.3 --handler git.init --from-file bash/git.sh --dependencies bash/git-deps
+
+bash-git-init-verify:
+	kubeless function call git-init |egrep Initialized.empty.Git.repository
 
 get: get-python get-nodejs get-python-metadata get-ruby get-ruby-deps
 
