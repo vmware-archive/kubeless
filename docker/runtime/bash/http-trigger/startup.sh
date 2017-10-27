@@ -4,5 +4,5 @@ if [[ -f /kubeless/requirements ]]; then
  install_packages -y $(cat /kubeless/requirements)
 fi
 
-echo "yes, I have run it!!!!"
+echo "Starting up runtime for bash functions"
 python /kubeless-shell.py 
