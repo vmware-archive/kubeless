@@ -281,16 +281,18 @@ func (c *Controller) processItem(key string) error {
 }
 
 func (c *Controller) garbageCollect() error {
-	if err := c.collectServices(); err != nil {
+	err := c.collectServices()
+	if err != nil {
 		return err
 	}
-	if err := c.collectDeployment(); err != nil {
+	err = c.collectDeployment()
+	if err != nil {
 		return err
 	}
-	if err := c.collectConfigMap(); err != nil {
+	err = c.collectConfigMap()
+	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
