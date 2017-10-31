@@ -49,12 +49,12 @@ var listCmd = &cobra.Command{
 			logrus.Fatal(err.Error())
 		}
 
-		tprClient, err := utils.GetTPRClientOutOfCluster()
+		crdClient, err := utils.GetCDRClientOutOfCluster()
 		if err != nil {
 			logrus.Fatalf("Can not list functions: %v", err)
 		}
 
-		if err := doList(cmd.OutOrStdout(), tprClient, ns, output, args); err != nil {
+		if err := doList(cmd.OutOrStdout(), crdClient, ns, output, args); err != nil {
 			logrus.Fatal(err.Error())
 		}
 	},
@@ -65,11 +65,11 @@ func init() {
 	listCmd.Flags().StringP("namespace", "n", api.NamespaceDefault, "Specify namespace for the function")
 }
 
-func doList(w io.Writer, tprClient rest.Interface, ns, output string, args []string) error {
+func doList(w io.Writer, crdClient rest.Interface, ns, output string, args []string) error {
 	var list []*spec.Function
 	if len(args) == 0 {
 		funcList := spec.FunctionList{}
-		err := tprClient.Get().
+		err := crdClient.Get().
 			Resource("functions").
 			Namespace(ns).
 			Do().
@@ -82,7 +82,7 @@ func doList(w io.Writer, tprClient rest.Interface, ns, output string, args []str
 		list = make([]*spec.Function, 0, len(args))
 		for _, arg := range args {
 			f := spec.Function{}
-			err := tprClient.Get().
+			err := crdClient.Get().
 				Resource("functions").
 				Namespace(ns).
 				Name(arg).

@@ -38,6 +38,9 @@ load ../script/libtest
 @test "Test function: get-python" {
   test_kubeless_function get-python
 }
+@test "Test function: get-python-deps" {
+  test_kubeless_function get-python-deps
+}
 @test "Test function update: get-python" {
   test_kubeless_function_update get-python
 }
@@ -49,6 +52,12 @@ load ../script/libtest
 }
 @test "Test function: get-nodejs" {
   test_kubeless_function get-nodejs
+}
+@test "Test function: get-nodejs-deps" {
+  test_kubeless_function get-nodejs-deps
+}
+@test "Test function: get-nodejs-multi" {
+  test_kubeless_function get-nodejs-multi
 }
 @test "Test function: get-ruby" {
   test_kubeless_function get-ruby

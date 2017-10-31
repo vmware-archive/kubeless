@@ -17,14 +17,23 @@ limitations under the License.
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net/http"
+	"os"
+	"path"
 	"strings"
 
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -62,14 +71,6 @@ func getKV(input string) (string, string) {
 	return key, value
 }
 
-func readFile(file string) (string, error) {
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		return "", err
-	}
-	return string(data[:]), nil
-}
-
 func parseLabel(labels []string) map[string]string {
 	funcLabels := map[string]string{}
 	for _, label := range labels {
@@ -100,14 +101,79 @@ func parseMemory(mem string) (resource.Quantity, error) {
 	return quantity, nil
 }
 
-func getFunctionDescription(funcName, ns, handler, funcContent, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function) (f *spec.Function, err error) {
+func getFileSha256(file string) (string, error) {
+	var checksum string
+	h := sha256.New()
+	ff, err := os.Open(file)
+	if err != nil {
+		return checksum, err
+	}
+	defer ff.Close()
+	_, err = io.Copy(h, ff)
+	if err != nil {
+		return checksum, err
+	}
+	checksum = hex.EncodeToString(h.Sum(nil))
+	return checksum, err
+}
+
+func uploadFunction(file string, cli kubernetes.Interface) (string, string, string, error) {
+	var function, contentType, checksum string
+	stats, err := os.Stat(file)
+	if err != nil {
+		return "", "", "", err
+	}
+	if stats.Size() > int64(50*1024*1024) { // TODO: Make the max file size (50 MB) configurable
+		err = errors.New("The maximum size of a function is 50MB")
+		return "", "", "", err
+	}
+	// If an object storage service is not available check
+	// that the file is not over 1MB to store it as a Custom Resource
+	if stats.Size() > int64(1*1024*1024) {
+		err = errors.New("Unable to deploy functions over 1MB withouth a storage service")
+		return "", "", "", err
+	}
+	functionBytes, err := ioutil.ReadFile(file)
+	if err != nil {
+		return "", "", "", err
+	}
+	if err != nil {
+		return "", "", "", err
+	}
+	fileType := http.DetectContentType(functionBytes)
+	if strings.Contains(fileType, "text/plain") {
+		function = string(functionBytes[:])
+		contentType = "text"
+	} else {
+		function = base64.StdEncoding.EncodeToString(functionBytes)
+		contentType = "base64"
+	}
+	c, err := getFileSha256(file)
+	checksum = "sha256:" + c
+	if err != nil {
+		return "", "", "", err
+	}
+	return function, contentType, checksum, nil
+}
+
+func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function, cli kubernetes.Interface) (*spec.Function, error) {
 
 	if handler == "" {
 		handler = defaultFunction.Spec.Handler
 	}
 
-	if funcContent == "" {
-		funcContent = defaultFunction.Spec.Function
+	var function, checksum, contentType string
+	if file == "" {
+		file = defaultFunction.Spec.File
+		contentType = defaultFunction.Spec.ContentType
+		function = defaultFunction.Spec.Function
+		checksum = defaultFunction.Spec.Checksum
+	} else {
+		var err error
+		function, contentType, checksum, err = uploadFunction(file, cli)
+		if err != nil {
+			return &spec.Function{}, err
+		}
 	}
 
 	if deps == "" {
@@ -149,13 +215,12 @@ func getFunctionDescription(funcName, ns, handler, funcContent, deps, runtime, t
 		funcLabels = defaultFunction.Metadata.Labels
 	}
 
-	funcMem := resource.Quantity{}
 	resources := v1.ResourceRequirements{}
 	if mem != "" {
-		funcMem, err = parseMemory(mem)
+		funcMem, err := parseMemory(mem)
 		if err != nil {
-			err = fmt.Errorf("Wrong format of the memory value: %v", err)
-			return
+			err := fmt.Errorf("Wrong format of the memory value: %v", err)
+			return &spec.Function{}, err
 		}
 		resource := map[v1.ResourceName]resource.Quantity{
 			v1.ResourceMemory: funcMem,
@@ -174,7 +239,7 @@ func getFunctionDescription(funcName, ns, handler, funcContent, deps, runtime, t
 		runtimeImage = defaultFunction.Spec.Template.Spec.Containers[0].Image
 	}
 
-	f = &spec.Function{
+	return &spec.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
 			APIVersion: "k8s.io/v1",
@@ -185,13 +250,16 @@ func getFunctionDescription(funcName, ns, handler, funcContent, deps, runtime, t
 			Labels:    funcLabels,
 		},
 		Spec: spec.FunctionSpec{
-			Handler:  handler,
-			Runtime:  runtime,
-			Type:     funcType,
-			Function: funcContent,
-			Deps:     deps,
-			Topic:    topic,
-			Schedule: schedule,
+			Handler:     handler,
+			Runtime:     runtime,
+			Type:        funcType,
+			Function:    function,
+			File:        path.Base(file),
+			Checksum:    checksum,
+			ContentType: contentType,
+			Deps:        deps,
+			Topic:       topic,
+			Schedule:    schedule,
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -204,6 +272,5 @@ func getFunctionDescription(funcName, ns, handler, funcContent, deps, runtime, t
 				},
 			},
 		},
-	}
-	return
+	}, nil
 }

@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/kubeless/kubeless/pkg/runtime"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/pkg/api"
@@ -48,13 +49,6 @@ var updateCmd = &cobra.Command{
 		file, err := cmd.Flags().GetString("from-file")
 		if err != nil {
 			logrus.Fatal(err)
-		}
-		funcContent := ""
-		if len(file) != 0 {
-			funcContent, err = readFile(file)
-			if err != nil {
-				logrus.Fatalf("Unable to read file %s: %v", file, err)
-			}
 		}
 
 		runtime, err := cmd.Flags().GetString("runtime")
@@ -101,25 +95,27 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		f, err := getFunctionDescription(funcName, ns, handler, funcContent, "", runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, previousFunction)
+		cli := utils.GetClientOutOfCluster()
+		f, err := getFunctionDescription(funcName, ns, handler, file, "", runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, previousFunction, cli)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		tprClient, err := utils.GetTPRClientOutOfCluster()
+		crdClient, err := utils.GetCDRClientOutOfCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		err = utils.UpdateK8sCustomResource(tprClient, f)
+		err = utils.UpdateK8sCustomResource(crdClient, f)
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		logrus.Infof("Function %s submitted for deployment", funcName)
 	},
 }
 
 func init() {
-	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime. Available runtimes are: "+strings.Join(utils.GetRuntimes(), ", "))
+	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime. Available runtimes are: "+strings.Join(runtime.GetRuntimes(), ", "))
 	updateCmd.Flags().StringP("handler", "", "", "Specify handler")
 	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")

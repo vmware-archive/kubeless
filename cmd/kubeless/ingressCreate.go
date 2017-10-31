@@ -61,11 +61,11 @@ var ingressCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		tprClient, err := utils.GetTPRClientOutOfCluster()
+		crdClient, err := utils.GetCDRClientOutOfCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		err = functionExists(tprClient, funcName, ns)
+		err = functionExists(crdClient, funcName, ns)
 		if err != nil {
 			if k8sErrors.IsNotFound(err) {
 				logrus.Fatalf("function %s doesn't exist in namespace %s", funcName, ns)
@@ -83,9 +83,9 @@ var ingressCreateCmd = &cobra.Command{
 	},
 }
 
-func functionExists(tprClient rest.Interface, function, ns string) error {
+func functionExists(crdClient rest.Interface, function, ns string) error {
 	f := spec.Function{}
-	err := tprClient.Get().
+	err := crdClient.Get().
 		Resource("functions").
 		Namespace(ns).
 		Name(function).
