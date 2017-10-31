@@ -656,7 +656,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// It should skip the dependencies installation if the runtime is not supported
-	c, err = getProvisionContainer("function", "sha256:abc1234", "test.func", "test.foo", "URL", "cobol", rvol, dvol)
+	c, err = getProvisionContainer("function", "sha256:abc1234", "test.func", "test.foo", "text", "cobol", rvol, dvol)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}

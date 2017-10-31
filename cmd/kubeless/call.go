@@ -60,9 +60,9 @@ var callCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		tprClient, err := utils.GetTPRClientOutOfCluster()
+		crdClient, err := utils.GetCDRClientOutOfCluster()
 		svc := v1.Service{}
-		tprClient.Get().AbsPath("/api/v1/namespaces/" + ns + "/services/" + funcName + "/").Do().Into(&svc)
+		crdClient.Get().AbsPath("/api/v1/namespaces/" + ns + "/services/" + funcName + "/").Do().Into(&svc)
 		if svc.ObjectMeta.Name != funcName {
 			logrus.Fatalf("Unable to find the service for %s", funcName)
 		}
@@ -75,9 +75,9 @@ var callCmd = &cobra.Command{
 
 		req := &rest.Request{}
 		if get {
-			req = tprClient.Get().AbsPath(url)
+			req = crdClient.Get().AbsPath(url)
 		} else {
-			req = tprClient.Post().AbsPath(url).Body(bytes.NewBuffer(jsonStr)).SetHeader("Content-Type", "application/json")
+			req = crdClient.Post().AbsPath(url).Body(bytes.NewBuffer(jsonStr)).SetHeader("Content-Type", "application/json")
 		}
 		res, err := req.Do().Raw()
 		if err != nil {

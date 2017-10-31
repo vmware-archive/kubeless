@@ -113,12 +113,12 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		tprClient, err := utils.GetTPRClientOutOfCluster()
+		crdClient, err := utils.GetCDRClientOutOfCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
 		logrus.Infof("Creating function...")
-		err = utils.CreateK8sCustomResource(tprClient, f)
+		err = utils.CreateK8sCustomResource(crdClient, f)
 		if err != nil {
 			logrus.Fatal(err)
 		}

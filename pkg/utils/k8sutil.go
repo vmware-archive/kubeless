@@ -123,8 +123,8 @@ func GetRestClient() (*rest.RESTClient, error) {
 	return restClient, nil
 }
 
-// GetTPRClient returns tpr client to the request from inside of cluster
-func GetTPRClient() (*rest.RESTClient, error) {
+// GetCRDClient returns tpr client to the request from inside of cluster
+func GetCRDClient() (*rest.RESTClient, error) {
 	tprconfig, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -157,8 +157,8 @@ func GetRestClientOutOfCluster(group, apiVersion, apiPath string) (*rest.RESTCli
 	return client, nil
 }
 
-// GetTPRClientOutOfCluster returns tpr client to the request from outside of cluster
-func GetTPRClientOutOfCluster() (*rest.RESTClient, error) {
+// GetCDRClientOutOfCluster returns tpr client to the request from outside of cluster
+func GetCDRClientOutOfCluster() (*rest.RESTClient, error) {
 	return GetRestClientOutOfCluster("k8s.io", "v1", "/apis")
 }
 
@@ -180,12 +180,12 @@ func GetServiceMonitorClientOutOfCluster() (*monitoringv1alpha1.MonitoringV1alph
 func GetFunction(funcName, ns string) (spec.Function, error) {
 	var f spec.Function
 
-	tprClient, err := GetTPRClientOutOfCluster()
+	crdClient, err := GetCDRClientOutOfCluster()
 	if err != nil {
 		return spec.Function{}, err
 	}
 
-	err = tprClient.Get().
+	err = crdClient.Get().
 		Resource("functions").
 		Namespace(ns).
 		Name(funcName).
@@ -202,8 +202,8 @@ func GetFunction(funcName, ns string) (spec.Function, error) {
 }
 
 // CreateK8sCustomResource will create a custom function object
-func CreateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
-	err := tprClient.Post().
+func CreateK8sCustomResource(crdClient rest.Interface, f *spec.Function) error {
+	err := crdClient.Post().
 		Resource("functions").
 		Namespace(f.Metadata.Namespace).
 		Body(f).
@@ -216,12 +216,12 @@ func CreateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
 }
 
 // UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
+func UpdateK8sCustomResource(crdClient rest.Interface, f *spec.Function) error {
 	data, err := json.Marshal(f)
 	if err != nil {
 		return err
 	}
-	return tprClient.Patch(types.MergePatchType).
+	return crdClient.Patch(types.MergePatchType).
 		Namespace(f.Metadata.Namespace).
 		Resource("functions").
 		Name(f.Metadata.Name).
@@ -230,8 +230,8 @@ func UpdateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
 }
 
 // DeleteK8sCustomResource will delete custom function object
-func DeleteK8sCustomResource(tprClient *rest.RESTClient, funcName, ns string) error {
-	err := tprClient.Delete().
+func DeleteK8sCustomResource(crdClient *rest.RESTClient, funcName, ns string) error {
+	err := crdClient.Delete().
 		Resource("functions").
 		Namespace(ns).
 		Name(funcName).
@@ -281,18 +281,16 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 
 	// Prepare Function file and dependencies
 	switch contentType {
-	case "URL":
-		// Function is an URL, download it
-		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("curl -L %s -o %s", function, originFile))
-		break
 	case "base64":
 		// File is encoded in base64
 		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("cat %s | base64 -d > %s", originFile, originFile))
 		break
 	case "text":
-	default:
+	case "":
 		// Assumming that function is plain text
 		// So we don't need to preprocess it
+	default:
+		return v1.Container{}, fmt.Errorf("Unable to prepare function of type %s: Unknown format", contentType)
 	}
 
 	// Validate checksum
@@ -560,7 +558,6 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 	} else if err == nil {
 		// In case the SVC already exists we should update
 		// just certain fields (for being able to update it)
-		svc.ObjectMeta.Name = name
 		svc.ObjectMeta.Labels = labels
 		svc.ObjectMeta.OwnerReferences = or
 		svc.Spec.Ports = []v1.ServicePort{servicePort}
