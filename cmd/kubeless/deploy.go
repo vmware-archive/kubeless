@@ -17,9 +17,11 @@ limitations under the License.
 package main
 
 import (
+	"io/ioutil"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/kubeless/kubeless/pkg/runtime"
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
@@ -96,41 +98,36 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		funcContent := ""
-		if len(file) != 0 {
-			funcContent, err = readFile(file)
-			if err != nil {
-				logrus.Fatalf("Unable to read file %s: %v", file, err)
-			}
-		}
-
 		funcDeps := ""
 		if deps != "" {
-			funcDeps, err = readFile(deps)
+			bytes, err := ioutil.ReadFile(deps)
 			if err != nil {
 				logrus.Fatalf("Unable to read file %s: %v", deps, err)
 			}
+			funcDeps = string(bytes[:])
 		}
 
-		f, err := getFunctionDescription(funcName, ns, handler, funcContent, funcDeps, runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, spec.Function{})
+		cli := utils.GetClientOutOfCluster()
+		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, spec.Function{}, cli)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		tprClient, err := utils.GetTPRClientOutOfCluster()
+		crdClient, err := utils.GetCDRClientOutOfCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
-
-		err = utils.CreateK8sCustomResource(tprClient, f)
+		logrus.Infof("Creating function...")
+		err = utils.CreateK8sCustomResource(crdClient, f)
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		logrus.Infof("Function %s submitted for deployment", funcName)
 	},
 }
 
 func init() {
-	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime. Available runtimes are: "+strings.Join(utils.GetRuntimes(), ", "))
+	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime. Available runtimes are: "+strings.Join(runtime.GetRuntimes(), ", "))
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
 	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")

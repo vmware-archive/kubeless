@@ -23,10 +23,12 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
+
+	kubelessRuntime "github.com/kubeless/kubeless/pkg/runtime"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/spec"
@@ -54,60 +56,10 @@ import (
 )
 
 const (
-	python27Http    = "bitnami/kubeless-python@sha256:6789266df0c97333f76e23efd58cf9c7efe24fa3e83b5fc826fd5cc317699b55"
-	python27Pubsub  = "bitnami/kubeless-event-consumer@sha256:5ce469529811acf49c4d20bcd8a675be7aa029b43cf5252a8c9375b170859d83"
-	python34Http    = "bitnami/kubeless-python:test@sha256:686cd28cda5fe7bc6db60fa3e8a9a2c57a5eff6a58e66a60179cc1d3fcf1035b"
-	python34Pubsub  = "bitnami/kubeless-python-event-consumer@sha256:8f92397258836e9c39948814aa5324c29d96ff3624b66dd70fdbad1ce0a1615e"
-	node6Http       = "bitnami/kubeless-nodejs@sha256:b3c7cec77f973bf7a48cbbb8ea5069cacbaee7044683a275c6f78fa248de17b4"
-	node6Pubsub     = "bitnami/kubeless-nodejs-event-consumer@sha256:b027bfef5f99c3be68772155a1feaf1f771ab9a3c7bb49bef2e939d6b766abec"
-	node8Http       = "bitnami/kubeless-nodejs@sha256:1eff2beae6fcc40577ada75624c3e4d3840a854588526cd8616d66f4e889dfe6"
-	node8Pubsub     = "bitnami/kubeless-nodejs-event-consumer@sha256:4d005c9c0b462750d9ab7f1305897e7a01143fe869d3b722ed3330560f9c7fb5"
-	ruby24Http      = "bitnami/kubeless-ruby@sha256:97b18ac36bb3aa9529231ea565b339ec00d2a5225cf7eb010cd5a6188cf72ab5"
-	ruby24Pubsub    = "bitnami/kubeless-ruby-event-consumer@sha256:938a860dbd9b7fb6b4338248a02c92279315c6e42eed0700128b925d3696b606"
-	dotnetcore2Http = "allantargino/kubeless-dotnetcore@sha256:d321dc4b2c420988d98cdaa22c733743e423f57d1153c89c2b99ff0d944e8a63"
-	busybox         = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
-	pubsubFunc      = "PubSub"
-	schedFunc       = "Scheduled"
+	pubsubFunc = "PubSub"
+	busybox    = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
+	unzip      = "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697"
 )
-
-type runtimeVersion struct {
-	runtimeID   string
-	version     string
-	httpImage   string
-	pubsubImage string
-}
-
-var python, node, ruby, dotnetcore []runtimeVersion
-var availableRuntimes [][]runtimeVersion
-
-func init() {
-	python27 := runtimeVersion{runtimeID: "python", version: "2.7", httpImage: python27Http, pubsubImage: python27Pubsub}
-	python34 := runtimeVersion{runtimeID: "python", version: "3.4", httpImage: python34Http, pubsubImage: python34Pubsub}
-	python = []runtimeVersion{python27, python34}
-
-	node6 := runtimeVersion{runtimeID: "nodejs", version: "6", httpImage: node6Http, pubsubImage: node6Pubsub}
-	node8 := runtimeVersion{runtimeID: "nodejs", version: "8", httpImage: node8Http, pubsubImage: node8Pubsub}
-	node = []runtimeVersion{node6, node8}
-
-	ruby24 := runtimeVersion{runtimeID: "ruby", version: "2.4", httpImage: ruby24Http, pubsubImage: ruby24Pubsub}
-	ruby = []runtimeVersion{ruby24}
-
-	dotnetcore2 := runtimeVersion{runtimeID: "dotnetcore", version: "2.0", httpImage: dotnetcore2Http, pubsubImage: ""}
-	dotnetcore = []runtimeVersion{dotnetcore2}
-
-	availableRuntimes = [][]runtimeVersion{python, node, ruby, dotnetcore}
-}
-
-// GetRuntimes returns the list of available runtimes as strings
-func GetRuntimes() []string {
-	result := []string{}
-	for _, languages := range availableRuntimes {
-		for _, runtime := range languages {
-			result = append(result, runtime.runtimeID+runtime.version)
-		}
-	}
-	return result
-}
 
 // GetClient returns a k8s clientset to the request from inside of cluster
 func GetClient() kubernetes.Interface {
@@ -171,14 +123,14 @@ func GetRestClient() (*rest.RESTClient, error) {
 	return restClient, nil
 }
 
-// GetTPRClient returns tpr client to the request from inside of cluster
-func GetTPRClient() (*rest.RESTClient, error) {
+// GetCRDClient returns tpr client to the request from inside of cluster
+func GetCRDClient() (*rest.RESTClient, error) {
 	tprconfig, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	configureClient(tprconfig)
+	configureClient("k8s.io", "v1", "/apis", tprconfig)
 
 	tprclient, err := rest.RESTClientFor(tprconfig)
 	if err != nil {
@@ -188,21 +140,26 @@ func GetTPRClient() (*rest.RESTClient, error) {
 	return tprclient, nil
 }
 
-// GetTPRClientOutOfCluster returns tpr client to the request from outside of cluster
-func GetTPRClientOutOfCluster() (*rest.RESTClient, error) {
-	tprconfig, err := BuildOutOfClusterConfig()
+// GetRestClientOutOfCluster returns a REST client based on a group, API version and path
+func GetRestClientOutOfCluster(group, apiVersion, apiPath string) (*rest.RESTClient, error) {
+	config, err := BuildOutOfClusterConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	configureClient(tprconfig)
+	configureClient(group, apiVersion, apiPath, config)
 
-	tprclient, err := rest.RESTClientFor(tprconfig)
+	client, err := rest.RESTClientFor(config)
 	if err != nil {
 		return nil, err
 	}
 
-	return tprclient, nil
+	return client, nil
+}
+
+// GetCDRClientOutOfCluster returns tpr client to the request from outside of cluster
+func GetCDRClientOutOfCluster() (*rest.RESTClient, error) {
+	return GetRestClientOutOfCluster("k8s.io", "v1", "/apis")
 }
 
 //GetServiceMonitorClientOutOfCluster returns sm client to the request from outside of cluster
@@ -223,12 +180,12 @@ func GetServiceMonitorClientOutOfCluster() (*monitoringv1alpha1.MonitoringV1alph
 func GetFunction(funcName, ns string) (spec.Function, error) {
 	var f spec.Function
 
-	tprClient, err := GetTPRClientOutOfCluster()
+	crdClient, err := GetCDRClientOutOfCluster()
 	if err != nil {
 		return spec.Function{}, err
 	}
 
-	err = tprClient.Get().
+	err = crdClient.Get().
 		Resource("functions").
 		Namespace(ns).
 		Name(funcName).
@@ -244,170 +201,9 @@ func GetFunction(funcName, ns string) (spec.Function, error) {
 	return f, nil
 }
 
-func getAvailableRuntimes(imageType string) []string {
-	runtimeObjList := [][]runtimeVersion{python, node, ruby}
-	var runtimeList []string
-	for i := range runtimeObjList {
-		for j := range runtimeObjList[i] {
-			if (imageType == "PubSub" && runtimeObjList[i][j].pubsubImage != "") || (imageType == "HTTP" && runtimeObjList[i][j].httpImage != "") {
-				runtimeList = append(runtimeList, runtimeObjList[i][j].runtimeID+runtimeObjList[i][j].version)
-			}
-		}
-	}
-	return runtimeList
-}
-
-// GetFunctionFileNames returns the function and dependencies filename
-func GetFunctionFileNames(runtime, modName string) (fileName, depName string) {
-	switch {
-	case strings.Contains(runtime, "python"):
-		fileName = modName + ".py"
-		depName = "requirements.txt"
-	case strings.Contains(runtime, "nodejs"):
-		fileName = modName + ".js"
-		depName = "package.json"
-	case strings.Contains(runtime, "ruby"):
-		fileName = modName + ".rb"
-		depName = "Gemfile"
-	case strings.Contains(runtime, "dotnetcore"):
-		fileName = modName + ".cs"
-		depName = "requirements.xml"
-	default:
-		fileName = modName
-		depName = ""
-	}
-	return
-}
-
-// GetFunctionImage returns the image ID depending on the runtime, its version and function type
-func GetFunctionImage(runtime, ftype string) (imageName string, err error) {
-	runtimeID := regexp.MustCompile("[a-zA-Z]+").FindString(runtime)
-	version := regexp.MustCompile("[0-9.]+").FindString(runtime)
-	var versionsDef []runtimeVersion
-	var httpImage, pubsubImage string
-	switch {
-	case runtimeID == "python":
-		versionsDef = python
-	case runtimeID == "nodejs":
-		versionsDef = node
-	case runtimeID == "ruby":
-		versionsDef = ruby
-	case runtimeID == "dotnetcore":
-		versionsDef = dotnetcore
-	default:
-		err = errors.New("The given runtime is not valid")
-		return
-	}
-
-	for i := range versionsDef {
-		if versionsDef[i].version == version {
-			httpImage = versionsDef[i].httpImage
-			pubsubImage = versionsDef[i].pubsubImage
-		}
-	}
-
-	imageNameEnvVar := ""
-	if ftype == pubsubFunc {
-		imageNameEnvVar = strings.ToUpper(runtimeID) + "_PUBSUB_RUNTIME"
-	} else {
-		imageNameEnvVar = strings.ToUpper(runtimeID) + "_RUNTIME"
-	}
-	if imageName = os.Getenv(imageNameEnvVar); imageName == "" {
-		if ftype == pubsubFunc {
-			if pubsubImage == "" {
-				err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for event based functions. Available runtimes are: %s", runtime, strings.Join(getAvailableRuntimes("PubSub")[:], ", "))
-			} else {
-				imageName = pubsubImage
-			}
-		} else {
-			if httpImage == "" {
-				err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for HTTP based functions. Available runtimes are: %s", runtime, strings.Join(getAvailableRuntimes("HTTP")[:], ", "))
-			} else {
-				imageName = httpImage
-			}
-		}
-	}
-	return
-}
-
-// EnsureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
-func EnsureK8sResources(funcObj *spec.Function, client kubernetes.Interface) error {
-	if len(funcObj.Metadata.Labels) == 0 {
-		funcObj.Metadata.Labels = make(map[string]string)
-	}
-	funcObj.Metadata.Labels["function"] = funcObj.Metadata.Name
-
-	t := true
-	or := []metav1.OwnerReference{
-		{
-			Kind:               "Function",
-			APIVersion:         "k8s.io",
-			Name:               funcObj.Metadata.Name,
-			UID:                funcObj.Metadata.UID,
-			BlockOwnerDeletion: &t,
-		},
-	}
-
-	err := ensureFuncConfigMap(client, funcObj, or)
-	if err != nil {
-		return err
-	}
-
-	err = ensureFuncService(client, funcObj, or)
-	if err != nil {
-		return err
-	}
-
-	err = ensureFuncDeployment(client, funcObj, or)
-	if err != nil {
-		return err
-	}
-
-	if funcObj.Spec.Type == schedFunc {
-		err = ensureFuncJob(client, funcObj, or)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// DeleteK8sResources removes k8s objects of the function
-func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
-	//check if func is scheduled or not
-	_, err := client.BatchV2alpha1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", name), metav1.GetOptions{})
-	if err == nil {
-		err = client.BatchV2alpha1().CronJobs(ns).Delete(fmt.Sprintf("trigger-%s", name), &metav1.DeleteOptions{})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return err
-		}
-	}
-
-	// delete deployment
-	deletePolicy := metav1.DeletePropagationBackground
-	err = client.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-	// delete svc
-	err = client.Core().Services(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-
-	// delete cm
-	err = client.Core().ConfigMaps(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-
-	return nil
-}
-
 // CreateK8sCustomResource will create a custom function object
-func CreateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
-	err := tprClient.Post().
+func CreateK8sCustomResource(crdClient rest.Interface, f *spec.Function) error {
+	err := crdClient.Post().
 		Resource("functions").
 		Namespace(f.Metadata.Namespace).
 		Body(f).
@@ -420,12 +216,12 @@ func CreateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
 }
 
 // UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
+func UpdateK8sCustomResource(crdClient rest.Interface, f *spec.Function) error {
 	data, err := json.Marshal(f)
 	if err != nil {
 		return err
 	}
-	return tprClient.Patch(types.MergePatchType).
+	return crdClient.Patch(types.MergePatchType).
 		Namespace(f.Metadata.Namespace).
 		Resource("functions").
 		Name(f.Metadata.Name).
@@ -434,8 +230,8 @@ func UpdateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
 }
 
 // DeleteK8sCustomResource will delete custom function object
-func DeleteK8sCustomResource(tprClient *rest.RESTClient, funcName, ns string) error {
-	err := tprClient.Delete().
+func DeleteK8sCustomResource(crdClient *rest.RESTClient, funcName, ns string) error {
+	err := crdClient.Delete().
 		Resource("functions").
 		Namespace(ns).
 		Name(funcName).
@@ -471,184 +267,94 @@ func GetReadyPod(pods *v1.PodList) (v1.Pod, error) {
 	return v1.Pod{}, errors.New("There is no pod ready")
 }
 
-// extract the branch number from the runtime string
-func getBranchFromRuntime(runtime string) string {
-	re := regexp.MustCompile("[0-9.]+")
-	return re.FindString(runtime)
+func appendToCommand(orig string, command ...string) string {
+	if len(orig) > 0 {
+		return fmt.Sprintf("%s && %s", orig, strings.Join(command, " && "))
+	}
+	return strings.Join(command, " && ")
 }
 
-// specify image for the init container
-func getInitImage(runtime string) string {
-	switch {
-	case strings.Contains(runtime, "python"):
-		branch := getBranchFromRuntime(runtime)
-		if branch == "2.7" {
-			// TODO: Migrate the image for python 2.7 to an official source (not alpine-based)
-			return "tuna/python-pillow:2.7.11-alpine"
-		}
-		return "python:" + branch
-	case strings.Contains(runtime, "nodejs"):
-		return "node:6.10-alpine"
-	case strings.Contains(runtime, "ruby"):
-		return "bitnami/ruby:2.4"
-	case strings.Contains(runtime, "dotnetcore"):
-		return "microsoft/aspnetcore-build:2.0"
+func getProvisionContainer(function, checksum, fileName, handler, contentType, runtime string, runtimeVolume, depsVolume v1.VolumeMount) (v1.Container, error) {
+	prepareCommand := ""
+	originFile := path.Join(depsVolume.MountPath, fileName)
+	depName, _ := kubelessRuntime.GetRuntimeDepName(runtime)
+
+	// Prepare Function file and dependencies
+	switch contentType {
+	case "base64":
+		// File is encoded in base64
+		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("cat %s | base64 -d > %s", originFile, originFile))
+		break
+	case "text":
+	case "":
+		// Assumming that function is plain text
+		// So we don't need to preprocess it
 	default:
-		return ""
+		return v1.Container{}, fmt.Errorf("Unable to prepare function of type %s: Unknown format", contentType)
 	}
-}
 
-// specify command for the init container
-func getCommand(runtime string, env []v1.EnvVar) []string {
-	switch {
-	case strings.Contains(runtime, "python"):
-		return []string{"pip", "install", "--prefix=/pythonpath", "-r", "/requirements/requirements.txt"}
-	case strings.Contains(runtime, "nodejs"):
-		registry := "https://registry.npmjs.org"
-		scope := ""
-		for _, v := range env {
-			if v.Name == "NPM_REGISTRY" {
-				registry = v.Value
-			}
-			if v.Name == "NPM_SCOPE" {
-				scope = v.Value + ":"
-			}
+	// Validate checksum
+	if checksum == "" {
+		// DEPRECATED: Checksum may be empty
+	} else {
+		checksumInfo := strings.Split(checksum, ":")
+		switch checksumInfo[0] {
+		case "sha256":
+			shaFile := originFile + ".sha256"
+			prepareCommand = appendToCommand(prepareCommand,
+				fmt.Sprintf("echo '%s  %s' > %s", checksumInfo[1], originFile, shaFile),
+				fmt.Sprintf("sha256sum -c %s", shaFile),
+			)
+			break
+		default:
+			return v1.Container{}, fmt.Errorf("Unable to verify checksum %s: Unknown format", checksum)
 		}
-		return []string{"/bin/sh", "-c", "cp package.json /nodepath && npm config set " + scope + "registry " + registry + " && npm install --prefix=/nodepath"}
-	case strings.Contains(runtime, "ruby"):
-		return []string{"bundle", "install", "--path", "/rubypath"}
-	default:
-		return []string{}
 	}
-}
 
-// specify volumes for the init container
-func getVolumeMounts(name, runtime string) []v1.VolumeMount {
-	switch {
-	case strings.Contains(runtime, "python"):
-		return []v1.VolumeMount{
-			{
-				Name:      "pythonpath",
-				MountPath: "/pythonpath",
-			},
-			{
-				Name:      name,
-				MountPath: "/requirements",
-			},
+	// Extract content in case it is a Zip file
+	if filepath.Ext(fileName) == ".zip" {
+		prepareCommand = appendToCommand(prepareCommand,
+			fmt.Sprintf("unzip -o %s -d %s", originFile, runtimeVolume.MountPath),
+		)
+	} else {
+		// Copy the target as a single file
+		destFileName, err := getFileName("", handler, runtime)
+		if err != nil {
+			return v1.Container{}, err
 		}
-	case strings.Contains(runtime, "nodejs"):
-		return []v1.VolumeMount{
-			{
-				Name:      "nodepath",
-				MountPath: "/nodepath",
-			},
-			{
-				Name:      name,
-				MountPath: "/requirements",
-			},
-		}
-	case strings.Contains(runtime, "ruby"):
-		return []v1.VolumeMount{
-			{
-				Name:      "rubypath",
-				MountPath: "/rubypath",
-			},
-			{
-				Name:      name,
-				MountPath: "/requirements",
-			},
-		}
-	case strings.Contains(runtime, "dotnetcore"):
-		return []v1.VolumeMount{
-			{
-				Name:      "dotnetcorepath",
-				MountPath: "/dotnetcorepath",
-			},
-			{
-				Name:      name,
-				MountPath: "/requirements",
-			},
-		}
-	default:
-		return []v1.VolumeMount{}
+		dest := path.Join(runtimeVolume.MountPath, destFileName)
+		prepareCommand = appendToCommand(prepareCommand,
+			fmt.Sprintf("cp %s %s", originFile, dest),
+		)
 	}
-}
 
-// update deployment object in case of custom runtime
-func updateDeployment(dpm *v1beta1.Deployment, runtime string) {
-	switch {
-	case strings.Contains(runtime, "python"):
-		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-			Name:  "PYTHONPATH",
-			Value: "/opt/kubeless/pythonpath/lib/python" + getBranchFromRuntime(runtime) + "/site-packages",
-		})
-		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      "pythonpath",
-			MountPath: "/opt/kubeless/pythonpath",
-		})
-		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: "pythonpath",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
-		})
-	case strings.Contains(runtime, "nodejs"):
-		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-			Name:  "NODE_PATH",
-			Value: "/opt/kubeless/nodepath/node_modules",
-		})
-		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      "nodepath",
-			MountPath: "/opt/kubeless/nodepath",
-		})
-		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: "nodepath",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
-		})
-	case strings.Contains(runtime, "ruby"):
-		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-			Name:  "GEM_HOME",
-			Value: "/opt/kubeless/rubypath/ruby/2.4.0",
-		})
-		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      "rubypath",
-			MountPath: "/opt/kubeless/rubypath",
-		})
-		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: "rubypath",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
-		})
-	case strings.Contains(runtime, "dotnetcore"):
-		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-			Name:  "DOTNETCORE_HOME",
-			Value: "/usr/bin/",
-		})
-		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      "dotnetcorepath",
-			MountPath: "/opt/kubeless/dotnetcorepath",
-		})
-		dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: "dotnetcorepath",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
-		})
+	// Copy deps file to the installation path
+	if depName != "" {
+		depsFile := path.Join(depsVolume.MountPath, depName)
+		prepareCommand = appendToCommand(prepareCommand,
+			fmt.Sprintf("cp %s %s", depsFile, runtimeVolume.MountPath),
+		)
 	}
+
+	return v1.Container{
+		Name:            "prepare",
+		Image:           unzip,
+		Command:         []string{"sh", "-c"},
+		Args:            []string{prepareCommand},
+		VolumeMounts:    []v1.VolumeMount{runtimeVolume, depsVolume},
+		ImagePullPolicy: v1.PullIfNotPresent,
+	}, nil
 }
 
 // configureClient configures tpr client
-func configureClient(config *rest.Config) {
+func configureClient(group, version, apiPath string, config *rest.Config) {
 	groupversion := schema.GroupVersion{
-		Group:   "k8s.io",
-		Version: "v1",
+		Group:   group,
+		Version: version,
 	}
 
 	config.GroupVersion = &groupversion
-	config.APIPath = "/apis"
+	config.APIPath = apiPath
 	config.ContentType = runtime.ContentTypeJSON
 	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
 
@@ -769,16 +475,29 @@ func splitHandler(handler string) (string, string, error) {
 	return str[0], str[1], nil
 }
 
-func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+func getFileName(file, handler, runtime string) (string, error) {
+	// DEPRECATED: If the filename is empty, assume that
+	// the destination file will be <handler>.<ext>
+	if file == "" {
+		modName, _, err := splitHandler(handler)
+		if err != nil {
+			return "", err
+		}
+		return kubelessRuntime.GetFunctionFileName(modName, runtime), nil
+	}
+	return file, nil
+}
+
+// EnsureFuncConfigMap creates/updates a config map with a function specification
+func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
 	configMapData := map[string]string{}
 	var err error
 	if funcObj.Spec.Handler != "" {
-		modName, _, err := splitHandler(funcObj.Spec.Handler)
+		fileName, err := getFileName(funcObj.Spec.File, funcObj.Spec.Handler, funcObj.Spec.Runtime)
 		if err != nil {
 			return err
 		}
-		fileName, depName := GetFunctionFileNames(funcObj.Spec.Runtime, modName)
-
+		depName, _ := kubelessRuntime.GetRuntimeDepName(funcObj.Spec.Runtime)
 		configMapData = map[string]string{
 			"handler": funcObj.Spec.Handler,
 			fileName:  funcObj.Spec.Function,
@@ -799,12 +518,7 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 
 	_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Create(configMap)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var data []byte
-		data, err = json.Marshal(configMap)
-		if err != nil {
-			return err
-		}
-		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Patch(configMap.Name, types.StrategicMergePatchType, data)
+		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Update(configMap)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The configmap may already exist and there is nothing to update
 			return nil
@@ -814,35 +528,41 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 	return err
 }
 
-func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
-	svc := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            funcObj.Metadata.Name,
-			Labels:          funcObj.Metadata.Labels,
-			OwnerReferences: or,
-		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
-				{
-					Name:       "function-port",
-					Port:       8080,
-					TargetPort: intstr.FromInt(8080),
-					NodePort:   0,
-					Protocol:   v1.ProtocolTCP,
-				},
-			},
-			Selector: funcObj.Metadata.Labels,
-			Type:     v1.ServiceTypeClusterIP,
-		},
+// EnsureFuncService creates/updates a function service
+func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+	svc, err := client.Core().Services(funcObj.Metadata.Namespace).Get(funcObj.Metadata.Name, metav1.GetOptions{})
+	name := funcObj.Metadata.Name
+	labels := funcObj.Metadata.Labels
+	servicePort := v1.ServicePort{
+		Name:       "function-port",
+		Port:       8080,
+		TargetPort: intstr.FromInt(8080),
+		NodePort:   0,
+		Protocol:   v1.ProtocolTCP,
 	}
-	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(svc)
-	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var data []byte
-		data, err = json.Marshal(svc)
-		if err != nil {
-			return err
+	if err != nil && k8sErrors.IsNotFound(err) {
+		svc := v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            name,
+				Labels:          labels,
+				OwnerReferences: or,
+			},
+			Spec: v1.ServiceSpec{
+				Ports:    []v1.ServicePort{servicePort},
+				Selector: labels,
+				Type:     v1.ServiceTypeClusterIP,
+			},
 		}
-		_, err = client.Core().Services(funcObj.Metadata.Namespace).Patch(svc.Name, types.StrategicMergePatchType, data)
+		_, err = client.Core().Services(funcObj.Metadata.Namespace).Create(&svc)
+		return err
+	} else if err == nil {
+		// In case the SVC already exists we should update
+		// just certain fields (for being able to update it)
+		svc.ObjectMeta.Labels = labels
+		svc.ObjectMeta.OwnerReferences = or
+		svc.Spec.Ports = []v1.ServicePort{servicePort}
+		svc.Spec.Selector = funcObj.Metadata.Labels
+		_, err = client.Core().Services(funcObj.Metadata.Namespace).Update(svc)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The service may already exist and there is nothing to update
 			return nil
@@ -851,7 +571,14 @@ func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 	return err
 }
 
-func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+// EnsureFuncDeployment creates/updates a function deployment
+func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+	const (
+		runtimePath = "/kubeless"
+		depsPath    = "/dependencies"
+	)
+	runtimeVolumeName := funcObj.Metadata.Name
+	depsVolumeName := funcObj.Metadata.Name + "-deps"
 	podAnnotations := map[string]string{
 		// Attempt to attract the attention of prometheus.
 		// For runtimes that don't support /metrics,
@@ -904,16 +631,33 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		}
 	}
 
-	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes, v1.Volume{
-		Name: funcObj.Metadata.Name,
-		VolumeSource: v1.VolumeSource{
-			ConfigMap: &v1.ConfigMapVolumeSource{
-				LocalObjectReference: v1.LocalObjectReference{
-					Name: funcObj.Metadata.Name,
+	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes,
+		v1.Volume{
+			Name: runtimeVolumeName,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		},
+		v1.Volume{
+			Name: depsVolumeName,
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: funcObj.Metadata.Name,
+					},
 				},
 			},
 		},
-	})
+	)
+	runtimeVolumeMount := v1.VolumeMount{
+		Name:      runtimeVolumeName,
+		MountPath: runtimePath,
+	}
+	depsVolumeMount := v1.VolumeMount{
+		Name:      depsVolumeName,
+		MountPath: depsPath,
+	}
+
 	if len(dpm.Spec.Template.Spec.Containers) == 0 {
 		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
 	}
@@ -925,7 +669,7 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		}
 		//only resolve the image name if it has not been already set
 		if dpm.Spec.Template.Spec.Containers[0].Image == "" {
-			imageName, err := GetFunctionImage(funcObj.Spec.Runtime, funcObj.Spec.Type)
+			imageName, err := kubelessRuntime.GetFunctionImage(funcObj.Spec.Runtime, funcObj.Spec.Type)
 			if err != nil {
 				return err
 			}
@@ -951,37 +695,47 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			Name:  "TOPIC_NAME",
 			Value: funcObj.Spec.Topic,
 		})
-	dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-		Name:      funcObj.Metadata.Name,
-		MountPath: "/kubeless",
-	})
+	dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, runtimeVolumeMount)
 
-	//prepare init-container for custom runtime
-	initContainer := v1.Container{}
-	if funcObj.Spec.Deps != "" {
-		// ensure that the runtime is supported for installing dependencies
-		_, deps := GetFunctionFileNames(funcObj.Spec.Runtime, "")
-		if deps == "" {
-			return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
+	// prepare init-containers if some function is specified
+	if funcObj.Spec.Function != "" {
+		fileName, err := getFileName(funcObj.Spec.File, funcObj.Spec.Handler, funcObj.Spec.Runtime)
+		if err != nil {
+			return err
 		}
-		initContainer = v1.Container{
-			Name:            "install",
-			Image:           getInitImage(funcObj.Spec.Runtime),
-			Command:         getCommand(funcObj.Spec.Runtime, dpm.Spec.Template.Spec.Containers[0].Env),
-			VolumeMounts:    getVolumeMounts(funcObj.Metadata.Name, funcObj.Spec.Runtime),
-			WorkingDir:      "/requirements",
-			ImagePullPolicy: v1.PullIfNotPresent,
+		provisionContainer, err := getProvisionContainer(
+			funcObj.Spec.Function,
+			funcObj.Spec.Checksum,
+			fileName,
+			funcObj.Spec.Handler,
+			funcObj.Spec.ContentType,
+			funcObj.Spec.Runtime,
+			runtimeVolumeMount,
+			depsVolumeMount,
+		)
+		if err != nil {
+			return err
 		}
-		initContainer.Env = dpm.Spec.Template.Spec.Containers[0].Env
-		// update deployment for custom runtime
-		updateDeployment(dpm, funcObj.Spec.Runtime)
-		//TODO: remove this when init containers becomes a stable feature
-		addInitContainerAnnotation(dpm)
+		dpm.Spec.Template.Spec.InitContainers = []v1.Container{provisionContainer}
 	}
-	// only append non-empty initContainer
-	if initContainer.Name != "" {
-		dpm.Spec.Template.Spec.InitContainers = append(dpm.Spec.Template.Spec.InitContainers, initContainer)
+	// ensure that the runtime is supported for installing dependencies
+	_, err = kubelessRuntime.GetRuntimeDepName(funcObj.Spec.Runtime)
+	if funcObj.Spec.Deps != "" && err != nil {
+		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
+	} else if funcObj.Spec.Deps != "" {
+		buildContainer, err := kubelessRuntime.GetBuildContainer(funcObj.Spec.Runtime, dpm.Spec.Template.Spec.Containers[0].Env, runtimeVolumeMount, depsVolumeMount)
+		if err != nil {
+			return err
+		}
+		dpm.Spec.Template.Spec.InitContainers = append(
+			dpm.Spec.Template.Spec.InitContainers,
+			buildContainer,
+		)
+		// update deployment for loading dependencies
+		kubelessRuntime.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
 	}
+	//TODO: remove this when init containers becomes a stable feature
+	addInitContainerAnnotation(dpm)
 
 	// add liveness Probe to deployment
 	if funcObj.Spec.Type != pubsubFunc {
@@ -1000,16 +754,10 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 	_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var data []byte
-		data, err = json.Marshal(dpm)
+		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Update(dpm)
 		if err != nil {
 			return err
 		}
-		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Patch(dpm.Name, types.StrategicMergePatchType, data)
-		if err != nil {
-			return err
-		}
-
 		// kick existing function pods then it will be recreated
 		// with the new data mount from updated configmap.
 		// TODO: This is a workaround.  Do something better.
@@ -1030,7 +778,8 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 	return err
 }
 
-func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+// EnsureFuncCronJob creates/updates a function cron job
+func EnsureFuncCronJob(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
 	job := &batchv2alpha1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            fmt.Sprintf("trigger-%s", funcObj.Metadata.Name),

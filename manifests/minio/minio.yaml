@@ -1,0 +1,126 @@
+# NOTE:
+# It is necessary to first deploy a secret that minio will use
+# for retrieving the username and password. To generate it
+# execute:
+# $ kubectl create secret generic minio-key --namespace kubeless --from-literal=accesskey=<username> --from-literal=secretkey=<password>
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: minio
+  namespace: kubeless
+  annotations:
+    volume.alpha.kubernetes.io/storage-class: standard
+spec:
+  storageClassName: standard
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: "10Gi"
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: minio
+  namespace: kubeless
+  labels:
+    kubeless: minio
+spec:
+  selector:
+    kubeless: minio
+  ports:
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: kubeless
+  labels:
+    kubeless: minio
+spec:
+  selector:
+    matchLabels:
+      kubeless: minio
+  template:
+    metadata:
+      name: minio
+      labels:
+        kubeless: minio
+      annotations:
+        pod.beta.kubernetes.io/init-containers: '[
+          {
+            "name": "init-myservice",
+            "image": "busybox",
+            "command": ["mkdir", "-p", "/export/functions"],
+            "volumeMounts": [{
+              "name": "export",
+              "mountPath": "/export"
+            }]
+          }
+        ]'
+    spec:
+      volumes:
+        - name: export
+          persistentVolumeClaim:
+            claimName: minio
+      containers:
+        - name: minio
+          image: minio/minio:RELEASE.2017-02-16T01-47-30Z
+          imagePullPolicy: Always
+          command: ["minio"]
+          args: ["server", "/export"]
+          volumeMounts:
+            - name: export
+              mountPath: /export
+          ports:
+            - name: service
+              containerPort: 9000
+          env:
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-key
+                  key: accesskey
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-key
+                  key: secretkey
+          livenessProbe:
+            tcpSocket:
+              port: 9000
+            timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: set-policy
+  namespace: kubeless
+spec:
+  template:
+    metadata:
+      name:  set-policy
+    spec:
+      volumes:
+        - name: keys
+          secret:
+            secretName: minio-key
+      containers:
+      - name:  set-policy
+        image: minio/mc:RELEASE.2017-10-14T00-51-16Z
+        command: ["sh", "-c"]
+        args: [ "\
+          mc config host add minioserver http://minio.kubeless:9000 $(cat /minio-cred/accesskey) $(cat /minio-cred/secretkey) &&  \
+          mc policy download minioserver/functions" ]
+        volumeMounts:
+          - name: keys
+            mountPath: /minio-cred
+      restartPolicy: OnFailure

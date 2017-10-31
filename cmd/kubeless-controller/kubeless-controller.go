@@ -41,13 +41,13 @@ var rootCmd = &cobra.Command{
 	Short: "Kubeless controller",
 	Long:  globalUsage,
 	Run: func(cmd *cobra.Command, args []string) {
-		tprClient, err := utils.GetTPRClient()
+		crdClient, err := utils.GetCRDClient()
 		if err != nil {
 			logrus.Fatalf("Cannot get TPR client: %v", err)
 		}
 		cfg := controller.Config{
 			KubeCli:   utils.GetClient(),
-			TprClient: tprClient,
+			TprClient: crdClient,
 		}
 		c := controller.New(cfg)
 		stopCh := make(chan struct{})

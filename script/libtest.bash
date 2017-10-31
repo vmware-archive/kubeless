@@ -311,4 +311,14 @@ test_kubeless_autoscale() {
     k8s_wait_for_pod_count ${num} -l function="${func}"
     kubeless autoscale delete ${func}
 }
+deploy_manifest() {
+    local manifest=${1:?}
+    echo_info "Deploying ${manifest}"
+    kubectl create -f ${manifest}
+}
+teardown_manifest() {
+    local manifest=${1:?}
+    echo_info "Deploying ${manifest}"
+    kubectl delete -f ${manifest}
+}
 # vim: sw=4 ts=4 et si

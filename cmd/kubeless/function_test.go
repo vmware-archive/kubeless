@@ -17,13 +17,20 @@ limitations under the License.
 package main
 
 import (
+	"io/ioutil"
 	"k8s.io/client-go/pkg/api/v1"
+	"os"
+	"path"
 	"reflect"
 	"testing"
 
 	"github.com/kubeless/kubeless/pkg/spec"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/fake"
+	batchv1 "k8s.io/client-go/pkg/apis/batch/v1"
+	core "k8s.io/client-go/testing"
 )
 
 func TestParseLabel(t *testing.T) {
@@ -81,7 +88,18 @@ func TestParseEnv(t *testing.T) {
 
 func TestGetFunctionDescription(t *testing.T) {
 	// It should take parse the given values
-	result, err := getFunctionDescription("test", "default", "file.handler", "function", "dependencies", "runtime", "", "", "test-image", "128Mi", true, []string{"TEST=1"}, []string{"test=1"}, spec.Function{})
+	file, err := ioutil.TempFile("", "test")
+	if err != nil {
+		t.Error(err)
+	}
+	function := "function"
+	_, err = file.WriteString(function)
+	if err != nil {
+		t.Error(err)
+	}
+	defer os.Remove(file.Name()) // clean up
+
+	result, err := getFunctionDescription("test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", true, []string{"TEST=1"}, []string{"test=1"}, spec.Function{}, fake.NewSimpleClientset())
 	if err != nil {
 		t.Error(err)
 	}
@@ -99,13 +117,16 @@ func TestGetFunctionDescription(t *testing.T) {
 			},
 		},
 		Spec: spec.FunctionSpec{
-			Handler:  "file.handler",
-			Runtime:  "runtime",
-			Type:     "HTTP",
-			Function: "function",
-			Deps:     "dependencies",
-			Topic:    "",
-			Schedule: "",
+			Handler:     "file.handler",
+			Runtime:     "runtime",
+			Type:        "HTTP",
+			Function:    "function",
+			Checksum:    "sha256:78f9ac018e554365069108352dacabb7fbd15246edf19400677e3b54fe24e126",
+			File:        path.Base(file.Name()),
+			ContentType: "text",
+			Deps:        "dependencies",
+			Topic:       "",
+			Schedule:    "",
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -130,11 +151,11 @@ func TestGetFunctionDescription(t *testing.T) {
 		},
 	}
 	if !reflect.DeepEqual(expectedFunction, *result) {
-		t.Error("Unexpected result")
+		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedFunction, *result)
 	}
 
 	// It should take the default values
-	result2, err := getFunctionDescription("test", "default", "", "", "", "", "", "", "", "", false, []string{}, []string{}, expectedFunction)
+	result2, err := getFunctionDescription("test", "default", "", "", "", "", "", "", "", "", false, []string{}, []string{}, expectedFunction, fake.NewSimpleClientset())
 	if err != nil {
 		t.Error(err)
 	}
@@ -143,11 +164,12 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// Given parameters should take precedence from default values
-	result3, err := getFunctionDescription("test", "default", "file.handler2", "function2", "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", false, []string{"TEST=2"}, []string{"test=2"}, expectedFunction)
+	file.WriteString("-modified") // Add text to the file
+	result3, err := getFunctionDescription("test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", false, []string{"TEST=2"}, []string{"test=2"}, expectedFunction, fake.NewSimpleClientset())
 	if err != nil {
 		t.Error(err)
 	}
-	parsedMem, _ = parseMemory("256Mi")
+	parsedMem2, _ := parseMemory("256Mi")
 	newFunction := spec.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
@@ -161,13 +183,16 @@ func TestGetFunctionDescription(t *testing.T) {
 			},
 		},
 		Spec: spec.FunctionSpec{
-			Handler:  "file.handler2",
-			Runtime:  "runtime2",
-			Type:     "PubSub",
-			Function: "function2",
-			Deps:     "dependencies2",
-			Topic:    "test_topic",
-			Schedule: "",
+			Handler:     "file.handler2",
+			Runtime:     "runtime2",
+			Type:        "PubSub",
+			Function:    "function-modified",
+			File:        path.Base(file.Name()),
+			ContentType: "text",
+			Checksum:    "sha256:1958eb96d7d3cadedd0f327f09322eb7db296afb282ed91aa66cb4ab0dcc3c9f",
+			Deps:        "dependencies2",
+			Topic:       "test_topic",
+			Schedule:    "",
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -178,10 +203,10 @@ func TestGetFunctionDescription(t *testing.T) {
 							}},
 							Resources: v1.ResourceRequirements{
 								Limits: map[v1.ResourceName]resource.Quantity{
-									v1.ResourceMemory: parsedMem,
+									v1.ResourceMemory: parsedMem2,
 								},
 								Requests: map[v1.ResourceName]resource.Quantity{
-									v1.ResourceMemory: parsedMem,
+									v1.ResourceMemory: parsedMem2,
 								},
 							},
 							Image: "test-image2",
@@ -195,4 +220,80 @@ func TestGetFunctionDescription(t *testing.T) {
 		t.Error("Unexpected result")
 	}
 
+	// It should upload the function if Minio is available
+	minioFakeSvc := v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "kubeless",
+			Name:      "minio",
+		},
+	}
+	uploadFakeJob := batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "kubeless",
+			Name:      "upload-file",
+		},
+		Status: batchv1.JobStatus{
+			Succeeded: 1,
+		},
+	}
+	cli := &fake.Clientset{}
+	cli.Fake.AddReactor("get", "services", func(action core.Action) (bool, runtime.Object, error) {
+		return true, &minioFakeSvc, nil
+	})
+	cli.Fake.AddReactor("get", "jobs", func(action core.Action) (bool, runtime.Object, error) {
+		return true, &uploadFakeJob, nil
+	})
+	result4, err := getFunctionDescription("test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", true, []string{"TEST=1"}, []string{"test=1"}, spec.Function{}, cli)
+	if err != nil {
+		t.Error(err)
+	}
+	expectedFunction = spec.Function{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "k8s.io/v1",
+		},
+		Metadata: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+			Labels: map[string]string{
+				"test": "1",
+			},
+		},
+		Spec: spec.FunctionSpec{
+			Handler:     "file.handler",
+			Runtime:     "runtime",
+			Type:        "HTTP",
+			Function:    "http://minio.kubeless:9000/functions/" + path.Base(file.Name()) + ".1958eb96d7d3cadedd0f327f09322eb7db296afb282ed91aa66cb4ab0dcc3c9f",
+			File:        path.Base(file.Name()),
+			ContentType: "URL",
+			Checksum:    "sha256:1958eb96d7d3cadedd0f327f09322eb7db296afb282ed91aa66cb4ab0dcc3c9f",
+			Deps:        "dependencies",
+			Topic:       "",
+			Schedule:    "",
+			Template: v1.PodTemplateSpec{
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Env: []v1.EnvVar{{
+								Name:  "TEST",
+								Value: "1",
+							}},
+							Resources: v1.ResourceRequirements{
+								Limits: map[v1.ResourceName]resource.Quantity{
+									v1.ResourceMemory: parsedMem,
+								},
+								Requests: map[v1.ResourceName]resource.Quantity{
+									v1.ResourceMemory: parsedMem,
+								},
+							},
+							Image: "test-image",
+						},
+					},
+				},
+			},
+		},
+	}
+	if !reflect.DeepEqual(expectedFunction, *result4) {
+		t.Error("Unexpected result")
+	}
 }
