@@ -339,34 +339,34 @@ func TestEnsureDeployment(t *testing.T) {
 		Name:  f1Name,
 		Image: "bitnami/kubeless-python@sha256:6789266df0c97333f76e23efd58cf9c7efe24fa3e83b5fc826fd5cc317699b55",
 		Ports: []v1.ContainerPort{
-			v1.ContainerPort{
+			{
 				ContainerPort: 8080,
 			},
 		},
 		Env: []v1.EnvVar{
-			v1.EnvVar{
+			{
 				Name:  "foo",
 				Value: "bar",
 			},
-			v1.EnvVar{
+			{
 				Name:  "FUNC_HANDLER",
 				Value: "bar",
 			},
-			v1.EnvVar{
+			{
 				Name:  "MOD_NAME",
 				Value: "foo",
 			},
-			v1.EnvVar{
+			{
 				Name:  "TOPIC_NAME",
 				Value: "",
 			},
-			v1.EnvVar{
+			{
 				Name:  "PYTHONPATH",
 				Value: "/kubeless/lib/python2.7/site-packages",
 			},
 		},
 		VolumeMounts: []v1.VolumeMount{
-			v1.VolumeMount{
+			{
 				Name:      f1Name,
 				MountPath: "/kubeless",
 			},
