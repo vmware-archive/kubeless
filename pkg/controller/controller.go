@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -169,6 +170,81 @@ func (c *Controller) processNextItem() bool {
 	return true
 }
 
+// ensureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
+func (c *Controller) ensureK8sResources(funcObj *spec.Function) error {
+	if len(funcObj.Metadata.Labels) == 0 {
+		funcObj.Metadata.Labels = make(map[string]string)
+	}
+	funcObj.Metadata.Labels["function"] = funcObj.Metadata.Name
+
+	t := true
+	or := []metav1.OwnerReference{
+		{
+			Kind:               "Function",
+			APIVersion:         "k8s.io",
+			Name:               funcObj.Metadata.Name,
+			UID:                funcObj.Metadata.UID,
+			BlockOwnerDeletion: &t,
+		},
+	}
+
+	err := utils.EnsureFuncConfigMap(c.clientset, funcObj, or)
+	if err != nil {
+		return err
+	}
+
+	err = utils.EnsureFuncService(c.clientset, funcObj, or)
+	if err != nil {
+		return err
+	}
+
+	err = utils.EnsureFuncDeployment(c.clientset, funcObj, or)
+	if err != nil {
+		return err
+	}
+
+	if funcObj.Spec.Type == "Scheduled" {
+		err = utils.EnsureFuncCronJob(c.clientset, funcObj, or)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// deleteK8sResources removes k8s objects of the function
+func (c *Controller) deleteK8sResources(ns, name string) error {
+	//check if func is scheduled or not
+	_, err := c.clientset.BatchV2alpha1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", name), metav1.GetOptions{})
+	if err == nil {
+		err = c.clientset.BatchV2alpha1().CronJobs(ns).Delete(fmt.Sprintf("trigger-%s", name), &metav1.DeleteOptions{})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	// delete deployment
+	deletePolicy := metav1.DeletePropagationBackground
+	err = c.clientset.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+	// delete svc
+	err = c.clientset.Core().Services(ns).Delete(name, &metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+
+	// delete cm
+	err = c.clientset.Core().ConfigMaps(ns).Delete(name, &metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+
+	return nil
+}
+
 func (c *Controller) processItem(key string) error {
 	c.logger.Infof("Processing change to Function %s", key)
 
@@ -183,7 +259,7 @@ func (c *Controller) processItem(key string) error {
 	}
 
 	if !exists {
-		err := utils.DeleteK8sResources(ns, name, c.clientset)
+		err := c.deleteK8sResources(ns, name)
 		if err != nil {
 			c.logger.Errorf("Can't delete function: %v", err)
 			return err
@@ -194,7 +270,7 @@ func (c *Controller) processItem(key string) error {
 
 	funcObj := obj.(*spec.Function)
 
-	err = utils.EnsureK8sResources(funcObj, c.clientset)
+	err = c.ensureK8sResources(funcObj)
 	if err != nil {
 		c.logger.Errorf("Function can not be created/updated: %v", err)
 		return err

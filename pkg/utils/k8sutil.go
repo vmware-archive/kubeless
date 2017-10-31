@@ -57,7 +57,6 @@ import (
 
 const (
 	pubsubFunc = "PubSub"
-	schedFunc  = "Scheduled"
 	busybox    = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
 	unzip      = "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697"
 )
@@ -202,81 +201,6 @@ func GetFunction(funcName, ns string) (spec.Function, error) {
 	return f, nil
 }
 
-// EnsureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
-func EnsureK8sResources(funcObj *spec.Function, client kubernetes.Interface) error {
-	if len(funcObj.Metadata.Labels) == 0 {
-		funcObj.Metadata.Labels = make(map[string]string)
-	}
-	funcObj.Metadata.Labels["function"] = funcObj.Metadata.Name
-
-	t := true
-	or := []metav1.OwnerReference{
-		{
-			Kind:               "Function",
-			APIVersion:         "k8s.io",
-			Name:               funcObj.Metadata.Name,
-			UID:                funcObj.Metadata.UID,
-			BlockOwnerDeletion: &t,
-		},
-	}
-
-	err := ensureFuncConfigMap(client, funcObj, or)
-	if err != nil {
-		return err
-	}
-
-	err = ensureFuncService(client, funcObj, or)
-	if err != nil {
-		return err
-	}
-
-	err = ensureFuncDeployment(client, funcObj, or)
-	if err != nil {
-		return err
-	}
-
-	if funcObj.Spec.Type == schedFunc {
-		err = ensureFuncJob(client, funcObj, or)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// DeleteK8sResources removes k8s objects of the function
-func DeleteK8sResources(ns, name string, client kubernetes.Interface) error {
-	//check if func is scheduled or not
-	_, err := client.BatchV2alpha1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", name), metav1.GetOptions{})
-	if err == nil {
-		err = client.BatchV2alpha1().CronJobs(ns).Delete(fmt.Sprintf("trigger-%s", name), &metav1.DeleteOptions{})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return err
-		}
-	}
-
-	// delete deployment
-	deletePolicy := metav1.DeletePropagationBackground
-	err = client.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-	// delete svc
-	err = client.Core().Services(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-
-	// delete cm
-	err = client.Core().ConfigMaps(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-
-	return nil
-}
-
 // CreateK8sCustomResource will create a custom function object
 func CreateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
 	err := tprClient.Post().
@@ -343,18 +267,15 @@ func GetReadyPod(pods *v1.PodList) (v1.Pod, error) {
 	return v1.Pod{}, errors.New("There is no pod ready")
 }
 
-func getProvisionContainer(function, checksum, fileName, contentType, handler, runtime string, runtimeVolume, depsVolume v1.VolumeMount) (v1.Container, error) {
-	if fileName == "" {
-		// DEPRECATED: If the filename is empty, assume that
-		// the destination file will be <handler>.<ext>
-		modName, _, err := splitHandler(handler)
-		if err != nil {
-			return v1.Container{}, err
-		}
-		fileName = kubelessRuntime.GetFunctionFileName(modName, runtime)
+func appendToCommand(orig string, command ...string) string {
+	if len(orig) > 0 {
+		return fmt.Sprintf("%s && %s", orig, strings.Join(command, " && "))
 	}
-	dest := path.Join(runtimeVolume.MountPath, fileName)
-	prepareCommand := []string{}
+	return strings.Join(command, " && ")
+}
+
+func getProvisionContainer(function, checksum, fileName, handler, contentType, runtime string, runtimeVolume, depsVolume v1.VolumeMount) (v1.Container, error) {
+	prepareCommand := ""
 	originFile := path.Join(depsVolume.MountPath, fileName)
 	depName, _ := kubelessRuntime.GetRuntimeDepName(runtime)
 
@@ -362,21 +283,16 @@ func getProvisionContainer(function, checksum, fileName, contentType, handler, r
 	switch contentType {
 	case "URL":
 		// Function is an URL, download it
-		prepareCommand = []string{"curl -L " + function + " -o " + dest}
+		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("curl -L %s -o %s", function, originFile))
 		break
 	case "base64":
 		// File is encoded in base64
-		prepareCommand = []string{"cat " + originFile + " | base64 -d > " + dest}
+		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("cat %s | base64 -d > %s", originFile, originFile))
 		break
+	case "text":
 	default:
-		// DEPRECTADED: Content-type may be missing
 		// Assumming that function is plain text
-		prepareCommand = []string{"cp " + originFile + " " + runtimeVolume.MountPath}
-	}
-	if depName != "" {
-		// Copy deps file to the installation path
-		depsFile := path.Join(depsVolume.MountPath, depName)
-		prepareCommand = append(prepareCommand, "&& cp "+depsFile+" "+runtimeVolume.MountPath)
+		// So we don't need to preprocess it
 	}
 
 	// Validate checksum
@@ -386,10 +302,10 @@ func getProvisionContainer(function, checksum, fileName, contentType, handler, r
 		checksumInfo := strings.Split(checksum, ":")
 		switch checksumInfo[0] {
 		case "sha256":
-			shaFile := dest + ".sha256"
-			prepareCommand = append(prepareCommand,
-				"&& echo '"+checksumInfo[1]+"  "+dest+"' > "+shaFile,
-				"&& sha256sum -c "+shaFile,
+			shaFile := originFile + ".sha256"
+			prepareCommand = appendToCommand(prepareCommand,
+				fmt.Sprintf("echo '%s  %s' > %s", checksumInfo[1], originFile, shaFile),
+				fmt.Sprintf("sha256sum -c %s", shaFile),
 			)
 			break
 		default:
@@ -399,10 +315,26 @@ func getProvisionContainer(function, checksum, fileName, contentType, handler, r
 
 	// Extract content in case it is a Zip file
 	if filepath.Ext(fileName) == ".zip" {
-		prepareCommand = append(
-			prepareCommand,
-			"&& unzip -o "+dest+" -d "+runtimeVolume.MountPath,
-			"&& rm "+dest,
+		prepareCommand = appendToCommand(prepareCommand,
+			fmt.Sprintf("unzip -o %s -d %s", originFile, runtimeVolume.MountPath),
+		)
+	} else {
+		// Copy the target as a single file
+		destFileName, err := getFileName("", handler, runtime)
+		if err != nil {
+			return v1.Container{}, err
+		}
+		dest := path.Join(runtimeVolume.MountPath, destFileName)
+		prepareCommand = appendToCommand(prepareCommand,
+			fmt.Sprintf("cp %s %s", originFile, dest),
+		)
+	}
+
+	// Copy deps file to the installation path
+	if depName != "" {
+		depsFile := path.Join(depsVolume.MountPath, depName)
+		prepareCommand = appendToCommand(prepareCommand,
+			fmt.Sprintf("cp %s %s", depsFile, runtimeVolume.MountPath),
 		)
 	}
 
@@ -410,7 +342,7 @@ func getProvisionContainer(function, checksum, fileName, contentType, handler, r
 		Name:            "prepare",
 		Image:           unzip,
 		Command:         []string{"sh", "-c"},
-		Args:            []string{strings.Join(prepareCommand, " ")},
+		Args:            []string{prepareCommand},
 		VolumeMounts:    []v1.VolumeMount{runtimeVolume, depsVolume},
 		ImagePullPolicy: v1.PullIfNotPresent,
 	}, nil
@@ -545,19 +477,27 @@ func splitHandler(handler string) (string, string, error) {
 	return str[0], str[1], nil
 }
 
-func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+func getFileName(file, handler, runtime string) (string, error) {
+	// DEPRECATED: If the filename is empty, assume that
+	// the destination file will be <handler>.<ext>
+	if file == "" {
+		modName, _, err := splitHandler(handler)
+		if err != nil {
+			return "", err
+		}
+		return kubelessRuntime.GetFunctionFileName(modName, runtime), nil
+	}
+	return file, nil
+}
+
+// EnsureFuncConfigMap creates/updates a config map with a function specification
+func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
 	configMapData := map[string]string{}
 	var err error
 	if funcObj.Spec.Handler != "" {
-		modName, _, err := splitHandler(funcObj.Spec.Handler)
+		fileName, err := getFileName(funcObj.Spec.File, funcObj.Spec.Handler, funcObj.Spec.Runtime)
 		if err != nil {
 			return err
-		}
-		fileName := funcObj.Spec.File
-		if fileName == "" {
-			// DEPRECATED: If the filename is empty, assume that
-			// the destination file will be <handler>.<ext>
-			fileName = kubelessRuntime.GetFunctionFileName(modName, funcObj.Spec.Runtime)
 		}
 		depName, _ := kubelessRuntime.GetRuntimeDepName(funcObj.Spec.Runtime)
 		configMapData = map[string]string{
@@ -580,12 +520,7 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 
 	_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Create(configMap)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var data []byte
-		data, err = json.Marshal(configMap)
-		if err != nil {
-			return err
-		}
-		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Patch(configMap.Name, types.StrategicMergePatchType, data)
+		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Update(configMap)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The configmap may already exist and there is nothing to update
 			return nil
@@ -595,35 +530,42 @@ func ensureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 	return err
 }
 
-func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
-	svc := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            funcObj.Metadata.Name,
-			Labels:          funcObj.Metadata.Labels,
-			OwnerReferences: or,
-		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
-				{
-					Name:       "function-port",
-					Port:       8080,
-					TargetPort: intstr.FromInt(8080),
-					NodePort:   0,
-					Protocol:   v1.ProtocolTCP,
-				},
-			},
-			Selector: funcObj.Metadata.Labels,
-			Type:     v1.ServiceTypeClusterIP,
-		},
+// EnsureFuncService creates/updates a function service
+func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+	svc, err := client.Core().Services(funcObj.Metadata.Namespace).Get(funcObj.Metadata.Name, metav1.GetOptions{})
+	name := funcObj.Metadata.Name
+	labels := funcObj.Metadata.Labels
+	servicePort := v1.ServicePort{
+		Name:       "function-port",
+		Port:       8080,
+		TargetPort: intstr.FromInt(8080),
+		NodePort:   0,
+		Protocol:   v1.ProtocolTCP,
 	}
-	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(svc)
-	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var data []byte
-		data, err = json.Marshal(svc)
-		if err != nil {
-			return err
+	if err != nil && k8sErrors.IsNotFound(err) {
+		svc := v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            name,
+				Labels:          labels,
+				OwnerReferences: or,
+			},
+			Spec: v1.ServiceSpec{
+				Ports:    []v1.ServicePort{servicePort},
+				Selector: labels,
+				Type:     v1.ServiceTypeClusterIP,
+			},
 		}
-		_, err = client.Core().Services(funcObj.Metadata.Namespace).Patch(svc.Name, types.StrategicMergePatchType, data)
+		_, err = client.Core().Services(funcObj.Metadata.Namespace).Create(&svc)
+		return err
+	} else if err == nil {
+		// In case the SVC already exists we should update
+		// just certain fields (for being able to update it)
+		svc.ObjectMeta.Name = name
+		svc.ObjectMeta.Labels = labels
+		svc.ObjectMeta.OwnerReferences = or
+		svc.Spec.Ports = []v1.ServicePort{servicePort}
+		svc.Spec.Selector = funcObj.Metadata.Labels
+		_, err = client.Core().Services(funcObj.Metadata.Namespace).Update(svc)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The service may already exist and there is nothing to update
 			return nil
@@ -632,7 +574,8 @@ func ensureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 	return err
 }
 
-func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+// EnsureFuncDeployment creates/updates a function deployment
+func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
 	const (
 		runtimePath = "/kubeless"
 		depsPath    = "/dependencies"
@@ -695,9 +638,7 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		v1.Volume{
 			Name: runtimeVolumeName,
 			VolumeSource: v1.VolumeSource{
-				HostPath: &v1.HostPathVolumeSource{
-					Path: runtimePath,
-				},
+				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},
 		},
 		v1.Volume{
@@ -761,12 +702,16 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 	// prepare init-containers if some function is specified
 	if funcObj.Spec.Function != "" {
+		fileName, err := getFileName(funcObj.Spec.File, funcObj.Spec.Handler, funcObj.Spec.Runtime)
+		if err != nil {
+			return err
+		}
 		provisionContainer, err := getProvisionContainer(
 			funcObj.Spec.Function,
 			funcObj.Spec.Checksum,
-			funcObj.Spec.File,
-			funcObj.Spec.ContentType,
+			fileName,
 			funcObj.Spec.Handler,
+			funcObj.Spec.ContentType,
 			funcObj.Spec.Runtime,
 			runtimeVolumeMount,
 			depsVolumeMount,
@@ -790,7 +735,7 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			buildContainer,
 		)
 		// update deployment for loading dependencies
-		kubelessRuntime.UpdateDeployment(dpm, depsVolumeName, funcObj.Spec.Runtime)
+		kubelessRuntime.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
 	}
 	//TODO: remove this when init containers becomes a stable feature
 	addInitContainerAnnotation(dpm)
@@ -812,16 +757,10 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 	_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var data []byte
-		data, err = json.Marshal(dpm)
+		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Update(dpm)
 		if err != nil {
 			return err
 		}
-		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Patch(dpm.Name, types.StrategicMergePatchType, data)
-		if err != nil {
-			return err
-		}
-
 		// kick existing function pods then it will be recreated
 		// with the new data mount from updated configmap.
 		// TODO: This is a workaround.  Do something better.
@@ -842,7 +781,8 @@ func ensureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 	return err
 }
 
-func ensureFuncJob(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+// EnsureFuncCronJob creates/updates a function cron job
+func EnsureFuncCronJob(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
 	job := &batchv2alpha1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            fmt.Sprintf("trigger-%s", funcObj.Metadata.Name),

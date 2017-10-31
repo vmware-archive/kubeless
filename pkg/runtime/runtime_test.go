@@ -122,7 +122,7 @@ func TestGetBuildContainer(t *testing.T) {
 	if c.Image != "node:6.10" {
 		t.Errorf("Unexpected image %s", c.Image)
 	}
-	if c.Args[0] != "npm config set myorg:registry http://reg.com && npm install /v2 --prefix=/v1" {
+	if c.Args[0] != "npm config set myorg:registry http://reg.com && cd /v2 && npm install --prefix=/v1" {
 		t.Errorf("Unexpected command %s", c.Args[0])
 	}
 

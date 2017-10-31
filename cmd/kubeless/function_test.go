@@ -151,7 +151,7 @@ func TestGetFunctionDescription(t *testing.T) {
 		},
 	}
 	if !reflect.DeepEqual(expectedFunction, *result) {
-		t.Error("Unexpected result")
+		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedFunction, *result)
 	}
 
 	// It should take the default values

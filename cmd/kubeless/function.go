@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/Sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -118,35 +119,78 @@ func getFileSha256(file string) (string, error) {
 	return checksum, err
 }
 
-// Convert MB to Bytes as int64
-func mbtoInt64(mb int) int64 {
-	return int64(mb * 1024 * 1024)
-}
-
-func uploadFunction(file string, cli kubernetes.Interface) (string, string, error) {
-	var checksum string
-	stats, err := os.Stat(file)
-	if stats.Size() > mbtoInt64(50) { // TODO: Make the max file size configurable
-		err = errors.New("The maximum size of a function is 50MB")
-		return "", "", err
-	}
-	checksum, err = getFileSha256(file)
-	if err != nil {
-		return "", "", err
-	}
-	url, err := minio.UploadFunction(file, checksum, cli)
-	if err != nil {
-		return "", "", err
-	}
-	return url, checksum, err
-}
-
 func isMinioAvailable(cli kubernetes.Interface) bool {
 	_, err := cli.Core().Services("kubeless").Get("minio", metav1.GetOptions{})
 	if err != nil {
 		return false
 	}
+	minioPods, err := cli.Core().Pods("kubeless").List(metav1.ListOptions{
+		LabelSelector: "kubeless=minio",
+	})
+	for i := range minioPods.Items {
+		if minioPods.Items[i].Status.Phase != "Running" {
+			logrus.Warn("Found unhealthy Minio pod, disabling upload")
+			return false
+		}
+	}
 	return true
+}
+
+func uploadFunction(file string, cli kubernetes.Interface) (string, string, string, error) {
+	var function, contentType, checksum string
+	stats, err := os.Stat(file)
+	if err != nil {
+		return "", "", "", err
+	}
+	if stats.Size() > int64(50*1024*1024) { // TODO: Make the max file size (50 MB) configurable
+		err = errors.New("The maximum size of a function is 50MB")
+		return "", "", "", err
+	}
+
+	if isMinioAvailable(cli) {
+		var rawChecksum string
+		rawChecksum, err := getFileSha256(file)
+		if err != nil {
+			return "", "", "", err
+		}
+		function, err = minio.UploadFunction(file, rawChecksum, cli)
+		if err != nil {
+			return "", "", "", err
+		}
+		checksum = "sha256:" + rawChecksum
+		contentType = "URL"
+		if err != nil {
+			return "", "", "", err
+		}
+	} else {
+		// If an object storage service is not available check
+		// that the file is not over 1MB to store it as a Custom Resource
+		if stats.Size() > int64(1*1024*1024) {
+			err = errors.New("Unable to deploy functions over 1MB withouth a storage service")
+			return "", "", "", err
+		}
+		functionBytes, err := ioutil.ReadFile(file)
+		if err != nil {
+			return "", "", "", err
+		}
+		if err != nil {
+			return "", "", "", err
+		}
+		fileType := http.DetectContentType(functionBytes)
+		if strings.Contains(fileType, "text/plain") {
+			function = string(functionBytes[:])
+			contentType = "text"
+		} else {
+			function = base64.StdEncoding.EncodeToString(functionBytes)
+			contentType = "base64"
+		}
+		c, err := getFileSha256(file)
+		checksum = "sha256:" + c
+		if err != nil {
+			return "", "", "", err
+		}
+	}
+	return function, contentType, checksum, nil
 }
 
 func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function, cli kubernetes.Interface) (*spec.Function, error) {
@@ -163,45 +207,9 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, s
 		checksum = defaultFunction.Spec.Checksum
 	} else {
 		var err error
-		if isMinioAvailable(cli) {
-			var rawChecksum string
-			function, rawChecksum, err = uploadFunction(file, cli)
-			checksum = "sha256:" + rawChecksum
-			contentType = "URL"
-			if err != nil {
-				return &spec.Function{}, err
-			}
-		} else {
-			// If an object storage service is not available check
-			// that the file is not over 1MB to store it as a Custom Resource
-			stats, err := os.Stat(file)
-			if err != nil {
-				return &spec.Function{}, err
-			}
-			if stats.Size() > mbtoInt64(1) {
-				err = errors.New("Unable to deploy functions over 1MB withouth a storage service")
-				return &spec.Function{}, err
-			}
-			functionBytes, err := ioutil.ReadFile(file)
-			if err != nil {
-				return &spec.Function{}, err
-			}
-			if err != nil {
-				return &spec.Function{}, err
-			}
-			fileType := http.DetectContentType(functionBytes)
-			if strings.Contains(fileType, "text/plain") {
-				function = string(functionBytes[:])
-				contentType = "text"
-			} else {
-				function = base64.StdEncoding.EncodeToString(functionBytes)
-				contentType = "base64"
-			}
-			c, err := getFileSha256(file)
-			checksum = "sha256:" + c
-			if err != nil {
-				return &spec.Function{}, err
-			}
+		function, contentType, checksum, err = uploadFunction(file, cli)
+		if err != nil {
+			return &spec.Function{}, err
 		}
 	}
 

@@ -6,11 +6,17 @@ get-python-verify:
 	kubeless function call get-python |egrep hello.world
 
 get-python-update:
-	kubeless function update get-python --from-file python/hellowithdata.py --handler hellowithdata.handler
+	kubeless function update get-python --handler hellowithdata.handler --from-file python/hellowithdata.py
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python/"
 
 get-python-update-verify:
 	kubeless function call get-python --data '{"hello": "world"}' |egrep '"hello": "world"'
+
+get-python-deps:
+	kubeless function deploy get-python-deps --trigger-http --runtime python2.7 --handler helloget.foo --from-file python/hellowithdeps.py --dependencies python/requirements.txt
+
+get-python-deps-verify:
+	kubeless function call get-python-deps |egrep Google
 
 get-python-34:
 	kubeless function deploy get-python --trigger-http --runtime python3.4 --handler helloget.foo --from-file python/helloget.py
@@ -25,6 +31,18 @@ get-nodejs:
 
 get-nodejs-verify:
 	kubeless function call get-nodejs |egrep hello.world
+
+get-nodejs-deps:
+	kubeless function deploy get-nodejs-deps --trigger-http --runtime nodejs6 --handler helloget.handler --from-file nodejs/hellowithdeps.js --dependencies nodejs/package.json
+
+get-nodejs-deps-verify:
+	kubeless function call get-nodejs-deps --data '{"hello": "world"}' |egrep '{"hello":"world","date"'
+
+get-nodejs-multi:
+	kubeless function deploy get-nodejs-multi --trigger-http --runtime nodejs6 --handler index.helloGet --from-file nodejs/helloFunctions.zip
+
+get-nodejs-multi-verify:
+	kubeless function call get-nodejs-multi |egrep hello.world
 
 get-python-metadata:
 	kubeless function deploy get-python-metadata --trigger-http --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --env foo:bar,bar=foo,foo --memory 128Mi --label foo:bar,bar=foo,foobar
@@ -53,7 +71,6 @@ get-dotnetcore:
 
 get-dotnetcore-verify:
 	kubeless function call get-dotnetcore |egrep hello.world
-
 
 get: get-python get-nodejs get-python-metadata get-ruby get-ruby-deps
 

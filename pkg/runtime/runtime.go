@@ -216,7 +216,8 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolum
 			}
 		}
 		command = "npm config set " + scope + "registry " + registry +
-			" && npm install " + depsVolume.MountPath + " --prefix=" + runtimeVolume.MountPath
+			" && cd " + depsVolume.MountPath +
+			" && npm install --prefix=" + runtimeVolume.MountPath
 	case strings.Contains(runtime, "ruby"):
 		command = "bundle install --gemfile=" + depsFile + " --path=" + runtimeVolume.MountPath
 	}
@@ -232,43 +233,27 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolum
 }
 
 // UpdateDeployment object in case of custom runtime
-func UpdateDeployment(dpm *v1beta1.Deployment, depsVolume, runtime string) {
+func UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runtime string) {
 	switch {
 	case strings.Contains(runtime, "python"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "PYTHONPATH",
-			Value: "/opt/kubeless/pythonpath/lib/python" + getBranchFromRuntime(runtime) + "/site-packages",
-		})
-		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      depsVolume,
-			MountPath: "/opt/kubeless/pythonpath",
+			Value: path.Join(depsPath, "lib/python"+getBranchFromRuntime(runtime)+"/site-packages"),
 		})
 	case strings.Contains(runtime, "nodejs"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "NODE_PATH",
-			Value: "/opt/kubeless/nodepath/node_modules",
-		})
-		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      depsVolume,
-			MountPath: "/opt/kubeless/nodepath",
+			Value: path.Join(depsPath, "node_modules"),
 		})
 	case strings.Contains(runtime, "ruby"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "GEM_HOME",
-			Value: "/opt/kubeless/rubypath/ruby/2.4.0",
-		})
-		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      depsVolume,
-			MountPath: "/opt/kubeless/rubypath",
+			Value: path.Join(depsPath, "ruby/2.4.0"),
 		})
 	case strings.Contains(runtime, "dotnetcore"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "DOTNETCORE_HOME",
 			Value: "/usr/bin/",
-		})
-		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      depsVolume,
-			MountPath: "/opt/kubeless/dotnetcorepath",
 		})
 	}
 }

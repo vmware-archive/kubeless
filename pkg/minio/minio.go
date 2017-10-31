@@ -2,6 +2,7 @@ package minio
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"time"
 
@@ -35,8 +36,18 @@ func waitForCompletedJob(jobName, namespace string, timeout int, cli kubernetes.
 // proxy is not valid)
 func UploadFunction(file, checksum string, cli kubernetes.Interface) (string, error) {
 	minioCredentials := "minio-key"
-	jobName := "upload-file"
+	jobName := "upload-file-" + checksum[0:10]
 	fileName := path.Base(file) + "." + checksum
+	var absPath string
+	if !path.IsAbs(file) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+		absPath = path.Join(cwd, file)
+	} else {
+		absPath = file
+	}
 	job := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
@@ -58,7 +69,7 @@ func UploadFunction(file, checksum string, cli kubernetes.Interface) (string, er
 							Name: "func",
 							VolumeSource: v1.VolumeSource{
 								HostPath: &v1.HostPathVolumeSource{
-									Path: file,
+									Path: absPath,
 								},
 							},
 						},
@@ -93,12 +104,12 @@ func UploadFunction(file, checksum string, cli kubernetes.Interface) (string, er
 	if err != nil {
 		return "", err
 	}
-	err = waitForCompletedJob(jobName, "kubeless", 120, cli)
-	if err != nil {
-		return "", err
-	}
+	waitErr := waitForCompletedJob(jobName, "kubeless", 120, cli)
 	// Clean up (delete job)
 	err = cli.BatchV1().Jobs("kubeless").Delete(jobName, &metav1.DeleteOptions{})
+	if waitErr != nil {
+		return "", waitErr
+	}
 	if err != nil {
 		return "", err
 	}

@@ -1,6 +1,8 @@
 package minio
 
 import (
+	"fmt"
+	"path"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,17 +23,19 @@ func TestUploadFunction(t *testing.T) {
 			Succeeded: 1,
 		},
 	}
+	file := "/path/to/func.ext"
+	checksum := "abcdefghijklm1234567890"
 	cli := &fake.Clientset{}
 	cli.Fake.AddReactor("get", "jobs", func(action core.Action) (bool, runtime.Object, error) {
 		return true, &uploadFakeJob, nil
 	})
 
 	// It should return a valid URL
-	url, err := UploadFunction("/path/to/func.ext", "abcd1234", cli)
+	url, err := UploadFunction(file, checksum, cli)
 	if err != nil {
 		t.Errorf("Unexpected error %s", err)
 	}
-	if url != "http://minio.kubeless:9000/functions/func.ext.abcd1234" {
+	if url != fmt.Sprintf("http://minio.kubeless:9000/functions/%s.%s", path.Base(file), checksum) {
 		t.Errorf("Unexpected url %s", url)
 	}
 }
