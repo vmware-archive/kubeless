@@ -558,7 +558,6 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 	} else if err == nil {
 		// In case the SVC already exists we should update
 		// just certain fields (for being able to update it)
-		svc.ObjectMeta.Name = name
 		svc.ObjectMeta.Labels = labels
 		svc.ObjectMeta.OwnerReferences = or
 		svc.Spec.Ports = []v1.ServicePort{servicePort}
