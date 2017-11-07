@@ -1,0 +1,7 @@
+{
+    "name": "hellowithdeps",
+    "version": "0.0.1",
+    "dependencies": {
+        "lodash": "3.10.1"
+    }
+}
