@@ -437,7 +437,7 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 
 // EnsureFuncService creates/updates a function service
 func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
-	svc := v1.Service{
+	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            funcObj.Metadata.Name,
 			Labels:          funcObj.Metadata.Labels,
@@ -445,7 +445,7 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
-				v1.ServicePort{
+				{
 					Name:       "function-port",
 					Port:       8080,
 					TargetPort: intstr.FromInt(8080),
@@ -457,7 +457,7 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 			Type:     v1.ServiceTypeClusterIP,
 		},
 	}
-	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(&svc)
+	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(svc)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		// In case the SVC already exists we should update
 		// just certain fields (for being able to update it)
@@ -466,10 +466,10 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 		if err != nil {
 			return err
 		}
-		newSvc.ObjectMeta.Labels = svc.ObjectMeta.Labels
+		newSvc.ObjectMeta.Labels = funcObj.Metadata.Labels
 		newSvc.ObjectMeta.OwnerReferences = or
 		newSvc.Spec.Ports = svc.Spec.Ports
-		svc.Spec.Selector = funcObj.Metadata.Labels
+		newSvc.Spec.Selector = funcObj.Metadata.Labels
 		_, err = client.Core().Services(funcObj.Metadata.Namespace).Update(newSvc)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The service may already exist and there is nothing to update
