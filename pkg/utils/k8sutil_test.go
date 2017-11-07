@@ -576,7 +576,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	if !strings.HasPrefix(c.Args[0], "cat /deps/test.func | base64 -d > /deps/test.func") {
+	if !strings.HasPrefix(c.Args[0], "base64 -d < /deps/test.func > /deps/test.func.decoded") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 
@@ -591,7 +591,7 @@ func TestGetProvisionContainer(t *testing.T) {
 
 	// It should extract the file in case it is a Zip
 	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64+zip", "python2.7", rvol, dvol)
-	if !strings.Contains(c.Args[0], "unzip -o /deps/test.zip -d /runtime") {
+	if !strings.Contains(c.Args[0], "unzip -o /deps/test.zip.decoded -d /runtime") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 
