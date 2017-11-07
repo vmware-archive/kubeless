@@ -37,12 +37,12 @@ var deleteCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		tprClient, err := utils.GetTPRClientOutOfCluster()
+		crdClient, err := utils.GetCRDClientOutOfCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		err = utils.DeleteK8sCustomResource(tprClient, funcName, ns)
+		err = utils.DeleteK8sCustomResource(crdClient, funcName, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}
