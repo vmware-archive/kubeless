@@ -103,7 +103,7 @@ func TestGetBuildContainer(t *testing.T) {
 		Name:            "install",
 		Image:           "tuna/python-pillow:2.7.11-alpine",
 		Command:         []string{"sh", "-c"},
-		Args:            []string{"pip install --prefix=/v1 -r /v2/requirements.txt && cp -r /v2/* /v1"},
+		Args:            []string{"pip install --prefix=/v1 -r /v2/requirements.txt && cp -Hr /v2/* /v1"},
 		VolumeMounts:    []v1.VolumeMount{vol1, vol2},
 		ImagePullPolicy: v1.PullIfNotPresent,
 		Env:             env,
