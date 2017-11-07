@@ -523,7 +523,12 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 
 	_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Create(configMap)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Update(configMap)
+		var data []byte
+		data, err = json.Marshal(configMap)
+		if err != nil {
+			return err
+		}
+		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Patch(configMap.Name, types.StrategicMergePatchType, data)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The configmap may already exist and there is nothing to update
 			return nil
@@ -535,39 +540,32 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 
 // EnsureFuncService creates/updates a function service
 func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
-	svc, err := client.Core().Services(funcObj.Metadata.Namespace).Get(funcObj.Metadata.Name, metav1.GetOptions{})
-	name := funcObj.Metadata.Name
-	labels := funcObj.Metadata.Labels
-	servicePort := v1.ServicePort{
-		Name:       "function-port",
-		Port:       8080,
-		TargetPort: intstr.FromInt(8080),
-		NodePort:   0,
-		Protocol:   v1.ProtocolTCP,
+	svc := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            funcObj.Metadata.Name,
+			Labels:          funcObj.Metadata.Labels,
+			OwnerReferences: or,
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Name:       "function-port",
+					Port:       8080,
+					TargetPort: intstr.FromInt(8080),
+					NodePort:   0,
+					Protocol:   v1.ProtocolTCP,
+				},
+			},
+		},
 	}
-	if err != nil && k8sErrors.IsNotFound(err) {
-		svc := v1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            name,
-				Labels:          labels,
-				OwnerReferences: or,
-			},
-			Spec: v1.ServiceSpec{
-				Ports:    []v1.ServicePort{servicePort},
-				Selector: labels,
-				Type:     v1.ServiceTypeClusterIP,
-			},
+	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(svc)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		var data []byte
+		data, err = json.Marshal(svc)
+		if err != nil {
+			return err
 		}
-		_, err = client.Core().Services(funcObj.Metadata.Namespace).Create(&svc)
-		return err
-	} else if err == nil {
-		// In case the SVC already exists we should update
-		// just certain fields (for being able to update it)
-		svc.ObjectMeta.Labels = labels
-		svc.ObjectMeta.OwnerReferences = or
-		svc.Spec.Ports = []v1.ServicePort{servicePort}
-		svc.Spec.Selector = funcObj.Metadata.Labels
-		_, err = client.Core().Services(funcObj.Metadata.Namespace).Update(svc)
+		_, err = client.Core().Services(funcObj.Metadata.Namespace).Patch(svc.Name, types.StrategicMergePatchType, data)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The service may already exist and there is nothing to update
 			return nil
@@ -759,7 +757,9 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 	_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Update(dpm)
+		var data []byte
+		data, err = json.Marshal(dpm)
+		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Patch(dpm.Name, types.StrategicMergePatchType, data)
 		if err != nil {
 			return err
 		}

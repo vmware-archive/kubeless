@@ -82,6 +82,7 @@ var callCmd = &cobra.Command{
 			// So we need to manually build the URL
 			req = req.AbsPath(svc.ObjectMeta.SelfLink + ":" + port + "/proxy/")
 		}
+		logrus.Info(req.URL())
 		res, err := req.Do().Raw()
 		if err != nil {
 			// Properly interpret line breaks

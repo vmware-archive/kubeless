@@ -67,10 +67,10 @@ func init() {
 	dotnetcoreVersions = []runtimeVersion{dotnetcore2}
 
 	availableRuntimes = []RuntimeInfo{
-		RuntimeInfo{ID: "python", versions: pythonVersions, DepName: "requirements.txt", FileNameSuffix: ".py"},
-		RuntimeInfo{ID: "nodejs", versions: nodeVersions, DepName: "package.json", FileNameSuffix: ".js"},
-		RuntimeInfo{ID: "ruby", versions: rubyVersions, DepName: "Gemfile", FileNameSuffix: ".rb"},
-		RuntimeInfo{ID: "dotnetcore", versions: dotnetcoreVersions, DepName: "requirements.xml", FileNameSuffix: ".cs"},
+		{ID: "python", versions: pythonVersions, DepName: "requirements.txt", FileNameSuffix: ".py"},
+		{ID: "nodejs", versions: nodeVersions, DepName: "package.json", FileNameSuffix: ".js"},
+		{ID: "ruby", versions: rubyVersions, DepName: "Gemfile", FileNameSuffix: ".rb"},
+		{ID: "dotnetcore", versions: dotnetcoreVersions, DepName: "requirements.xml", FileNameSuffix: ".cs"},
 	}
 }
 
@@ -192,11 +192,11 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolum
 			}
 		}
 		command = "npm config set " + scope + "registry " + registry +
-			" && cd " + depsVolume.MountPath +
-			" && npm install --prefix=" + runtimeVolume.MountPath
+			" && npm install"
 	case strings.Contains(runtime, "ruby"):
 		command = "bundle install --gemfile=" + depsFile + " --path=" + runtimeVolume.MountPath
 	}
+
 	return v1.Container{
 		Name:            "install",
 		Image:           versionInf.initImage,
@@ -204,6 +204,7 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolum
 		Args:            []string{command},
 		VolumeMounts:    []v1.VolumeMount{runtimeVolume, depsVolume},
 		ImagePullPolicy: v1.PullIfNotPresent,
+		WorkingDir:      depsVolume.MountPath,
 		Env:             env,
 	}, nil
 }
