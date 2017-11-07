@@ -105,6 +105,7 @@ func TestGetBuildContainer(t *testing.T) {
 		Command:         []string{"sh", "-c"},
 		Args:            []string{"pip install --prefix=/v1 -r /v2/requirements.txt && cp -Hr /v2/* /v1"},
 		VolumeMounts:    []v1.VolumeMount{vol1, vol2},
+		WorkingDir:      "/v2",
 		ImagePullPolicy: v1.PullIfNotPresent,
 		Env:             env,
 	}
@@ -124,7 +125,7 @@ func TestGetBuildContainer(t *testing.T) {
 	if c.Image != "node:6.10" {
 		t.Errorf("Unexpected image %s", c.Image)
 	}
-	if !strings.Contains(c.Args[0], "npm config set myorg:registry http://reg.com && cd /v2 && npm install --prefix=/v1") {
+	if !strings.Contains(c.Args[0], "npm config set myorg:registry http://reg.com && npm install") {
 		t.Errorf("Unexpected command %s", c.Args[0])
 	}
 
