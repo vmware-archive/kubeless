@@ -123,7 +123,7 @@ func GetRestClient() (*rest.RESTClient, error) {
 	return restClient, nil
 }
 
-// GetCRDClient returns CRD client to the request from inside of cluster
+// GetCRDClient returns crd client to the request from inside of cluster
 func GetCRDClient() (*rest.RESTClient, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -556,6 +556,8 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 					Protocol:   v1.ProtocolTCP,
 				},
 			},
+			Selector: funcObj.Metadata.Labels,
+			Type:     v1.ServiceTypeClusterIP,
 		},
 	}
 	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(svc)

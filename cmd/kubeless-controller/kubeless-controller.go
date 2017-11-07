@@ -43,11 +43,11 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		crdClient, err := utils.GetCRDClient()
 		if err != nil {
-			logrus.Fatalf("Cannot get TPR client: %v", err)
+			logrus.Fatalf("Cannot get CRD client: %v", err)
 		}
 		cfg := controller.Config{
 			KubeCli:   utils.GetClient(),
-			TprClient: crdClient,
+			CRDClient: crdClient,
 		}
 		c := controller.New(cfg)
 		stopCh := make(chan struct{})
