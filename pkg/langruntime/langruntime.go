@@ -192,8 +192,7 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolum
 			}
 		}
 		command = "npm config set " + scope + "registry " + registry +
-			" && cd " + depsVolume.MountPath +
-			" && npm install --prefix=" + runtimeVolume.MountPath
+			" && npm install"
 	case strings.Contains(runtime, "ruby"):
 		command = "bundle install --gemfile=" + depsFile + " --path=" + runtimeVolume.MountPath
 	}
@@ -209,6 +208,7 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolum
 		Args:            []string{command},
 		VolumeMounts:    []v1.VolumeMount{runtimeVolume, depsVolume},
 		ImagePullPolicy: v1.PullIfNotPresent,
+		WorkingDir:      depsVolume.MountPath,
 		Env:             env,
 	}, nil
 }
