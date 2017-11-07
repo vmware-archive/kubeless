@@ -121,38 +121,38 @@ func GetRestClient() (*rest.RESTClient, error) {
 	return restClient, nil
 }
 
-// GetTPRClient returns tpr client to the request from inside of cluster
-func GetTPRClient() (*rest.RESTClient, error) {
-	tprconfig, err := rest.InClusterConfig()
+// GetCRDClient returns crd client to the request from inside of cluster
+func GetCRDClient() (*rest.RESTClient, error) {
+	crdconfig, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	configureClient(tprconfig)
+	configureClient(crdconfig)
 
-	tprclient, err := rest.RESTClientFor(tprconfig)
+	crdclient, err := rest.RESTClientFor(crdconfig)
 	if err != nil {
 		return nil, err
 	}
 
-	return tprclient, nil
+	return crdclient, nil
 }
 
-// GetTPRClientOutOfCluster returns tpr client to the request from outside of cluster
-func GetTPRClientOutOfCluster() (*rest.RESTClient, error) {
-	tprconfig, err := BuildOutOfClusterConfig()
+// GetCRDClientOutOfCluster returns crd client to the request from outside of cluster
+func GetCRDClientOutOfCluster() (*rest.RESTClient, error) {
+	crdconfig, err := BuildOutOfClusterConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	configureClient(tprconfig)
+	configureClient(crdconfig)
 
-	tprclient, err := rest.RESTClientFor(tprconfig)
+	crdclient, err := rest.RESTClientFor(crdconfig)
 	if err != nil {
 		return nil, err
 	}
 
-	return tprclient, nil
+	return crdclient, nil
 }
 
 //GetServiceMonitorClientOutOfCluster returns sm client to the request from outside of cluster
@@ -173,12 +173,12 @@ func GetServiceMonitorClientOutOfCluster() (*monitoringv1alpha1.MonitoringV1alph
 func GetFunction(funcName, ns string) (spec.Function, error) {
 	var f spec.Function
 
-	tprClient, err := GetTPRClientOutOfCluster()
+	crdClient, err := GetCRDClientOutOfCluster()
 	if err != nil {
 		return spec.Function{}, err
 	}
 
-	err = tprClient.Get().
+	err = crdClient.Get().
 		Resource("functions").
 		Namespace(ns).
 		Name(funcName).
@@ -195,8 +195,8 @@ func GetFunction(funcName, ns string) (spec.Function, error) {
 }
 
 // CreateK8sCustomResource will create a custom function object
-func CreateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
-	err := tprClient.Post().
+func CreateK8sCustomResource(crdClient rest.Interface, f *spec.Function) error {
+	err := crdClient.Post().
 		Resource("functions").
 		Namespace(f.Metadata.Namespace).
 		Body(f).
@@ -209,12 +209,12 @@ func CreateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
 }
 
 // UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
+func UpdateK8sCustomResource(crdClient rest.Interface, f *spec.Function) error {
 	data, err := json.Marshal(f)
 	if err != nil {
 		return err
 	}
-	return tprClient.Patch(types.MergePatchType).
+	return crdClient.Patch(types.MergePatchType).
 		Namespace(f.Metadata.Namespace).
 		Resource("functions").
 		Name(f.Metadata.Name).
@@ -223,8 +223,8 @@ func UpdateK8sCustomResource(tprClient rest.Interface, f *spec.Function) error {
 }
 
 // DeleteK8sCustomResource will delete custom function object
-func DeleteK8sCustomResource(tprClient *rest.RESTClient, funcName, ns string) error {
-	err := tprClient.Delete().
+func DeleteK8sCustomResource(crdClient *rest.RESTClient, funcName, ns string) error {
+	err := crdClient.Delete().
 		Resource("functions").
 		Namespace(ns).
 		Name(funcName).
@@ -260,7 +260,7 @@ func GetReadyPod(pods *v1.PodList) (v1.Pod, error) {
 	return v1.Pod{}, errors.New("There is no pod ready")
 }
 
-// configureClient configures tpr client
+// configureClient configures crd client
 func configureClient(config *rest.Config) {
 	groupversion := schema.GroupVersion{
 		Group:   "k8s.io",

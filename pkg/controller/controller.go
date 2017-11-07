@@ -38,7 +38,7 @@ import (
 )
 
 const (
-	tprName    = "function.k8s.io"
+	crdName    = "function.k8s.io"
 	maxRetries = 5
 	funcKind   = "Function"
 	funcAPI    = "k8s.io"
@@ -53,7 +53,7 @@ var (
 type Controller struct {
 	logger    *logrus.Entry
 	clientset kubernetes.Interface
-	tprclient rest.Interface
+	crdclient rest.Interface
 	Functions map[string]*spec.Function
 	queue     workqueue.RateLimitingInterface
 	informer  cache.SharedIndexInformer
@@ -62,12 +62,12 @@ type Controller struct {
 // Config contains k8s client of a controller
 type Config struct {
 	KubeCli   kubernetes.Interface
-	TprClient rest.Interface
+	CRDClient rest.Interface
 }
 
 // New initializes a controller object
 func New(cfg Config) *Controller {
-	lw := cache.NewListWatchFromClient(cfg.TprClient, "functions", api.NamespaceAll, fields.Everything())
+	lw := cache.NewListWatchFromClient(cfg.CRDClient, "functions", api.NamespaceAll, fields.Everything())
 
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
@@ -102,7 +102,7 @@ func New(cfg Config) *Controller {
 	return &Controller{
 		logger:    logrus.WithField("pkg", "controller"),
 		clientset: cfg.KubeCli,
-		tprclient: cfg.TprClient,
+		crdclient: cfg.CRDClient,
 		informer:  informer,
 		queue:     queue,
 	}

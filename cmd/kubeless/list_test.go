@@ -36,7 +36,7 @@ import (
 	"github.com/kubeless/kubeless/pkg/spec"
 )
 
-func fakeTprClient(f func(req *http.Request) (*http.Response, error)) *fake.RESTClient {
+func fakeCRDClient(f func(req *http.Request) (*http.Response, error)) *fake.RESTClient {
 	return &fake.RESTClient{
 		APIRegistry:          api.Registry,
 		NegotiatedSerializer: api.Codecs,
@@ -131,7 +131,7 @@ func TestList(t *testing.T) {
 		},
 	}
 
-	client := fakeTprClient(func(req *http.Request) (*http.Response, error) {
+	client := fakeCRDClient(func(req *http.Request) (*http.Response, error) {
 		header := http.Header{}
 		header.Set("Content-Type", runtime.ContentTypeJSON)
 		switch req.URL.Path {
