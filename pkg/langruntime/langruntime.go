@@ -67,10 +67,10 @@ func init() {
 	dotnetcoreVersions = []runtimeVersion{dotnetcore2}
 
 	availableRuntimes = []RuntimeInfo{
-		RuntimeInfo{ID: "python", versions: pythonVersions, DepName: "requirements.txt", FileNameSuffix: ".py"},
-		RuntimeInfo{ID: "nodejs", versions: nodeVersions, DepName: "package.json", FileNameSuffix: ".js"},
-		RuntimeInfo{ID: "ruby", versions: rubyVersions, DepName: "Gemfile", FileNameSuffix: ".rb"},
-		RuntimeInfo{ID: "dotnetcore", versions: dotnetcoreVersions, DepName: "requirements.xml", FileNameSuffix: ".cs"},
+		{ID: "python", versions: pythonVersions, DepName: "requirements.txt", FileNameSuffix: ".py"},
+		{ID: "nodejs", versions: nodeVersions, DepName: "package.json", FileNameSuffix: ".js"},
+		{ID: "ruby", versions: rubyVersions, DepName: "Gemfile", FileNameSuffix: ".rb"},
+		{ID: "dotnetcore", versions: dotnetcoreVersions, DepName: "requirements.xml", FileNameSuffix: ".cs"},
 	}
 }
 
