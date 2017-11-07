@@ -107,6 +107,35 @@ func TestEnsureConfigMap(t *testing.T) {
 	if !reflect.DeepEqual(cm.Data, expectedData) {
 		t.Errorf("Unexpected ConfigMap:\n %+v\nExpecting:\n %+v", cm.Data, expectedData)
 	}
+
+	// If there is already a config map it should update the previous one
+	f2 = &spec.Function{
+		Metadata: metav1.ObjectMeta{
+			Name:      f2Name,
+			Namespace: ns,
+		},
+		Spec: spec.FunctionSpec{
+			Function: "function2",
+			Handler:  "foo2.bar2",
+			Runtime:  "python3.4",
+		},
+	}
+	err = EnsureFuncConfigMap(clientset, f2, or)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	cm, err = clientset.CoreV1().ConfigMaps(ns).Get(f2Name, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	expectedData = map[string]string{
+		"handler":          "foo2.bar2",
+		"foo2.py":          "function2",
+		"requirements.txt": "",
+	}
+	if !reflect.DeepEqual(cm.Data, expectedData) {
+		t.Errorf("Unexpected ConfigMap:\n %+v\nExpecting:\n %+v", cm.Data, expectedData)
+	}
 }
 
 func TestEnsureService(t *testing.T) {
@@ -172,6 +201,16 @@ func TestEnsureService(t *testing.T) {
 	}
 	if !reflect.DeepEqual(*svc, expectedSVC) {
 		t.Errorf("Unexpected service:\n %+v\nExpecting:\n %+v", *svc, expectedSVC)
+	}
+
+	// If there is already a service it should update the previous one
+	newLabels := map[string]string{
+		"foobar": "barfoo",
+	}
+	f1.Metadata.Labels = newLabels
+	err = EnsureFuncService(clientset, f1, or)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
 	}
 }
 
@@ -373,6 +412,22 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 	if dpm.Spec.Template.Spec.Containers[0].LivenessProbe != nil {
 		t.Error("It should not setup a liveness probe")
+	}
+
+	// It should update a deployment if it is already present
+	f6 := spec.Function{}
+	f6 = *f1
+	f6.Spec.Handler = "foo.bar2"
+	err = EnsureFuncDeployment(clientset, &f6, or)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get(f1Name, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if getEnvValueFromList("FUNC_HANDLER", dpm.Spec.Template.Spec.Containers[0].Env) != "bar2" {
+		t.Error("Unable to update deployment")
 	}
 
 	// It should return an error if some dependencies are given but the runtime is not supported

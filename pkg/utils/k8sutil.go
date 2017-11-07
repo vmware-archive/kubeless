@@ -437,39 +437,40 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 
 // EnsureFuncService creates/updates a function service
 func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
-	svc, err := client.Core().Services(funcObj.Metadata.Namespace).Get(funcObj.Metadata.Name, metav1.GetOptions{})
-	name := funcObj.Metadata.Name
-	labels := funcObj.Metadata.Labels
-	servicePort := v1.ServicePort{
-		Name:       "function-port",
-		Port:       8080,
-		TargetPort: intstr.FromInt(8080),
-		NodePort:   0,
-		Protocol:   v1.ProtocolTCP,
+	svc := v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            funcObj.Metadata.Name,
+			Labels:          funcObj.Metadata.Labels,
+			OwnerReferences: or,
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				v1.ServicePort{
+					Name:       "function-port",
+					Port:       8080,
+					TargetPort: intstr.FromInt(8080),
+					NodePort:   0,
+					Protocol:   v1.ProtocolTCP,
+				},
+			},
+			Selector: funcObj.Metadata.Labels,
+			Type:     v1.ServiceTypeClusterIP,
+		},
 	}
-	if err != nil && k8sErrors.IsNotFound(err) {
-		svc := v1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            name,
-				Labels:          labels,
-				OwnerReferences: or,
-			},
-			Spec: v1.ServiceSpec{
-				Ports:    []v1.ServicePort{servicePort},
-				Selector: labels,
-				Type:     v1.ServiceTypeClusterIP,
-			},
-		}
-		_, err = client.Core().Services(funcObj.Metadata.Namespace).Create(&svc)
-		return err
-	} else if err == nil {
+	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(&svc)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		// In case the SVC already exists we should update
 		// just certain fields (for being able to update it)
-		svc.ObjectMeta.Labels = labels
-		svc.ObjectMeta.OwnerReferences = or
-		svc.Spec.Ports = []v1.ServicePort{servicePort}
+		var newSvc *v1.Service
+		newSvc, err = client.Core().Services(funcObj.Metadata.Namespace).Get(funcObj.Metadata.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		newSvc.ObjectMeta.Labels = svc.ObjectMeta.Labels
+		newSvc.ObjectMeta.OwnerReferences = or
+		newSvc.Spec.Ports = svc.Spec.Ports
 		svc.Spec.Selector = funcObj.Metadata.Labels
-		_, err = client.Core().Services(funcObj.Metadata.Namespace).Update(svc)
+		_, err = client.Core().Services(funcObj.Metadata.Namespace).Update(newSvc)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The service may already exist and there is nothing to update
 			return nil
