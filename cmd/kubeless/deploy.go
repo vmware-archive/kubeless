@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/kubeless/kubeless/pkg/runtime"
+	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
@@ -104,16 +104,16 @@ var deployCmd = &cobra.Command{
 			if err != nil {
 				logrus.Fatalf("Unable to read file %s: %v", deps, err)
 			}
-			funcDeps = string(bytes[:])
+			funcDeps = string(bytes)
 		}
 
 		cli := utils.GetClientOutOfCluster()
-		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, spec.Function{}, cli)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, spec.Function{})
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		crdClient, err := utils.GetCDRClientOutOfCluster()
+		crdClient, err := utils.GetCRDClientOutOfCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -127,7 +127,7 @@ var deployCmd = &cobra.Command{
 }
 
 func init() {
-	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime. Available runtimes are: "+strings.Join(runtime.GetRuntimes(), ", "))
+	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime. Available runtimes are: "+strings.Join(langruntime.GetRuntimes(), ", "))
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
 	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")

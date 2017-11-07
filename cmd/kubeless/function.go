@@ -102,23 +102,21 @@ func parseMemory(mem string) (resource.Quantity, error) {
 }
 
 func getFileSha256(file string) (string, error) {
-	var checksum string
 	h := sha256.New()
 	ff, err := os.Open(file)
 	if err != nil {
-		return checksum, err
+		return "", err
 	}
 	defer ff.Close()
 	_, err = io.Copy(h, ff)
 	if err != nil {
-		return checksum, err
+		return "", err
 	}
-	checksum = hex.EncodeToString(h.Sum(nil))
+	checksum := hex.EncodeToString(h.Sum(nil))
 	return checksum, err
 }
 
 func uploadFunction(file string, cli kubernetes.Interface) (string, string, string, error) {
-	var function, contentType, checksum string
 	stats, err := os.Stat(file)
 	if err != nil {
 		return "", "", "", err
@@ -141,22 +139,26 @@ func uploadFunction(file string, cli kubernetes.Interface) (string, string, stri
 		return "", "", "", err
 	}
 	fileType := http.DetectContentType(functionBytes)
+	var function, contentType string
 	if strings.Contains(fileType, "text/plain") {
-		function = string(functionBytes[:])
+		function = string(functionBytes)
 		contentType = "text"
 	} else {
 		function = base64.StdEncoding.EncodeToString(functionBytes)
 		contentType = "base64"
+		if strings.Contains(fileType, "zip") {
+			contentType += "+zip"
+		}
 	}
 	c, err := getFileSha256(file)
-	checksum = "sha256:" + c
 	if err != nil {
 		return "", "", "", err
 	}
+	checksum := "sha256:" + c
 	return function, contentType, checksum, nil
 }
 
-func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function, cli kubernetes.Interface) (*spec.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function) (*spec.Function, error) {
 
 	if handler == "" {
 		handler = defaultFunction.Spec.Handler
@@ -165,7 +167,7 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, s
 	var function, checksum, contentType string
 	if file == "" {
 		file = defaultFunction.Spec.File
-		contentType = defaultFunction.Spec.ContentType
+		contentType = defaultFunction.Spec.FunctionContentType
 		function = defaultFunction.Spec.Function
 		checksum = defaultFunction.Spec.Checksum
 	} else {
@@ -250,16 +252,16 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, topic, s
 			Labels:    funcLabels,
 		},
 		Spec: spec.FunctionSpec{
-			Handler:     handler,
-			Runtime:     runtime,
-			Type:        funcType,
-			Function:    function,
-			File:        path.Base(file),
-			Checksum:    checksum,
-			ContentType: contentType,
-			Deps:        deps,
-			Topic:       topic,
-			Schedule:    schedule,
+			Handler:             handler,
+			Runtime:             runtime,
+			Type:                funcType,
+			Function:            function,
+			File:                path.Base(file),
+			Checksum:            checksum,
+			FunctionContentType: contentType,
+			Deps:                deps,
+			Topic:               topic,
+			Schedule:            schedule,
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{

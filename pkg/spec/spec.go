@@ -31,17 +31,17 @@ type Function struct {
 
 // FunctionSpec contains func specification
 type FunctionSpec struct {
-	Handler     string             `json:"handler"`      // Function handler: "file.function"
-	Function    string             `json:"function"`     // Function file content or URL of the function
-	ContentType string             `json:"content-type"` // Function file content type
-	File        string             `json:"file"`         // File name that contains the function
-	Checksum    string             `json:"checksum"`     // Checksum of the file
-	Runtime     string             `json:"runtime"`      // Function runtime to use
-	Type        string             `json:"type"`         // Function trigger type
-	Topic       string             `json:"topic"`        // Function topic trigger (for PubSub type)
-	Schedule    string             `json:"schedule"`     // Function scheduled time (for Schedule type)
-	Deps        string             `json:"deps"`         // Function dependencies
-	Template    v1.PodTemplateSpec `json:"template" protobuf:"bytes,3,opt,name=template"`
+	Handler             string             `json:"handler"`               // Function handler: "file.function"
+	Function            string             `json:"function"`              // Function file content or URL of the function
+	FunctionContentType string             `json:"function-content-type"` // Function file content type (plain text, base64 or zip)
+	File                string             `json:"file"`                  // File name that contains the function
+	Checksum            string             `json:"checksum"`              // Checksum of the file
+	Runtime             string             `json:"runtime"`               // Function runtime to use
+	Type                string             `json:"type"`                  // Function trigger type
+	Topic               string             `json:"topic"`                 // Function topic trigger (for PubSub type)
+	Schedule            string             `json:"schedule"`              // Function scheduled time (for Schedule type)
+	Deps                string             `json:"deps"`                  // Function dependencies
+	Template            v1.PodTemplateSpec `json:"template" protobuf:"bytes,3,opt,name=template"`
 }
 
 // FunctionList contains map of functions

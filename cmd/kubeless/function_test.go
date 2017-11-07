@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"archive/zip"
+	"io"
 	"io/ioutil"
 	"k8s.io/client-go/pkg/api/v1"
 	"os"
@@ -84,19 +86,19 @@ func TestParseEnv(t *testing.T) {
 }
 
 func TestGetFunctionDescription(t *testing.T) {
-	// It should take parse the given values
+	// It should parse the given values
 	file, err := ioutil.TempFile("", "test")
 	if err != nil {
 		t.Error(err)
 	}
-	function := "function"
-	_, err = file.WriteString(function)
+	_, err = file.WriteString("function")
 	if err != nil {
 		t.Error(err)
 	}
+	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	result, err := getFunctionDescription("test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", true, []string{"TEST=1"}, []string{"test=1"}, spec.Function{}, fake.NewSimpleClientset())
+	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", true, []string{"TEST=1"}, []string{"test=1"}, spec.Function{})
 	if err != nil {
 		t.Error(err)
 	}
@@ -114,16 +116,16 @@ func TestGetFunctionDescription(t *testing.T) {
 			},
 		},
 		Spec: spec.FunctionSpec{
-			Handler:     "file.handler",
-			Runtime:     "runtime",
-			Type:        "HTTP",
-			Function:    "function",
-			Checksum:    "sha256:78f9ac018e554365069108352dacabb7fbd15246edf19400677e3b54fe24e126",
-			File:        path.Base(file.Name()),
-			ContentType: "text",
-			Deps:        "dependencies",
-			Topic:       "",
-			Schedule:    "",
+			Handler:             "file.handler",
+			Runtime:             "runtime",
+			Type:                "HTTP",
+			Function:            "function",
+			Checksum:            "sha256:78f9ac018e554365069108352dacabb7fbd15246edf19400677e3b54fe24e126",
+			File:                path.Base(file.Name()),
+			FunctionContentType: "text",
+			Deps:                "dependencies",
+			Topic:               "",
+			Schedule:            "",
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -152,7 +154,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should take the default values
-	result2, err := getFunctionDescription("test", "default", "", "", "", "", "", "", "", "", false, []string{}, []string{}, expectedFunction, fake.NewSimpleClientset())
+	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", false, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -161,8 +163,17 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// Given parameters should take precedence from default values
-	file.WriteString("-modified") // Add text to the file
-	result3, err := getFunctionDescription("test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", false, []string{"TEST=2"}, []string{"test=2"}, expectedFunction, fake.NewSimpleClientset())
+	file, err = ioutil.TempFile("", "test")
+	if err != nil {
+		t.Error(err)
+	}
+	_, err = file.WriteString("function-modified")
+	if err != nil {
+		t.Error(err)
+	}
+	file.Close()
+	defer os.Remove(file.Name()) // clean up
+	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", false, []string{"TEST=2"}, []string{"test=2"}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -180,16 +191,16 @@ func TestGetFunctionDescription(t *testing.T) {
 			},
 		},
 		Spec: spec.FunctionSpec{
-			Handler:     "file.handler2",
-			Runtime:     "runtime2",
-			Type:        "PubSub",
-			Function:    "function-modified",
-			File:        path.Base(file.Name()),
-			ContentType: "text",
-			Checksum:    "sha256:1958eb96d7d3cadedd0f327f09322eb7db296afb282ed91aa66cb4ab0dcc3c9f",
-			Deps:        "dependencies2",
-			Topic:       "test_topic",
-			Schedule:    "",
+			Handler:             "file.handler2",
+			Runtime:             "runtime2",
+			Type:                "PubSub",
+			Function:            "function-modified",
+			File:                path.Base(file.Name()),
+			FunctionContentType: "text",
+			Checksum:            "sha256:1958eb96d7d3cadedd0f327f09322eb7db296afb282ed91aa66cb4ab0dcc3c9f",
+			Deps:                "dependencies2",
+			Topic:               "test_topic",
+			Schedule:            "",
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -214,7 +225,43 @@ func TestGetFunctionDescription(t *testing.T) {
 		},
 	}
 	if !reflect.DeepEqual(newFunction, *result3) {
-		t.Error("Unexpected result")
+		t.Errorf("Unexpected result. Expecting:\n %+v\n Received %+v\n", newFunction, *result3)
 	}
 
+	// It should detect that it is a Zip file
+	file, err = os.Open(file.Name())
+	if err != nil {
+		t.Error(err)
+	}
+	newfile, err := os.Create(file.Name() + ".zip")
+	if err != nil {
+		t.Error(err)
+	}
+	defer os.Remove(newfile.Name()) // clean up
+	zipW := zip.NewWriter(newfile)
+	info, err := file.Stat()
+	if err != nil {
+		t.Error(err)
+	}
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		t.Error(err)
+	}
+	writer, err := zipW.CreateHeader(header)
+	if err != nil {
+		t.Error(err)
+	}
+	_, err = io.Copy(writer, file)
+	if err != nil {
+		t.Error(err)
+	}
+	file.Close()
+	zipW.Close()
+	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", false, []string{}, []string{}, expectedFunction)
+	if err != nil {
+		t.Error(err)
+	}
+	if result4.Spec.FunctionContentType != "base64+zip" {
+		t.Errorf("Should return base64+zip, received %s", result4.Spec.FunctionContentType)
+	}
 }

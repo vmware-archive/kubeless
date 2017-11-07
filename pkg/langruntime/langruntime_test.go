@@ -1,4 +1,4 @@
-package runtime
+package langruntime
 
 import (
 	"os"
@@ -11,13 +11,15 @@ import (
 )
 
 func check(runtime, fname string, values []string, t *testing.T) {
-	fileName := GetFunctionFileName(fname, runtime)
-	depName, _ := GetRuntimeDepName(runtime)
-	if depName != values[0] {
-		t.Fatalf("Retrieving the image returned a wrong dependencies file. Received " + depName + " while expecting " + values[0])
+	info, err := GetRuntimeInfo(runtime)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if fileName != values[1] {
-		t.Fatalf("Retrieving the image returned a wrong file name. Received " + fileName + " while expecting " + values[1])
+	if info.DepName != values[0] {
+		t.Fatalf("Retrieving the image returned a wrong dependencies file. Received " + info.DepName + " while expecting " + values[0])
+	}
+	if fname+info.FileNameSuffix != values[1] {
+		t.Fatalf("Retrieving the image returned a wrong file name. Received " + fname + info.FileNameSuffix + " while expecting " + values[1])
 	}
 }
 
@@ -46,9 +48,9 @@ func TestGetFunctionImage(t *testing.T) {
 
 	// Throws an error if the runtime version doesn't exist
 	_, err = GetFunctionImage("nodejs3", "HTTP")
-	expectedErrMsg := regexp.MustCompile("The given runtime and version 'nodejs3' does not have a valid image")
+	expectedErrMsg := regexp.MustCompile("The given runtime and version nodejs3 is not valid")
 	if expectedErrMsg.FindString(err.Error()) == "" {
-		t.Fatalf("Retrieving data for 'nodejs3' should return an error")
+		t.Fatalf("Retrieving data for 'nodejs3' should return an error. Received: %s", err)
 	}
 
 	expectedImageName := "ruby-test-image"
@@ -107,7 +109,7 @@ func TestGetBuildContainer(t *testing.T) {
 		Env:             env,
 	}
 	if !reflect.DeepEqual(expectedContainer, c) {
-		t.Errorf("Unexpected result")
+		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedContainer, c)
 	}
 
 	// It should return the proper build image for nodejs

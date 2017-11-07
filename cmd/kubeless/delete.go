@@ -37,7 +37,7 @@ var deleteCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		crdClient, err := utils.GetCDRClientOutOfCluster()
+		crdClient, err := utils.GetCRDClientOutOfCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}

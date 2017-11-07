@@ -28,7 +28,7 @@ import (
 	"strconv"
 	"strings"
 
-	kubelessRuntime "github.com/kubeless/kubeless/pkg/runtime"
+	"github.com/kubeless/kubeless/pkg/langruntime"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/spec"
@@ -123,21 +123,20 @@ func GetRestClient() (*rest.RESTClient, error) {
 	return restClient, nil
 }
 
-// GetCRDClient returns tpr client to the request from inside of cluster
+// GetCRDClient returns CRD client to the request from inside of cluster
 func GetCRDClient() (*rest.RESTClient, error) {
-	tprconfig, err := rest.InClusterConfig()
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	crdConfig := configureClient("k8s.io", "v1", "/apis", config)
+
+	crdclient, err := rest.RESTClientFor(crdConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	configureClient("k8s.io", "v1", "/apis", tprconfig)
-
-	tprclient, err := rest.RESTClientFor(tprconfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return tprclient, nil
+	return crdclient, nil
 }
 
 // GetRestClientOutOfCluster returns a REST client based on a group, API version and path
@@ -147,9 +146,9 @@ func GetRestClientOutOfCluster(group, apiVersion, apiPath string) (*rest.RESTCli
 		return nil, err
 	}
 
-	configureClient(group, apiVersion, apiPath, config)
+	crdConfig := configureClient(group, apiVersion, apiPath, config)
 
-	client, err := rest.RESTClientFor(config)
+	client, err := rest.RESTClientFor(crdConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -157,8 +156,8 @@ func GetRestClientOutOfCluster(group, apiVersion, apiPath string) (*rest.RESTCli
 	return client, nil
 }
 
-// GetCDRClientOutOfCluster returns tpr client to the request from outside of cluster
-func GetCDRClientOutOfCluster() (*rest.RESTClient, error) {
+// GetCRDClientOutOfCluster returns crd client to the request from outside of cluster
+func GetCRDClientOutOfCluster() (*rest.RESTClient, error) {
 	return GetRestClientOutOfCluster("k8s.io", "v1", "/apis")
 }
 
@@ -180,7 +179,7 @@ func GetServiceMonitorClientOutOfCluster() (*monitoringv1alpha1.MonitoringV1alph
 func GetFunction(funcName, ns string) (spec.Function, error) {
 	var f spec.Function
 
-	crdClient, err := GetCDRClientOutOfCluster()
+	crdClient, err := GetCRDClientOutOfCluster()
 	if err != nil {
 		return spec.Function{}, err
 	}
@@ -277,19 +276,16 @@ func appendToCommand(orig string, command ...string) string {
 func getProvisionContainer(function, checksum, fileName, handler, contentType, runtime string, runtimeVolume, depsVolume v1.VolumeMount) (v1.Container, error) {
 	prepareCommand := ""
 	originFile := path.Join(depsVolume.MountPath, fileName)
-	depName, _ := kubelessRuntime.GetRuntimeDepName(runtime)
 
 	// Prepare Function file and dependencies
-	switch contentType {
-	case "base64":
+	if strings.Contains(contentType, "base64") {
 		// File is encoded in base64
-		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("cat %s | base64 -d > %s", originFile, originFile))
-		break
-	case "text":
-	case "":
+		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("base64 -d < %s > %s.decoded", originFile, originFile))
+		originFile = originFile + ".decoded"
+	} else if strings.Contains(contentType, "text") || contentType == "" {
 		// Assumming that function is plain text
 		// So we don't need to preprocess it
-	default:
+	} else {
 		return v1.Container{}, fmt.Errorf("Unable to prepare function of type %s: Unknown format", contentType)
 	}
 
@@ -312,7 +308,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 	}
 
 	// Extract content in case it is a Zip file
-	if filepath.Ext(fileName) == ".zip" {
+	if strings.Contains(contentType, "zip") {
 		prepareCommand = appendToCommand(prepareCommand,
 			fmt.Sprintf("unzip -o %s -d %s", originFile, runtimeVolume.MountPath),
 		)
@@ -329,8 +325,9 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 	}
 
 	// Copy deps file to the installation path
-	if depName != "" {
-		depsFile := path.Join(depsVolume.MountPath, depName)
+	runtimeInf, err := langruntime.GetRuntimeInfo(runtime)
+	if err == nil && runtimeInf.DepName != "" {
+		depsFile := path.Join(depsVolume.MountPath, runtimeInf.DepName)
 		prepareCommand = appendToCommand(prepareCommand,
 			fmt.Sprintf("cp %s %s", depsFile, runtimeVolume.MountPath),
 		)
@@ -346,17 +343,19 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 	}, nil
 }
 
-// configureClient configures tpr client
-func configureClient(group, version, apiPath string, config *rest.Config) {
+// configureClient configures crd client
+func configureClient(group, version, apiPath string, config *rest.Config) *rest.Config {
+	var result rest.Config
+	result = *config
 	groupversion := schema.GroupVersion{
 		Group:   group,
 		Version: version,
 	}
 
-	config.GroupVersion = &groupversion
-	config.APIPath = apiPath
-	config.ContentType = runtime.ContentTypeJSON
-	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
+	result.GroupVersion = &groupversion
+	result.APIPath = apiPath
+	result.ContentType = runtime.ContentTypeJSON
+	result.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
 
 	schemeBuilder := runtime.NewSchemeBuilder(
 		func(scheme *runtime.Scheme) error {
@@ -369,6 +368,7 @@ func configureClient(group, version, apiPath string, config *rest.Config) {
 		})
 	metav1.AddToGroupVersion(api.Scheme, groupversion)
 	schemeBuilder.AddToScheme(api.Scheme)
+	return &result
 }
 
 // addInitContainerAnnotation is a hot fix to add annotation to deployment for init container to run
@@ -483,7 +483,12 @@ func getFileName(file, handler, runtime string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return kubelessRuntime.GetFunctionFileName(modName, runtime), nil
+		filename := modName
+		runtimeInf, err := langruntime.GetRuntimeInfo(runtime)
+		if err == nil {
+			filename = modName + runtimeInf.FileNameSuffix
+		}
+		return filename, nil
 	}
 	return file, nil
 }
@@ -497,13 +502,13 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 		if err != nil {
 			return err
 		}
-		depName, _ := kubelessRuntime.GetRuntimeDepName(funcObj.Spec.Runtime)
 		configMapData = map[string]string{
 			"handler": funcObj.Spec.Handler,
 			fileName:  funcObj.Spec.Function,
 		}
-		if depName != "" {
-			configMapData[depName] = funcObj.Spec.Deps
+		runtimeInfo, err := langruntime.GetRuntimeInfo(funcObj.Spec.Runtime)
+		if err == nil && runtimeInfo.DepName != "" {
+			configMapData[runtimeInfo.DepName] = funcObj.Spec.Deps
 		}
 	}
 
@@ -669,7 +674,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		}
 		//only resolve the image name if it has not been already set
 		if dpm.Spec.Template.Spec.Containers[0].Image == "" {
-			imageName, err := kubelessRuntime.GetFunctionImage(funcObj.Spec.Runtime, funcObj.Spec.Type)
+			imageName, err := langruntime.GetFunctionImage(funcObj.Spec.Runtime, funcObj.Spec.Type)
 			if err != nil {
 				return err
 			}
@@ -708,7 +713,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			funcObj.Spec.Checksum,
 			fileName,
 			funcObj.Spec.Handler,
-			funcObj.Spec.ContentType,
+			funcObj.Spec.FunctionContentType,
 			funcObj.Spec.Runtime,
 			runtimeVolumeMount,
 			depsVolumeMount,
@@ -719,11 +724,11 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		dpm.Spec.Template.Spec.InitContainers = []v1.Container{provisionContainer}
 	}
 	// ensure that the runtime is supported for installing dependencies
-	_, err = kubelessRuntime.GetRuntimeDepName(funcObj.Spec.Runtime)
+	_, err = langruntime.GetRuntimeInfo(funcObj.Spec.Runtime)
 	if funcObj.Spec.Deps != "" && err != nil {
 		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
 	} else if funcObj.Spec.Deps != "" {
-		buildContainer, err := kubelessRuntime.GetBuildContainer(funcObj.Spec.Runtime, dpm.Spec.Template.Spec.Containers[0].Env, runtimeVolumeMount, depsVolumeMount)
+		buildContainer, err := langruntime.GetBuildContainer(funcObj.Spec.Runtime, dpm.Spec.Template.Spec.Containers[0].Env, runtimeVolumeMount, depsVolumeMount)
 		if err != nil {
 			return err
 		}
@@ -732,7 +737,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			buildContainer,
 		)
 		// update deployment for loading dependencies
-		kubelessRuntime.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
+		langruntime.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
 	}
 	//TODO: remove this when init containers becomes a stable feature
 	addInitContainerAnnotation(dpm)

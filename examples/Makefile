@@ -6,11 +6,14 @@ get-python-verify:
 	kubeless function call get-python |egrep hello.world
 
 get-python-update:
-	kubeless function update get-python --handler hellowithdata.handler --from-file python/hellowithdata.py
+	$(eval TMPDIR := $(shell mktemp -d))
+	printf 'def foo():\n%4sreturn "hello world updated"\n' > $(TMPDIR)/hello-updated.py
+	kubeless function update get-python --from-file $(TMPDIR)/hello-updated.py
+	rm -rf $(TMPDIR)
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python/"
 
 get-python-update-verify:
-	kubeless function call get-python --data '{"hello": "world"}' |egrep '"hello": "world"'
+	kubeless function call get-python |egrep hello.world.updated
 
 get-python-deps:
 	kubeless function deploy get-python-deps --trigger-http --runtime python2.7 --handler helloget.foo --from-file python/hellowithdeps.py --dependencies python/requirements.txt
@@ -39,7 +42,9 @@ get-nodejs-deps-verify:
 	kubeless function call get-nodejs-deps --data '{"hello": "world"}' |egrep '{"hello":"world","date"'
 
 get-nodejs-multi:
+	cd nodejs; zip helloFunctions.zip *js
 	kubeless function deploy get-nodejs-multi --trigger-http --runtime nodejs6 --handler index.helloGet --from-file nodejs/helloFunctions.zip
+	rm nodejs/helloFunctions.zip
 
 get-nodejs-multi-verify:
 	kubeless function call get-nodejs-multi |egrep hello.world

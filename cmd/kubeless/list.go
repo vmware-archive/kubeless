@@ -49,7 +49,7 @@ var listCmd = &cobra.Command{
 			logrus.Fatal(err.Error())
 		}
 
-		crdClient, err := utils.GetCDRClientOutOfCluster()
+		crdClient, err := utils.GetCRDClientOutOfCluster()
 		if err != nil {
 			logrus.Fatalf("Can not list functions: %v", err)
 		}

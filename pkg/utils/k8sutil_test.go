@@ -29,9 +29,6 @@ func getEnvValueFromList(envName string, l []v1.EnvVar) string {
 	return res.Value
 }
 
-func copyFunc(orig, dest *spec.Function) {
-	*dest = *orig
-}
 func TestEnsureConfigMap(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	or := []metav1.OwnerReference{
@@ -391,8 +388,8 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If no handler and function is given it should not fail
-	var f2 spec.Function
-	copyFunc(f1, &f2)
+	f2 := spec.Function{}
+	f2 = *f1
 	f2.Metadata.Name = "func2"
 	f2.Spec.Function = ""
 	f2.Spec.Handler = ""
@@ -406,8 +403,8 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If the Image has been already provided it should not resolve it
-	var f3 spec.Function
-	copyFunc(f1, &f3)
+	f3 := spec.Function{}
+	f3 = *f1
 	f3.Metadata.Name = "func3"
 	f3.Spec.Template.Spec.Containers[0].Image = "test-image"
 	err = EnsureFuncDeployment(clientset, &f3, or)
@@ -423,8 +420,8 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If no function is given it should not use an init container
-	var f4 spec.Function
-	copyFunc(f1, &f4)
+	f4 := spec.Function{}
+	f4 = *f1
 	f4.Metadata.Name = "func4"
 	f4.Spec.Function = ""
 	f4.Spec.Deps = ""
@@ -441,8 +438,8 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If the function is the type PubSub it should not contain a livenessProbe
-	var f5 spec.Function
-	copyFunc(f1, &f5)
+	f5 := spec.Function{}
+	f5 = *f1
 	f5.Metadata.Name = "func5"
 	f5.Spec.Type = "PubSub"
 	err = EnsureFuncDeployment(clientset, &f5, or)
@@ -458,8 +455,8 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// It should update a deployment if it is already present
-	var f6 spec.Function
-	copyFunc(f1, &f6)
+	f6 := spec.Function{}
+	f6 = *f1
 	f6.Spec.Handler = "foo.bar2"
 	err = EnsureFuncDeployment(clientset, &f6, or)
 	if err != nil {
@@ -474,8 +471,8 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// It should return an error if some dependencies are given but the runtime is not supported
-	var f7 spec.Function
-	copyFunc(f1, &f7)
+	f7 := spec.Function{}
+	f7 = *f1
 	f7.Metadata.Name = "func7"
 	f7.Spec.Deps = "deps"
 	f7.Spec.Runtime = "cobol"
@@ -656,7 +653,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// It should extract the file in case it is a Zip
-	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64", "python2.7", rvol, dvol)
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64+zip", "python2.7", rvol, dvol)
 	if !strings.Contains(c.Args[0], "unzip -o /deps/test.zip -d /runtime") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
