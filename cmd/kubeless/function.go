@@ -137,7 +137,6 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 
 	var function, checksum, contentType string
 	if file == "" {
-		file = defaultFunction.Spec.Filename
 		contentType = defaultFunction.Spec.FunctionContentType
 		function = defaultFunction.Spec.Function
 		checksum = defaultFunction.Spec.Checksum
@@ -236,7 +235,6 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 			Runtime:             runtime,
 			Type:                funcType,
 			Function:            function,
-			Filename:            path.Base(file),
 			Checksum:            checksum,
 			FunctionContentType: contentType,
 			Deps:                deps,

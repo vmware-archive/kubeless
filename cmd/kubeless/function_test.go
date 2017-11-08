@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"k8s.io/client-go/pkg/api/v1"
 	"os"
-	"path"
 	"reflect"
 	"testing"
 
@@ -121,7 +120,6 @@ func TestGetFunctionDescription(t *testing.T) {
 			Type:                "HTTP",
 			Function:            "function",
 			Checksum:            "sha256:78f9ac018e554365069108352dacabb7fbd15246edf19400677e3b54fe24e126",
-			Filename:            path.Base(file.Name()),
 			FunctionContentType: "text",
 			Deps:                "dependencies",
 			Topic:               "",
@@ -195,7 +193,6 @@ func TestGetFunctionDescription(t *testing.T) {
 			Runtime:             "runtime2",
 			Type:                "PubSub",
 			Function:            "function-modified",
-			Filename:            path.Base(file.Name()),
 			FunctionContentType: "text",
 			Checksum:            "sha256:1958eb96d7d3cadedd0f327f09322eb7db296afb282ed91aa66cb4ab0dcc3c9f",
 			Deps:                "dependencies2",

@@ -310,7 +310,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 		)
 	} else {
 		// Copy the target as a single file
-		destFileName, err := getFileName(handler, runtime)
+		destFileName, err := getFileName(handler, contentType, runtime)
 		if err != nil {
 			return v1.Container{}, err
 		}
@@ -469,15 +469,18 @@ func splitHandler(handler string) (string, string, error) {
 }
 
 // getFileName returns a file name based on a handler identifier
-func getFileName(handler, runtime string) (string, error) {
+func getFileName(handler, funcContentType, runtime string) (string, error) {
 	modName, _, err := splitHandler(handler)
 	if err != nil {
 		return "", err
 	}
 	filename := modName
-	runtimeInf, err := langruntime.GetRuntimeInfo(runtime)
-	if err == nil {
-		filename = modName + runtimeInf.FileNameSuffix
+	if funcContentType == "text" {
+		// We can only guess the extension if the function is specified as plain text
+		runtimeInf, err := langruntime.GetRuntimeInfo(runtime)
+		if err == nil {
+			filename = modName + runtimeInf.FileNameSuffix
+		}
 	}
 	return filename, nil
 }
@@ -487,12 +490,9 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 	configMapData := map[string]string{}
 	var err error
 	if funcObj.Spec.Handler != "" {
-		fileName := funcObj.Spec.Filename
-		if fileName == "" {
-			fileName, err = getFileName(funcObj.Spec.Handler, funcObj.Spec.Runtime)
-			if err != nil {
-				return err
-			}
+		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime)
+		if err != nil {
+			return err
 		}
 		configMapData = map[string]string{
 			"handler": funcObj.Spec.Handler,
@@ -690,12 +690,9 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 	// prepare init-containers if some function is specified
 	if funcObj.Spec.Function != "" {
-		fileName := funcObj.Spec.Filename
-		if fileName == "" {
-			fileName, err = getFileName(funcObj.Spec.Handler, funcObj.Spec.Runtime)
-			if err != nil {
-				return err
-			}
+		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime)
+		if err != nil {
+			return err
 		}
 		if err != nil {
 			return err

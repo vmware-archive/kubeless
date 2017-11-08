@@ -108,37 +108,6 @@ func TestEnsureConfigMap(t *testing.T) {
 	if !reflect.DeepEqual(cm.Data, expectedData) {
 		t.Errorf("Unexpected ConfigMap:\n %+v\nExpecting:\n %+v", cm.Data, expectedData)
 	}
-
-	// It should use the "File" name if present
-	f3Name := "f3"
-	f3 := &spec.Function{
-		Metadata: metav1.ObjectMeta{
-			Name:      f3Name,
-			Namespace: ns,
-		},
-		Spec: spec.FunctionSpec{
-			Filename: "file.py",
-			Function: "function",
-			Handler:  "foo.bar",
-			Runtime:  "python2.7",
-		},
-	}
-	err = EnsureFuncConfigMap(clientset, f3, or)
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	cm, err = clientset.CoreV1().ConfigMaps(ns).Get(f3Name, metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	expectedData = map[string]string{
-		"handler":          "foo.bar",
-		"file.py":          "function",
-		"requirements.txt": "",
-	}
-	if !reflect.DeepEqual(cm.Data, expectedData) {
-		t.Errorf("Unexpected ConfigMap:\n %+v\nExpecting:\n %+v", cm.Data, expectedData)
-	}
 }
 
 func TestEnsureService(t *testing.T) {
