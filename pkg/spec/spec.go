@@ -34,7 +34,7 @@ type FunctionSpec struct {
 	Handler             string             `json:"handler"`               // Function handler: "file.function"
 	Function            string             `json:"function"`              // Function file content or URL of the function
 	FunctionContentType string             `json:"function-content-type"` // Function file content type (plain text, base64 or zip)
-	File                string             `json:"file"`                  // File name that contains the function
+	Filename            string             `json:"file"`                  // Name of the function source file
 	Checksum            string             `json:"checksum"`              // Checksum of the file
 	Runtime             string             `json:"runtime"`               // Function runtime to use
 	Type                string             `json:"type"`                  // Function trigger type

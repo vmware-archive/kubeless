@@ -117,7 +117,7 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		logrus.Infof("Creating function...")
+		logrus.Infof("Deploying function...")
 		err = utils.CreateK8sCustomResource(crdClient, f)
 		if err != nil {
 			logrus.Fatal(err)

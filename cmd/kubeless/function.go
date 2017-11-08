@@ -20,14 +20,13 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/spf13/cobra"
@@ -113,49 +112,21 @@ func getFileSha256(file string) (string, error) {
 		return "", err
 	}
 	checksum := hex.EncodeToString(h.Sum(nil))
-	return checksum, err
+	return "sha256:" + checksum, err
 }
 
-func uploadFunction(file string, cli kubernetes.Interface) (string, string, string, error) {
-	stats, err := os.Stat(file)
-	if err != nil {
-		return "", "", "", err
-	}
-	if stats.Size() > int64(50*1024*1024) { // TODO: Make the max file size (50 MB) configurable
-		err = errors.New("The maximum size of a function is 50MB")
-		return "", "", "", err
-	}
-	// If an object storage service is not available check
-	// that the file is not over 1MB to store it as a Custom Resource
-	if stats.Size() > int64(1*1024*1024) {
-		err = errors.New("Unable to deploy functions over 1MB withouth a storage service")
-		return "", "", "", err
-	}
-	functionBytes, err := ioutil.ReadFile(file)
-	if err != nil {
-		return "", "", "", err
-	}
-	if err != nil {
-		return "", "", "", err
-	}
-	fileType := http.DetectContentType(functionBytes)
-	var function, contentType string
-	if strings.Contains(fileType, "text/plain") {
-		function = string(functionBytes)
+func getContentType(filename string, fbytes []byte) string {
+	var contentType string
+	isText := utf8.ValidString(string(fbytes))
+	if isText {
 		contentType = "text"
 	} else {
-		function = base64.StdEncoding.EncodeToString(functionBytes)
 		contentType = "base64"
-		if strings.Contains(fileType, "zip") {
+		if path.Ext(filename) == ".zip" {
 			contentType += "+zip"
 		}
 	}
-	c, err := getFileSha256(file)
-	if err != nil {
-		return "", "", "", err
-	}
-	checksum := "sha256:" + c
-	return function, contentType, checksum, nil
+	return contentType
 }
 
 func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function) (*spec.Function, error) {
@@ -166,13 +137,22 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 
 	var function, checksum, contentType string
 	if file == "" {
-		file = defaultFunction.Spec.File
+		file = defaultFunction.Spec.Filename
 		contentType = defaultFunction.Spec.FunctionContentType
 		function = defaultFunction.Spec.Function
 		checksum = defaultFunction.Spec.Checksum
 	} else {
-		var err error
-		function, contentType, checksum, err = uploadFunction(file, cli)
+		functionBytes, err := ioutil.ReadFile(file)
+		if err != nil {
+			return &spec.Function{}, err
+		}
+		contentType = getContentType(file, functionBytes)
+		if contentType == "text" {
+			function = string(functionBytes)
+		} else {
+			function = base64.StdEncoding.EncodeToString(functionBytes)
+		}
+		checksum, err = getFileSha256(file)
 		if err != nil {
 			return &spec.Function{}, err
 		}
@@ -221,7 +201,7 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 	if mem != "" {
 		funcMem, err := parseMemory(mem)
 		if err != nil {
-			err := fmt.Errorf("Wrong format of the memory value: %v", err)
+			err = fmt.Errorf("Wrong format of the memory value: %v", err)
 			return &spec.Function{}, err
 		}
 		resource := map[v1.ResourceName]resource.Quantity{
@@ -256,7 +236,7 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 			Runtime:             runtime,
 			Type:                funcType,
 			Function:            function,
-			File:                path.Base(file),
+			Filename:            path.Base(file),
 			Checksum:            checksum,
 			FunctionContentType: contentType,
 			Deps:                deps,

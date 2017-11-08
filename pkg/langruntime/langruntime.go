@@ -165,12 +165,12 @@ func GetFunctionImage(runtime, ftype string) (string, error) {
 }
 
 // GetBuildContainer returns a Container definition based on a runtime
-func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolume v1.VolumeMount) (v1.Container, error) {
+func GetBuildContainer(runtime string, env []v1.EnvVar, installVolume v1.VolumeMount) (v1.Container, error) {
 	runtimeInf, err := GetRuntimeInfo(runtime)
 	if err != nil {
 		return v1.Container{}, err
 	}
-	depsFile := path.Join(depsVolume.MountPath, runtimeInf.DepName)
+	depsFile := path.Join(installVolume.MountPath, runtimeInf.DepName)
 	versionInf, err := findRuntimeVersion(runtime)
 	if err != nil {
 		return v1.Container{}, err
@@ -179,7 +179,7 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolum
 	var command string
 	switch {
 	case strings.Contains(runtime, "python"):
-		command = "pip install --prefix=" + runtimeVolume.MountPath + " -r " + depsFile
+		command = "pip install --prefix=" + installVolume.MountPath + " -r " + depsFile
 	case strings.Contains(runtime, "nodejs"):
 		registry := "https://registry.npmjs.org"
 		scope := ""
@@ -192,9 +192,9 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolum
 			}
 		}
 		command = "npm config set " + scope + "registry " + registry +
-			" && npm install"
+			" && npm install --prefix=" + installVolume.MountPath
 	case strings.Contains(runtime, "ruby"):
-		command = "bundle install --gemfile=" + depsFile + " --path=" + runtimeVolume.MountPath
+		command = "bundle install --gemfile=" + depsFile + " --path=" + installVolume.MountPath
 	}
 
 	return v1.Container{
@@ -202,9 +202,9 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolum
 		Image:           versionInf.initImage,
 		Command:         []string{"sh", "-c"},
 		Args:            []string{command},
-		VolumeMounts:    []v1.VolumeMount{runtimeVolume, depsVolume},
+		VolumeMounts:    []v1.VolumeMount{installVolume},
 		ImagePullPolicy: v1.PullIfNotPresent,
-		WorkingDir:      depsVolume.MountPath,
+		WorkingDir:      installVolume.MountPath,
 		Env:             env,
 	}, nil
 }

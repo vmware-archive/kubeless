@@ -117,7 +117,7 @@ func TestEnsureConfigMap(t *testing.T) {
 			Namespace: ns,
 		},
 		Spec: spec.FunctionSpec{
-			File:     "file.py",
+			Filename: "file.py",
 			Function: "function",
 			Handler:  "foo.bar",
 			Runtime:  "python2.7",

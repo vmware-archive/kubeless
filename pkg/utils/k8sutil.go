@@ -314,7 +314,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 		)
 	} else {
 		// Copy the target as a single file
-		destFileName, err := getFileName("", handler, runtime)
+		destFileName, err := getFileName(handler, runtime)
 		if err != nil {
 			return v1.Container{}, err
 		}
@@ -475,22 +475,18 @@ func splitHandler(handler string) (string, string, error) {
 	return str[0], str[1], nil
 }
 
-func getFileName(file, handler, runtime string) (string, error) {
-	// DEPRECATED: If the filename is empty, assume that
-	// the destination file will be <handler>.<ext>
-	if file == "" {
-		modName, _, err := splitHandler(handler)
-		if err != nil {
-			return "", err
-		}
-		filename := modName
-		runtimeInf, err := langruntime.GetRuntimeInfo(runtime)
-		if err == nil {
-			filename = modName + runtimeInf.FileNameSuffix
-		}
-		return filename, nil
+// getFileName returns a file name based on a handler identifier
+func getFileName(handler, runtime string) (string, error) {
+	modName, _, err := splitHandler(handler)
+	if err != nil {
+		return "", err
 	}
-	return file, nil
+	filename := modName
+	runtimeInf, err := langruntime.GetRuntimeInfo(runtime)
+	if err == nil {
+		filename = modName + runtimeInf.FileNameSuffix
+	}
+	return filename, nil
 }
 
 // EnsureFuncConfigMap creates/updates a config map with a function specification
@@ -498,9 +494,12 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 	configMapData := map[string]string{}
 	var err error
 	if funcObj.Spec.Handler != "" {
-		fileName, err := getFileName(funcObj.Spec.File, funcObj.Spec.Handler, funcObj.Spec.Runtime)
-		if err != nil {
-			return err
+		fileName := funcObj.Spec.Filename
+		if fileName == "" {
+			fileName, err = getFileName(funcObj.Spec.Handler, funcObj.Spec.Runtime)
+			if err != nil {
+				return err
+			}
 		}
 		configMapData = map[string]string{
 			"handler": funcObj.Spec.Handler,
@@ -578,10 +577,6 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 
 // EnsureFuncDeployment creates/updates a function deployment
 func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
-	const (
-		runtimePath = "/kubeless"
-		depsPath    = "/dependencies"
-	)
 	runtimeVolumeName := funcObj.Metadata.Name
 	depsVolumeName := funcObj.Metadata.Name + "-deps"
 	podAnnotations := map[string]string{
@@ -654,14 +649,6 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			},
 		},
 	)
-	runtimeVolumeMount := v1.VolumeMount{
-		Name:      runtimeVolumeName,
-		MountPath: runtimePath,
-	}
-	depsVolumeMount := v1.VolumeMount{
-		Name:      depsVolumeName,
-		MountPath: depsPath,
-	}
 
 	if len(dpm.Spec.Template.Spec.Containers) == 0 {
 		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
@@ -700,13 +687,29 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			Name:  "TOPIC_NAME",
 			Value: funcObj.Spec.Topic,
 		})
+
+	runtimeVolumeMount := v1.VolumeMount{
+		Name:      runtimeVolumeName,
+		MountPath: "/kubeless",
+	}
+
 	dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, runtimeVolumeMount)
 
 	// prepare init-containers if some function is specified
 	if funcObj.Spec.Function != "" {
-		fileName, err := getFileName(funcObj.Spec.File, funcObj.Spec.Handler, funcObj.Spec.Runtime)
+		fileName := funcObj.Spec.Filename
+		if fileName == "" {
+			fileName, err = getFileName(funcObj.Spec.Handler, funcObj.Spec.Runtime)
+			if err != nil {
+				return err
+			}
+		}
 		if err != nil {
 			return err
+		}
+		srcVolumeMount := v1.VolumeMount{
+			Name:      depsVolumeName,
+			MountPath: "/src",
 		}
 		provisionContainer, err := getProvisionContainer(
 			funcObj.Spec.Function,
@@ -716,7 +719,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			funcObj.Spec.FunctionContentType,
 			funcObj.Spec.Runtime,
 			runtimeVolumeMount,
-			depsVolumeMount,
+			srcVolumeMount,
 		)
 		if err != nil {
 			return err
@@ -728,7 +731,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 	if funcObj.Spec.Deps != "" && err != nil {
 		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
 	} else if funcObj.Spec.Deps != "" {
-		buildContainer, err := langruntime.GetBuildContainer(funcObj.Spec.Runtime, dpm.Spec.Template.Spec.Containers[0].Env, runtimeVolumeMount, depsVolumeMount)
+		buildContainer, err := langruntime.GetBuildContainer(funcObj.Spec.Runtime, dpm.Spec.Template.Spec.Containers[0].Env, runtimeVolumeMount)
 		if err != nil {
 			return err
 		}
@@ -761,10 +764,14 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		var data []byte
 		data, err = json.Marshal(dpm)
+		if err != nil {
+			return err
+		}
 		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Patch(dpm.Name, types.StrategicMergePatchType, data)
 		if err != nil {
 			return err
 		}
+
 		// kick existing function pods then it will be recreated
 		// with the new data mount from updated configmap.
 		// TODO: This is a workaround.  Do something better.
