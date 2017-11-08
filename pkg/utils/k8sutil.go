@@ -640,8 +640,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 					},
 				},
 			},
-		},
-	)
+		})
 
 	if len(dpm.Spec.Template.Spec.Containers) == 0 {
 		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
