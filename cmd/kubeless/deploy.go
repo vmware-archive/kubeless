@@ -127,6 +127,16 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+
+		cli := utils.GetClientOutOfCluster()
+		timeout, err := getDeploymentTimeout()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		err = waitForDeployment(cli, funcName, ns, timeout)
+		if err != nil {
+			logrus.Fatalf("Something went wrong: %s", err)
+		}
 	},
 }
 
