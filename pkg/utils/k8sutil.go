@@ -475,7 +475,7 @@ func getFileName(handler, funcContentType, runtime string) (string, error) {
 		return "", err
 	}
 	filename := modName
-	if funcContentType == "text" {
+	if funcContentType == "text" || funcContentType == "" {
 		// We can only guess the extension if the function is specified as plain text
 		runtimeInf, err := langruntime.GetRuntimeInfo(runtime)
 		if err == nil {
