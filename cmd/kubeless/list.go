@@ -27,6 +27,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/rest"
 
@@ -54,7 +55,9 @@ var listCmd = &cobra.Command{
 			logrus.Fatalf("Can not list functions: %v", err)
 		}
 
-		if err := doList(cmd.OutOrStdout(), crdClient, ns, output, args); err != nil {
+		apiV1Client := utils.GetClientOutOfCluster()
+
+		if err := doList(cmd.OutOrStdout(), crdClient, apiV1Client, ns, output, args); err != nil {
 			logrus.Fatal(err.Error())
 		}
 	},
@@ -65,7 +68,7 @@ func init() {
 	listCmd.Flags().StringP("namespace", "n", api.NamespaceDefault, "Specify namespace for the function")
 }
 
-func doList(w io.Writer, crdClient rest.Interface, ns, output string, args []string) error {
+func doList(w io.Writer, crdClient rest.Interface, apiV1Client kubernetes.Interface, ns, output string, args []string) error {
 	var list []*spec.Function
 	if len(args) == 0 {
 		funcList := spec.FunctionList{}
@@ -95,7 +98,7 @@ func doList(w io.Writer, crdClient rest.Interface, ns, output string, args []str
 		}
 	}
 
-	return printFunctions(w, list, output)
+	return printFunctions(w, list, apiV1Client, output)
 }
 
 func parseDeps(deps, runtime string) (res string, err error) {
@@ -121,12 +124,12 @@ func parseDeps(deps, runtime string) (res string, err error) {
 }
 
 // printFunctions formats the output of function list
-func printFunctions(w io.Writer, functions []*spec.Function, output string) error {
+func printFunctions(w io.Writer, functions []*spec.Function, cli kubernetes.Interface, output string) error {
 	if output == "" {
 		table := uitable.New()
 		table.MaxColWidth = 50
 		table.Wrap = true
-		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "DEPENDENCIES")
+		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "DEPENDENCIES", "STATUS")
 		for _, f := range functions {
 			n := f.Metadata.Name
 			h := f.Spec.Handler
@@ -134,18 +137,22 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 			t := f.Spec.Type
 			tp := f.Spec.Topic
 			ns := f.Metadata.Namespace
+			status, err := getDeploymentStatus(cli, f.Metadata.Name, f.Metadata.Namespace)
+			if err != nil {
+				return err
+			}
 			deps, err := parseDeps(f.Spec.Deps, r)
 			if err != nil {
 				return err
 			}
-			table.AddRow(n, ns, h, r, t, tp, deps)
+			table.AddRow(n, ns, h, r, t, tp, deps, status)
 		}
 		fmt.Fprintln(w, table)
 	} else if output == "wide" {
 		table := uitable.New()
 		table.MaxColWidth = 50
 		table.Wrap = true
-		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "DEPENDENCIES", "MEMORY", "ENV", "LABEL", "SCHEDULE")
+		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "DEPENDENCIES", "STATUS", "MEMORY", "ENV", "LABEL", "SCHEDULE")
 		for _, f := range functions {
 			n := f.Metadata.Name
 			h := f.Spec.Handler
@@ -158,6 +165,10 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 			}
 			s := f.Spec.Schedule
 			ns := f.Metadata.Namespace
+			status, err := getDeploymentStatus(cli, f.Metadata.Name, f.Metadata.Namespace)
+			if err != nil {
+				return err
+			}
 			mem := ""
 			env := ""
 			if len(f.Spec.Template.Spec.Containers[0].Resources.Requests) != 0 {
@@ -178,7 +189,7 @@ func printFunctions(w io.Writer, functions []*spec.Function, output string) erro
 				}
 				label = buffer.String()
 			}
-			table.AddRow(n, ns, h, r, t, tp, deps, mem, env, label, s)
+			table.AddRow(n, ns, h, r, t, tp, deps, status, mem, env, label, s)
 		}
 		fmt.Fprintln(w, table)
 	} else {

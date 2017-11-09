@@ -19,21 +19,14 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
-	"strconv"
 	"strings"
-	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/spec"
-	// "github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
-	// "k8s.io/client-go/rest"
 )
 
 var functionCmd = &cobra.Command{
@@ -216,111 +209,16 @@ func getFunctionDescription(funcName, ns, handler, funcContent, deps, runtime, t
 	return
 }
 
-// Returns the maximum timeout that we will wait for a deployment
-// Defaults: 10 min
-func getDeploymentTimeout() (int, error) {
-	envTimeout := os.Getenv("KUBELESS_DEPLOYMENT_TIMEOUT")
-	if envTimeout == "" {
-		envTimeout = "600"
-	}
-	timeout, err := strconv.Atoi(envTimeout)
+func getDeploymentStatus(cli kubernetes.Interface, funcName, ns string) (string, error) {
+	dpm, err := cli.ExtensionsV1beta1().Deployments(ns).Get(funcName, metav1.GetOptions{})
 	if err != nil {
-		return 0, fmt.Errorf("Wrong value for KUBELESS_DEPLOYMENT_TIMEOUT: %s", err)
+		return "", err
 	}
-	return timeout, nil
-}
-
-func getContainerStatus(c v1.ContainerStatus) string {
-	if c.State.Terminated != nil {
-		return c.State.Terminated.Reason
-	} else if c.State.Waiting != nil {
-		return c.State.Waiting.Reason
-	} else if c.State.Running != nil {
-		return "Running"
+	status := fmt.Sprintf("%d/%d", dpm.Status.ReadyReplicas, dpm.Status.Replicas)
+	if dpm.Status.ReadyReplicas == dpm.Status.Replicas {
+		status += " READY"
+	} else {
+		status += " NOT READY"
 	}
-	return ""
-}
-
-func getPodStatus(pod v1.Pod) string {
-	if pod.DeletionTimestamp != nil {
-		return "Terminating"
-	}
-	if len(pod.Status.ContainerStatuses) > 0 {
-		return getContainerStatus(pod.Status.ContainerStatuses[0])
-	} else if len(pod.Status.InitContainerStatuses) > 0 {
-		return "Init:" + getContainerStatus(pod.Status.InitContainerStatuses[0])
-	}
-	// If the pod doesn't have containers it is a temporary Pod
-	return ""
-}
-
-func getPodList(cli kubernetes.Interface, funcName, ns string) ([]v1.Pod, error) {
-	pods, err := cli.CoreV1().Pods(ns).List(metav1.ListOptions{
-		LabelSelector: "function=" + funcName,
-	})
-	if err != nil {
-		return []v1.Pod{}, err
-	}
-	return pods.Items, nil
-}
-
-func printDeploymentLogs(cli kubernetes.Interface, funcName, ns string) error {
-	podList, err := getPodList(cli, funcName, ns)
-	if err != nil {
-		return err
-	}
-	for _, pod := range podList {
-		podStatus := getPodStatus(pod)
-		// Retrieving logs of useful pods
-		if podStatus != "Unknown" && podStatus != "Terminating" {
-			resBytes, err := cli.CoreV1().RESTClient().Get().Namespace(ns).Name(pod.Name).Resource("pods").SubResource("log").Do().Raw()
-			if err == nil {
-				logrus.Errorf("Logs from %s:\n%s", pod.Name, string(resBytes))
-			}
-		}
-	}
-	return nil
-}
-
-func waitForDeployment(cli kubernetes.Interface, funcName, ns string, timeout int) error {
-	successCount := 0
-	retriesCount := 0
-	logrus.Info("Deployment status:")
-	var previousStatus, currentStatus string
-	err := wait.Poll(time.Duration(time.Second), time.Duration(timeout)*time.Second, func() (bool, error) {
-		dpm, err := cli.ExtensionsV1beta1().Deployments(ns).Get(funcName, metav1.GetOptions{})
-		ready := false
-		if err != nil {
-			// Deployment not available
-			retriesCount++
-			if retriesCount >= 3 {
-				// The deployment may not be ready yet if the controller
-				// is still processing the function so we retry 3 times
-				// (if it takes more than that we assume there has been an error)
-				return false, fmt.Errorf("Unable to find a deployment for %s", funcName)
-			}
-		} else {
-			currentStatus = fmt.Sprintf("Ready replicas: %d/%d", dpm.Status.ReadyReplicas, dpm.Status.Replicas)
-			if currentStatus != previousStatus {
-				previousStatus = currentStatus
-				logrus.Info(currentStatus)
-			}
-			if dpm.Status.Replicas == dpm.Status.ReadyReplicas {
-				// Pods may be running for a short amount of time
-				// So we ensure that it keeps running for at least 5 seconds
-				successCount++
-			} else {
-				successCount = 0
-			}
-			if successCount == 5 {
-				logrus.Infof("Function %s is ready", funcName)
-				ready = true
-			}
-		}
-		return ready, nil
-	})
-	if err != nil {
-		printDeploymentLogs(cli, funcName, ns)
-	}
-	return err
+	return status, nil
 }
