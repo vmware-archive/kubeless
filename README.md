@@ -215,7 +215,7 @@ to encourage contributions from the community - **your PR is welcome** ! :)
 
 ## Documentation
 
-More details can be found in the complete [Documentation](docs/index.md)
+More details can be found in the complete [Documentation](docs/)
 
 ## Building
 
