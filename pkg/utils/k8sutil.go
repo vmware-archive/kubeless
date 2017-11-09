@@ -123,14 +123,13 @@ func GetRestClient() (*rest.RESTClient, error) {
 
 // GetCRDClient returns crd client to the request from inside of cluster
 func GetCRDClient() (*rest.RESTClient, error) {
-	crdconfig, err := rest.InClusterConfig()
+	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
 	}
+	crdConfig := configureClient("k8s.io", "v1", "/apis", config)
 
-	configureClient(crdconfig)
-
-	crdclient, err := rest.RESTClientFor(crdconfig)
+	crdclient, err := rest.RESTClientFor(crdConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -138,21 +137,26 @@ func GetCRDClient() (*rest.RESTClient, error) {
 	return crdclient, nil
 }
 
+// GetRestClientOutOfCluster returns a REST client based on a group, API version and path
+func GetRestClientOutOfCluster(group, apiVersion, apiPath string) (*rest.RESTClient, error) {
+	config, err := BuildOutOfClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	crdConfig := configureClient(group, apiVersion, apiPath, config)
+
+	client, err := rest.RESTClientFor(crdConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
 // GetCRDClientOutOfCluster returns crd client to the request from outside of cluster
 func GetCRDClientOutOfCluster() (*rest.RESTClient, error) {
-	crdconfig, err := BuildOutOfClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	configureClient(crdconfig)
-
-	crdclient, err := rest.RESTClientFor(crdconfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return crdclient, nil
+	return GetRestClientOutOfCluster("k8s.io", "v1", "/apis")
 }
 
 //GetServiceMonitorClientOutOfCluster returns sm client to the request from outside of cluster
@@ -261,16 +265,18 @@ func GetReadyPod(pods *v1.PodList) (v1.Pod, error) {
 }
 
 // configureClient configures crd client
-func configureClient(config *rest.Config) {
+func configureClient(group, version, apiPath string, config *rest.Config) *rest.Config {
+	var result rest.Config
+	result = *config
 	groupversion := schema.GroupVersion{
-		Group:   "k8s.io",
-		Version: "v1",
+		Group:   group,
+		Version: version,
 	}
 
-	config.GroupVersion = &groupversion
-	config.APIPath = "/apis"
-	config.ContentType = runtime.ContentTypeJSON
-	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
+	result.GroupVersion = &groupversion
+	result.APIPath = apiPath
+	result.ContentType = runtime.ContentTypeJSON
+	result.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
 
 	schemeBuilder := runtime.NewSchemeBuilder(
 		func(scheme *runtime.Scheme) error {
@@ -283,6 +289,7 @@ func configureClient(config *rest.Config) {
 		})
 	metav1.AddToGroupVersion(api.Scheme, groupversion)
 	schemeBuilder.AddToScheme(api.Scheme)
+	return &result
 }
 
 // addInitContainerAnnotation is a hot fix to add annotation to deployment for init container to run
