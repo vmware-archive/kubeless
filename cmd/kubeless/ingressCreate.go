@@ -19,7 +19,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/rest"
 )
 
 var ingressCreateCmd = &cobra.Command{
@@ -68,7 +67,15 @@ var ingressCreateCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		err = functionExists(crdClient, funcName, ns)
+
+		f := &spec.Function{}
+		err = crdClient.Get().
+			Resource("functions").
+			Namespace(ns).
+			Name(funcName).
+			Do().
+			Into(f)
+
 		if err != nil {
 			if k8sErrors.IsNotFound(err) {
 				logrus.Fatalf("function %s doesn't exist in namespace %s", funcName, ns)
@@ -79,22 +86,11 @@ var ingressCreateCmd = &cobra.Command{
 
 		client := utils.GetClientOutOfCluster()
 
-		err = utils.CreateIngress(client, ingressName, funcName, hostName, ns, enableTLSAcme)
+		err = utils.CreateIngress(client, f, ingressName, hostName, ns, enableTLSAcme)
 		if err != nil {
 			logrus.Fatalf("Can't create ingress route: %v", err)
 		}
 	},
-}
-
-func functionExists(crdClient rest.Interface, function, ns string) error {
-	f := spec.Function{}
-	err := crdClient.Get().
-		Resource("functions").
-		Namespace(ns).
-		Name(function).
-		Do().
-		Into(&f)
-	return err
 }
 
 func init() {

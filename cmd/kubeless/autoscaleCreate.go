@@ -1,9 +1,11 @@
 package main
 
 import (
+	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 var autoscaleCreateCmd = &cobra.Command{
@@ -30,7 +32,7 @@ var autoscaleCreateCmd = &cobra.Command{
 		}
 		ns, err := cmd.Flags().GetString("namespace")
 		if err != nil {
-			logrus.Fatal(err.Error())
+			logrus.Fatal(err)
 		}
 		if ns == "" {
 			ns = utils.GetDefaultNamespace()
@@ -38,7 +40,7 @@ var autoscaleCreateCmd = &cobra.Command{
 
 		metric, err := cmd.Flags().GetString("metric")
 		if err != nil {
-			logrus.Fatal(err.Error())
+			logrus.Fatal(err)
 		}
 		if metric != "cpu" && metric != "qps" {
 			logrus.Fatalf("only supported metrics: cpu, qps")
@@ -46,12 +48,32 @@ var autoscaleCreateCmd = &cobra.Command{
 
 		value, err := cmd.Flags().GetString("value")
 		if err != nil {
-			logrus.Fatal(err.Error())
+			logrus.Fatal(err)
+		}
+
+		crdClient, err := utils.GetCRDClientOutOfCluster()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		f := &spec.Function{}
+		err = crdClient.Get().
+			Resource("functions").
+			Namespace(ns).
+			Name(funcName).
+			Do().
+			Into(f)
+		if err != nil {
+			if k8sErrors.IsNotFound(err) {
+				logrus.Fatalf("function %s doesn't exist in namespace %s", funcName, ns)
+			} else {
+				logrus.Fatalf("error validate input %v", err)
+			}
 		}
 
 		client := utils.GetClientOutOfCluster()
 
-		err = utils.CreateAutoscale(client, funcName, ns, metric, min, max, value)
+		err = utils.CreateAutoscale(client, f, ns, metric, min, max, value)
 		if err != nil {
 			logrus.Fatalf("Can't create autoscale: %v", err)
 		}

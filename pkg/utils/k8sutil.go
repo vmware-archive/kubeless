@@ -402,12 +402,19 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 }
 
 // CreateIngress creates ingress rule for a specific function
-func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname, ns string, enableTLSAcme bool) error {
+func CreateIngress(client kubernetes.Interface, funcObj *spec.Function, ingressName, hostname, ns string, enableTLSAcme bool) error {
+
+	or, err := GetOwnerReference(funcObj)
+	if err != nil {
+		return err
+	}
 
 	ingress := &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ingressName,
-			Namespace: ns,
+			Name:            ingressName,
+			Namespace:       ns,
+			OwnerReferences: or,
+			Labels:          funcObj.Metadata.Labels,
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
@@ -419,7 +426,7 @@ func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname,
 								{
 									Path: "/",
 									Backend: v1beta1.IngressBackend{
-										ServiceName: funcName,
+										ServiceName: funcObj.Metadata.Name,
 										ServicePort: intstr.FromInt(8080),
 									},
 								},
@@ -447,7 +454,7 @@ func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname,
 		}
 	}
 
-	_, err := client.ExtensionsV1beta1().Ingresses(ns).Create(ingress)
+	_, err = client.ExtensionsV1beta1().Ingresses(ns).Create(ingress)
 	if err != nil {
 		return err
 	}
@@ -921,7 +928,12 @@ func EnsureFuncCronJob(client rest.Interface, funcObj *spec.Function, or []metav
 }
 
 // CreateAutoscale creates HPA object for function
-func CreateAutoscale(client kubernetes.Interface, funcName, ns, metric string, min, max int32, value string) error {
+func CreateAutoscale(client kubernetes.Interface, funcObj *spec.Function, ns, metric string, min, max int32, value string) error {
+	or, err := GetOwnerReference(funcObj)
+	if err != nil {
+		return err
+	}
+
 	m := []v2alpha1.MetricSpec{}
 	switch metric {
 	case "cpu":
@@ -952,12 +964,12 @@ func CreateAutoscale(client kubernetes.Interface, funcName, ns, metric string, m
 					TargetValue: q,
 					Target: v2alpha1.CrossVersionObjectReference{
 						Kind: "Service",
-						Name: funcName,
+						Name: funcObj.Metadata.Name,
 					},
 				},
 			},
 		}
-		err = createServiceMonitor(funcName, ns)
+		err = createServiceMonitor(funcObj, ns, or)
 		if err != nil {
 			return err
 		}
@@ -967,13 +979,15 @@ func CreateAutoscale(client kubernetes.Interface, funcName, ns, metric string, m
 
 	hpa := &v2alpha1.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      funcName,
-			Namespace: ns,
+			Name:            funcObj.Metadata.Name,
+			Namespace:       ns,
+			Labels:          funcObj.Metadata.Labels,
+			OwnerReferences: or,
 		},
 		Spec: v2alpha1.HorizontalPodAutoscalerSpec{
 			ScaleTargetRef: v2alpha1.CrossVersionObjectReference{
 				Kind: "Deployment",
-				Name: funcName,
+				Name: funcObj.Metadata.Name,
 			},
 			MinReplicas: &min,
 			MaxReplicas: max,
@@ -981,7 +995,7 @@ func CreateAutoscale(client kubernetes.Interface, funcName, ns, metric string, m
 		},
 	}
 
-	_, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).Create(hpa)
+	_, err = client.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).Create(hpa)
 	if err != nil {
 		return err
 	}
@@ -1012,27 +1026,28 @@ func DeleteServiceMonitor(name, ns string) error {
 	return nil
 }
 
-func createServiceMonitor(funcName, ns string) error {
+func createServiceMonitor(funcObj *spec.Function, ns string, or []metav1.OwnerReference) error {
 	smclient, err := GetServiceMonitorClientOutOfCluster()
 	if err != nil {
 		return err
 	}
 
-	_, err = smclient.ServiceMonitors(ns).Get(funcName, metav1.GetOptions{})
+	_, err = smclient.ServiceMonitors(ns).Get(funcObj.Metadata.Name, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			s := &monitoringv1alpha1.ServiceMonitor{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      funcName,
+					Name:      funcObj.Metadata.Name,
 					Namespace: ns,
 					Labels: map[string]string{
 						"service-monitor": "function",
 					},
+					OwnerReferences: or,
 				},
 				Spec: monitoringv1alpha1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							"function": funcName,
+							"function": funcObj.Metadata.Name,
 						},
 					},
 					Endpoints: []monitoringv1alpha1.Endpoint{
@@ -1051,4 +1066,23 @@ func createServiceMonitor(funcName, ns string) error {
 	}
 
 	return errors.New("service monitor has already existed")
+}
+
+func GetOwnerReference(funcObj *spec.Function) ([]metav1.OwnerReference, error) {
+	if funcObj.Metadata.Name == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("Function name can't be empty.")
+	}
+	if funcObj.Metadata.UID == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("UID of function %s can't be empty.", funcObj.Metadata.Name)
+	}
+	t := true
+	return []metav1.OwnerReference{
+		{
+			Kind:               "Function",
+			APIVersion:         "k8s.io",
+			Name:               funcObj.Metadata.Name,
+			UID:                funcObj.Metadata.UID,
+			BlockOwnerDeletion: &t,
+		},
+	}, nil
 }

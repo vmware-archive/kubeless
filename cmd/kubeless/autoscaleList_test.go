@@ -32,6 +32,9 @@ func TestAutoscaleList(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "myns",
+			Labels: map[string]string{
+				"created-by": "kubeless",
+			},
 		},
 		Spec: av2alpha1.HorizontalPodAutoscalerSpec{
 			ScaleTargetRef: av2alpha1.CrossVersionObjectReference{
@@ -56,6 +59,9 @@ func TestAutoscaleList(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "myns",
+			Labels: map[string]string{
+				"created-by": "kubeless",
+			},
 		},
 		Spec: av2alpha1.HorizontalPodAutoscalerSpec{
 			ScaleTargetRef: av2alpha1.CrossVersionObjectReference{
@@ -80,13 +86,24 @@ func TestAutoscaleList(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(&as1, &as2)
+	as3 := av2alpha1.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foobar",
+			Namespace: "myns",
+		},
+	}
+
+	client := fake.NewSimpleClientset(&as1, &as2, &as3)
 
 	output := listAutoscaleOutput(t, client, "myns", "")
 	t.Log("output is", output)
 
 	if !strings.Contains(output, "foo") || !strings.Contains(output, "bar") {
-		t.Errorf("table output didn't mention both functions")
+		t.Errorf("table output didn't mention both autoscales")
+	}
+
+	if strings.Contains(output, "foobar") {
+		t.Errorf("table output shouldn't mention foobar autoscale as it isn't created by kubeless")
 	}
 
 	// json output
