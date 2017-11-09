@@ -94,6 +94,9 @@ $ kubeless function deploy get-python --runtime python2.7 \
                                 --from-file test.py \
                                 --handler test.foobar \
                                 --trigger-http
+INFO[0000] Deploying function...
+INFO[0000] Function get-python submitted for deployment
+INFO[0000] Check the deployment status executing 'kubeless function ls get-python'
 ```
 
 Let's dissect the command:
@@ -120,8 +123,8 @@ NAME          KIND
 get-python    Function.v1.k8s.io
 
 $ kubeless function ls
-NAME        NAMESPACE   HANDLER     RUNTIME     TYPE    TOPIC
-get-python  default     test.foobar python2.7   HTTP
+NAME           	NAMESPACE	HANDLER              	RUNTIME  	TYPE  	TOPIC      	DEPENDENCIES	STATUS
+get-python     	default  	helloget.foo         	python2.7	HTTP  	           	            	1/1 READY
 ```
 
 You can then call the function with:
