@@ -192,7 +192,7 @@ func TestList(t *testing.T) {
 		},
 		Status: v1beta1.DeploymentStatus{
 			Replicas:      int32(2),
-			ReadyReplicas: int32(1),
+			ReadyReplicas: int32(0),
 		},
 	}
 	apiV1Client := fake.NewSimpleClientset(&deploymentFoo, &deploymentBar)
@@ -212,7 +212,7 @@ func TestList(t *testing.T) {
 	if !m {
 		t.Errorf("table output didn't mention deployment status")
 	}
-	m, err = regexp.MatchString("bar.*1/2 NOT READY", output)
+	m, err = regexp.MatchString("bar.*0/2 NOT READY", output)
 	if err != nil {
 		t.Fatal(err)
 	}
