@@ -11,4 +11,5 @@ ADD startup.sh /
 ADD kubeless-shell.py /
 
 EXPOSE 8080
+
 ENTRYPOINT ["/startup.sh"]
