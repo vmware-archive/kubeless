@@ -215,7 +215,7 @@ func getDeploymentStatus(cli kubernetes.Interface, funcName, ns string) (string,
 		return "", err
 	}
 	status := fmt.Sprintf("%d/%d", dpm.Status.ReadyReplicas, dpm.Status.Replicas)
-	if dpm.Status.ReadyReplicas == dpm.Status.Replicas {
+	if dpm.Status.ReadyReplicas > 0 {
 		status += " READY"
 	} else {
 		status += " NOT READY"
