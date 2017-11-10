@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -206,4 +207,18 @@ func getFunctionDescription(funcName, ns, handler, funcContent, deps, runtime, t
 		},
 	}
 	return
+}
+
+func getDeploymentStatus(cli kubernetes.Interface, funcName, ns string) (string, error) {
+	dpm, err := cli.ExtensionsV1beta1().Deployments(ns).Get(funcName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	status := fmt.Sprintf("%d/%d", dpm.Status.ReadyReplicas, dpm.Status.Replicas)
+	if dpm.Status.ReadyReplicas > 0 {
+		status += " READY"
+	} else {
+		status += " NOT READY"
+	}
+	return status, nil
 }

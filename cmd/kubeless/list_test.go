@@ -22,32 +22,36 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/rest/fake"
+	restFake "k8s.io/client-go/rest/fake"
 
 	"github.com/kubeless/kubeless/pkg/spec"
 )
 
-func fakeCRDClient(f func(req *http.Request) (*http.Response, error)) *fake.RESTClient {
-	return &fake.RESTClient{
+func fakeCRDClient(f func(req *http.Request) (*http.Response, error)) *restFake.RESTClient {
+	return &restFake.RESTClient{
 		APIRegistry:          api.Registry,
 		NegotiatedSerializer: api.Codecs,
-		Client:               fake.CreateHTTPClient(f),
+		Client:               restFake.CreateHTTPClient(f),
 	}
 }
 
-func listOutput(t *testing.T, client rest.Interface, ns, output string, args []string) string {
+func listOutput(t *testing.T, client rest.Interface, apiV1Client kubernetes.Interface, ns, output string, args []string) string {
 	var buf bytes.Buffer
 
-	if err := doList(&buf, client, ns, output, args); err != nil {
+	if err := doList(&buf, client, apiV1Client, ns, output, args); err != nil {
 		t.Fatalf("doList returned error: %v", err)
 	}
 
@@ -128,6 +132,25 @@ func TestList(t *testing.T) {
 					},
 				},
 			},
+			{
+				Metadata: metav1.ObjectMeta{
+					Name:      "wrong",
+					Namespace: "myns",
+				},
+				Spec: spec.FunctionSpec{
+					Handler:  "fhandler",
+					Function: "ffunction",
+					Runtime:  "fruntime",
+					Type:     "ftype",
+					Topic:    "ftopic",
+					Deps:     "fdeps",
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{{}},
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -152,17 +175,60 @@ func TestList(t *testing.T) {
 			return nil, nil
 		}
 	})
+	deploymentFoo := v1beta1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "myns",
+		},
+		Status: v1beta1.DeploymentStatus{
+			Replicas:      int32(1),
+			ReadyReplicas: int32(1),
+		},
+	}
+	deploymentBar := v1beta1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "bar",
+			Namespace: "myns",
+		},
+		Status: v1beta1.DeploymentStatus{
+			Replicas:      int32(2),
+			ReadyReplicas: int32(0),
+		},
+	}
+	apiV1Client := fake.NewSimpleClientset(&deploymentFoo, &deploymentBar)
 
 	// No arg -> list everything in namespace
-	output := listOutput(t, client, "myns", "", []string{})
+	output := listOutput(t, client, apiV1Client, "myns", "", []string{})
 	t.Log("output is", output)
 
 	if !strings.Contains(output, "foo") || !strings.Contains(output, "bar") {
 		t.Errorf("table output didn't mention both functions")
 	}
+	// Status
+	m, err := regexp.MatchString("foo.*1/1 READY", output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !m {
+		t.Errorf("table output didn't mention deployment status")
+	}
+	m, err = regexp.MatchString("bar.*0/2 NOT READY", output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !m {
+		t.Errorf("table output didn't mention deployment status")
+	}
+	m, err = regexp.MatchString("wrong.*MISSING", output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !m {
+		t.Errorf("table output didn't mention deployment status")
+	}
 
 	// Explicit arg(s)
-	output = listOutput(t, client, "myns", "", []string{"foo"})
+	output = listOutput(t, client, apiV1Client, "myns", "", []string{"foo"})
 	t.Log("output is", output)
 
 	if !strings.Contains(output, "foo") {
@@ -180,21 +246,21 @@ func TestList(t *testing.T) {
 	// Probably need to fix output framing first.
 
 	// json output
-	output = listOutput(t, client, "myns", "json", []string{})
+	output = listOutput(t, client, apiV1Client, "myns", "json", []string{})
 	t.Log("output is", output)
 	if !strings.Contains(output, "foo") || !strings.Contains(output, "bar") {
 		t.Errorf("table output didn't mention both functions")
 	}
 
 	// yaml output
-	output = listOutput(t, client, "myns", "yaml", []string{})
+	output = listOutput(t, client, apiV1Client, "myns", "yaml", []string{})
 	t.Log("output is", output)
 	if !strings.Contains(output, "128Mi") {
 		t.Errorf("table output didn't mention proper memory of function")
 	}
 
 	// wide output
-	output = listOutput(t, client, "myns", "wide", []string{})
+	output = listOutput(t, client, apiV1Client, "myns", "wide", []string{})
 	t.Log("output is", output)
 	if !strings.Contains(output, "foo = bar") {
 		t.Errorf("table output didn't mention proper env of function")
