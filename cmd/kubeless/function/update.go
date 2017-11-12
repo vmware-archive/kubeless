@@ -25,6 +25,7 @@ import (
 	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 var updateCmd = &cobra.Command{
@@ -121,14 +122,35 @@ var updateCmd = &cobra.Command{
 			}
 			funcDeps = string(bytes)
 		}
+		var headless *bool = nil
+		var port *int32 = nil
+		cmd.Flags().Visit(func(flag *pflag.Flag) {
+			switch flag.Name {
+			case "headless":
+				val, err := cmd.Flags().GetBool("headless")
+				headless = &val
+				if err != nil {
+					logrus.Fatal(err)
+				}
+			case "port":
+				val, err := cmd.Flags().GetInt32("port")
+				port = &val
+				if err != nil {
+					logrus.Fatal(err)
+				}
+			}
+		})
 
 		previousFunction, err := utils.GetFunction(funcName, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
+		if port != nil && (*port <= 0 || *port > 65535) {
+			logrus.Fatalf("Invalid port number %d specified", *port)
+		}
 		cli := utils.GetClientOutOfCluster()
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, envs, labels, previousFunction)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, headless, port, envs, labels, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -161,4 +183,6 @@ func init() {
 	updateCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 	updateCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
 	updateCmd.Flags().StringP("timeout", "", "180", "Maximum timeout (in seconds) for the function to complete its execution")
+	updateCmd.Flags().Bool("headless", false, "Deploy http-based function without a single service IP and load balancing support from Kubernetes. See: https://kubernetes.io/docs/concepts/services-networking/service/#headless-services")
+	updateCmd.Flags().Int32("port", 8080, "Deploy http-based function with a custom port")
 }

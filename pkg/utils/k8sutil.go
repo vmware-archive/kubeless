@@ -549,20 +549,9 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 			Labels:          funcObj.Metadata.Labels,
 			OwnerReferences: or,
 		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
-				{
-					Name:       "function-port",
-					Port:       8080,
-					TargetPort: intstr.FromInt(8080),
-					NodePort:   0,
-					Protocol:   v1.ProtocolTCP,
-				},
-			},
-			Selector: funcObj.Metadata.Labels,
-			Type:     v1.ServiceTypeClusterIP,
-		},
+		Spec: funcObj.Spec.ServiceSpec,
 	}
+
 	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(svc)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		// In case the SVC already exists we should update
@@ -597,7 +586,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		// "targets")
 		"prometheus.io/scrape": "true",
 		"prometheus.io/path":   "/metrics",
-		"prometheus.io/port":   "8080",
+		"prometheus.io/port":   strconv.Itoa(int(funcObj.Spec.ServiceSpec.Ports[0].Port)),
 	}
 
 	//add deployment
@@ -697,9 +686,16 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		)
 	}
 
+	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
+		v1.EnvVar{
+			Name:  "FUNC_PORT",
+			Value: strconv.Itoa(int(funcObj.Spec.ServiceSpec.Ports[0].Port)),
+		},
+	)
+
 	dpm.Spec.Template.Spec.Containers[0].Name = funcObj.Metadata.Name
 	dpm.Spec.Template.Spec.Containers[0].Ports = append(dpm.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{
-		ContainerPort: 8080,
+		ContainerPort: funcObj.Spec.ServiceSpec.Ports[0].Port,
 	})
 	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
 		v1.EnvVar{
@@ -769,7 +765,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			Handler: v1.Handler{
 				HTTPGet: &v1.HTTPGetAction{
 					Path: "/healthz",
-					Port: intstr.FromInt(8080),
+					Port: intstr.FromInt(int(funcObj.Spec.ServiceSpec.Ports[0].Port)),
 				},
 			},
 		}

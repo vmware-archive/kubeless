@@ -33,6 +33,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 )
@@ -130,7 +131,7 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function) (*spec.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, defaultFunction spec.Function) (*spec.Function, error) {
 
 	if handler == "" {
 		handler = defaultFunction.Spec.Handler
@@ -240,6 +241,40 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		runtimeImage = defaultFunction.Spec.Template.Spec.Containers[0].Image
 	}
 
+	selectorLabels := map[string]string{}
+	for k, v := range funcLabels {
+		selectorLabels[k] = v
+	}
+	selectorLabels["function"] = funcName
+
+	svcSpec := v1.ServiceSpec{
+		Ports: []v1.ServicePort{
+			{
+				Name:     "function-port",
+				NodePort: 0,
+				Protocol: v1.ProtocolTCP,
+			},
+		},
+		Selector: selectorLabels,
+		Type:     v1.ServiceTypeClusterIP,
+	}
+
+	if headlessFlag != nil {
+		if *headlessFlag == true {
+			svcSpec.ClusterIP = v1.ClusterIPNone
+		}
+	} else {
+		svcSpec.ClusterIP = defaultFunction.Spec.ServiceSpec.ClusterIP
+	}
+
+	if portFlag != nil {
+		svcSpec.Ports[0].Port = *portFlag
+		svcSpec.Ports[0].TargetPort = intstr.FromInt(int(*portFlag))
+	} else {
+		svcSpec.Ports[0].Port = defaultFunction.Spec.ServiceSpec.Ports[0].Port
+		svcSpec.Ports[0].TargetPort = defaultFunction.Spec.ServiceSpec.Ports[0].TargetPort
+	}
+
 	return &spec.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
@@ -261,6 +296,7 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 			Topic:               topic,
 			Schedule:            schedule,
 			Timeout:             timeout,
+			ServiceSpec:         svcSpec,
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{

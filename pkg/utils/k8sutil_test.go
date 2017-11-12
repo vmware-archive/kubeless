@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -182,6 +183,19 @@ func TestEnsureService(t *testing.T) {
 			Deps:     "deps",
 			Handler:  "foo.bar",
 			Runtime:  "python2.7",
+			ServiceSpec: v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{
+						Name:       "function-port",
+						Port:       8080,
+						TargetPort: intstr.FromInt(8080),
+						NodePort:   0,
+						Protocol:   v1.ProtocolTCP,
+					},
+				},
+				Selector: funcLabels,
+				Type:     v1.ServiceTypeClusterIP,
+			},
 		},
 	}
 	err := EnsureFuncService(clientset, f1, or)
@@ -251,6 +265,7 @@ func TestEnsureDeployment(t *testing.T) {
 		"bar": "foo",
 	}
 	f1Name := "f1"
+	f1Port := int32(8080)
 	f1 := &spec.Function{
 		Metadata: metav1.ObjectMeta{
 			Name:      f1Name,
@@ -262,6 +277,19 @@ func TestEnsureDeployment(t *testing.T) {
 			Deps:     "deps",
 			Handler:  "foo.bar",
 			Runtime:  "python2.7",
+			ServiceSpec: v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{
+						Name:       "function-port",
+						Port:       f1Port,
+						TargetPort: intstr.FromInt(int(f1Port)),
+						NodePort:   0,
+						Protocol:   v1.ProtocolTCP,
+					},
+				},
+				Selector: funcLabels,
+				Type:     v1.ServiceTypeClusterIP,
+			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: funcAnno,
@@ -302,7 +330,7 @@ func TestEnsureDeployment(t *testing.T) {
 	expectedAnnotations := map[string]string{
 		"prometheus.io/scrape": "true",
 		"prometheus.io/path":   "/metrics",
-		"prometheus.io/port":   "8080",
+		"prometheus.io/port":   strconv.Itoa(int(f1Port)),
 		"bar":                  "foo",
 	}
 	for i := range expectedAnnotations {
@@ -318,7 +346,7 @@ func TestEnsureDeployment(t *testing.T) {
 		Image: "kubeless/python@sha256:ba948a6783b93d75037b7b1806a3925d441401ae6fba18282f712a1b1a786899",
 		Ports: []v1.ContainerPort{
 			{
-				ContainerPort: 8080,
+				ContainerPort: int32(f1Port),
 			},
 		},
 		Env: []v1.EnvVar{
@@ -337,6 +365,10 @@ func TestEnsureDeployment(t *testing.T) {
 			{
 				Name:  "FUNC_TIMEOUT",
 				Value: "180",
+			},
+			{
+				Name:  "FUNC_PORT",
+				Value: strconv.Itoa(int(f1Port)),
 			},
 			{
 				Name:  "TOPIC_NAME",
@@ -359,7 +391,7 @@ func TestEnsureDeployment(t *testing.T) {
 			Handler: v1.Handler{
 				HTTPGet: &v1.HTTPGetAction{
 					Path: "/healthz",
-					Port: intstr.FromInt(8080),
+					Port: intstr.FromInt(int(f1Port)),
 				},
 			},
 		},
