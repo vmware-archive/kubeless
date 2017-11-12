@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -18,9 +18,13 @@ namespace kubeless_netcore_runtime
         }
 
         public static IWebHost BuildWebHost(string[] args) =>
+            var envPortStr = Environment.GetEnvironmentVariable("FUNC_PORT");
+            var urls = "http://*:8080";
+            if (!string.IsNullOrEmpty(envPortStr))
+                urls = string.Concat("http://*:", envPortStr)
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-                .UseUrls("http://*:8080")
+                .UseUrls(urls)
                 .Build();
     }
 }

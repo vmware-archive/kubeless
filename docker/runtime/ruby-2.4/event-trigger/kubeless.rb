@@ -57,7 +57,7 @@ consumer.each_message do |message|
 end
 
 set :server, 'webrick'
-set :port, 8080
+set :port, ENV('FUNC_PORT') || 8080
 
 get '/healthz' do
   return 'OK'
