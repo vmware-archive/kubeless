@@ -212,6 +212,13 @@ func TestEnsureService(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
+	svc, err = clientset.CoreV1().Services(ns).Get(f1Name, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if !reflect.DeepEqual(svc.ObjectMeta.Labels, newLabels) {
+		t.Error("Unable to update the service")
+	}
 }
 
 func TestEnsureDeployment(t *testing.T) {
