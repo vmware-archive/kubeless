@@ -16,8 +16,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 	"io"

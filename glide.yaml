@@ -1,6 +1,6 @@
 package: github.com/kubeless/kubeless
 import:
-- package: github.com/Sirupsen/logrus
+- package: github.com/sirupsen/logrus
 - package: github.com/spf13/cobra
 - package: k8s.io/apimachinery
   version: 85ace5365f33b16fc735c866a12e3c765b9700f2
