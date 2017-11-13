@@ -432,12 +432,7 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 
 	_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Create(configMap)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var data []byte
-		data, err = json.Marshal(configMap)
-		if err != nil {
-			return err
-		}
-		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Patch(configMap.Name, types.StrategicMergePatchType, data)
+		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Update(configMap)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The configmap may already exist and there is nothing to update
 			return nil
@@ -471,12 +466,18 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 	}
 	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(svc)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var data []byte
-		data, err = json.Marshal(svc)
+		// In case the SVC already exists we should update
+		// just certain fields (for being able to update it)
+		var newSvc *v1.Service
+		newSvc, err = client.Core().Services(funcObj.Metadata.Namespace).Get(funcObj.Metadata.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
-		_, err = client.Core().Services(funcObj.Metadata.Namespace).Patch(svc.Name, types.StrategicMergePatchType, data)
+		newSvc.ObjectMeta.Labels = funcObj.Metadata.Labels
+		newSvc.ObjectMeta.OwnerReferences = or
+		newSvc.Spec.Ports = svc.Spec.Ports
+		newSvc.Spec.Selector = funcObj.Metadata.Labels
+		_, err = client.Core().Services(funcObj.Metadata.Namespace).Update(newSvc)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The service may already exist and there is nothing to update
 			return nil
@@ -658,12 +659,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 	_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var data []byte
-		data, err = json.Marshal(dpm)
-		if err != nil {
-			return err
-		}
-		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Patch(dpm.Name, types.StrategicMergePatchType, data)
+		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Update(dpm)
 		if err != nil {
 			return err
 		}
