@@ -34,14 +34,14 @@ Installation is made of three steps:
 
 There are several kubeless manifests being shipped for multiple k8s environments (non-rbac, rbac and openshift), pick the one that corresponds to your environment:
 
-* [`kubeless-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.3/kubeless-v0.2.3.yaml) is used for non-RBAC Kubernetes cluster.
-* [`kubeless-rbac-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.3/kubeless-rbac-v0.2.3.yaml) is used for RBAC-enabled Kubernetes cluster.
-* [`kubeless-openshift-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.3/kubeless-openshift-v0.2.3.yaml) is used to deploy Kubeless to OpenShift (1.5+).
+* [`kubeless-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.4/kubeless-v0.2.4.yaml) is used for non-RBAC Kubernetes cluster.
+* [`kubeless-rbac-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.4/kubeless-rbac-v0.2.4.yaml) is used for RBAC-enabled Kubernetes cluster.
+* [`kubeless-openshift-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.4/kubeless-openshift-v0.2.4.yaml) is used to deploy Kubeless to OpenShift (1.5+).
 
 For example, this below is a show case of deploying kubeless to a non-RBAC Kubernetes cluster.
 
 ```console
-$ export RELEASE=v0.2.3
+$ export RELEASE=v0.2.4
 $ kubectl create ns kubeless
 $ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 
