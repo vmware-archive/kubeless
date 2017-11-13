@@ -23,6 +23,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -57,6 +58,7 @@ import (
 const (
 	pubsubFunc = "PubSub"
 	busybox    = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
+	unzip      = "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697"
 )
 
 // GetClient returns a k8s clientset to the request from inside of cluster
@@ -264,6 +266,83 @@ func GetReadyPod(pods *v1.PodList) (v1.Pod, error) {
 	return v1.Pod{}, errors.New("There is no pod ready")
 }
 
+func appendToCommand(orig string, command ...string) string {
+	if len(orig) > 0 {
+		return fmt.Sprintf("%s && %s", orig, strings.Join(command, " && "))
+	}
+	return strings.Join(command, " && ")
+}
+
+func getProvisionContainer(function, checksum, fileName, handler, contentType, runtime string, runtimeVolume, depsVolume v1.VolumeMount) (v1.Container, error) {
+	prepareCommand := ""
+	originFile := path.Join(depsVolume.MountPath, fileName)
+
+	// Prepare Function file and dependencies
+	if strings.Contains(contentType, "base64") {
+		// File is encoded in base64
+		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("base64 -d < %s > %s.decoded", originFile, originFile))
+		originFile = originFile + ".decoded"
+	} else if strings.Contains(contentType, "text") || contentType == "" {
+		// Assumming that function is plain text
+		// So we don't need to preprocess it
+	} else {
+		return v1.Container{}, fmt.Errorf("Unable to prepare function of type %s: Unknown format", contentType)
+	}
+
+	// Validate checksum
+	if checksum == "" {
+		// DEPRECATED: Checksum may be empty
+	} else {
+		checksumInfo := strings.Split(checksum, ":")
+		switch checksumInfo[0] {
+		case "sha256":
+			shaFile := originFile + ".sha256"
+			prepareCommand = appendToCommand(prepareCommand,
+				fmt.Sprintf("echo '%s  %s' > %s", checksumInfo[1], originFile, shaFile),
+				fmt.Sprintf("sha256sum -c %s", shaFile),
+			)
+			break
+		default:
+			return v1.Container{}, fmt.Errorf("Unable to verify checksum %s: Unknown format", checksum)
+		}
+	}
+
+	// Extract content in case it is a Zip file
+	if strings.Contains(contentType, "zip") {
+		prepareCommand = appendToCommand(prepareCommand,
+			fmt.Sprintf("unzip -o %s -d %s", originFile, runtimeVolume.MountPath),
+		)
+	} else {
+		// Copy the target as a single file
+		destFileName, err := getFileName(handler, contentType, runtime)
+		if err != nil {
+			return v1.Container{}, err
+		}
+		dest := path.Join(runtimeVolume.MountPath, destFileName)
+		prepareCommand = appendToCommand(prepareCommand,
+			fmt.Sprintf("cp %s %s", originFile, dest),
+		)
+	}
+
+	// Copy deps file to the installation path
+	runtimeInf, err := langruntime.GetRuntimeInfo(runtime)
+	if err == nil && runtimeInf.DepName != "" {
+		depsFile := path.Join(depsVolume.MountPath, runtimeInf.DepName)
+		prepareCommand = appendToCommand(prepareCommand,
+			fmt.Sprintf("cp %s %s", depsFile, runtimeVolume.MountPath),
+		)
+	}
+
+	return v1.Container{
+		Name:            "prepare",
+		Image:           unzip,
+		Command:         []string{"sh", "-c"},
+		Args:            []string{prepareCommand},
+		VolumeMounts:    []v1.VolumeMount{runtimeVolume, depsVolume},
+		ImagePullPolicy: v1.PullIfNotPresent,
+	}, nil
+}
+
 // configureClient configures crd client
 func configureClient(group, version, apiPath string, config *rest.Config) *rest.Config {
 	var result rest.Config
@@ -396,21 +475,32 @@ func splitHandler(handler string) (string, string, error) {
 	return str[0], str[1], nil
 }
 
+// getFileName returns a file name based on a handler identifier
+func getFileName(handler, funcContentType, runtime string) (string, error) {
+	modName, _, err := splitHandler(handler)
+	if err != nil {
+		return "", err
+	}
+	filename := modName
+	if funcContentType == "text" || funcContentType == "" {
+		// We can only guess the extension if the function is specified as plain text
+		runtimeInf, err := langruntime.GetRuntimeInfo(runtime)
+		if err == nil {
+			filename = modName + runtimeInf.FileNameSuffix
+		}
+	}
+	return filename, nil
+}
+
 // EnsureFuncConfigMap creates/updates a config map with a function specification
 func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
 	configMapData := map[string]string{}
 	var err error
 	if funcObj.Spec.Handler != "" {
-		modName, _, err := splitHandler(funcObj.Spec.Handler)
+		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime)
 		if err != nil {
 			return err
 		}
-		fileName := modName
-		runtimeInf, err := langruntime.GetRuntimeInfo(funcObj.Spec.Runtime)
-		if err == nil {
-			fileName = modName + runtimeInf.FileNameSuffix
-		}
-
 		configMapData = map[string]string{
 			"handler": funcObj.Spec.Handler,
 			fileName:  funcObj.Spec.Function,
@@ -488,10 +578,6 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 
 // EnsureFuncDeployment creates/updates a function deployment
 func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
-	const (
-		runtimePath = "/kubeless"
-		depsPath    = "/dependencies"
-	)
 	runtimeVolumeName := funcObj.Metadata.Name
 	depsVolumeName := funcObj.Metadata.Name + "-deps"
 	podAnnotations := map[string]string{
@@ -563,6 +649,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 				},
 			},
 		})
+
 	if len(dpm.Spec.Template.Spec.Containers) == 0 {
 		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
 	}
@@ -601,23 +688,47 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			Value: funcObj.Spec.Topic,
 		})
 
-	//prepare init-container for custom runtime
-	initContainer := v1.Container{}
-	if funcObj.Spec.Deps != "" {
-		// ensure that the runtime is supported for installing dependencies
-		_, err = langruntime.GetRuntimeInfo(funcObj.Spec.Runtime)
+	runtimeVolumeMount := v1.VolumeMount{
+		Name:      runtimeVolumeName,
+		MountPath: "/kubeless",
+	}
+
+	dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, runtimeVolumeMount)
+
+	// prepare init-containers if some function is specified
+	if funcObj.Spec.Function != "" {
+		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime)
 		if err != nil {
-			return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
+			return err
 		}
-		runtimeVolumeMount := v1.VolumeMount{
-			Name:      runtimeVolumeName,
-			MountPath: runtimePath,
+		if err != nil {
+			return err
 		}
-		depsVolumeMount := v1.VolumeMount{
+		srcVolumeMount := v1.VolumeMount{
 			Name:      depsVolumeName,
-			MountPath: depsPath,
+			MountPath: "/src",
 		}
-		buildContainer, err := langruntime.GetBuildContainer(funcObj.Spec.Runtime, dpm.Spec.Template.Spec.Containers[0].Env, runtimeVolumeMount, depsVolumeMount)
+		provisionContainer, err := getProvisionContainer(
+			funcObj.Spec.Function,
+			funcObj.Spec.Checksum,
+			fileName,
+			funcObj.Spec.Handler,
+			funcObj.Spec.FunctionContentType,
+			funcObj.Spec.Runtime,
+			runtimeVolumeMount,
+			srcVolumeMount,
+		)
+		if err != nil {
+			return err
+		}
+		dpm.Spec.Template.Spec.InitContainers = []v1.Container{provisionContainer}
+	}
+	// ensure that the runtime is supported for installing dependencies
+	_, err = langruntime.GetRuntimeInfo(funcObj.Spec.Runtime)
+	if funcObj.Spec.Deps != "" && err != nil {
+		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
+	} else if funcObj.Spec.Deps != "" {
+		buildContainer, err := langruntime.GetBuildContainer(funcObj.Spec.Runtime, dpm.Spec.Template.Spec.Containers[0].Env, runtimeVolumeMount)
 		if err != nil {
 			return err
 		}
@@ -626,21 +737,10 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			buildContainer,
 		)
 		// update deployment for loading dependencies
-		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, runtimeVolumeMount)
 		langruntime.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
-		//TODO: remove this when init containers becomes a stable feature
-		addInitContainerAnnotation(dpm)
-	} else {
-		// TODO: remove this when there is a provisioner init container (mount always runtimeVolumeMount)
-		dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      depsVolumeName,
-			MountPath: runtimePath,
-		})
 	}
-	// only append non-empty initContainer
-	if initContainer.Name != "" {
-		dpm.Spec.Template.Spec.InitContainers = append(dpm.Spec.Template.Spec.InitContainers, initContainer)
-	}
+	//TODO: remove this when init containers becomes a stable feature
+	addInitContainerAnnotation(dpm)
 
 	// add liveness Probe to deployment
 	if funcObj.Spec.Type != pubsubFunc {

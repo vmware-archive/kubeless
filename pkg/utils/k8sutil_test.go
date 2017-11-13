@@ -2,6 +2,7 @@ package utils
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/kubeless/kubeless/pkg/spec"
@@ -580,4 +581,49 @@ func TestDeleteAutoscaleResource(t *testing.T) {
 	if name := a[0].(ktesting.DeleteAction).GetName(); name != "foo" {
 		t.Errorf("deleted autoscale with wrong name (%s)", name)
 	}
+}
+
+func TestGetProvisionContainer(t *testing.T) {
+	rvol := v1.VolumeMount{Name: "runtime", MountPath: "/runtime"}
+	dvol := v1.VolumeMount{Name: "deps", MountPath: "/deps"}
+	c, err := getProvisionContainer("test", "sha256:abc1234", "test.func", "test.foo", "text", "python2.7", rvol, dvol)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	expectedContainer := v1.Container{
+		Name:            "prepare",
+		Image:           "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697",
+		Command:         []string{"sh", "-c"},
+		Args:            []string{"echo 'abc1234  /deps/test.func' > /deps/test.func.sha256 && sha256sum -c /deps/test.func.sha256 && cp /deps/test.func /runtime/test.py && cp /deps/requirements.txt /runtime"},
+		VolumeMounts:    []v1.VolumeMount{rvol, dvol},
+		ImagePullPolicy: v1.PullIfNotPresent,
+	}
+	if !reflect.DeepEqual(expectedContainer, c) {
+		t.Errorf("Unexpected result:\n %+v", c)
+	}
+
+	// If the content type is encoded it should decode it
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.func", "test.foo", "base64", "python2.7", rvol, dvol)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if !strings.HasPrefix(c.Args[0], "base64 -d < /deps/test.func > /deps/test.func.decoded") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
+
+	// It should skip the dependencies installation if the runtime is not supported
+	c, err = getProvisionContainer("function", "sha256:abc1234", "test.func", "test.foo", "text", "cobol", rvol, dvol)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if strings.Contains(c.Args[0], "cp /deps ") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
+
+	// It should extract the file in case it is a Zip
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64+zip", "python2.7", rvol, dvol)
+	if !strings.Contains(c.Args[0], "unzip -o /deps/test.zip.decoded -d /runtime") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
+
 }

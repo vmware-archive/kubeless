@@ -17,13 +17,18 @@ limitations under the License.
 package main
 
 import (
+	"archive/zip"
+	"io"
+	"io/ioutil"
 	"k8s.io/client-go/pkg/api/v1"
+	"os"
 	"reflect"
 	"testing"
 
 	"github.com/kubeless/kubeless/pkg/spec"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestParseLabel(t *testing.T) {
@@ -80,8 +85,19 @@ func TestParseEnv(t *testing.T) {
 }
 
 func TestGetFunctionDescription(t *testing.T) {
-	// It should take parse the given values
-	result, err := getFunctionDescription("test", "default", "file.handler", "function", "dependencies", "runtime", "", "", "test-image", "128Mi", true, []string{"TEST=1"}, []string{"test=1"}, spec.Function{})
+	// It should parse the given values
+	file, err := ioutil.TempFile("", "test")
+	if err != nil {
+		t.Error(err)
+	}
+	_, err = file.WriteString("function")
+	if err != nil {
+		t.Error(err)
+	}
+	file.Close()
+	defer os.Remove(file.Name()) // clean up
+
+	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", true, []string{"TEST=1"}, []string{"test=1"}, spec.Function{})
 	if err != nil {
 		t.Error(err)
 	}
@@ -99,13 +115,15 @@ func TestGetFunctionDescription(t *testing.T) {
 			},
 		},
 		Spec: spec.FunctionSpec{
-			Handler:  "file.handler",
-			Runtime:  "runtime",
-			Type:     "HTTP",
-			Function: "function",
-			Deps:     "dependencies",
-			Topic:    "",
-			Schedule: "",
+			Handler:             "file.handler",
+			Runtime:             "runtime",
+			Type:                "HTTP",
+			Function:            "function",
+			Checksum:            "sha256:78f9ac018e554365069108352dacabb7fbd15246edf19400677e3b54fe24e126",
+			FunctionContentType: "text",
+			Deps:                "dependencies",
+			Topic:               "",
+			Schedule:            "",
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -130,11 +148,11 @@ func TestGetFunctionDescription(t *testing.T) {
 		},
 	}
 	if !reflect.DeepEqual(expectedFunction, *result) {
-		t.Error("Unexpected result")
+		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedFunction, *result)
 	}
 
 	// It should take the default values
-	result2, err := getFunctionDescription("test", "default", "", "", "", "", "", "", "", "", false, []string{}, []string{}, expectedFunction)
+	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", false, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -143,11 +161,21 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// Given parameters should take precedence from default values
-	result3, err := getFunctionDescription("test", "default", "file.handler2", "function2", "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", false, []string{"TEST=2"}, []string{"test=2"}, expectedFunction)
+	file, err = ioutil.TempFile("", "test")
 	if err != nil {
 		t.Error(err)
 	}
-	parsedMem, _ = parseMemory("256Mi")
+	_, err = file.WriteString("function-modified")
+	if err != nil {
+		t.Error(err)
+	}
+	file.Close()
+	defer os.Remove(file.Name()) // clean up
+	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", false, []string{"TEST=2"}, []string{"test=2"}, expectedFunction)
+	if err != nil {
+		t.Error(err)
+	}
+	parsedMem2, _ := parseMemory("256Mi")
 	newFunction := spec.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
@@ -161,13 +189,15 @@ func TestGetFunctionDescription(t *testing.T) {
 			},
 		},
 		Spec: spec.FunctionSpec{
-			Handler:  "file.handler2",
-			Runtime:  "runtime2",
-			Type:     "PubSub",
-			Function: "function2",
-			Deps:     "dependencies2",
-			Topic:    "test_topic",
-			Schedule: "",
+			Handler:             "file.handler2",
+			Runtime:             "runtime2",
+			Type:                "PubSub",
+			Function:            "function-modified",
+			FunctionContentType: "text",
+			Checksum:            "sha256:1958eb96d7d3cadedd0f327f09322eb7db296afb282ed91aa66cb4ab0dcc3c9f",
+			Deps:                "dependencies2",
+			Topic:               "test_topic",
+			Schedule:            "",
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -178,10 +208,10 @@ func TestGetFunctionDescription(t *testing.T) {
 							}},
 							Resources: v1.ResourceRequirements{
 								Limits: map[v1.ResourceName]resource.Quantity{
-									v1.ResourceMemory: parsedMem,
+									v1.ResourceMemory: parsedMem2,
 								},
 								Requests: map[v1.ResourceName]resource.Quantity{
-									v1.ResourceMemory: parsedMem,
+									v1.ResourceMemory: parsedMem2,
 								},
 							},
 							Image: "test-image2",
@@ -192,7 +222,43 @@ func TestGetFunctionDescription(t *testing.T) {
 		},
 	}
 	if !reflect.DeepEqual(newFunction, *result3) {
-		t.Error("Unexpected result")
+		t.Errorf("Unexpected result. Expecting:\n %+v\n Received %+v\n", newFunction, *result3)
 	}
 
+	// It should detect that it is a Zip file
+	file, err = os.Open(file.Name())
+	if err != nil {
+		t.Error(err)
+	}
+	newfile, err := os.Create(file.Name() + ".zip")
+	if err != nil {
+		t.Error(err)
+	}
+	defer os.Remove(newfile.Name()) // clean up
+	zipW := zip.NewWriter(newfile)
+	info, err := file.Stat()
+	if err != nil {
+		t.Error(err)
+	}
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		t.Error(err)
+	}
+	writer, err := zipW.CreateHeader(header)
+	if err != nil {
+		t.Error(err)
+	}
+	_, err = io.Copy(writer, file)
+	if err != nil {
+		t.Error(err)
+	}
+	file.Close()
+	zipW.Close()
+	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", false, []string{}, []string{}, expectedFunction)
+	if err != nil {
+		t.Error(err)
+	}
+	if result4.Spec.FunctionContentType != "base64+zip" {
+		t.Errorf("Should return base64+zip, received %s", result4.Spec.FunctionContentType)
+	}
 }
