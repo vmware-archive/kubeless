@@ -67,6 +67,8 @@ functions.k8s.io   CustomResourceDefinition.v1beta1.apiextensions.k8s.io
 $ kubectl get functions
 ```
 
+NOTE: Kafka statefulset uses a PVC (persistent volume claim). Depending on the configuration of your cluster you may need to provision a PV (Persistent Volume) that matches the PVC or configure dynamic storage provisioning. Otherwise Kafka pod will fail to get scheduled. Also note that Kafka is only required for PubSub functions, you can still use http triggered functions. Please refer to [PV](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) documentation on how to provision storage for PVC.
+
 You are now ready to create functions.
 
 ## Usage
