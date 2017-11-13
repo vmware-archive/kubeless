@@ -11,7 +11,7 @@ function loadFunc(name, handler) {
     mod = require(modPath); // eslint-disable-line global-require
   } catch (e) {
     console.error(
-      'No valid module found for the name: function, Failed to import module:\n' +
+      `No valid module found for the name: ${name}, Failed to import module:\n` +
       `${e.message}`
     );
     process.exit(1);
