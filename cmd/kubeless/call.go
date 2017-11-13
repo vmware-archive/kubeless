@@ -21,19 +21,13 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
-)
-
-const (
-	maxRetries       = 5
-	defaultTimeSleep = 1 * time.Second
 )
 
 var callCmd = &cobra.Command{
@@ -66,10 +60,9 @@ var callCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		crdClient, err := utils.GetCRDClientOutOfCluster()
-		svc := v1.Service{}
-		crdClient.Get().AbsPath("/api/v1/namespaces/" + ns + "/services/" + funcName + "/").Do().Into(&svc)
-		if svc.ObjectMeta.Name != funcName {
+		clientset := utils.GetClientOutOfCluster()
+		svc, err := clientset.CoreV1().Services(ns).Get(funcName, metav1.GetOptions{})
+		if err != nil {
 			logrus.Fatalf("Unable to find the service for %s", funcName)
 		}
 
@@ -77,13 +70,16 @@ var callCmd = &cobra.Command{
 		if svc.Spec.Ports[0].Name != "" {
 			port = svc.Spec.Ports[0].Name
 		}
-		url := "/api/v1/proxy/namespaces/" + ns + "/services/" + funcName + ":" + port + "/"
 
 		req := &rest.Request{}
 		if get {
-			req = crdClient.Get().AbsPath(url)
+			req = clientset.CoreV1().RESTClient().Get().Namespace(ns).Resource("services").SubResource("proxy").Name(funcName + ":" + port)
 		} else {
-			req = crdClient.Post().AbsPath(url).Body(bytes.NewBuffer(jsonStr)).SetHeader("Content-Type", "application/json")
+			req = clientset.CoreV1().RESTClient().Post().Body(bytes.NewBuffer(jsonStr)).SetHeader("Content-Type", "application/json")
+			// REST package removes trailing slash when building URLs
+			// Causing POST requests to be redirected with an empty body
+			// So we need to manually build the URL
+			req = req.AbsPath(svc.ObjectMeta.SelfLink + ":" + port + "/proxy/")
 		}
 		res, err := req.Do().Raw()
 		if err != nil {

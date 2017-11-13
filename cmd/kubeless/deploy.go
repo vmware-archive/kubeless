@@ -117,12 +117,14 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+
 		logrus.Infof("Deploying function...")
 		err = utils.CreateK8sCustomResource(crdClient, f)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 		logrus.Infof("Function %s submitted for deployment", funcName)
+		logrus.Infof("Check the deployment status executing 'kubeless function ls %s'", funcName)
 	},
 }
 
