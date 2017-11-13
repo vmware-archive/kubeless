@@ -128,7 +128,7 @@ pubsub-python-update-verify:
 
 pubsub-python34:
 	kubeless topic create s3-python34
-	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub.handler --from-file python/pubsub.py
+	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/pubsub.py
 
 pubsub-python34-verify:
 	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
@@ -137,7 +137,7 @@ pubsub-python34-verify:
 
 pubsub-nodejs:
 	kubeless topic create s3-nodejs
-	kubeless function deploy pubsub-nodejs --trigger-topic s3-nodejs --runtime nodejs6 --handler pubsub.handler --from-file nodejs/helloevent.js
+	kubeless function deploy pubsub-nodejs --trigger-topic s3-nodejs --runtime nodejs6 --handler pubsub-nodejs.handler --from-file nodejs/helloevent.js
 
 pubsub-nodejs-verify:
 	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
@@ -146,7 +146,7 @@ pubsub-nodejs-verify:
 
 pubsub-ruby:
 	kubeless topic create s3-ruby
-	kubeless function deploy pubsub-ruby --trigger-topic s3-ruby --runtime ruby2.4 --handler pubsub.handler --from-file ruby/helloevent.rb
+	kubeless function deploy pubsub-ruby --trigger-topic s3-ruby --runtime ruby2.4 --handler pubsub-ruby.handler --from-file ruby/helloevent.rb
 
 pubsub-ruby-verify:
 	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
