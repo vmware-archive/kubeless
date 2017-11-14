@@ -316,7 +316,6 @@ test_topic_deletion() {
     local topic_count=0
     kubeless topic create $topic
     kubeless topic delete $topic
-    sleep 10
     topic_count=$(kubeless topic list | grep $topic | wc -l)
     if [ ${topic_count} -gt 0 ] ; then
      echo_info "Topic $topic still exists"
