@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/url"
 	"os"
 	"path"
@@ -446,13 +445,7 @@ func GetLocalHostname(config *rest.Config, funcName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	host := url.Host
-	if strings.Contains(url.Host, ":") {
-		host, _, err = net.SplitHostPort(url.Host)
-		if err != nil {
-			return "", err
-		}
-	}
+	host := url.Hostname()
 
 	return fmt.Sprintf("%s.%s.nip.io", funcName, host), nil
 }
