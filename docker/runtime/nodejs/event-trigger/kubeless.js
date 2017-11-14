@@ -16,8 +16,11 @@ const funcHandler = process.env.FUNC_HANDLER;
 const kafkaSvc = _.get(process.env, 'KUBELESS_KAFKA_SVC', 'kafka');
 const kafkaNamespace = _.get(process.env, 'KUBELESS_KAFKA_NAMESPACE', 'kubeless');
 const kafkaHost = `${kafkaSvc}.${kafkaNamespace}:9092`;
-const kafkaClient = new kafka.KafkaClient({ kafkaHost });
-const kafkaConsumer = new kafka.Consumer(kafkaClient, [{ topic: process.env.TOPIC_NAME }]);
+const groupId = `${modName}${funcHandler}`;
+const kafkaConsumer = new kafka.ConsumerGroup({
+  kafkaHost,
+  groupId,
+}, [process.env.TOPIC_NAME]);
 
 const statistics = helper.prepareStatistics('method', client);
 const mod = helper.loadFunc(modName, funcHandler);

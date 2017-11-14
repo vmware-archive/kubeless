@@ -56,6 +56,9 @@ load ../script/libtest
 @test "Test function: get-nodejs-deps" {
   test_kubeless_function get-nodejs-deps
 }
+@test "Test function: get-nodejs-multi" {
+  test_kubeless_function get-nodejs-multi
+}
 @test "Test function: get-ruby" {
   test_kubeless_function get-ruby
 }

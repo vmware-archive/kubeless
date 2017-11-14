@@ -17,14 +17,22 @@ limitations under the License.
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"os"
+	"path"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -62,14 +70,6 @@ func getKV(input string) (string, string) {
 	return key, value
 }
 
-func readFile(file string) (string, error) {
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		return "", err
-	}
-	return string(data[:]), nil
-}
-
 func parseLabel(labels []string) map[string]string {
 	funcLabels := map[string]string{}
 	for _, label := range labels {
@@ -100,14 +100,61 @@ func parseMemory(mem string) (resource.Quantity, error) {
 	return quantity, nil
 }
 
-func getFunctionDescription(funcName, ns, handler, funcContent, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function) (f *spec.Function, err error) {
+func getFileSha256(file string) (string, error) {
+	h := sha256.New()
+	ff, err := os.Open(file)
+	if err != nil {
+		return "", err
+	}
+	defer ff.Close()
+	_, err = io.Copy(h, ff)
+	if err != nil {
+		return "", err
+	}
+	checksum := hex.EncodeToString(h.Sum(nil))
+	return "sha256:" + checksum, err
+}
+
+func getContentType(filename string, fbytes []byte) string {
+	var contentType string
+	isText := utf8.ValidString(string(fbytes))
+	if isText {
+		contentType = "text"
+	} else {
+		contentType = "base64"
+		if path.Ext(filename) == ".zip" {
+			contentType += "+zip"
+		}
+	}
+	return contentType
+}
+
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function) (*spec.Function, error) {
 
 	if handler == "" {
 		handler = defaultFunction.Spec.Handler
 	}
 
-	if funcContent == "" {
-		funcContent = defaultFunction.Spec.Function
+	var function, checksum, contentType string
+	if file == "" {
+		contentType = defaultFunction.Spec.FunctionContentType
+		function = defaultFunction.Spec.Function
+		checksum = defaultFunction.Spec.Checksum
+	} else {
+		functionBytes, err := ioutil.ReadFile(file)
+		if err != nil {
+			return &spec.Function{}, err
+		}
+		contentType = getContentType(file, functionBytes)
+		if contentType == "text" {
+			function = string(functionBytes)
+		} else {
+			function = base64.StdEncoding.EncodeToString(functionBytes)
+		}
+		checksum, err = getFileSha256(file)
+		if err != nil {
+			return &spec.Function{}, err
+		}
 	}
 
 	if deps == "" {
@@ -149,13 +196,12 @@ func getFunctionDescription(funcName, ns, handler, funcContent, deps, runtime, t
 		funcLabels = defaultFunction.Metadata.Labels
 	}
 
-	funcMem := resource.Quantity{}
 	resources := v1.ResourceRequirements{}
 	if mem != "" {
-		funcMem, err = parseMemory(mem)
+		funcMem, err := parseMemory(mem)
 		if err != nil {
 			err = fmt.Errorf("Wrong format of the memory value: %v", err)
-			return
+			return &spec.Function{}, err
 		}
 		resource := map[v1.ResourceName]resource.Quantity{
 			v1.ResourceMemory: funcMem,
@@ -174,7 +220,7 @@ func getFunctionDescription(funcName, ns, handler, funcContent, deps, runtime, t
 		runtimeImage = defaultFunction.Spec.Template.Spec.Containers[0].Image
 	}
 
-	f = &spec.Function{
+	return &spec.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
 			APIVersion: "k8s.io/v1",
@@ -185,13 +231,15 @@ func getFunctionDescription(funcName, ns, handler, funcContent, deps, runtime, t
 			Labels:    funcLabels,
 		},
 		Spec: spec.FunctionSpec{
-			Handler:  handler,
-			Runtime:  runtime,
-			Type:     funcType,
-			Function: funcContent,
-			Deps:     deps,
-			Topic:    topic,
-			Schedule: schedule,
+			Handler:             handler,
+			Runtime:             runtime,
+			Type:                funcType,
+			Function:            function,
+			Checksum:            checksum,
+			FunctionContentType: contentType,
+			Deps:                deps,
+			Topic:               topic,
+			Schedule:            schedule,
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -204,6 +252,19 @@ func getFunctionDescription(funcName, ns, handler, funcContent, deps, runtime, t
 				},
 			},
 		},
+	}, nil
+}
+
+func getDeploymentStatus(cli kubernetes.Interface, funcName, ns string) (string, error) {
+	dpm, err := cli.ExtensionsV1beta1().Deployments(ns).Get(funcName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
 	}
-	return
+	status := fmt.Sprintf("%d/%d", dpm.Status.ReadyReplicas, dpm.Status.Replicas)
+	if dpm.Status.ReadyReplicas > 0 {
+		status += " READY"
+	} else {
+		status += " NOT READY"
+	}
+	return status, nil
 }

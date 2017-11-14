@@ -34,14 +34,14 @@ Installation is made of three steps:
 
 There are several kubeless manifests being shipped for multiple k8s environments (non-rbac, rbac and openshift), pick the one that corresponds to your environment:
 
-* [`kubeless-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.3/kubeless-v0.2.3.yaml) is used for non-RBAC Kubernetes cluster.
-* [`kubeless-rbac-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.3/kubeless-rbac-v0.2.3.yaml) is used for RBAC-enabled Kubernetes cluster.
-* [`kubeless-openshift-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.3/kubeless-openshift-v0.2.3.yaml) is used to deploy Kubeless to OpenShift (1.5+).
+* [`kubeless-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.4/kubeless-v0.2.4.yaml) is used for non-RBAC Kubernetes cluster.
+* [`kubeless-rbac-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.4/kubeless-rbac-v0.2.4.yaml) is used for RBAC-enabled Kubernetes cluster.
+* [`kubeless-openshift-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/v0.2.4/kubeless-openshift-v0.2.4.yaml) is used to deploy Kubeless to OpenShift (1.5+).
 
 For example, this below is a show case of deploying kubeless to a non-RBAC Kubernetes cluster.
 
 ```console
-$ export RELEASE=v0.2.3
+$ export RELEASE=v0.2.4
 $ kubectl create ns kubeless
 $ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 
@@ -94,6 +94,9 @@ $ kubeless function deploy get-python --runtime python2.7 \
                                 --from-file test.py \
                                 --handler test.foobar \
                                 --trigger-http
+INFO[0000] Deploying function...
+INFO[0000] Function get-python submitted for deployment
+INFO[0000] Check the deployment status executing 'kubeless function ls get-python'
 ```
 
 Let's dissect the command:
@@ -120,8 +123,8 @@ NAME          KIND
 get-python    Function.v1.k8s.io
 
 $ kubeless function ls
-NAME        NAMESPACE   HANDLER     RUNTIME     TYPE    TOPIC
-get-python  default     test.foobar python2.7   HTTP
+NAME           	NAMESPACE	HANDLER              	RUNTIME  	TYPE  	TOPIC      	DEPENDENCIES	STATUS
+get-python     	default  	helloget.foo         	python2.7	HTTP  	           	            	1/1 READY
 ```
 
 You can then call the function with:
@@ -215,7 +218,7 @@ to encourage contributions from the community - **your PR is welcome** ! :)
 
 ## Documentation
 
-More details can be found in the complete [Documentation](docs/index.md)
+More details can be found in the complete [Documentation](docs/)
 
 ## Building
 

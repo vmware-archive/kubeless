@@ -86,7 +86,7 @@ func TestGetRuntimes(t *testing.T) {
 
 func TestGetBuildContainer(t *testing.T) {
 	// It should throw an error if there is not an image available
-	_, err := GetBuildContainer("notExists", []v1.EnvVar{}, v1.VolumeMount{}, v1.VolumeMount{})
+	_, err := GetBuildContainer("notExists", []v1.EnvVar{}, v1.VolumeMount{})
 	if err == nil {
 		t.Error("Expected to throw an error")
 	}
@@ -94,8 +94,7 @@ func TestGetBuildContainer(t *testing.T) {
 	// It should return the proper build image for python
 	env := []v1.EnvVar{}
 	vol1 := v1.VolumeMount{Name: "v1", MountPath: "/v1"}
-	vol2 := v1.VolumeMount{Name: "v2", MountPath: "/v2"}
-	c, err := GetBuildContainer("python2.7", env, vol1, vol2)
+	c, err := GetBuildContainer("python2.7", env, vol1)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -103,9 +102,9 @@ func TestGetBuildContainer(t *testing.T) {
 		Name:            "install",
 		Image:           "tuna/python-pillow:2.7.11-alpine",
 		Command:         []string{"sh", "-c"},
-		Args:            []string{"pip install --prefix=/v1 -r /v2/requirements.txt && cp -Hr /v2/* /v1"},
-		VolumeMounts:    []v1.VolumeMount{vol1, vol2},
-		WorkingDir:      "/v2",
+		Args:            []string{"pip install --prefix=/v1 -r /v1/requirements.txt"},
+		VolumeMounts:    []v1.VolumeMount{vol1},
+		WorkingDir:      "/v1",
 		ImagePullPolicy: v1.PullIfNotPresent,
 		Env:             env,
 	}
@@ -118,7 +117,7 @@ func TestGetBuildContainer(t *testing.T) {
 		{Name: "NPM_REGISTRY", Value: "http://reg.com"},
 		{Name: "NPM_SCOPE", Value: "myorg"},
 	}
-	c, err = GetBuildContainer("nodejs6", nodeEnv, vol1, vol2)
+	c, err = GetBuildContainer("nodejs6", nodeEnv, vol1)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -130,14 +129,14 @@ func TestGetBuildContainer(t *testing.T) {
 	}
 
 	// It should return the proper build image for ruby
-	c, err = GetBuildContainer("ruby2.4", env, vol1, vol2)
+	c, err = GetBuildContainer("ruby2.4", env, vol1)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
 	if c.Image != "bitnami/ruby:2.4" {
 		t.Errorf("Unexpected image %s", c.Image)
 	}
-	if !strings.Contains(c.Args[0], "bundle install --gemfile=/v2/Gemfile --path=/v1") {
+	if !strings.Contains(c.Args[0], "bundle install --gemfile=/v1/Gemfile --path=/v1") {
 		t.Errorf("Unexpected command %s", c.Args[0])
 	}
 

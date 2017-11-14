@@ -34,7 +34,9 @@ For the case of Ruby we use [Sinatra](http://www.sinatrarb.com) as web framework
 ## Event trigger
 This variant is used when the function is meant to be triggered through message events in a pre-deployed [Kafka](https://kafka.apache.org) system. We include a set of kafka/zookeeper in the deployment manifest of [Kubeless release package](https://github.com/kubeless/kubeless/releases) that will be deployed together with the Kubeless controller. Basically the runtimes are Kafka consumers which listen messages in a specific kafka topic and execute the injected function.
 
-Right now the runtimes that support this kind of events are Python and NodeJS.
+Right now the runtimes that support this kind of events are Python, NodeJS and Ruby.
+
+The pods are deployed using the function handler as [group ID](https://kafka.apache.org/documentation/#intro_consumers). That means that the load will be balanced. If a function is scaled and its deployment has more than one replica only one pod will process a published message.
 
 ## Monitoring functions
 Kubeless runtimes are exposing metrics at `/metrics` endpoint and these metrics will be collected by Prometheus. We also include a prometheus setup in [`manifests/monitoring`](https://github.com/kubeless/kubeless/blob/master/manifests/monitoring/prometheus.yaml) to help you easier set it up. The metrics collected are: Number of calls, succeeded and error executions and the time spent per call.

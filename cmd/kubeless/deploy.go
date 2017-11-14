@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"io/ioutil"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -97,23 +98,17 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		funcContent := ""
-		if len(file) != 0 {
-			funcContent, err = readFile(file)
-			if err != nil {
-				logrus.Fatalf("Unable to read file %s: %v", file, err)
-			}
-		}
-
 		funcDeps := ""
 		if deps != "" {
-			funcDeps, err = readFile(deps)
+			bytes, err := ioutil.ReadFile(deps)
 			if err != nil {
 				logrus.Fatalf("Unable to read file %s: %v", deps, err)
 			}
+			funcDeps = string(bytes)
 		}
 
-		f, err := getFunctionDescription(funcName, ns, handler, funcContent, funcDeps, runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, spec.Function{})
+		cli := utils.GetClientOutOfCluster()
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, spec.Function{})
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -123,10 +118,13 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		logrus.Infof("Deploying function...")
 		err = utils.CreateK8sCustomResource(crdClient, f)
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		logrus.Infof("Function %s submitted for deployment", funcName)
+		logrus.Infof("Check the deployment status executing 'kubeless function ls %s'", funcName)
 	},
 }
 

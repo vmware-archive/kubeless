@@ -2,6 +2,7 @@ package utils
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/kubeless/kubeless/pkg/spec"
@@ -107,6 +108,35 @@ func TestEnsureConfigMap(t *testing.T) {
 	if !reflect.DeepEqual(cm.Data, expectedData) {
 		t.Errorf("Unexpected ConfigMap:\n %+v\nExpecting:\n %+v", cm.Data, expectedData)
 	}
+
+	// If there is already a config map it should update the previous one
+	f2 = &spec.Function{
+		Metadata: metav1.ObjectMeta{
+			Name:      f2Name,
+			Namespace: ns,
+		},
+		Spec: spec.FunctionSpec{
+			Function: "function2",
+			Handler:  "foo2.bar2",
+			Runtime:  "python3.4",
+		},
+	}
+	err = EnsureFuncConfigMap(clientset, f2, or)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	cm, err = clientset.CoreV1().ConfigMaps(ns).Get(f2Name, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	expectedData = map[string]string{
+		"handler":          "foo2.bar2",
+		"foo2.py":          "function2",
+		"requirements.txt": "",
+	}
+	if !reflect.DeepEqual(cm.Data, expectedData) {
+		t.Errorf("Unexpected ConfigMap:\n %+v\nExpecting:\n %+v", cm.Data, expectedData)
+	}
 }
 
 func TestEnsureService(t *testing.T) {
@@ -172,6 +202,23 @@ func TestEnsureService(t *testing.T) {
 	}
 	if !reflect.DeepEqual(*svc, expectedSVC) {
 		t.Errorf("Unexpected service:\n %+v\nExpecting:\n %+v", *svc, expectedSVC)
+	}
+
+	// If there is already a service it should update the previous one
+	newLabels := map[string]string{
+		"foobar": "barfoo",
+	}
+	f1.Metadata.Labels = newLabels
+	err = EnsureFuncService(clientset, f1, or)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	svc, err = clientset.CoreV1().Services(ns).Get(f1Name, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if !reflect.DeepEqual(svc.ObjectMeta.Labels, newLabels) {
+		t.Error("Unable to update the service")
 	}
 }
 
@@ -375,6 +422,22 @@ func TestEnsureDeployment(t *testing.T) {
 		t.Error("It should not setup a liveness probe")
 	}
 
+	// It should update a deployment if it is already present
+	f6 := spec.Function{}
+	f6 = *f1
+	f6.Spec.Handler = "foo.bar2"
+	err = EnsureFuncDeployment(clientset, &f6, or)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get(f1Name, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if getEnvValueFromList("FUNC_HANDLER", dpm.Spec.Template.Spec.Containers[0].Env) != "bar2" {
+		t.Error("Unable to update deployment")
+	}
+
 	// It should return an error if some dependencies are given but the runtime is not supported
 	f7 := spec.Function{}
 	f7 = *f1
@@ -518,4 +581,49 @@ func TestDeleteAutoscaleResource(t *testing.T) {
 	if name := a[0].(ktesting.DeleteAction).GetName(); name != "foo" {
 		t.Errorf("deleted autoscale with wrong name (%s)", name)
 	}
+}
+
+func TestGetProvisionContainer(t *testing.T) {
+	rvol := v1.VolumeMount{Name: "runtime", MountPath: "/runtime"}
+	dvol := v1.VolumeMount{Name: "deps", MountPath: "/deps"}
+	c, err := getProvisionContainer("test", "sha256:abc1234", "test.func", "test.foo", "text", "python2.7", rvol, dvol)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	expectedContainer := v1.Container{
+		Name:            "prepare",
+		Image:           "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697",
+		Command:         []string{"sh", "-c"},
+		Args:            []string{"echo 'abc1234  /deps/test.func' > /deps/test.func.sha256 && sha256sum -c /deps/test.func.sha256 && cp /deps/test.func /runtime/test.py && cp /deps/requirements.txt /runtime"},
+		VolumeMounts:    []v1.VolumeMount{rvol, dvol},
+		ImagePullPolicy: v1.PullIfNotPresent,
+	}
+	if !reflect.DeepEqual(expectedContainer, c) {
+		t.Errorf("Unexpected result:\n %+v", c)
+	}
+
+	// If the content type is encoded it should decode it
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.func", "test.foo", "base64", "python2.7", rvol, dvol)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if !strings.HasPrefix(c.Args[0], "base64 -d < /deps/test.func > /deps/test.func.decoded") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
+
+	// It should skip the dependencies installation if the runtime is not supported
+	c, err = getProvisionContainer("function", "sha256:abc1234", "test.func", "test.foo", "text", "cobol", rvol, dvol)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if strings.Contains(c.Args[0], "cp /deps ") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
+
+	// It should extract the file in case it is a Zip
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64+zip", "python2.7", rvol, dvol)
+	if !strings.Contains(c.Args[0], "unzip -o /deps/test.zip.decoded -d /runtime") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
+
 }

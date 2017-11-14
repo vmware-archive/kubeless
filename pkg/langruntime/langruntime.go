@@ -19,10 +19,10 @@ const (
 	python34Pubsub  = "bitnami/kubeless-python-event-consumer@sha256:8f92397258836e9c39948814aa5324c29d96ff3624b66dd70fdbad1ce0a1615e"
 	python34Init    = "python:3.4"
 	node6Http       = "bitnami/kubeless-nodejs@sha256:b3c7cec77f973bf7a48cbbb8ea5069cacbaee7044683a275c6f78fa248de17b4"
-	node6Pubsub     = "bitnami/kubeless-nodejs-event-consumer@sha256:b027bfef5f99c3be68772155a1feaf1f771ab9a3c7bb49bef2e939d6b766abec"
+	node6Pubsub     = "kubeless/nodejs-event-consumer@sha256:7e41360bd2b3c6fc32569f85694e4b8c477153d6b6ec4ee0d6a27fc53678ac6a"
 	node6Init       = "node:6.10"
 	node8Http       = "bitnami/kubeless-nodejs@sha256:1eff2beae6fcc40577ada75624c3e4d3840a854588526cd8616d66f4e889dfe6"
-	node8Pubsub     = "bitnami/kubeless-nodejs-event-consumer@sha256:4d005c9c0b462750d9ab7f1305897e7a01143fe869d3b722ed3330560f9c7fb5"
+	node8Pubsub     = "kubeless/nodejs-event-consumer@sha256:236ec58aa7560709716332fa2cab8b6f3de35d13438380460a7080887134ebd9"
 	node8Init       = "node:8"
 	ruby24Http      = "bitnami/kubeless-ruby@sha256:97b18ac36bb3aa9529231ea565b339ec00d2a5225cf7eb010cd5a6188cf72ab5"
 	ruby24Pubsub    = "bitnami/kubeless-ruby-event-consumer@sha256:938a860dbd9b7fb6b4338248a02c92279315c6e42eed0700128b925d3696b606"
@@ -165,12 +165,12 @@ func GetFunctionImage(runtime, ftype string) (string, error) {
 }
 
 // GetBuildContainer returns a Container definition based on a runtime
-func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolume v1.VolumeMount) (v1.Container, error) {
+func GetBuildContainer(runtime string, env []v1.EnvVar, installVolume v1.VolumeMount) (v1.Container, error) {
 	runtimeInf, err := GetRuntimeInfo(runtime)
 	if err != nil {
 		return v1.Container{}, err
 	}
-	depsFile := path.Join(depsVolume.MountPath, runtimeInf.DepName)
+	depsFile := path.Join(installVolume.MountPath, runtimeInf.DepName)
 	versionInf, err := findRuntimeVersion(runtime)
 	if err != nil {
 		return v1.Container{}, err
@@ -179,7 +179,7 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolum
 	var command string
 	switch {
 	case strings.Contains(runtime, "python"):
-		command = "pip install --prefix=" + runtimeVolume.MountPath + " -r " + depsFile
+		command = "pip install --prefix=" + installVolume.MountPath + " -r " + depsFile
 	case strings.Contains(runtime, "nodejs"):
 		registry := "https://registry.npmjs.org"
 		scope := ""
@@ -192,23 +192,19 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, runtimeVolume, depsVolum
 			}
 		}
 		command = "npm config set " + scope + "registry " + registry +
-			" && npm install"
+			" && npm install --prefix=" + installVolume.MountPath
 	case strings.Contains(runtime, "ruby"):
-		command = "bundle install --gemfile=" + depsFile + " --path=" + runtimeVolume.MountPath
+		command = "bundle install --gemfile=" + depsFile + " --path=" + installVolume.MountPath
 	}
-
-	// Copy sources to runtime volume
-	// TODO: Remove when the volume is already populated with those files
-	command += fmt.Sprintf(" && cp -Hr %s/* %s", depsVolume.MountPath, runtimeVolume.MountPath)
 
 	return v1.Container{
 		Name:            "install",
 		Image:           versionInf.initImage,
 		Command:         []string{"sh", "-c"},
 		Args:            []string{command},
-		VolumeMounts:    []v1.VolumeMount{runtimeVolume, depsVolume},
+		VolumeMounts:    []v1.VolumeMount{installVolume},
 		ImagePullPolicy: v1.PullIfNotPresent,
-		WorkingDir:      depsVolume.MountPath,
+		WorkingDir:      installVolume.MountPath,
 		Env:             env,
 	}, nil
 }

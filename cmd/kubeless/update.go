@@ -50,13 +50,6 @@ var updateCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		funcContent := ""
-		if len(file) != 0 {
-			funcContent, err = readFile(file)
-			if err != nil {
-				logrus.Fatalf("Unable to read file %s: %v", file, err)
-			}
-		}
 
 		runtime, err := cmd.Flags().GetString("runtime")
 		if err != nil {
@@ -102,7 +95,8 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		f, err := getFunctionDescription(funcName, ns, handler, funcContent, "", runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, previousFunction)
+		cli := utils.GetClientOutOfCluster()
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, "", runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -111,11 +105,13 @@ var updateCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-
+		logrus.Infof("Redeploying function...")
 		err = utils.UpdateK8sCustomResource(crdClient, f)
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		logrus.Infof("Function %s submitted for deployment", funcName)
+		logrus.Infof("Check the deployment status executing 'kubeless function ls %s'", funcName)
 	},
 }
 
