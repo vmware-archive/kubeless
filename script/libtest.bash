@@ -311,4 +311,15 @@ test_kubeless_autoscale() {
     k8s_wait_for_pod_count ${num} -l function="${func}"
     kubeless autoscale delete ${func}
 }
+test_topic_deletion() {
+    local topic=$RANDOM
+    local topic_count=0
+    kubeless topic create $topic
+    kubeless topic delete $topic
+    topic_count=$(kubeless topic list | grep $topic | wc -l)
+    if [ ${topic_count} -gt 0 ] ; then
+     echo_info "Topic $topic still exists"
+     exit 200
+    fi
+}
 # vim: sw=4 ts=4 et si

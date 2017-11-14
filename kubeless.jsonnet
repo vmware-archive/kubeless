@@ -28,6 +28,10 @@ local kafkaEnv = [
     value: "9092"
   },
   {
+    name: "KAFKA_DELETE_TOPIC_ENABLE",
+    value: "true"
+  },
+  {
     name: "KAFKA_ZOOKEEPER_CONNECT",
     value: "zookeeper.kubeless:2181"
   },
