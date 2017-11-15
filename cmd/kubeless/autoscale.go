@@ -15,7 +15,6 @@ package main
 
 import (
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/pkg/api"
 )
 
 var autoscaleCmd = &cobra.Command{
@@ -32,7 +31,7 @@ func init() {
 
 	for _, cmd := range cmds {
 		autoscaleCmd.AddCommand(cmd)
-		cmd.Flags().StringP("namespace", "n", api.NamespaceDefault, "Specify namespace for the autoscale")
+		cmd.Flags().StringP("namespace", "n", "", "Specify namespace for the autoscale")
 
 	}
 }

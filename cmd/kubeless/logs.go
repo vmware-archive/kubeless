@@ -23,7 +23,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
@@ -43,6 +42,9 @@ var logsCmd = &cobra.Command{
 		ns, err := cmd.Flags().GetString("namespace")
 		if err != nil {
 			logrus.Fatal(err)
+		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
 		}
 
 		k8sClient := utils.GetClientOutOfCluster()
@@ -74,5 +76,5 @@ var logsCmd = &cobra.Command{
 
 func init() {
 	logsCmd.Flags().BoolP("follow", "f", false, "Specify if the logs should be streamed.")
-	logsCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
+	logsCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 }

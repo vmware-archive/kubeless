@@ -33,6 +33,9 @@ var ingressDeleteCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
+		}
 
 		client := utils.GetClientOutOfCluster()
 

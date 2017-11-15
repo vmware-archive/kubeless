@@ -26,7 +26,6 @@ import (
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/rest"
 )
 
@@ -58,6 +57,9 @@ var callCmd = &cobra.Command{
 		ns, err := cmd.Flags().GetString("namespace")
 		if err != nil {
 			logrus.Fatal(err)
+		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
 		}
 
 		clientset := utils.GetClientOutOfCluster()
@@ -93,6 +95,6 @@ var callCmd = &cobra.Command{
 
 func init() {
 	callCmd.Flags().StringP("data", "", "", "Specify data for function")
-	callCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
+	callCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 
 }

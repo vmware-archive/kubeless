@@ -26,7 +26,6 @@ import (
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/pkg/api"
 )
 
 var describeCmd = &cobra.Command{
@@ -43,6 +42,9 @@ var describeCmd = &cobra.Command{
 		ns, err := cmd.Flags().GetString("namespace")
 		if err != nil {
 			logrus.Fatalf("Can not describe function: %v", err)
+		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
 		}
 
 		output, err := cmd.Flags().GetString("out")
@@ -64,7 +66,7 @@ var describeCmd = &cobra.Command{
 
 func init() {
 	describeCmd.Flags().StringP("out", "o", "", "Output format. One of: json|yaml")
-	describeCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
+	describeCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 }
 
 func print(f spec.Function, name, output string) error {

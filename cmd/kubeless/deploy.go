@@ -25,7 +25,6 @@ import (
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/pkg/api"
 )
 
 var deployCmd = &cobra.Command{
@@ -82,6 +81,9 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
+		}
 
 		deps, err := cmd.Flags().GetString("dependencies")
 		if err != nil {
@@ -134,7 +136,7 @@ func init() {
 	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
-	deployCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
+	deployCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
 	deployCmd.Flags().StringP("trigger-topic", "", "kubeless", "Deploy a pubsub function to Kubeless")
 	deployCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
