@@ -1,5 +1,5 @@
-hash: f866d1dbb1e626afb17bca121ea4d1922c92929a44df046d193d3c321b416cff
-updated: 2017-10-23T14:21:01.401268543+11:00
+hash: bd0428d902c18e5187f91d270de570c9bca1a5dd0859b3bd87591fd2283f1609
+updated: 2017-11-13T20:23:16.684317292+05:30
 imports:
 - name: github.com/coreos/prometheus-operator
   version: 0d446f3052e47b5ad95989d9a8ffe4f6675e69b5
@@ -58,19 +58,19 @@ imports:
   - jlexer
   - jwriter
 - name: github.com/mattn/go-runewidth
-  version: d6bea18f789704b5f83375793155289da36a3c7f
+  version: 97311d9f7767e3d6f422ea06661bc2c7a19e8a5d
 - name: github.com/olekukonko/tablewriter
-  version: febf2d34b54a69ce7530036c7503b1c9fbfdf0bb
+  version: a7a4c189eb47ed33ce7b35f2880070a0c82a67d4
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
-- name: github.com/Sirupsen/logrus
-  version: 51fe59aca108dc5680109e7b2051cbdcfa5a253c
+- name: github.com/sirupsen/logrus
+  version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/spf13/cobra
-  version: f62e98d28ab7ad31d707ba837a966378465c7b57
+  version: 2da4a54c5ceefcee7ca5dd0eea1e18a3b6366489
 - name: github.com/spf13/pflag
-  version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
+  version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:

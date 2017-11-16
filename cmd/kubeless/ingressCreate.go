@@ -14,9 +14,9 @@ limitations under the License.
 package main
 
 import (
-	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/rest"

@@ -17,8 +17,8 @@ limitations under the License.
 package main
 
 import (
-	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -63,4 +63,5 @@ func init() {
 	autoscaleCreateCmd.Flags().Int32("max", 1, "maximum number of replicas")
 	autoscaleCreateCmd.Flags().String("metric", "cpu", "metric to use for calculating the autoscale. Supported metrics: cpu, qps")
 	autoscaleCreateCmd.Flags().String("value", "", "value of the average of the metric across all replicas. If metric is cpu, value is a number represented as percentage. If metric is qps, value must be in format of Quantity")
+	autoscaleCreateCmd.MarkFlagRequired("value")
 }
