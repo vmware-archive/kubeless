@@ -15,6 +15,8 @@ import (
 
 // TODO(brainman): Use EnumDependentServices to enumerate dependent services.
 
+// TODO(brainman): Use EnumServicesStatus to enumerate services in the specified service control manager database.
+
 // Service is used to access Windows service.
 type Service struct {
 	Name   string
@@ -37,7 +39,7 @@ func (s *Service) Start(args ...string) error {
 	var p **uint16
 	if len(args) > 0 {
 		vs := make([]*uint16, len(args))
-		for i := range vs {
+		for i, _ := range vs {
 			vs[i] = syscall.StringToUTF16Ptr(args[i])
 		}
 		p = &vs[0]

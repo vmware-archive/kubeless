@@ -9,6 +9,7 @@ import (
 	"github.com/kubeless/kubeless/pkg/spec"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api"
@@ -598,7 +599,10 @@ func fakeConfig() *rest.Config {
 	return &rest.Config{
 		Host: "https://example.com:443",
 		ContentConfig: rest.ContentConfig{
-			GroupVersion:         &api.Registry.GroupOrDie(api.GroupName).GroupVersion,
+			GroupVersion: &schema.GroupVersion{
+				Group:   "",
+				Version: "v1",
+			},
 			NegotiatedSerializer: api.Codecs,
 		},
 	}
