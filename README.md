@@ -107,7 +107,7 @@ Let's dissect the command:
 * `--handler test.foobar`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `foobar` from the file `test.py`.
 * `--trigger-http`: This sets the function trigger.
 
-Other available trigger options are:
+Other available trigger options (defaults to `--trigger-http`) are:
 
 * `--trigger-http` to trigger the function using HTTP requests.
 * `--trigger-topic` to trigger the function with a certain Kafka topic. See the [next example](#pubsub-function).

@@ -108,7 +108,10 @@ var deployCmd = &cobra.Command{
 		}
 
 		cli := utils.GetClientOutOfCluster()
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, spec.Function{})
+
+		defaultFunctionSpec := spec.Function{}
+		defaultFunctionSpec.Spec.Type = "HTTP"
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, defaultFunctionSpec)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -136,7 +139,7 @@ func init() {
 	deployCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
-	deployCmd.Flags().StringP("trigger-topic", "", "kubeless", "Deploy a pubsub function to Kubeless")
+	deployCmd.Flags().StringP("trigger-topic", "", "", "Deploy a pubsub function to Kubeless")
 	deployCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory, which is measured in bytes, for the function. It is expressed as a plain integer or a fixed-point interger with one of these suffies: E, P, T, G, M, K, Ei, Pi, Ti, Gi, Mi, Ki")
 	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")

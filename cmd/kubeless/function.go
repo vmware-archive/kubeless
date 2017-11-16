@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -163,6 +164,17 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 
 	if runtime == "" {
 		runtime = defaultFunction.Spec.Runtime
+	}
+
+	triggers := []bool{triggerHTTP, topic != "", schedule != ""}
+	triggerCount := 0
+	for i := len(triggers) - 1; i >= 0; i-- {
+		if triggers[i] {
+			triggerCount++
+		}
+	}
+	if triggerCount > 1 {
+		return nil, errors.New("exactly one of --trigger-http, --trigger-topic, --schedule must be specified")
 	}
 
 	funcType := ""
