@@ -85,7 +85,7 @@ func printAutoscale(w io.Writer, ass []v2alpha1.HorizontalPodAutoscaler, output 
 			m := ""
 			v := ""
 			if len(i.Spec.Metrics) == 0 {
-				fmt.Errorf("The function autoscale %s isn't in correct format. It has no metric defined.", i.Name)
+				logrus.Errorf("The function autoscale %s isn't in correct format. It has no metric defined.", i.Name)
 				continue
 			}
 			if i.Spec.Metrics[0].Object != nil {

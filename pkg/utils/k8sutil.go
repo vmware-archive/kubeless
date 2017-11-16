@@ -18,7 +18,6 @@ package utils
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -278,7 +277,7 @@ func GetReadyPod(pods *v1.PodList) (v1.Pod, error) {
 			return pod, nil
 		}
 	}
-	return v1.Pod{}, errors.New("There is no pod ready")
+	return v1.Pod{}, fmt.Errorf("there is no pod ready")
 }
 
 func appendToCommand(orig string, command ...string) string {
@@ -484,7 +483,7 @@ func DeleteIngress(client kubernetes.Interface, name, ns string) error {
 func splitHandler(handler string) (string, string, error) {
 	str := strings.Split(handler, ".")
 	if len(str) != 2 {
-		return "", "", errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
+		return "", "", fmt.Errorf("failed: incorrect handler format. It should be module_name.handler_name")
 	}
 
 	return str[0], str[1], nil
@@ -974,7 +973,7 @@ func CreateAutoscale(client kubernetes.Interface, funcObj *spec.Function, ns, me
 			return err
 		}
 	default:
-		return errors.New("metric is not supported")
+		return fmt.Errorf("metric is not supported")
 	}
 
 	hpa := &v2alpha1.HorizontalPodAutoscaler{
@@ -1065,15 +1064,17 @@ func createServiceMonitor(funcObj *spec.Function, ns string, or []metav1.OwnerRe
 		return nil
 	}
 
-	return errors.New("service monitor has already existed")
+	return fmt.Errorf("service monitor has already existed")
 }
 
+// GetOwnerReference returns ownerRef for appending to objects's metadata
+// created by kubeless-controller one a function is deployed.
 func GetOwnerReference(funcObj *spec.Function) ([]metav1.OwnerReference, error) {
 	if funcObj.Metadata.Name == "" {
-		return []metav1.OwnerReference{}, fmt.Errorf("Function name can't be empty.")
+		return []metav1.OwnerReference{}, fmt.Errorf("function name can't be empty")
 	}
 	if funcObj.Metadata.UID == "" {
-		return []metav1.OwnerReference{}, fmt.Errorf("UID of function %s can't be empty.", funcObj.Metadata.Name)
+		return []metav1.OwnerReference{}, fmt.Errorf("uid of function %s can't be empty", funcObj.Metadata.Name)
 	}
 	t := true
 	return []metav1.OwnerReference{

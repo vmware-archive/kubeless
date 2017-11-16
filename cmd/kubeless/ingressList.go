@@ -76,7 +76,7 @@ func printIngress(w io.Writer, ings []v1beta1.Ingress, output string) error {
 		table.SetHeader([]string{"Name", "namespace", "host", "path", "service name", "service port"})
 		for _, i := range ings {
 			if len(i.Spec.Rules) == 0 {
-				fmt.Errorf("The function ingress %s isn't in correct format. It has no rule defined.", i.Name)
+				logrus.Errorf("The function ingress %s isn't in correct format. It has no rule defined.", i.Name)
 				continue
 			}
 			n := i.Name
