@@ -14,6 +14,7 @@ This chart bootstraps a [Prometheus](https://github.com/prometheus/prometheus) d
 
 ## Prerequisites
   - Kubernetes 1.4+ with Beta APIs & ThirdPartyResources enabled
+  - [prometheus-operator](https://github.com/coreos/prometheus-operator/blob/master/helm/prometheus-operator/README.md).
 
 ## Installing the Chart
 
@@ -43,6 +44,7 @@ Parameter | Description | Default
 --- | --- | ---
 `alertingEndpoints` | Alertmanagers to which alerts will be sent | `[]`
 `config` | Prometheus configuration directives | `{}`
+`externalLabels` | The labels to add to any time series or alerts when communicating with external systems  | `{}`
 `externalUrl` | External URL at which Prometheus will be reachable | `""`
 `image.repository` | Image | `quay.io/prometheus/prometheus`
 `image.tag` | Image tag | `v1.5.2`
@@ -57,6 +59,7 @@ Parameter | Description | Default
 `retention` | How long to retain metrics | `24h`
 `routePrefix` | Prefix used to register routes, overriding externalUrl route | `/`
 `rules` | Prometheus alerting & recording rules | `{}`
+`secrets` | List of Secrets in the same namespace as the Prometheus object, which shall be mounted into the Prometheus Pods. | `{}`
 `service.annotations` | Annotations to be added to the Prometheus Service | `{}`
 `service.clusterIP` | Cluster-internal IP address for Prometheus Service | `""`
 `service.externalIPs` | List of external IP addresses at which the Prometheus Service will be available | `[]`
@@ -80,5 +83,6 @@ $ helm install opsgoodness/prometheus --name my-release -f values.yaml
 > **Tip**: You can use the default [values.yaml](values.yaml)
 
 ### Third-party Resource Documentation
-- [prometheus](https://github.com/coreos/prometheus-operator/blob/master/Documentation/prometheus.md)
-- [servicemonitor](https://github.com/coreos/prometheus-operator/blob/master/Documentation/service-monitor.md)
+- [Alertmanager](/Documentation/design.md#alertmanager)
+- [Prometheus](/Documentation/design.md#prometheus)
+- [ServiceMonitor](/Documentation/design.md#servicemonitor)

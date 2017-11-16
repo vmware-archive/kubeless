@@ -1,6 +1,9 @@
 job('po-tests-pr') {
     concurrentBuild()
 
+    // logRotator(daysToKeep, numberToKeep)
+    logRotator(10, 10)
+
     parameters {
         stringParam('sha1')
     }
@@ -66,11 +69,20 @@ job('po-tests-pr') {
             onlyIfBuildSucceeds(false)
             onlyIfBuildFails(false)
         }
+        postBuildScripts {
+            archiveArtifacts('build/**/*')
+            onlyIfBuildSucceeds(false)
+            onlyIfBuildFails(false)
+        }
+        wsCleanup()
     }
 }
 
 job('po-tests-master') {
     concurrentBuild()
+
+    // logRotator(daysToKeep, numberToKeep)
+    logRotator(30, 30)
 
     scm {
         git {
@@ -125,6 +137,11 @@ job('po-tests-master') {
             onlyIfBuildSucceeds(false)
             onlyIfBuildFails(false)
         }
+        postBuildScripts {
+            archiveArtifacts('build/**/*')
+            onlyIfBuildSucceeds(false)
+            onlyIfBuildFails(false)
+        }
         slackNotifier {
             room('#team-monitoring')
             teamDomain('coreos')
@@ -133,5 +150,6 @@ job('po-tests-master') {
             notifyRegression(true)
             notifyRepeatedFailure(true)
         }
+        wsCleanup()
     }
 }

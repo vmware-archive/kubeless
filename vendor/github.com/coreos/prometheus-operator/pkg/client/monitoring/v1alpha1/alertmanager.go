@@ -17,6 +17,8 @@ package v1alpha1
 import (
 	"encoding/json"
 
+	"github.com/pkg/errors"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,21 +28,24 @@ import (
 )
 
 const (
-	TPRAlertmanagersKind = "Alertmanager"
-	TPRAlertmanagerName  = "alertmanagers"
+	AlertmanagersKind = "Alertmanager"
+	AlertmanagerName  = "alertmanagers"
 )
 
 type AlertmanagersGetter interface {
 	Alertmanagers(namespace string) AlertmanagerInterface
 }
 
+var _ AlertmanagerInterface = &alertmanagers{}
+
 type AlertmanagerInterface interface {
 	Create(*Alertmanager) (*Alertmanager, error)
-	Get(name string) (*Alertmanager, error)
+	Get(name string, opts metav1.GetOptions) (*Alertmanager, error)
 	Update(*Alertmanager) (*Alertmanager, error)
 	Delete(name string, options *metav1.DeleteOptions) error
 	List(opts metav1.ListOptions) (runtime.Object, error)
 	Watch(opts metav1.ListOptions) (watch.Interface, error)
+	DeleteCollection(dopts *metav1.DeleteOptions, lopts metav1.ListOptions) error
 }
 
 type alertmanagers struct {
@@ -54,8 +59,8 @@ func newAlertmanagers(r rest.Interface, c *dynamic.Client, namespace string) *al
 		r,
 		c.Resource(
 			&metav1.APIResource{
-				Kind:       TPRAlertmanagersKind,
-				Name:       TPRAlertmanagerName,
+				Kind:       AlertmanagersKind,
+				Name:       AlertmanagerName,
 				Namespaced: true,
 			},
 			namespace,
@@ -78,8 +83,8 @@ func (a *alertmanagers) Create(o *Alertmanager) (*Alertmanager, error) {
 	return AlertmanagerFromUnstructured(ua)
 }
 
-func (a *alertmanagers) Get(name string) (*Alertmanager, error) {
-	obj, err := a.client.Get(name)
+func (a *alertmanagers) Get(name string, opts metav1.GetOptions) (*Alertmanager, error) {
+	obj, err := a.client.Get(name, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +96,12 @@ func (a *alertmanagers) Update(o *Alertmanager) (*Alertmanager, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	cura, err := a.Get(o.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to get current version for update")
+	}
+	ua.SetResourceVersion(cura.ObjectMeta.ResourceVersion)
 
 	ua, err = a.client.Update(ua)
 	if err != nil {
@@ -136,6 +147,10 @@ func (a *alertmanagers) Watch(opts metav1.ListOptions) (watch.Interface, error) 
 	}), nil
 }
 
+func (a *alertmanagers) DeleteCollection(dopts *metav1.DeleteOptions, lopts metav1.ListOptions) error {
+	return a.client.DeleteCollection(dopts, lopts)
+}
+
 // AlertmanagerFromUnstructured unmarshals an Alertmanager object from dynamic client's unstructured
 func AlertmanagerFromUnstructured(r *unstructured.Unstructured) (*Alertmanager, error) {
 	b, err := json.Marshal(r.Object)
@@ -146,15 +161,15 @@ func AlertmanagerFromUnstructured(r *unstructured.Unstructured) (*Alertmanager, 
 	if err := json.Unmarshal(b, &a); err != nil {
 		return nil, err
 	}
-	a.TypeMeta.Kind = TPRAlertmanagersKind
-	a.TypeMeta.APIVersion = TPRGroup + "/" + TPRVersion
+	a.TypeMeta.Kind = AlertmanagersKind
+	a.TypeMeta.APIVersion = Group + "/" + Version
 	return &a, nil
 }
 
 // UnstructuredFromAlertmanager marshals an Alertmanager object into dynamic client's unstructured
 func UnstructuredFromAlertmanager(a *Alertmanager) (*unstructured.Unstructured, error) {
-	a.TypeMeta.Kind = TPRAlertmanagersKind
-	a.TypeMeta.APIVersion = TPRGroup + "/" + TPRVersion
+	a.TypeMeta.Kind = AlertmanagersKind
+	a.TypeMeta.APIVersion = Group + "/" + Version
 	b, err := json.Marshal(a)
 	if err != nil {
 		return nil, err

@@ -27,13 +27,12 @@ import (
 	"k8s.io/client-go/pkg/apis/apps/v1beta1"
 
 	"github.com/blang/semver"
-	"github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1"
 	"github.com/pkg/errors"
 )
 
 const (
 	governingServiceName = "alertmanager-operated"
-	defaultBaseImage     = "quay.io/prometheus/alertmanager"
 	defaultVersion       = "v0.7.1"
 )
 
@@ -42,13 +41,13 @@ var (
 	probeTimeoutSeconds int32 = 3
 )
 
-func makeStatefulSet(am *v1alpha1.Alertmanager, old *v1beta1.StatefulSet, config Config) (*v1beta1.StatefulSet, error) {
+func makeStatefulSet(am *monitoringv1.Alertmanager, old *v1beta1.StatefulSet, config Config) (*v1beta1.StatefulSet, error) {
 	// TODO(fabxc): is this the right point to inject defaults?
 	// Ideally we would do it before storing but that's currently not possible.
 	// Potentially an update handler on first insertion.
 
 	if am.Spec.BaseImage == "" {
-		am.Spec.BaseImage = defaultBaseImage
+		am.Spec.BaseImage = config.AlertmanagerDefaultBaseImage
 	}
 	if am.Spec.Version == "" {
 		am.Spec.Version = defaultVersion
@@ -80,7 +79,8 @@ func makeStatefulSet(am *v1alpha1.Alertmanager, old *v1beta1.StatefulSet, config
 		statefulset.Spec.Template.Spec.ImagePullSecrets = am.Spec.ImagePullSecrets
 	}
 
-	if vc := am.Spec.Storage; vc == nil {
+	storageSpec := am.Spec.Storage
+	if storageSpec == nil {
 		statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, v1.Volume{
 			Name: volumeName(am.Name),
 			VolumeSource: v1.VolumeSource{
@@ -88,31 +88,26 @@ func makeStatefulSet(am *v1alpha1.Alertmanager, old *v1beta1.StatefulSet, config
 			},
 		})
 	} else {
-		pvc := v1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: volumeName(am.Name),
-			},
-			Spec: v1.PersistentVolumeClaimSpec{
-				AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
-				Resources:   vc.Resources,
-				Selector:    vc.Selector,
-			},
-		}
-		if len(vc.Class) > 0 {
-			pvc.ObjectMeta.Annotations = map[string]string{
-				"volume.beta.kubernetes.io/storage-class": vc.Class,
-			}
-		}
-		statefulset.Spec.VolumeClaimTemplates = append(statefulset.Spec.VolumeClaimTemplates, pvc)
+		pvcTemplate := storageSpec.VolumeClaimTemplate
+		pvcTemplate.Name = volumeName(am.Name)
+		pvcTemplate.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce}
+		pvcTemplate.Spec.Resources = storageSpec.VolumeClaimTemplate.Spec.Resources
+		pvcTemplate.Spec.Selector = storageSpec.VolumeClaimTemplate.Spec.Selector
+		statefulset.Spec.VolumeClaimTemplates = append(statefulset.Spec.VolumeClaimTemplates, pvcTemplate)
 	}
 
 	if old != nil {
 		statefulset.Annotations = old.Annotations
 	}
+
+	if !config.StatefulSetUpdatesAvailable {
+		statefulset.Spec.UpdateStrategy = v1beta1.StatefulSetUpdateStrategy{}
+	}
+
 	return statefulset, nil
 }
 
-func makeStatefulSetService(p *v1alpha1.Alertmanager) *v1.Service {
+func makeStatefulSetService(p *monitoringv1.Alertmanager) *v1.Service {
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: governingServiceName,
@@ -144,7 +139,7 @@ func makeStatefulSetService(p *v1alpha1.Alertmanager) *v1.Service {
 	return svc
 }
 
-func makeStatefulSetSpec(a *v1alpha1.Alertmanager, config Config) (*v1beta1.StatefulSetSpec, error) {
+func makeStatefulSetSpec(a *monitoringv1.Alertmanager, config Config) (*v1beta1.StatefulSetSpec, error) {
 	image := fmt.Sprintf("%s:%s", a.Spec.BaseImage, a.Spec.Version)
 	versionStr := strings.TrimLeft(a.Spec.Version, "v")
 
@@ -153,8 +148,7 @@ func makeStatefulSetSpec(a *v1alpha1.Alertmanager, config Config) (*v1beta1.Stat
 		return nil, errors.Wrap(err, "parse version")
 	}
 
-	commands := []string{
-		"/bin/alertmanager",
+	amArgs := []string{
 		fmt.Sprintf("-config.file=%s", "/etc/alertmanager/config/alertmanager.yaml"),
 		fmt.Sprintf("-web.listen-address=:%d", 9093),
 		fmt.Sprintf("-mesh.listen-address=:%d", 6783),
@@ -162,7 +156,7 @@ func makeStatefulSetSpec(a *v1alpha1.Alertmanager, config Config) (*v1beta1.Stat
 	}
 
 	if a.Spec.ExternalURL != "" {
-		commands = append(commands, "-web.external-url="+a.Spec.ExternalURL)
+		amArgs = append(amArgs, "-web.external-url="+a.Spec.ExternalURL)
 	}
 
 	webRoutePrefix := "/"
@@ -173,7 +167,7 @@ func makeStatefulSetSpec(a *v1alpha1.Alertmanager, config Config) (*v1beta1.Stat
 	switch version.Major {
 	case 0:
 		if version.Minor >= 7 {
-			commands = append(commands, "-web.route-prefix="+webRoutePrefix)
+			amArgs = append(amArgs, "-web.route-prefix="+webRoutePrefix)
 		}
 	default:
 		return nil, errors.Errorf("unsupported Alertmanager major version %s", version)
@@ -193,13 +187,16 @@ func makeStatefulSetSpec(a *v1alpha1.Alertmanager, config Config) (*v1beta1.Stat
 	}
 
 	for i := int32(0); i < *a.Spec.Replicas; i++ {
-		commands = append(commands, fmt.Sprintf("-mesh.peer=%s-%d.%s.%s.svc", prefixedName(a.Name), i, governingServiceName, a.Namespace))
+		amArgs = append(amArgs, fmt.Sprintf("-mesh.peer=%s-%d.%s.%s.svc", prefixedName(a.Name), i, governingServiceName, a.Namespace))
 	}
 
 	terminationGracePeriod := int64(0)
 	return &v1beta1.StatefulSetSpec{
 		ServiceName: governingServiceName,
 		Replicas:    a.Spec.Replicas,
+		UpdateStrategy: v1beta1.StatefulSetUpdateStrategy{
+			Type: v1beta1.RollingUpdateStatefulSetStrategyType,
+		},
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
@@ -212,9 +209,9 @@ func makeStatefulSetSpec(a *v1alpha1.Alertmanager, config Config) (*v1beta1.Stat
 				TerminationGracePeriodSeconds: &terminationGracePeriod,
 				Containers: []v1.Container{
 					{
-						Command: commands,
-						Name:    "alertmanager",
-						Image:   image,
+						Args:  amArgs,
+						Name:  "alertmanager",
+						Image: image,
 						Ports: []v1.ContainerPort{
 							{
 								Name:          "web",
@@ -300,7 +297,7 @@ func prefixedName(name string) string {
 	return fmt.Sprintf("alertmanager-%s", name)
 }
 
-func subPathForStorage(s *v1alpha1.StorageSpec) string {
+func subPathForStorage(s *monitoringv1.StorageSpec) string {
 	if s == nil {
 		return ""
 	}

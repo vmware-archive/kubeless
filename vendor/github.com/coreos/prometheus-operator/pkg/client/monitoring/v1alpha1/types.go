@@ -66,6 +66,8 @@ type PrometheusSpec struct {
 	Replicas *int32 `json:"replicas,omitempty"`
 	// Time duration Prometheus shall retain data for.
 	Retention string `json:"retention,omitempty"`
+	// Interval between consecutive evaluations.
+	EvaluationInterval string `json:"evaluationInterval,omitempty"`
 	// The labels to add to any time series or alerts when communicating with
 	// external systems (federation, remote storage, Alertmanager).
 	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
@@ -125,7 +127,7 @@ type PrometheusStatus struct {
 	UnavailableReplicas int32 `json:"unavailableReplicas"`
 }
 
-// AlertingSpec defines paramters for alerting configuration of Prometheus servers.
+// AlertingSpec defines parameters for alerting configuration of Prometheus servers.
 type AlertingSpec struct {
 	// AlertmanagerEndpoints Prometheus should fire alerts against.
 	Alertmanagers []AlertmanagerEndpoints `json:"alertmanagers"`
@@ -135,12 +137,17 @@ type AlertingSpec struct {
 type StorageSpec struct {
 	// Name of the StorageClass to use when requesting storage provisioning. More
 	// info: https://kubernetes.io/docs/user-guide/persistent-volumes/#storageclasses
+	// DEPRECATED
 	Class string `json:"class"`
 	// A label query over volumes to consider for binding.
+	// DEPRECATED
 	Selector *metav1.LabelSelector `json:"selector"`
 	// Resources represents the minimum resources the volume should have. More
 	// info: http://kubernetes.io/docs/user-guide/persistent-volumes#resources
+	// DEPRECATED
 	Resources v1.ResourceRequirements `json:"resources"`
+	// A PVC spec to be used by the Prometheus StatefulSets.
+	VolumeClaimTemplate v1.PersistentVolumeClaim `json:"volumeClaimTemplate,omitempty"`
 }
 
 // AlertmanagerEndpoints defines a selection of a single Endpoints object
@@ -174,7 +181,7 @@ type ServiceMonitorSpec struct {
 	// The label to use to retrieve the job name from.
 	JobLabel string `json:"jobLabel,omitempty"`
 	// A list of endpoints allowed as part of this ServiceMonitor.
-	Endpoints []Endpoint `json:"endpoints,omitempty"`
+	Endpoints []Endpoint `json:"endpoints"`
 	// Selector to select Endpoints objects.
 	Selector metav1.LabelSelector `json:"selector"`
 	// Selector to select which namespaces the Endpoints objects are discovered from.
@@ -193,6 +200,8 @@ type Endpoint struct {
 	Scheme string `json:"scheme,omitempty"`
 	// Interval at which metrics should be scraped
 	Interval string `json:"interval,omitempty"`
+	// Timeout after which the scrape is ended
+	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
 	// TLS configuration to use when scraping the endpoint
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 	// File to read bearer token for scraping targets.

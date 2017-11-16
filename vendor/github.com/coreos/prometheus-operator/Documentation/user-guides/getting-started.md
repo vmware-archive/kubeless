@@ -31,7 +31,13 @@ rules:
   resources:
   - thirdpartyresources
   verbs:
-  - create
+  - "*"
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - "*"
 - apiGroups:
   - monitoring.coreos.com
   resources:
@@ -63,6 +69,10 @@ rules:
   resources:
   - nodes
   verbs: ["list", "watch"]
+- apiGroups: [""]
+  resources:
+  - namespaces
+  verbs: ["list"]
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -72,27 +82,33 @@ metadata:
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: prometheus-operator
   labels:
-    operator: prometheus
+    k8s-app: prometheus-operator
+  name: prometheus-operator
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        operator: prometheus
+        k8s-app: prometheus-operator
     spec:
-      serviceAccountName: prometheus-operator
       containers:
-      - name: prometheus-operator
-        image: quay.io/coreos/prometheus-operator:v0.10.1
+      - args:
+        - --kubelet-service=kube-system/kubelet
+        - --config-reloader-image=quay.io/coreos/configmap-reload:v0.0.1
+        image: quay.io/coreos/prometheus-operator:v0.12.0
+        name: prometheus-operator
+        ports:
+        - containerPort: 8080
+          name: http
         resources:
-          requests:
-            cpu: 100m
-            memory: 50Mi
           limits:
             cpu: 200m
             memory: 100Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+      serviceAccountName: prometheus-operator
 ```
 
 The Prometheus Operator introduces third party resources in Kubernetes to declare the desired state of a Prometheus and Alertmanager cluster as well as the Prometheus configuration. The resources it introduces are:
@@ -154,7 +170,7 @@ This `Service` object is discovered by a `ServiceMonitor`, which selects in the 
 
 [embedmd]:# (../../example/user-guides/getting-started/example-app-service-monitor.yaml)
 ```yaml
-apiVersion: monitoring.coreos.com/v1alpha1
+apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: example-app
@@ -226,7 +242,7 @@ Finally, a `Prometheus` object defines the `serviceMonitorSelector` to specify w
 
 [embedmd]:# (../../example/user-guides/getting-started/prometheus.yaml)
 ```yaml
-apiVersion: monitoring.coreos.com/v1alpha1
+apiVersion: monitoring.coreos.com/v1
 kind: Prometheus
 metadata:
   name: prometheus

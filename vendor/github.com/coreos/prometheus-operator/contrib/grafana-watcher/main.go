@@ -16,31 +16,67 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	fsnotify "gopkg.in/fsnotify.v1"
 
 	"github.com/coreos/prometheus-operator/contrib/grafana-watcher/grafana"
 	"github.com/coreos/prometheus-operator/contrib/grafana-watcher/updater"
+	"github.com/spf13/pflag"
 )
 
-var (
-	watchDir   = flag.String("watch-dir", "", "The directory the ConfigMap is mounted into to watch for updates.")
-	grafanaUrl = flag.String("grafana-url", "", "The url to issue requests to update dashboards to.")
-)
+type watchDirSet map[string]struct{}
 
-type volumeWatcher struct {
-	watchDir string
-	handlers []updater.Updater
+func (w *watchDirSet) String() string {
+	s := *w
+	return strings.Join(s.asSlice(), ",")
 }
 
-func newVolumeWatcher(d string) *volumeWatcher {
+func (w *watchDirSet) Set(value string) error {
+	s := *w
+	cols := strings.Split(value, ",")
+	for _, col := range cols {
+		s[col] = struct{}{}
+	}
+	return nil
+}
+
+func (w watchDirSet) asSlice() []string {
+	cols := []string{}
+	for col, _ := range w {
+		cols = append(cols, col)
+	}
+	return cols
+}
+
+func (w watchDirSet) isEmpty() bool {
+	return len(w.asSlice()) == 0
+}
+
+func (w *watchDirSet) Type() string {
+	return "map[string]struct{}"
+}
+
+type options struct {
+	grafanaUrl string
+	watchDirs  watchDirSet
+	help       bool
+}
+
+type volumeWatcher struct {
+	watchDirs watchDirSet
+	handlers  []updater.Updater
+}
+
+func newVolumeWatcher(watchDirs watchDirSet) *volumeWatcher {
 	return &volumeWatcher{
-		watchDir: d,
+		watchDirs: watchDirs,
 	}
 }
 
@@ -57,52 +93,106 @@ func (w *volumeWatcher) Run() {
 
 	done := make(chan bool)
 	go func() {
+		var handlersToRetry []updater.Updater
+		retryTicker := time.NewTicker(10 * time.Second)
 		for {
 			select {
 			case event := <-watcher.Events:
 				if event.Op&fsnotify.Create == fsnotify.Create {
 					if filepath.Base(event.Name) == "..data" {
 						log.Println("ConfigMap modified")
+						handlersToRetry = []updater.Updater{}
 						for _, h := range w.handlers {
 							err := h.OnModify()
 							if err != nil {
 								log.Println("error:", err)
+								handlersToRetry = append(handlersToRetry, h)
 							}
 						}
 					}
 				}
 			case err := <-watcher.Errors:
 				log.Println("error:", err)
+			case <-retryTicker.C:
+				// Retry any operations that failed during the last update attempt
+				// New events seen by the watcher will clear the retry list, though
+				// it may take several cycles through the select statement before this happens.
+				// See: https://golang.org/ref/spec#Select_statements
+				if len(handlersToRetry) < 1 {
+					break
+				}
+				log.Printf("Retrying %v previously failed operations...", len(handlersToRetry))
+				var remainingHandlers []updater.Updater
+				for _, h := range handlersToRetry {
+					// Only retry if the watcher still cares about this handler; could have been removed
+					found := false
+					for _, h2 := range w.handlers {
+						if h == h2 {
+							found = true
+							break
+						}
+					}
+					if !found {
+						continue
+					}
+
+					if err := h.OnModify(); err != nil {
+						log.Println("error during retry attempt:", err)
+						remainingHandlers = append(remainingHandlers, h)
+					}
+				}
+				handlersToRetry = remainingHandlers
 			}
 		}
 	}()
 
 	log.Println("Starting...")
-	err = watcher.Add(*watchDir)
-	if err != nil {
-		log.Fatal(err)
+	for watchDir := range w.watchDirs {
+		err = watcher.Add(watchDir)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
-
 	<-done
 }
 
 func main() {
-	flag.Parse()
+	flag.CommandLine.Parse([]string{})
 
-	if *watchDir == "" {
-		log.Println("Missing watch-dir\n")
-		flag.Usage()
-		os.Exit(1)
-	}
-	if *grafanaUrl == "" {
-		log.Println("Missing grafana-url\n")
-		flag.Usage()
-		os.Exit(1)
+	options := &options{watchDirs: make(watchDirSet)}
+	flags := pflag.NewFlagSet("", pflag.ExitOnError)
+
+	flags.Var(&options.watchDirs, "watch-dir", "Directories to watch for updates.")
+	flags.StringVar(&options.grafanaUrl, "grafana-url", "", "The url to issue requests to update dashboards to.")
+
+	flags.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		flags.PrintDefaults()
 	}
 
-	gUrl, err := url.Parse(*grafanaUrl)
+	err := flags.Parse(os.Args)
 	if err != nil {
-		log.Fatalf("Grafana URL could not be parsed: ", *grafanaUrl)
+		log.Fatalf("Error: %s", err)
+	}
+
+	if options.help {
+		flags.Usage()
+		os.Exit(0)
+	}
+
+	watchDirs := options.watchDirs
+	if len(watchDirs) == 0 {
+		log.Fatal("No watch dir specified")
+	}
+
+	grafanaUrl := options.grafanaUrl
+	if grafanaUrl == "" {
+		log.Fatal("Missing grafana-url")
+	}
+
+	gUrl, err := url.Parse(grafanaUrl)
+	if err != nil {
+		log.Fatalf("Grafana URL could not be parsed: %s", grafanaUrl)
 	}
 
 	if os.Getenv("GRAFANA_USER") != "" && os.Getenv("GRAFANA_PASSWORD") == "" {
@@ -116,29 +206,34 @@ func main() {
 	g := grafana.New(gUrl)
 
 	for {
-		log.Println("Waiting for Grafana to be available.")
 		_, err := g.Datasources().All()
 		if err == nil {
 			break
 		}
+		fmt.Fprintln(os.Stderr, err)
 		time.Sleep(time.Second)
 	}
 
-	su := updater.NewGrafanaDatasourceUpdater(g.Datasources(), filepath.Join(*watchDir, "*-datasource.json"))
+	dirs := []string{}
+	for dir, _ := range watchDirs {
+		dirs = append(dirs, dir)
+	}
+
+	su := updater.NewGrafanaDatasourceUpdater(g.Datasources(), dirs)
 	log.Println("Initializing datasources.")
 	err = su.Init()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	du := updater.NewGrafanaDashboardUpdater(g.Dashboards(), filepath.Join(*watchDir, "*-dashboard.json"))
+	du := updater.NewGrafanaDashboardUpdater(g.Dashboards(), dirs)
 	log.Println("Initializing dashboards.")
 	err = du.Init()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	w := newVolumeWatcher(*watchDir)
+	w := newVolumeWatcher(watchDirs)
 
 	w.AddEventHandler(du)
 	w.AddEventHandler(su)
