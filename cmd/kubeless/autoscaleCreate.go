@@ -32,6 +32,10 @@ var autoscaleCreateCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err.Error())
 		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
+		}
+
 		metric, err := cmd.Flags().GetString("metric")
 		if err != nil {
 			logrus.Fatal(err.Error())

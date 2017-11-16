@@ -23,7 +23,6 @@ import (
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/pkg/api"
 )
 
 var updateCmd = &cobra.Command{
@@ -39,6 +38,9 @@ var updateCmd = &cobra.Command{
 		ns, err := cmd.Flags().GetString("namespace")
 		if err != nil {
 			logrus.Fatal(err)
+		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
 		}
 
 		handler, err := cmd.Flags().GetString("handler")
@@ -122,7 +124,7 @@ func init() {
 	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
 	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
 	updateCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function")
-	updateCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
+	updateCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 	updateCmd.Flags().StringP("trigger-topic", "", "", "Deploy a pubsub function to Kubeless")
 	updateCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	updateCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")

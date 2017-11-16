@@ -29,7 +29,6 @@ import (
 	"github.com/spf13/cobra"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/rest"
 
 	"github.com/kubeless/kubeless/pkg/spec"
@@ -50,6 +49,9 @@ var listCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err.Error())
 		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
+		}
 
 		crdClient, err := utils.GetCRDClientOutOfCluster()
 		if err != nil {
@@ -66,7 +68,7 @@ var listCmd = &cobra.Command{
 
 func init() {
 	listCmd.Flags().StringP("out", "o", "", "Output format. One of: json|yaml")
-	listCmd.Flags().StringP("namespace", "n", api.NamespaceDefault, "Specify namespace for the function")
+	listCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 }
 
 func doList(w io.Writer, crdClient rest.Interface, apiV1Client kubernetes.Interface, ns, output string, args []string) error {

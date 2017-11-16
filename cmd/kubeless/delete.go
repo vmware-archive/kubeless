@@ -20,7 +20,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/pkg/api"
 )
 
 var deleteCmd = &cobra.Command{
@@ -37,6 +36,10 @@ var deleteCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
+		}
+
 		crdClient, err := utils.GetCRDClientOutOfCluster()
 		if err != nil {
 			logrus.Fatal(err)
@@ -50,5 +53,5 @@ var deleteCmd = &cobra.Command{
 }
 
 func init() {
-	deleteCmd.Flags().StringP("namespace", "", api.NamespaceDefault, "Specify namespace for the function")
+	deleteCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 }

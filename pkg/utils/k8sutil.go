@@ -174,6 +174,18 @@ func GetServiceMonitorClientOutOfCluster() (*monitoringv1alpha1.MonitoringV1alph
 	return client, nil
 }
 
+//GetDefaultNamespace returns the namespace set in current cluster context
+func GetDefaultNamespace() string {
+	rules := clientcmd.NewDefaultClientConfigLoadingRules()
+	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig
+	overrides := &clientcmd.ConfigOverrides{ClusterDefaults: clientcmd.ClusterDefaults}
+
+	if ns, _, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides).Namespace(); err == nil {
+		return ns
+	}
+	return api.NamespaceDefault
+}
+
 // GetFunction returns specification of a function
 func GetFunction(funcName, ns string) (spec.Function, error) {
 	var f spec.Function

@@ -35,6 +35,9 @@ var ingressCreateCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
+		}
 
 		funcName, err := cmd.Flags().GetString("function")
 		if err != nil {

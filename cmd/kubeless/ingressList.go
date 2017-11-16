@@ -42,6 +42,9 @@ var ingressListCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err.Error())
 		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
+		}
 
 		client := utils.GetClientOutOfCluster()
 
