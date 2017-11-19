@@ -15,7 +15,7 @@
 # k8s and kubeless helpers, specially "wait"-ers on pod ready/deleted/etc
 
 KUBELESS_JSONNET=kubeless.jsonnet
-KUBELESS_JSONNET_RBAC=kubeless-rbac-novols.jsonnet
+KUBELESS_JSONNET_RBAC=kubeless-rbac.jsonnet
 
 KUBECTL_BIN=$(which kubectl)
 KUBECFG_BIN=$(which kubecfg)
@@ -74,7 +74,7 @@ k8s_wait_for_pod_logline() {
     local string="${1:?}"; shift
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     echo_info "Waiting for '${@}' to show logline '${string}' ..."
-    until kubectl logs "${@}"|&grep -q "${string}"; do
+    until kubectl logs --tail=100  "${@}"|&grep -q "${string}"; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
@@ -161,8 +161,10 @@ _wait_for_kubeless_kafka_server_ready() {
     echo_info "Waiting for kafka-0 to be ready ..."
     k8s_wait_for_pod_logline "Kafka.*Server.*started" -n kubeless kafka-0
     sleep 10
-    kubeless topic create "${test_topic}" || true
-    _wait_for_kubeless_kafka_topic_ready "${test_topic}"
+    kubeless topic list | grep -qw "${test_topic}" || {
+      kubeless topic create "${test_topic}" || true
+      _wait_for_kubeless_kafka_topic_ready "${test_topic}"
+    }
     kubectl annotate pods --overwrite -n kubeless kafka-0 ready=true
 }
 _wait_for_kubeless_kafka_topic_ready() {
@@ -321,5 +323,15 @@ test_topic_deletion() {
      echo_info "Topic $topic still exists"
      exit 200
     fi
+}
+sts_restart() {
+    local num=1
+    local topic=$RANDOM
+    kubeless topic create $topic
+    kubectl delete pod kafka-0 -n kubeless
+    kubectl delete pod zoo-0 -n kubeless
+    k8s_wait_for_uniq_pod -l kubeless=zookeeper -n kubeless
+    k8s_wait_for_uniq_pod -l kubeless=kafka -n kubeless
+    kubeless topic list | grep $topic
 }
 # vim: sw=4 ts=4 et si
