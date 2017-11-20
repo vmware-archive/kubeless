@@ -12,11 +12,11 @@ import (
 )
 
 const (
-	python27Http    = "kubeless/python@sha256:b21e8a0ffbeb08dc1331796822cd97fa81fd9a5ba8f54cfc61df9825a473dc46"
-	python27Pubsub  = "kubeless/python-event-consumer@sha256:a585e569c4fb152f9e4f31e07909769a2fc533c2c0059075667393f32f9c2e68"
+	python27Http    = "kubeless/python@sha256:1c50f8cc0d5b66d577267c666b355f89a1006b86d6e40354f93955fdb6b4fd28"
+	python27Pubsub  = "kubeless/python-event-consumer@sha256:b0a57dff6b0a2af9bd03fa1bc285a3117a71017c6f06cdee843284b43018ae29"
 	python27Init    = "tuna/python-pillow:2.7.11-alpine" // TODO: Migrate the image for python 2.7 to an official source (not alpine-based)
-	python34Http    = "kubeless/python@sha256:94c0635673bb738368090872d0f6a622de57fb6f851936ab3ab76bce4bc990b7"
-	python34Pubsub  = "kubeless/python-event-consumer@sha256:ecc3479bc26b50fda4952cdc77bcfb217855145510bf0f5b717990a85f23b381"
+	python34Http    = "kubeless/python@sha256:b1a348eafbbbf5f58fbd8bb84dddf00af84c5d5d5c047384d415895a9eeb7bc0"
+	python34Pubsub  = "kubeless/python-event-consumer@sha256:05fe44d8c96fb3f637ed1fe9bd863bfc41d45ab273be1b823abedab48c4b79a0"
 	python34Init    = "python:3.4"
 	node6Http       = "bitnami/kubeless-nodejs@sha256:b3c7cec77f973bf7a48cbbb8ea5069cacbaee7044683a275c6f78fa248de17b4"
 	node6Pubsub     = "kubeless/nodejs-event-consumer@sha256:7e41360bd2b3c6fc32569f85694e4b8c477153d6b6ec4ee0d6a27fc53678ac6a"

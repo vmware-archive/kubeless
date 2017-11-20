@@ -6,7 +6,7 @@ import os
 import imp
 import json
 
-from multiprocessing.pool import ThreadPool, TimeoutError
+from multiprocessing import Process, Queue
 from kafka import KafkaConsumer
 import prometheus_client as prom
 
@@ -42,8 +42,8 @@ func_errors = prom.Counter('function_failures_total',
                            'Number of exceptions in user function',
                            ['topic'])
 
-def funcWrap(payload):
-    return func(payload)
+def funcWrap(q, payload):
+    q.put(func(payload))
 
 def json_safe_loads(msg):
     try:
@@ -61,14 +61,17 @@ def handle(msg):
     func_calls.labels(topic_name).inc()
     with func_errors.labels(topic_name).count_exceptions():
         with func_hist.labels(topic_name).time():
-            pool = ThreadPool(processes=1)
-            p = pool.apply_async(funcWrap, (msg.value['payload'],))
-            try:
-                return p.get(timeout=3)
-            except TimeoutError:
-                pool.close()
-                pool.terminate()
+            q = Queue()
+            p = Process(target=funcWrap, args=(q,msg.value['payload'],))
+            p.start()
+            p.join(timeout)
+            # If thread is still active
+            if p.is_alive():
+                p.terminate()
+                p.join()
                 raise Exception('Timeout while processing the function')
+            else:
+                return q.get()
 
 if __name__ == '__main__':
     prom.start_http_server(8080)
