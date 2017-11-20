@@ -3,7 +3,7 @@
 import os
 import imp
 
-from multiprocessing import Process, Queue
+from multiprocessing.pool import ThreadPool, TimeoutError
 import bottle
 import prometheus_client as prom
 
@@ -25,11 +25,11 @@ func_errors = prom.Counter('function_failures_total',
                            'Number of exceptions in user function',
                            ['method'])
 
-def funcWrap(q, req):
+def funcWrap(req):
     if req is None:
-        q.put(func())
+        return func()
     else:
-        q.put(func(req))
+        return func(req)
 
 @app.route('/', method=['GET', 'POST'])
 def handler():
@@ -38,20 +38,17 @@ def handler():
     func_calls.labels(method).inc()
     with func_errors.labels(method).count_exceptions():
         with func_hist.labels(method).time():
-            q = Queue()
+            pool = ThreadPool(processes=1)
             if method == 'GET':
-                p = Process(target=funcWrap, args=(q,None,))
+                p = pool.apply_async(funcWrap, (None,))
             else:
-                p = Process(target=funcWrap, args=(q,bottle.request,))
-            p.start()
-            p.join(timeout)
-            # If thread is still active
-            if p.is_alive():
-                p.terminate()
-                p.join()
+                p = pool.apply_async(funcWrap, (bottle.request,))
+            try:
+                return p.get(timeout=3)
+            except TimeoutError:
+                pool.close()
+                pool.terminate()
                 return bottle.HTTPError(408, "Timeout while processing the function")
-            else:
-                return q.get()
 
 @app.get('/healthz')
 def healthz():
