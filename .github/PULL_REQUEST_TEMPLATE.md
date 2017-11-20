@@ -1,8 +1,10 @@
-Issue Ref: 
+**Issue Ref**: [Issue number related to this PR or None]
  
-Description:
+**Description**: 
 
-TODOs:
+[PR Description]
+
+**TODOs**:
  - [ ] Ready to review
- - [ ] Tests
+ - [ ] Automated Tests
  - [ ] Docs
