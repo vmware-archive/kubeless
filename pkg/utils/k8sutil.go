@@ -680,7 +680,12 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			v1.EnvVar{
 				Name:  "MOD_NAME",
 				Value: modName,
-			})
+			},
+			v1.EnvVar{
+				Name:  "FUNC_TIMEOUT",
+				Value: funcObj.Spec.Timeout,
+			},
+		)
 	}
 
 	dpm.Spec.Template.Spec.Containers[0].Name = funcObj.Metadata.Name

@@ -51,8 +51,8 @@ consumer.each_message do |message|
     status = Timeout::timeout(FUNC_TIMEOUT) {
       mod.send(FUNC_HANDLER.to_sym, message.value)
     }
-  rescue Timeout::Error
-    puts "Timeout while processing the function"
+  rescue => e
+    puts "ERROR: " + e.to_s
   end
 end
 

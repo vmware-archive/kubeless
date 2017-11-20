@@ -322,6 +322,10 @@ func TestEnsureDeployment(t *testing.T) {
 				Value: "foo",
 			},
 			{
+				Name:  "FUNC_TIMEOUT",
+				Value: "",
+			},
+			{
 				Name:  "TOPIC_NAME",
 				Value: "",
 			},
@@ -447,6 +451,23 @@ func TestEnsureDeployment(t *testing.T) {
 	err = EnsureFuncDeployment(clientset, &f7, or)
 	if err == nil {
 		t.Errorf("An error should be thrown")
+	}
+
+	// If a timeout is specified it should set an environment variable FUNC_TIMEOUT
+	f8 := spec.Function{}
+	f8 = *f1
+	f8.Metadata.Name = "func8"
+	f8.Spec.Timeout = "10"
+	err = EnsureFuncDeployment(clientset, &f8, or)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func8", metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if getEnvValueFromList("FUNC_TIMEOUT", dpm.Spec.Template.Spec.Containers[0].Env) != "10" {
+		t.Error("Unable to set timeout")
 	}
 }
 

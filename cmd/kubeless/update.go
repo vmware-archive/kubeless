@@ -92,13 +92,18 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		timeout, err := cmd.Flags().GetString("timeout")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		previousFunction, err := utils.GetFunction(funcName, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
 		cli := utils.GetClientOutOfCluster()
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, "", runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, previousFunction)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, "", runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, envs, labels, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -129,4 +134,5 @@ func init() {
 	updateCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	updateCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 	updateCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
+	updateCmd.Flags().StringP("timeout", "", "3", "Maximum timeout for the function to complete its execution")
 }

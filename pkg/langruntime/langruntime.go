@@ -25,7 +25,7 @@ const (
 	node8Pubsub     = "kubeless/nodejs-event-consumer@sha256:236ec58aa7560709716332fa2cab8b6f3de35d13438380460a7080887134ebd9"
 	node8Init       = "node:8"
 	ruby24Http      = "kubeless/ruby@sha256:af567f9c8b3d9dab8b465b039cd3bd89fe7b11f6ab45dc3d5a13159769dec76b"
-	ruby24Pubsub    = "kubeless/ruby-event-consumer@sha256:b0bba261141ffc2ffcbf717fd9f1fb92d4a64ef4b5355bf72c1413e993c79100"
+	ruby24Pubsub    = "kubeless/ruby-event-consumer@sha256:a0fd495ac354dc1174c4a1ab6078a02fe425999602102366d318e1d0ef3f6b1d"
 	ruby24Init      = "bitnami/ruby:2.4"
 	dotnetcore2Http = "allantargino/kubeless-dotnetcore@sha256:d321dc4b2c420988d98cdaa22c733743e423f57d1153c89c2b99ff0d944e8a63"
 	dotnetcore2Init = "microsoft/aspnetcore-build:2.0"
