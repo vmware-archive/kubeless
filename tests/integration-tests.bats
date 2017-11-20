@@ -118,6 +118,9 @@ load ../script/libtest
   verify_update_function webserver
 }
 @test "Verify Kafka after restart (if context=='minikube')" {
+    local topic=$RANDOM
+    kubeless topic create $topic
     sts_restart
+    kubeless topic list | grep $topic
 }
 # vim: ts=2 sw=2 si et syntax=sh

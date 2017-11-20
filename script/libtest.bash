@@ -157,7 +157,7 @@ _wait_for_kubeless_controller_logline() {
 }
 _wait_for_kubeless_kafka_server_ready() {
     [[ $(kubectl get pod -n kubeless kafka-0 -ojsonpath='{.metadata.annotations.ready}') == true ]] && return 0
-    local test_topic=test-centinel
+    local test_topic=$RANDOM
     echo_info "Waiting for kafka-0 to be ready ..."
     k8s_wait_for_pod_logline "Kafka.*Server.*started" -n kubeless kafka-0
     sleep 10
@@ -326,12 +326,9 @@ test_topic_deletion() {
 }
 sts_restart() {
     local num=1
-    local topic=$RANDOM
-    kubeless topic create $topic
     kubectl delete pod kafka-0 -n kubeless
     kubectl delete pod zoo-0 -n kubeless
     k8s_wait_for_uniq_pod -l kubeless=zookeeper -n kubeless
     k8s_wait_for_uniq_pod -l kubeless=kafka -n kubeless
-    kubeless topic list | grep $topic
 }
 # vim: sw=4 ts=4 et si
