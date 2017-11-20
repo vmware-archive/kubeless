@@ -23,8 +23,7 @@ MOD_NAME = ENV['MOD_NAME']
 FUNC_HANDLER = ENV['FUNC_HANDLER']
 MOD_ROOT_PATH = ENV.fetch('MOD_ROOT_PATH', '/kubeless/')
 MOD_PATH = "#{File.join(MOD_ROOT_PATH, MOD_NAME)}.rb"
-FUNC_TIMEOUT = ENV.fetch('FUNC_TIMEOUT', '3')
-ftimeout = FUNC_TIMEOUT.to_i # We need the timeout as a number
+FUNC_TIMEOUT = ENV.fetch('FUNC_TIMEOUT', '3').to_i
 
 TOPIC_NAME = ENV['TOPIC_NAME']
 KAFKA_SVC = ENV.fetch('KUBELESS_KAFKA_SVC', 'kafka')
@@ -49,11 +48,11 @@ trap("TERM") { consumer.stop }
 
 consumer.each_message do |message|
   begin
-    status = Timeout::timeout(ftimeout) {
+    status = Timeout::timeout(FUNC_TIMEOUT) {
       mod.send(FUNC_HANDLER.to_sym, message.value)
     }
-  rescue => e
-    puts "ERROR: " + e.to_s
+  rescue Timeout::Error
+    puts "Timeout while processing the function"
   end
 end
 
