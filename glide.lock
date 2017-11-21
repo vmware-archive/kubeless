@@ -1,5 +1,5 @@
-hash: bd0428d902c18e5187f91d270de570c9bca1a5dd0859b3bd87591fd2283f1609
-updated: 2017-11-13T20:23:16.684317292+05:30
+hash: b45e5d99bc62d8fb9286f2433173c184b7dcc92d746f5145baf330091109acee
+updated: 2017-11-21T23:04:17.02069402+05:30
 imports:
 - name: github.com/coreos/prometheus-operator
   version: 0d446f3052e47b5ad95989d9a8ffe4f6675e69b5
@@ -65,10 +65,12 @@ imports:
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
+- name: github.com/robfig/cron
+  version: 2315d5715e36303a941d907f038da7f7c44c773b
 - name: github.com/sirupsen/logrus
-  version: 89742aefa4b206dcf400792f3bd35b542998eb3b
+  version: 95cd2b9c79aa5e72ab0bc69b7ccc2be15bf850f6
 - name: github.com/spf13/cobra
-  version: 2da4a54c5ceefcee7ca5dd0eea1e18a3b6366489
+  version: 19e54c4a2b8a78c9d54b2bed61b1a6c5e1bfcf6f
 - name: github.com/spf13/pflag
   version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
 - name: github.com/ugorji/go

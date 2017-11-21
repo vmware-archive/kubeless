@@ -85,6 +85,16 @@ func GetRuntimes() []string {
 	return result
 }
 
+// IsValidRuntime returns true if passed runtime name is valid runtime
+func IsValidRuntime(runtime string) bool {
+	for _, validRuntime := range GetRuntimes() {
+		if runtime == validRuntime {
+			return true
+		}
+	}
+	return false
+}
+
 func getAvailableRuntimesPerTrigger(imageType string) []string {
 	var runtimeList []string
 	for i := range availableRuntimes {
