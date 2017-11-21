@@ -7,7 +7,7 @@ Right now Kubeless has support for the following runtimes:
 
 Each runtime is encapsulated in a container image. The reference to these images are injected in the Kubeless controller. You can find source code of all runtimes in `docker/runtime`.
 
-Runtimes has a maximum timeout set by the environment variable FUNC_TIMEOUT. This environment variable can be set using the CLI option `--timeout`. The default value is 3 seconds, if a function takes more than that in being executed, the process will be terminated.
+Runtimes have a maximum timeout set by the environment variable FUNC_TIMEOUT. This environment variable can be set using the CLI option `--timeout`. The default value is 3 seconds. If a function takes more than that in being executed, the process will be terminated.
 
 # Runtime variants
 ## HTTP Trigger
