@@ -13,11 +13,12 @@ app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
 
 const modName = process.env.MOD_NAME;
 const funcHandler = process.env.FUNC_HANDLER;
+const timeout = Number(process.env.FUNC_TIMEOUT || '3');
 
 const statistics = helper.prepareStatistics('method', client);
-const mod = helper.loadFunc(modName, funcHandler);
 helper.routeLivenessProbe(app);
 helper.routeMetrics(app, client);
+const { vmscript, sandbox } = helper.loadFunc(modName, funcHandler, 'req, res');
 
 app.all('*', (req, res) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -34,16 +35,15 @@ app.all('*', (req, res) => {
       res.status(500).send('Internal Server Error');
       console.error(`Function failed to execute: ${err.stack}`);
     };
+    const reqSandbox = Object.assign({ req, res, end, handleError}, sandbox);
     try {
-      Promise.resolve(mod[funcHandler](req, res)).then(() => {
-        end();
-      }).catch((err) => {
-        // Catch asynchronous errors
-        handleError(err);
-      });
+      vmscript.runInNewContext(reqSandbox, { timeout });
     } catch (err) {
-      // Catch synchronous errors
-      handleError(err);
+      if (err.toString().match("Error: Script execution timed out")) {
+          res.status(408).send(err);
+      } else {
+        handleError(err);
+      }
     }
   }
 });

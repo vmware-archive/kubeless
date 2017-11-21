@@ -12,6 +12,7 @@ app.use(morgan('combined'));
 
 const modName = process.env.MOD_NAME;
 const funcHandler = process.env.FUNC_HANDLER;
+const timeout = Number(process.env.FUNC_TIMEOUT || '3');
 
 const kafkaSvc = _.get(process.env, 'KUBELESS_KAFKA_SVC', 'kafka');
 const kafkaNamespace = _.get(process.env, 'KUBELESS_KAFKA_NAMESPACE', 'kubeless');
@@ -23,7 +24,7 @@ const kafkaConsumer = new kafka.ConsumerGroup({
 }, [process.env.TOPIC_NAME]);
 
 const statistics = helper.prepareStatistics('method', client);
-const mod = helper.loadFunc(modName, funcHandler);
+const { vmscript, sandbox } = helper.loadFunc(modName, funcHandler, 'message');
 helper.routeLivenessProbe(app);
 helper.routeMetrics(app, client);
 
@@ -34,15 +35,10 @@ kafkaConsumer.on('message', (message) => {
     console.error(`Function failed to execute: ${err.stack}`);
   };
   statistics.callsCounter.labels(message.topic).inc();
+  const reqSandbox = Object.assign({ message: message.value, end, handleError }, sandbox);
   try {
-    Promise.resolve(mod[funcHandler](message.value)).then(() => {
-      end();
-    }).catch((err) => {
-      // Catch asynchronous errors
-      handleError(err);
-    });
+    vmscript.runInNewContext(reqSandbox, { timeout });
   } catch (err) {
-    // Catch synchronous errors
     handleError(err);
   }
 });
