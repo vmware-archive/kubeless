@@ -134,5 +134,5 @@ func init() {
 	updateCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	updateCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 	updateCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
-	updateCmd.Flags().StringP("timeout", "", "3", "Maximum timeout for the function to complete its execution")
+	updateCmd.Flags().StringP("timeout", "", "3", "Maximum timeout (in seconds) for the function to complete its execution")
 }
