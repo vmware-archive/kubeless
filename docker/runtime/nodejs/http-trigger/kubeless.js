@@ -37,7 +37,7 @@ app.all('*', (req, res) => {
     };
     const reqSandbox = Object.assign({ req, res, end, handleError}, sandbox);
     try {
-      vmscript.runInNewContext(reqSandbox, { timeout });
+      vmscript.runInNewContext(reqSandbox, { timeout: timeout*1000 });
     } catch (err) {
       if (err.toString().match("Error: Script execution timed out")) {
           res.status(408).send(err);

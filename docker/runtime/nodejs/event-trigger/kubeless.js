@@ -37,7 +37,7 @@ kafkaConsumer.on('message', (message) => {
   statistics.callsCounter.labels(message.topic).inc();
   const reqSandbox = Object.assign({ message: message.value, end, handleError }, sandbox);
   try {
-    vmscript.runInNewContext(reqSandbox, { timeout });
+    vmscript.runInNewContext(reqSandbox, { timeout: timeout*1000 });
   } catch (err) {
     handleError(err);
   }
