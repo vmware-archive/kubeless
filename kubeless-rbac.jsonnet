@@ -26,6 +26,11 @@ local controller_roles = [
     resources: ["functions"],
     verbs: ["get", "list", "watch"],
   },
+  {
+    apiGroups: ["batch"],
+    resources: ["cronjobs"],
+    verbs: ["create", "get", "delete", "list", "update", "patch"],
+  },
 ];
 
 local controllerAccount = kubeless.controllerAccount;

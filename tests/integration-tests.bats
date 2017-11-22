@@ -41,6 +41,12 @@ load ../script/libtest
 @test "Test function: get-python-deps" {
   test_kubeless_function get-python-deps
 }
+@test "Test function: scheduled-get-python (part I)" {
+  # We just deploy the function in this test
+  # to give the cron job time to execute the
+  # function before verifying
+  deploy_function scheduled-get-python
+}
 @test "Test function update: get-python" {
   test_kubeless_function_update get-python
 }
@@ -94,6 +100,11 @@ load ../script/libtest
 }
 @test "Test function: pubsub-ruby" {
   test_kubeless_function pubsub-ruby
+}
+@test "Test function: scheduled-get-python (part II)" {
+  # Now we can verify the scheduled function
+  # without having to wait
+  verify_function scheduled-get-python
 }
 @test "Test topic list" {
   _wait_for_kubeless_kafka_server_ready

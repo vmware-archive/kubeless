@@ -791,6 +791,9 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 // EnsureFuncCronJob creates/updates a function cron job
 func EnsureFuncCronJob(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+	var maxSucccessfulHist, maxFailedHist int32
+	maxSucccessfulHist = 3
+	maxFailedHist = 1
 	job := &batchv2alpha1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            fmt.Sprintf("trigger-%s", funcObj.Metadata.Name),
@@ -798,7 +801,9 @@ func EnsureFuncCronJob(client kubernetes.Interface, funcObj *spec.Function, or [
 			OwnerReferences: or,
 		},
 		Spec: batchv2alpha1.CronJobSpec{
-			Schedule: funcObj.Spec.Schedule,
+			Schedule:                   funcObj.Spec.Schedule,
+			SuccessfulJobsHistoryLimit: &maxSucccessfulHist,
+			FailedJobsHistoryLimit:     &maxFailedHist,
 			JobTemplate: batchv2alpha1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
 					Template: v1.PodTemplateSpec{
