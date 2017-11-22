@@ -26,7 +26,7 @@ function loadFunc(name, handler, additionalCode) {
     clearInterval, clearTimeout, clearImmediate,
     console: console,
     require: function (p) {
-      const absPath = path.isAbsolute(p) ? p : path.join(path.dirname(modPath), p);
+      const absPath = p.indexOf("./") === 0 ? path.join(path.dirname(modPath), p) : p;
       return mod.require(absPath);
     },
   };
