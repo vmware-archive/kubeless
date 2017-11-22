@@ -56,6 +56,9 @@ load ../script/libtest
 @test "Test function: get-nodejs-deps" {
   test_kubeless_function get-nodejs-deps
 }
+@test "Test function: timeout-nodejs" {
+  test_kubeless_function timeout-nodejs
+}
 @test "Test function: get-nodejs-multi" {
   test_kubeless_function get-nodejs-multi
 }

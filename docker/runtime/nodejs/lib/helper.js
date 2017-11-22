@@ -13,7 +13,7 @@ function loadFunc(name, handler, additionalCode) {
   mod.paths = module.paths;
   const functionCode = fs.readFileSync(modPath, { encoding: 'utf-8' });
   console.log(functionCode);
-  const script = `${functionCode}\n${additionalCode}`;
+  const script = additionalCode ? `${functionCode}\n${additionalCode}` : functionCode;
   const vmscript = new Vm.Script(script, {
     filename: modPath,
     displayErrors: true,
