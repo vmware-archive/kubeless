@@ -5,7 +5,7 @@ const path = require('path');
 const Module = require('module');
 const Vm = require('vm');
 
-function loadFunc(name, handler, additionalCode) {
+function loadFunc(name, additionalCode) {
   const modRootPath = process.env.MOD_ROOT_PATH ? process.env.MOD_ROOT_PATH : '/kubeless/';
   const modPath = path.join(modRootPath, `${name}.js`);
   console.log('Loading', modPath);

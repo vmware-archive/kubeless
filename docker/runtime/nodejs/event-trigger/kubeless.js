@@ -39,7 +39,7 @@ try {
   // Catch synchronous errors
   handleError(err);
 }`;
-const { vmscript, sandbox } = helper.loadFunc(modName, funcHandler, functionCallingCode);
+const { vmscript, sandbox } = helper.loadFunc(modName, functionCallingCode);
 
 kafkaConsumer.on('message', (message) => {
   const end = statistics.timeHistogram.labels(message.topic).startTimer();
@@ -48,11 +48,23 @@ kafkaConsumer.on('message', (message) => {
     console.error(`Function failed to execute: ${err.stack}`);
   };
   statistics.callsCounter.labels(message.topic).inc();
-  const reqSandbox = Object.assign({ message: message.value, end, handleError }, sandbox);
+  const reqSandbox = Object.assign({
+    message: message.value,
+    end,
+    handleError,
+    process: Object.assign({}, process),
+  }, sandbox);
   try {
     vmscript.runInNewContext(reqSandbox, { timeout: timeout*1000 });
   } catch (err) {
-    handleError(err);
+    if (err.toString().match("Error: Script execution timed out")) {
+      // We cannot stop the spawned process (https://github.com/nodejs/node/issues/3020)
+      // we need to abruptly stop this process
+      console.error('CRITICAL: Unable to stop spawned process. Exiting')
+      process.exit(1)
+    } else {
+      handleError(err);
+    }
   }
 });
 
