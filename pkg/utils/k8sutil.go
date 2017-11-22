@@ -527,7 +527,17 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 
 	_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Create(configMap)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Update(configMap)
+		// In case the ConfigMap already exists we should update
+		// just certain fields (to avoid race conditions)
+		var newConfigMap *v1.ConfigMap
+		newConfigMap, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Get(funcObj.Metadata.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		newConfigMap.ObjectMeta.Labels = funcObj.Metadata.Labels
+		newConfigMap.ObjectMeta.OwnerReferences = or
+		newConfigMap.Data = configMap.Data
+		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Update(newConfigMap)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The configmap may already exist and there is nothing to update
 			return nil
@@ -562,7 +572,7 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(svc)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		// In case the SVC already exists we should update
-		// just certain fields (for being able to update it)
+		// just certain fields (to avoid race conditions)
 		var newSvc *v1.Service
 		newSvc, err = client.Core().Services(funcObj.Metadata.Namespace).Get(funcObj.Metadata.Name, metav1.GetOptions{})
 		if err != nil {
@@ -571,7 +581,7 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 		newSvc.ObjectMeta.Labels = funcObj.Metadata.Labels
 		newSvc.ObjectMeta.OwnerReferences = or
 		newSvc.Spec.Ports = svc.Spec.Ports
-		newSvc.Spec.Selector = funcObj.Metadata.Labels
+		newSvc.Spec.Selector = svc.Spec.Selector
 		_, err = client.Core().Services(funcObj.Metadata.Namespace).Update(newSvc)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The service may already exist and there is nothing to update
@@ -764,7 +774,14 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 	_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Update(dpm)
+		// In case the Deployment already exists we should update
+		// just certain fields (to avoid race conditions)
+		var newDpm *v1beta1.Deployment
+		newDpm, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Get(funcObj.Metadata.Name, metav1.GetOptions{})
+		newDpm.ObjectMeta.Labels = funcObj.Metadata.Labels
+		newDpm.ObjectMeta.OwnerReferences = or
+		newDpm.Spec = dpm.Spec
+		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Update(newDpm)
 		if err != nil {
 			return err
 		}
