@@ -568,7 +568,8 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 		}
 		newSvc.ObjectMeta.Labels = funcObj.Metadata.Labels
 		newSvc.ObjectMeta.OwnerReferences = or
-		newSvc.Spec = svc.Spec
+		newSvc.Spec.Ports = svc.Spec.Ports
+		newSvc.Spec.Selector = svc.Spec.Selector
 		_, err = client.Core().Services(funcObj.Metadata.Namespace).Update(newSvc)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The service may already exist and there is nothing to update
