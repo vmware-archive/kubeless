@@ -37,7 +37,8 @@ try {
     clearInterval, clearTimeout, clearImmediate,
     console: console,
     require: function (p) {
-      return mod.require(p);
+      const absPath = path.isAbsolute(p) ? p : path.join(path.dirname(modPath), p);
+      return mod.require(absPath);
     },
   };
   return { vmscript, sandbox };
