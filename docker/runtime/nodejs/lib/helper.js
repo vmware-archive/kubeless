@@ -11,9 +11,9 @@ function loadFunc(name, handler, params) {
   console.log('Loading', modPath);
   const mod = new Module(modPath);
   mod.paths = module.paths;
-  const scriptContext = fs.readFileSync(modPath, { encoding: 'utf-8' });
-  console.log(scriptContext);
-  const script = `${scriptContext}
+  const functionCode = fs.readFileSync(modPath, { encoding: 'utf-8' });
+  console.log(functionCode);
+  const script = `${functionCode}
 try {
   Promise.resolve(module.exports.${handler}(${params})).then(() => {
     end();
