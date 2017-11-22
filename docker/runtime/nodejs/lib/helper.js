@@ -5,7 +5,7 @@ const path = require('path');
 const Module = require('module');
 const Vm = require('vm');
 
-function loadFunc(name, handler, params) {
+function loadFunc(name, handler, additionalCode) {
   const modRootPath = process.env.MOD_ROOT_PATH ? process.env.MOD_ROOT_PATH : '/kubeless/';
   const modPath = path.join(modRootPath, `${name}.js`);
   console.log('Loading', modPath);
@@ -13,18 +13,7 @@ function loadFunc(name, handler, params) {
   mod.paths = module.paths;
   const functionCode = fs.readFileSync(modPath, { encoding: 'utf-8' });
   console.log(functionCode);
-  const script = `${functionCode}
-try {
-  Promise.resolve(module.exports.${handler}(${params})).then(() => {
-    end();
-  }).catch((err) => {
-    // Catch asynchronous errors
-    handleError(err);
-  });
-} catch (err) {
-  // Catch synchronous errors
-  handleError(err);
-}`
+  const script = `${functionCode}\n${additionalCode}`;
   const vmscript = new Vm.Script(script, {
     filename: modPath,
     displayErrors: true,

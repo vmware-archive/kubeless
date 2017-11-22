@@ -18,7 +18,19 @@ const timeout = Number(process.env.FUNC_TIMEOUT || '3');
 const statistics = helper.prepareStatistics('method', client);
 helper.routeLivenessProbe(app);
 helper.routeMetrics(app, client);
-const { vmscript, sandbox } = helper.loadFunc(modName, funcHandler, 'req, res');
+const functionCallingCode = `
+try {
+  Promise.resolve(module.exports.${funcHandler}(req, res)).then(() => {
+    end();
+  }).catch((err) => {
+    // Catch asynchronous errors
+    handleError(err);
+  });
+} catch (err) {
+  // Catch synchronous errors
+  handleError(err);
+}`;
+const { vmscript, sandbox } = helper.loadFunc(modName, funcHandler, functionCallingCode);
 
 app.all('*', (req, res) => {
   res.header('Access-Control-Allow-Origin', '*');

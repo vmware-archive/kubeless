@@ -24,9 +24,22 @@ const kafkaConsumer = new kafka.ConsumerGroup({
 }, [process.env.TOPIC_NAME]);
 
 const statistics = helper.prepareStatistics('method', client);
-const { vmscript, sandbox } = helper.loadFunc(modName, funcHandler, 'message');
 helper.routeLivenessProbe(app);
 helper.routeMetrics(app, client);
+
+const functionCallingCode = `
+try {
+  Promise.resolve(module.exports.${funcHandler}(message)).then(() => {
+    end();
+  }).catch((err) => {
+    // Catch asynchronous errors
+    handleError(err);
+  });
+} catch (err) {
+  // Catch synchronous errors
+  handleError(err);
+}`;
+const { vmscript, sandbox } = helper.loadFunc(modName, funcHandler, functionCallingCode);
 
 kafkaConsumer.on('message', (message) => {
   const end = statistics.timeHistogram.labels(message.topic).startTimer();
