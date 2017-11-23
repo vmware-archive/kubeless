@@ -38,7 +38,7 @@ get-nodejs-verify:
 timeout-nodejs:
 	$(eval TMPDIR := $(shell mktemp -d))
 	printf 'module.exports = { foo: function (req, res) { while(true) {} } }\n' > $(TMPDIR)/hello-loop.js
-	kubeless function deploy timeout-nodejs --trigger-http --runtime nodejs6 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.js
+	kubeless function deploy timeout-nodejs --trigger-http --runtime nodejs6 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.js --timeout 4
 	rm -rf $(TMPDIR)
 
 timeout-nodejs-verify:
