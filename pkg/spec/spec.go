@@ -39,6 +39,7 @@ type FunctionSpec struct {
 	Type                string             `json:"type"`                  // Function trigger type
 	Topic               string             `json:"topic"`                 // Function topic trigger (for PubSub type)
 	Schedule            string             `json:"schedule"`              // Function scheduled time (for Schedule type)
+	Timeout             string             `json:"timeout"`               // Maximum timeout for the function to complete its execution
 	Deps                string             `json:"deps"`                  // Function dependencies
 	Template            v1.PodTemplateSpec `json:"template" protobuf:"bytes,3,opt,name=template"`
 }

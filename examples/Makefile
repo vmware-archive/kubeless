@@ -70,6 +70,17 @@ get-ruby-deps:
 get-ruby-deps-verify:
 	kubeless function call get-ruby-deps |egrep hello.world
 
+timeout-ruby:
+	$(eval TMPDIR := $(shell mktemp -d))
+	printf 'def foo(c)\n%4swhile true do;sleep(1);end\n%4s"hello world"\nend' > $(TMPDIR)/hello-loop.rb
+	kubeless function deploy timeout-ruby --trigger-http --runtime ruby2.4 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.rb --timeout 4
+	rm -rf $(TMPDIR)
+
+timeout-ruby-verify:
+	$(eval MSG := $(shell { time kubeless function call timeout-ruby; } 2>&1 || true))
+	echo $(MSG) | egrep Request.timeout.exceeded
+	echo $(MSG) | egrep "real\s*0m4."
+
 get-dotnetcore:
 	kubeless function deploy get-dotnetcore --trigger-http --runtime dotnetcore2.0 --handler helloget.foo --from-file dotnetcore/helloget.cs
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-dotnetcore/"

@@ -682,6 +682,11 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			}
 			dpm.Spec.Template.Spec.Containers[0].Image = imageName
 		}
+		timeout := funcObj.Spec.Timeout
+		if timeout == "" {
+			// Set default timeout to 180 seconds
+			timeout = "180"
+		}
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
 			v1.EnvVar{
 				Name:  "FUNC_HANDLER",
@@ -690,7 +695,12 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			v1.EnvVar{
 				Name:  "MOD_NAME",
 				Value: modName,
-			})
+			},
+			v1.EnvVar{
+				Name:  "FUNC_TIMEOUT",
+				Value: timeout,
+			},
+		)
 	}
 
 	dpm.Spec.Template.Spec.Containers[0].Name = funcObj.Metadata.Name

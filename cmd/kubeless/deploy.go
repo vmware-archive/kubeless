@@ -112,6 +112,11 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		timeout, err := cmd.Flags().GetString("timeout")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		funcDeps := ""
 		if deps != "" {
 			bytes, err := ioutil.ReadFile(deps)
@@ -122,10 +127,9 @@ var deployCmd = &cobra.Command{
 		}
 
 		cli := utils.GetClientOutOfCluster()
-
 		defaultFunctionSpec := spec.Function{}
 		defaultFunctionSpec.Spec.Type = "HTTP"
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, defaultFunctionSpec)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, envs, labels, defaultFunctionSpec)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -158,4 +162,5 @@ func init() {
 	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory, which is measured in bytes, for the function. It is expressed as a plain integer or a fixed-point interger with one of these suffies: E, P, T, G, M, K, Ei, Pi, Ti, Gi, Mi, Ki")
 	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 	deployCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
+	deployCmd.Flags().StringP("timeout", "", "3", "Maximum timeout (in seconds) for the function to complete its execution")
 }

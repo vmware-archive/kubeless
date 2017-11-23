@@ -130,7 +130,7 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function) (*spec.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function) (*spec.Function, error) {
 
 	if handler == "" {
 		handler = defaultFunction.Spec.Handler
@@ -164,6 +164,10 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 
 	if runtime == "" {
 		runtime = defaultFunction.Spec.Runtime
+	}
+
+	if timeout == "" {
+		timeout = defaultFunction.Spec.Timeout
 	}
 
 	triggers := []bool{triggerHTTP, topic != "", schedule != ""}
@@ -252,6 +256,7 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 			Deps:                deps,
 			Topic:               topic,
 			Schedule:            schedule,
+			Timeout:             timeout,
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
