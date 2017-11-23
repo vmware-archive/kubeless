@@ -23,6 +23,7 @@ import (
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -47,6 +48,12 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		if schedule != "" {
+			if _, err := cron.ParseStandard(schedule); err != nil {
+				logrus.Fatalf("Invalid value for --schedule. " + err.Error())
+			}
+		}
+
 		topic, err := cmd.Flags().GetString("trigger-topic")
 		if err != nil {
 			logrus.Fatal(err)
@@ -65,6 +72,11 @@ var deployCmd = &cobra.Command{
 		runtime, err := cmd.Flags().GetString("runtime")
 		if err != nil {
 			logrus.Fatal(err)
+		}
+
+		if runtime != "" && !langruntime.IsValidRuntime(runtime) {
+			logrus.Fatalf("Invalid runtime: %s. Supported runtimes are: %s",
+				runtime, strings.Join(langruntime.GetRuntimes(), ", "))
 		}
 
 		handler, err := cmd.Flags().GetString("handler")
@@ -100,6 +112,11 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		timeout, err := cmd.Flags().GetString("timeout")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		funcDeps := ""
 		if deps != "" {
 			bytes, err := ioutil.ReadFile(deps)
@@ -110,7 +127,9 @@ var deployCmd = &cobra.Command{
 		}
 
 		cli := utils.GetClientOutOfCluster()
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, spec.Function{})
+		defaultFunctionSpec := spec.Function{}
+		defaultFunctionSpec.Spec.Type = "HTTP"
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, envs, labels, defaultFunctionSpec)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -138,9 +157,10 @@ func init() {
 	deployCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
-	deployCmd.Flags().StringP("trigger-topic", "", "kubeless", "Deploy a pubsub function to Kubeless")
+	deployCmd.Flags().StringP("trigger-topic", "", "", "Deploy a pubsub function to Kubeless")
 	deployCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory, which is measured in bytes, for the function. It is expressed as a plain integer or a fixed-point interger with one of these suffies: E, P, T, G, M, K, Ei, Pi, Ti, Gi, Mi, Ki")
 	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 	deployCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
+	deployCmd.Flags().StringP("timeout", "", "3", "Maximum timeout (in seconds) for the function to complete its execution")
 }

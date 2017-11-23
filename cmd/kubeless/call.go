@@ -87,7 +87,12 @@ var callCmd = &cobra.Command{
 		if err != nil {
 			// Properly interpret line breaks
 			logrus.Error(string(res))
-			logrus.Fatal(strings.Replace(err.Error(), `\n`, "\n", -1))
+			if strings.Contains(err.Error(), "status code 408") {
+				// Give a more meaninful error for timeout errors
+				logrus.Fatal("Request timeout exceeded")
+			} else {
+				logrus.Fatal(strings.Replace(err.Error(), `\n`, "\n", -1))
+			}
 		}
 		fmt.Println(string(res))
 	},
