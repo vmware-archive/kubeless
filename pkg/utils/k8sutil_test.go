@@ -323,7 +323,7 @@ func TestEnsureDeployment(t *testing.T) {
 			},
 			{
 				Name:  "FUNC_TIMEOUT",
-				Value: "3",
+				Value: "180",
 			},
 			{
 				Name:  "TOPIC_NAME",

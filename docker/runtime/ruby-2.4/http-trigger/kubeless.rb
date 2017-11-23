@@ -22,7 +22,7 @@ MOD_NAME = ENV['MOD_NAME']
 FUNC_HANDLER = ENV['FUNC_HANDLER']
 MOD_ROOT_PATH = ENV.fetch('MOD_ROOT_PATH', '/kubeless/')
 MOD_PATH = "#{File.join(MOD_ROOT_PATH, MOD_NAME)}.rb"
-FUNC_TIMEOUT = ENV.fetch('FUNC_TIMEOUT', '3')
+FUNC_TIMEOUT = ENV.fetch('FUNC_TIMEOUT', '180')
 ftimeout = FUNC_TIMEOUT.to_i # We need the timeout as a number
 
 begin

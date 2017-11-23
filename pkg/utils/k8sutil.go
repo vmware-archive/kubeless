@@ -674,8 +674,8 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		}
 		timeout := funcObj.Spec.Timeout
 		if timeout == "" {
-			// Set default timeout to 3 seconds
-			timeout = "3"
+			// Set default timeout to 180 seconds
+			timeout = "180"
 		}
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
 			v1.EnvVar{
