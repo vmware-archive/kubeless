@@ -11,3 +11,4 @@ import:
   version: v0.10.1
   subpackages:
   - pkg/client/monitoring/v1alpha1
+- package: github.com/robfig/cron
