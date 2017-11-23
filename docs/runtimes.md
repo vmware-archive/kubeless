@@ -42,8 +42,8 @@ The pods are deployed using the function handler as [group ID](https://kafka.apa
 
 This is meant for functions that should be triggered following a certain schedule. For specifying the execution frequency  we use the [Cron](https://en.wikipedia.org/wiki/Cron) format. Every time a scheduled function is executed, a [Job](https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/) is started. This Job will do a HTTP GET request to the function service and will be successful as far as the function returns 200 OK.
 
-For executing scheduled functions we use Kubernetes [CronJobs](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/) using the default options which means:
- - If a Job is failed it will be restarted.
+For executing scheduled functions we use Kubernetes [CronJobs](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/) using mostly the default options which means:
+ - If a Job fails, it won't be restarted but it will be retried in the next scheduled event. This could lead to an exponential growth in the number of pods executed.
  - The concurrency policy is set to `Allow` so concurrent jobs may exists.
  - The history limit is set to maintain as maximum three successful jobs (and one failed).
 

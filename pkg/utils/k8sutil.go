@@ -815,7 +815,7 @@ func EnsureFuncCronJob(client kubernetes.Interface, funcObj *spec.Function, or [
 									Args:  []string{"wget", "-qO-", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.Metadata.Name, funcObj.Metadata.Namespace)},
 								},
 							},
-							RestartPolicy: v1.RestartPolicyOnFailure,
+							RestartPolicy: v1.RestartPolicyNever,
 						},
 					},
 				},
