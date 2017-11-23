@@ -34,12 +34,32 @@ scheduled-get-python:
 scheduled-get-python-verify:
 	bash -c 'grep -q "GET / HTTP/1.1\" 200 11 \"\" \"Wget\"" <(timeout 70 kubectl logs -f $$(kubectl get po -l function=scheduled-get-python -oname))'
 
+timeout-python:
+	$(eval TMPDIR := $(shell mktemp -d))
+	printf 'def foo():\n%4swhile 1: pass\n%4sreturn "hello world"\n' > $(TMPDIR)/hello-loop.py
+	kubeless function deploy timeout-python --trigger-http --runtime python2.7 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.py --timeout 3
+	rm -rf $(TMPDIR)
+
+timeout-python-verify:
+	$(eval MSG := $(shell kubeless function call timeout-python 2>&1 || true))
+	echo $(MSG) | egrep Request.timeout.exceeded
+
 get-nodejs:
 	kubeless function deploy get-nodejs --trigger-http --runtime nodejs6 --handler helloget.foo --from-file nodejs/helloget.js
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-nodejs/"
 
 get-nodejs-verify:
 	kubeless function call get-nodejs |egrep hello.world
+
+timeout-nodejs:
+	$(eval TMPDIR := $(shell mktemp -d))
+	printf 'module.exports = { foo: function (req, res) { while(true) {} } }\n' > $(TMPDIR)/hello-loop.js
+	kubeless function deploy timeout-nodejs --trigger-http --runtime nodejs6 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.js --timeout 4
+	rm -rf $(TMPDIR)
+
+timeout-nodejs-verify:
+	$(eval MSG := $(shell kubeless function call timeout-nodejs 2>&1 || true))
+	echo $(MSG) | egrep Request.timeout.exceeded
 
 get-nodejs-deps:
 	kubeless function deploy get-nodejs-deps --trigger-http --runtime nodejs6 --handler helloget.handler --from-file nodejs/hellowithdeps.js --dependencies nodejs/package.json

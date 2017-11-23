@@ -62,6 +62,9 @@ load ../script/libtest
 @test "Test function: get-nodejs-deps" {
   test_kubeless_function get-nodejs-deps
 }
+@test "Test function: timeout-nodejs" {
+  test_kubeless_function timeout-nodejs
+}
 @test "Test function: get-nodejs-multi" {
   test_kubeless_function get-nodejs-multi
 }
@@ -91,6 +94,9 @@ load ../script/libtest
 }
 @test "Test function: pubsub-python" {
   test_kubeless_function pubsub-python
+}
+@test "Test function: pubsub-python34" {
+  test_kubeless_function pubsub-python34
 }
 @test "Test function update: pubsub-python" {
   test_kubeless_function_update pubsub-python

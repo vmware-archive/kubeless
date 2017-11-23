@@ -12,17 +12,17 @@ import (
 )
 
 const (
-	python27Http    = "bitnami/kubeless-python@sha256:6789266df0c97333f76e23efd58cf9c7efe24fa3e83b5fc826fd5cc317699b55"
-	python27Pubsub  = "bitnami/kubeless-event-consumer@sha256:5ce469529811acf49c4d20bcd8a675be7aa029b43cf5252a8c9375b170859d83"
+	python27Http    = "kubeless/python@sha256:ba948a6783b93d75037b7b1806a3925d441401ae6fba18282f712a1b1a786899"
+	python27Pubsub  = "kubeless/python-event-consumer@sha256:1aeb6cef151222201abed6406694081db26fa2235d7ac128113dcebd8d73a6cb"
 	python27Init    = "tuna/python-pillow:2.7.11-alpine" // TODO: Migrate the image for python 2.7 to an official source (not alpine-based)
-	python34Http    = "bitnami/kubeless-python:test@sha256:686cd28cda5fe7bc6db60fa3e8a9a2c57a5eff6a58e66a60179cc1d3fcf1035b"
-	python34Pubsub  = "bitnami/kubeless-python-event-consumer@sha256:8f92397258836e9c39948814aa5324c29d96ff3624b66dd70fdbad1ce0a1615e"
+	python34Http    = "kubeless/python@sha256:631b406ab9681fe0da9c281949a885a95b7d8c9cea4a48d7dfd0fa2c0576e23e"
+	python34Pubsub  = "kubeless/python-event-consumer@sha256:d963e4cd58229d662188d618cd87503b3c749b126b359ce724a19a375e4b3040"
 	python34Init    = "python:3.4"
-	node6Http       = "bitnami/kubeless-nodejs@sha256:b3c7cec77f973bf7a48cbbb8ea5069cacbaee7044683a275c6f78fa248de17b4"
-	node6Pubsub     = "kubeless/nodejs-event-consumer@sha256:7e41360bd2b3c6fc32569f85694e4b8c477153d6b6ec4ee0d6a27fc53678ac6a"
+	node6Http       = "kubeless/nodejs@sha256:2e63bc5e0b3f3fe951ef73e51dde18c8daae17d5f1880e472cb3dfc3f92cdc0b"
+	node6Pubsub     = "kubeless/nodejs-event-consumer@sha256:07ab6ca66f5119e610471ccfec5e7995e5c21dbaf3dc622427acf07bc1a63147"
 	node6Init       = "node:6.10"
-	node8Http       = "bitnami/kubeless-nodejs@sha256:1eff2beae6fcc40577ada75624c3e4d3840a854588526cd8616d66f4e889dfe6"
-	node8Pubsub     = "kubeless/nodejs-event-consumer@sha256:236ec58aa7560709716332fa2cab8b6f3de35d13438380460a7080887134ebd9"
+	node8Http       = "kubeless/nodejs@sha256:4240d66e5b39b6bffa696b3922c18f729a342cc68105243ffec4a1b07448f755"
+	node8Pubsub     = "kubeless/nodejs-event-consumer@sha256:121647252d6be08df36fc5cf17ac9683f2172b93fd8f21e7ffe7af00e9bb1bf1"
 	node8Init       = "node:8"
 	ruby24Http      = "kubeless/ruby@sha256:155a8cbd9a4e0e53efd8d3ea86f14098309a06ce1fca3b58265088460e8ad96c"
 	ruby24Pubsub    = "kubeless/ruby-event-consumer@sha256:37c2db19c8de7f953b1ab711a5e0cab0caa5229d2d9d56093eb0626e9933c047"

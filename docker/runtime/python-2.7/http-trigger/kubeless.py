@@ -3,12 +3,15 @@
 import os
 import imp
 
+from multiprocessing import Process, Queue
 import bottle
 import prometheus_client as prom
 
 mod = imp.load_source('function',
                       '/kubeless/%s.py' % os.getenv('MOD_NAME'))
 func = getattr(mod, os.getenv('FUNC_HANDLER'))
+
+timeout = float(os.getenv('FUNC_TIMEOUT', 180))
 
 app = application = bottle.app()
 
@@ -22,6 +25,12 @@ func_errors = prom.Counter('function_failures_total',
                            'Number of exceptions in user function',
                            ['method'])
 
+def funcWrap(q, req):
+    if req is None:
+        q.put(func())
+    else:
+        q.put(func(req))
+
 @app.route('/', method=['GET', 'POST'])
 def handler():
     req = bottle.request
@@ -29,10 +38,20 @@ def handler():
     func_calls.labels(method).inc()
     with func_errors.labels(method).count_exceptions():
         with func_hist.labels(method).time():
+            q = Queue()
             if method == 'GET':
-                return func()
+                p = Process(target=funcWrap, args=(q,None,))
             else:
-                return func(bottle.request)
+                p = Process(target=funcWrap, args=(q,bottle.request,))
+            p.start()
+            p.join(timeout)
+            # If thread is still active
+            if p.is_alive():
+                p.terminate()
+                p.join()
+                return bottle.HTTPError(408, "Timeout while processing the function")
+            else:
+                return q.get()
 
 @app.get('/healthz')
 def healthz():

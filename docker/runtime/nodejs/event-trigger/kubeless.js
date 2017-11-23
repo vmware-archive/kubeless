@@ -12,6 +12,7 @@ app.use(morgan('combined'));
 
 const modName = process.env.MOD_NAME;
 const funcHandler = process.env.FUNC_HANDLER;
+const timeout = Number(process.env.FUNC_TIMEOUT || '180');
 
 const kafkaSvc = _.get(process.env, 'KUBELESS_KAFKA_SVC', 'kafka');
 const kafkaNamespace = _.get(process.env, 'KUBELESS_KAFKA_NAMESPACE', 'kubeless');
@@ -23,9 +24,22 @@ const kafkaConsumer = new kafka.ConsumerGroup({
 }, [process.env.TOPIC_NAME]);
 
 const statistics = helper.prepareStatistics('method', client);
-const mod = helper.loadFunc(modName, funcHandler);
 helper.routeLivenessProbe(app);
 helper.routeMetrics(app, client);
+
+const functionCallingCode = `
+try {
+  Promise.resolve(module.exports.${funcHandler}(message)).then(() => {
+    end();
+  }).catch((err) => {
+    // Catch asynchronous errors
+    handleError(err);
+  });
+} catch (err) {
+  // Catch synchronous errors
+  handleError(err);
+}`;
+const { vmscript, sandbox } = helper.loadFunc(modName, functionCallingCode);
 
 kafkaConsumer.on('message', (message) => {
   const end = statistics.timeHistogram.labels(message.topic).startTimer();
@@ -34,16 +48,23 @@ kafkaConsumer.on('message', (message) => {
     console.error(`Function failed to execute: ${err.stack}`);
   };
   statistics.callsCounter.labels(message.topic).inc();
+  const reqSandbox = Object.assign({
+    message: message.value,
+    end,
+    handleError,
+    process: Object.assign({}, process),
+  }, sandbox);
   try {
-    Promise.resolve(mod[funcHandler](message.value)).then(() => {
-      end();
-    }).catch((err) => {
-      // Catch asynchronous errors
-      handleError(err);
-    });
+    vmscript.runInNewContext(reqSandbox, { timeout: timeout*1000 });
   } catch (err) {
-    // Catch synchronous errors
-    handleError(err);
+    if (err.toString().match("Error: Script execution timed out")) {
+      // We cannot stop the spawned process (https://github.com/nodejs/node/issues/3020)
+      // we need to abruptly stop this process
+      console.error('CRITICAL: Unable to stop spawned process. Exiting')
+      process.exit(1)
+    } else {
+      handleError(err);
+    }
   }
 });
 
