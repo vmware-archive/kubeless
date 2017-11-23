@@ -488,6 +488,7 @@ func TestEnsureCronJob(t *testing.T) {
 			Namespace: ns,
 		},
 		Spec: spec.FunctionSpec{
+			Timeout:  "120",
 			Schedule: "*/10 * * * *",
 		},
 	}
@@ -513,6 +514,9 @@ func TestEnsureCronJob(t *testing.T) {
 	}
 	if *cronJob.Spec.FailedJobsHistoryLimit != int32(1) {
 		t.Errorf("Unexpected FailedJobsHistoryLimit: %d", *cronJob.Spec.FailedJobsHistoryLimit)
+	}
+	if *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds != int64(120) {
+		t.Errorf("Unexpected ActiveDeadlineSeconds: %d", *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds)
 	}
 	expectedCommand := []string{"wget", "-qO-", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", f1Name, ns)}
 	if !reflect.DeepEqual(cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args, expectedCommand) {
