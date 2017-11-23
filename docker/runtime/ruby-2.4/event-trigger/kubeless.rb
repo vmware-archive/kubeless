@@ -15,6 +15,7 @@
 #
 require 'sinatra'
 require 'kafka'
+require 'timeout'
 
 # Don't buffer stdout
 $stdout.sync = true
@@ -22,6 +23,7 @@ MOD_NAME = ENV['MOD_NAME']
 FUNC_HANDLER = ENV['FUNC_HANDLER']
 MOD_ROOT_PATH = ENV.fetch('MOD_ROOT_PATH', '/kubeless/')
 MOD_PATH = "#{File.join(MOD_ROOT_PATH, MOD_NAME)}.rb"
+FUNC_TIMEOUT = ENV.fetch('FUNC_TIMEOUT', '180').to_i
 
 TOPIC_NAME = ENV['TOPIC_NAME']
 KAFKA_SVC = ENV.fetch('KUBELESS_KAFKA_SVC', 'kafka')
@@ -45,7 +47,13 @@ consumer.subscribe(TOPIC_NAME)
 trap("TERM") { consumer.stop }
 
 consumer.each_message do |message|
-  mod.send(FUNC_HANDLER.to_sym, message.value)
+  begin
+    status = Timeout::timeout(FUNC_TIMEOUT) {
+      mod.send(FUNC_HANDLER.to_sym, message.value)
+    }
+  rescue => e
+    puts "ERROR: " + e.to_s
+  end
 end
 
 set :server, 'webrick'

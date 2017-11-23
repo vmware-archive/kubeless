@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -129,7 +130,7 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function) (*spec.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function) (*spec.Function, error) {
 
 	if handler == "" {
 		handler = defaultFunction.Spec.Handler
@@ -163,6 +164,21 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 
 	if runtime == "" {
 		runtime = defaultFunction.Spec.Runtime
+	}
+
+	if timeout == "" {
+		timeout = defaultFunction.Spec.Timeout
+	}
+
+	triggers := []bool{triggerHTTP, topic != "", schedule != ""}
+	triggerCount := 0
+	for i := len(triggers) - 1; i >= 0; i-- {
+		if triggers[i] {
+			triggerCount++
+		}
+	}
+	if triggerCount > 1 {
+		return nil, errors.New("exactly one of --trigger-http, --trigger-topic, --schedule must be specified")
 	}
 
 	funcType := ""
@@ -240,6 +256,7 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 			Deps:                deps,
 			Topic:               topic,
 			Schedule:            schedule,
+			Timeout:             timeout,
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{

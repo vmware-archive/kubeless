@@ -24,8 +24,8 @@ const (
 	node8Http       = "kubeless/nodejs@sha256:2920a15c04f2b9bc534bd77e7df59c7166c2081f1aa7d84d6514651de9043cf0"
 	node8Pubsub     = "kubeless/nodejs-event-consumer@sha256:dc59e8236f497f83d4f29ca78d6a8d7fce2817085db05d1e62935743a9ad2ade"
 	node8Init       = "node:8"
-	ruby24Http      = "bitnami/kubeless-ruby@sha256:97b18ac36bb3aa9529231ea565b339ec00d2a5225cf7eb010cd5a6188cf72ab5"
-	ruby24Pubsub    = "bitnami/kubeless-ruby-event-consumer@sha256:938a860dbd9b7fb6b4338248a02c92279315c6e42eed0700128b925d3696b606"
+	ruby24Http      = "kubeless/ruby@sha256:155a8cbd9a4e0e53efd8d3ea86f14098309a06ce1fca3b58265088460e8ad96c"
+	ruby24Pubsub    = "kubeless/ruby-event-consumer@sha256:37c2db19c8de7f953b1ab711a5e0cab0caa5229d2d9d56093eb0626e9933c047"
 	ruby24Init      = "bitnami/ruby:2.4"
 	dotnetcore2Http = "allantargino/kubeless-dotnetcore@sha256:d321dc4b2c420988d98cdaa22c733743e423f57d1153c89c2b99ff0d944e8a63"
 	dotnetcore2Init = "microsoft/aspnetcore-build:2.0"
@@ -83,6 +83,16 @@ func GetRuntimes() []string {
 		}
 	}
 	return result
+}
+
+// IsValidRuntime returns true if passed runtime name is valid runtime
+func IsValidRuntime(runtime string) bool {
+	for _, validRuntime := range GetRuntimes() {
+		if runtime == validRuntime {
+			return true
+		}
+	}
+	return false
 }
 
 func getAvailableRuntimesPerTrigger(imageType string) []string {

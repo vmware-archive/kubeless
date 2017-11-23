@@ -97,7 +97,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", true, []string{"TEST=1"}, []string{"test=1"}, spec.Function{})
+	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, []string{"TEST=1"}, []string{"test=1"}, spec.Function{})
 	if err != nil {
 		t.Error(err)
 	}
@@ -124,6 +124,7 @@ func TestGetFunctionDescription(t *testing.T) {
 			Deps:                "dependencies",
 			Topic:               "",
 			Schedule:            "",
+			Timeout:             "10",
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -152,7 +153,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should take the default values
-	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", false, []string{}, []string{}, expectedFunction)
+	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", "", false, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -171,7 +172,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
-	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", false, []string{"TEST=2"}, []string{"test=2"}, expectedFunction)
+	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", "20", false, []string{"TEST=2"}, []string{"test=2"}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -198,6 +199,7 @@ func TestGetFunctionDescription(t *testing.T) {
 			Deps:                "dependencies2",
 			Topic:               "test_topic",
 			Schedule:            "",
+			Timeout:             "20",
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -254,7 +256,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 	file.Close()
 	zipW.Close()
-	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", false, []string{}, []string{}, expectedFunction)
+	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", "", false, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}

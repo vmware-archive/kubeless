@@ -21,6 +21,7 @@ import (
 
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -58,6 +59,11 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		if runtime != "" && !langruntime.IsValidRuntime(runtime) {
+			logrus.Fatalf("Invalid runtime: %s. Supported runtimes are: %s",
+				runtime, strings.Join(langruntime.GetRuntimes(), ", "))
+		}
+
 		triggerHTTP, err := cmd.Flags().GetBool("trigger-http")
 		if err != nil {
 			logrus.Fatal(err)
@@ -66,6 +72,11 @@ var updateCmd = &cobra.Command{
 		schedule, err := cmd.Flags().GetString("schedule")
 		if err != nil {
 			logrus.Fatal(err)
+		}
+		if schedule != "" {
+			if _, err := cron.ParseStandard(schedule); err != nil {
+				logrus.Fatalf("Invalid value for --schedule. " + err.Error())
+			}
 		}
 
 		topic, err := cmd.Flags().GetString("trigger-topic")
@@ -92,13 +103,18 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		timeout, err := cmd.Flags().GetString("timeout")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		previousFunction, err := utils.GetFunction(funcName, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
 		cli := utils.GetClientOutOfCluster()
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, "", runtime, topic, schedule, runtimeImage, mem, triggerHTTP, envs, labels, previousFunction)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, "", runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, envs, labels, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -129,4 +145,5 @@ func init() {
 	updateCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	updateCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 	updateCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
+	updateCmd.Flags().StringP("timeout", "", "3", "Maximum timeout (in seconds) for the function to complete its execution")
 }
