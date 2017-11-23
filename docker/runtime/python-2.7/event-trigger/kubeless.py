@@ -13,7 +13,7 @@ import prometheus_client as prom
 mod_name = os.getenv('MOD_NAME')
 func_handler = os.getenv('FUNC_HANDLER')
 topic_name = os.getenv('TOPIC_NAME')
-timeout = float(os.getenv('FUNC_TIMEOUT', 3))
+timeout = float(os.getenv('FUNC_TIMEOUT', 180))
 
 group = mod_name + func_handler
 

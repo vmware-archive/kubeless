@@ -11,7 +11,7 @@ mod = imp.load_source('function',
                       '/kubeless/%s.py' % os.getenv('MOD_NAME'))
 func = getattr(mod, os.getenv('FUNC_HANDLER'))
 
-timeout = float(os.getenv('FUNC_TIMEOUT', 3))
+timeout = float(os.getenv('FUNC_TIMEOUT', 180))
 
 app = application = bottle.app()
 

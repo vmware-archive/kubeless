@@ -31,7 +31,7 @@ get-python-34-verify:
 timeout-python:
 	$(eval TMPDIR := $(shell mktemp -d))
 	printf 'def foo():\n%4swhile 1: pass\n%4sreturn "hello world"\n' > $(TMPDIR)/hello-loop.py
-	kubeless function deploy timeout-python --trigger-http --runtime python2.7 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.py
+	kubeless function deploy timeout-python --trigger-http --runtime python2.7 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.py --timeout 3
 	rm -rf $(TMPDIR)
 
 timeout-python-verify:
