@@ -109,10 +109,11 @@ Let's dissect the command:
 * `--handler test.foobar`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `foobar` from the file `test.py`.
 * `--trigger-http`: This sets the function trigger.
 
-Other available trigger options are:
+Other available trigger options (defaults to `--trigger-http`) are:
 
 * `--trigger-http` to trigger the function using HTTP requests.
 * `--trigger-topic` to trigger the function with a certain Kafka topic. See the [next example](#pubsub-function).
+* `--timeout string` to specify the timeout (in seconds) for the function to complete its execution (default "3")
 * `--schedule` to trigger the function following a certain schedule using Cron notation. F.e. `--schedule "*/10 * * * *"` would trigger the function every 10 minutes.
 
 You can find the rest of options available when deploying a function executing `kubeless function deploy --help`

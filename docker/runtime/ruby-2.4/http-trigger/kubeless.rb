@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 require 'sinatra'
+require 'timeout'
 
 # Don't buffer stdout
 $stdout.sync = true
@@ -21,6 +22,8 @@ MOD_NAME = ENV['MOD_NAME']
 FUNC_HANDLER = ENV['FUNC_HANDLER']
 MOD_ROOT_PATH = ENV.fetch('MOD_ROOT_PATH', '/kubeless/')
 MOD_PATH = "#{File.join(MOD_ROOT_PATH, MOD_NAME)}.rb"
+FUNC_TIMEOUT = ENV.fetch('FUNC_TIMEOUT', '180')
+ftimeout = FUNC_TIMEOUT.to_i # We need the timeout as a number
 
 begin
   puts "Loading #{MOD_PATH}"
@@ -36,12 +39,26 @@ end
 set :server, 'webrick'
 set :port, 8080
 
+def funcWrapper(mod, t)
+    status = Timeout::timeout(t) {
+      res = mod.send(FUNC_HANDLER.to_sym, request)
+    }
+end
+
 get '/' do
-  mod.send(FUNC_HANDLER.to_sym, request)
+  begin
+    funcWrapper(mod, ftimeout)
+  rescue Timeout::Error
+    status 408
+  end
 end
 
 post '/' do
-  mod.send(FUNC_HANDLER.to_sym, request)
+  begin
+    funcWrapper(mod, ftimeout)
+  rescue Timeout::Error
+    status 408
+  end
 end
 
 get '/healthz' do
