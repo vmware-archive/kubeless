@@ -1,23 +1,36 @@
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
+const Module = require('module');
+const Vm = require('vm');
 
-function loadFunc(name, handler) {
+function loadFunc(name, additionalCode) {
   const modRootPath = process.env.MOD_ROOT_PATH ? process.env.MOD_ROOT_PATH : '/kubeless/';
   const modPath = path.join(modRootPath, `${name}.js`);
   console.log('Loading', modPath);
-  let mod = null;
-  try {
-    mod = require(modPath); // eslint-disable-line global-require
-  } catch (e) {
-    console.error(
-      `No valid module found for the name: ${name}, Failed to import module:\n` +
-      `${e.message}`
-    );
-    process.exit(1);
-  }
-  console.log('mod[funcHandler]', handler, mod[handler]);
-  return mod;
+  const mod = new Module(modPath);
+  mod.paths = module.paths;
+  const functionCode = fs.readFileSync(modPath, { encoding: 'utf-8' });
+  console.log(functionCode);
+  const script = additionalCode ? `${functionCode}\n${additionalCode}` : functionCode;
+  const vmscript = new Vm.Script(script, {
+    filename: modPath,
+    displayErrors: true,
+  });
+  const sandbox = {
+    module: mod,
+    __filename: modPath,
+    __dirname: path.dirname(modPath),
+    setInterval, setTimeout, setImmediate,
+    clearInterval, clearTimeout, clearImmediate,
+    console: console,
+    require: function (p) {
+      const absPath = p.indexOf("./") === 0 ? path.join(path.dirname(modPath), p) : p;
+      return mod.require(absPath);
+    },
+  };
+  return { vmscript, sandbox };
 }
 
 function prepareStatistics(label, promClient) {

@@ -35,6 +35,16 @@ get-nodejs:
 get-nodejs-verify:
 	kubeless function call get-nodejs |egrep hello.world
 
+timeout-nodejs:
+	$(eval TMPDIR := $(shell mktemp -d))
+	printf 'module.exports = { foo: function (req, res) { while(true) {} } }\n' > $(TMPDIR)/hello-loop.js
+	kubeless function deploy timeout-nodejs --trigger-http --runtime nodejs6 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.js --timeout 4
+	rm -rf $(TMPDIR)
+
+timeout-nodejs-verify:
+	$(eval MSG := $(shell kubeless function call timeout-nodejs 2>&1 || true))
+	echo $(MSG) | egrep Request.timeout.exceeded
+
 get-nodejs-deps:
 	kubeless function deploy get-nodejs-deps --trigger-http --runtime nodejs6 --handler helloget.handler --from-file nodejs/hellowithdeps.js --dependencies nodejs/package.json
 
