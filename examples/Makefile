@@ -28,6 +28,16 @@ get-python-34:
 get-python-34-verify:
 	kubeless function call get-python |egrep hello.world
 
+timeout-python:
+	$(eval TMPDIR := $(shell mktemp -d))
+	printf 'def foo():\n%4swhile 1: pass\n%4sreturn "hello world"\n' > $(TMPDIR)/hello-loop.py
+	kubeless function deploy timeout-python --trigger-http --runtime python2.7 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.py --timeout 3
+	rm -rf $(TMPDIR)
+
+timeout-python-verify:
+	$(eval MSG := $(shell kubeless function call timeout-python 2>&1 || true))
+	echo $(MSG) | egrep Request.timeout.exceeded
+
 get-nodejs:
 	kubeless function deploy get-nodejs --trigger-http --runtime nodejs6 --handler helloget.foo --from-file nodejs/helloget.js
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-nodejs/"
