@@ -5,6 +5,8 @@ import:
 - package: k8s.io/apimachinery
   version: 85ace5365f33b16fc735c866a12e3c765b9700f2
 - package: k8s.io/client-go
+  subpackages:
+    - plugin/pkg/client/auth/gcp
   version: v3.0.0
 - package: github.com/gosuri/uitable
 - package: github.com/coreos/prometheus-operator
@@ -12,3 +14,5 @@ import:
   subpackages:
   - pkg/client/monitoring/v1alpha1
 - package: github.com/robfig/cron
+- package: golang.org/x/sys
+  version: 82aafbf43bf885069dc71b7e7c2f9d7a614d47da

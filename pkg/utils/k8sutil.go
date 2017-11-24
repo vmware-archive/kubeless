@@ -52,6 +52,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
+
+	// Adding explicitely the GCP auth plugin
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 const (
