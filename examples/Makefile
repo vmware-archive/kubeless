@@ -28,6 +28,12 @@ get-python-34:
 get-python-34-verify:
 	kubeless function call get-python |egrep hello.world
 
+scheduled-get-python:
+	kubeless function deploy scheduled-get-python --schedule "* * * * *" --runtime python2.7 --handler helloget.foo --from-file python/helloget.py
+
+scheduled-get-python-verify:
+	bash -c 'grep -q "GET / HTTP/1.1\" 200 11 \"\" \"Wget\"" <(timeout 70 kubectl logs -f $$(kubectl get po -l function=scheduled-get-python -oname))'
+
 timeout-python:
 	$(eval TMPDIR := $(shell mktemp -d))
 	printf 'def foo():\n%4swhile 1: pass\n%4sreturn "hello world"\n' > $(TMPDIR)/hello-loop.py

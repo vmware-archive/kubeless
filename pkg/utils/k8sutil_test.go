@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -468,6 +469,58 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 	if getEnvValueFromList("FUNC_TIMEOUT", dpm.Spec.Template.Spec.Containers[0].Env) != "10" {
 		t.Error("Unable to set timeout")
+	}
+}
+
+func TestEnsureCronJob(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	or := []metav1.OwnerReference{
+		{
+			Kind:       "Function",
+			APIVersion: "k8s.io",
+		},
+	}
+	ns := "default"
+	f1Name := "func1"
+	f1 := &spec.Function{
+		Metadata: metav1.ObjectMeta{
+			Name:      f1Name,
+			Namespace: ns,
+		},
+		Spec: spec.FunctionSpec{
+			Timeout:  "120",
+			Schedule: "*/10 * * * *",
+		},
+	}
+
+	err := EnsureFuncCronJob(clientset, f1, or)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	expectedMeta := metav1.ObjectMeta{
+		Name:            "trigger-" + f1Name,
+		Namespace:       ns,
+		OwnerReferences: or,
+	}
+	cronJob, err := clientset.BatchV2alpha1().CronJobs(ns).Get("trigger-"+f1Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	if !reflect.DeepEqual(expectedMeta, cronJob.ObjectMeta) {
+		t.Errorf("Unexpected metadata metadata. Expecting\n%+v \nReceived:\n%+v", expectedMeta, cronJob.ObjectMeta)
+	}
+	if *cronJob.Spec.SuccessfulJobsHistoryLimit != int32(3) {
+		t.Errorf("Unexpected SuccessfulJobsHistoryLimit: %d", *cronJob.Spec.SuccessfulJobsHistoryLimit)
+	}
+	if *cronJob.Spec.FailedJobsHistoryLimit != int32(1) {
+		t.Errorf("Unexpected FailedJobsHistoryLimit: %d", *cronJob.Spec.FailedJobsHistoryLimit)
+	}
+	if *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds != int64(120) {
+		t.Errorf("Unexpected ActiveDeadlineSeconds: %d", *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds)
+	}
+	expectedCommand := []string{"wget", "-qO-", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", f1Name, ns)}
+	if !reflect.DeepEqual(cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args, expectedCommand) {
+		t.Errorf("Unexpected command %s", strings.Join(cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args, " "))
 	}
 }
 

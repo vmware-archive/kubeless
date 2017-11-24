@@ -55,9 +55,10 @@ import (
 )
 
 const (
-	pubsubFunc = "PubSub"
-	busybox    = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
-	unzip      = "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697"
+	pubsubFunc     = "PubSub"
+	busybox        = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
+	unzip          = "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697"
+	defaultTimeout = "180"
 )
 
 // GetClient returns a k8s clientset to the request from inside of cluster
@@ -685,7 +686,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		timeout := funcObj.Spec.Timeout
 		if timeout == "" {
 			// Set default timeout to 180 seconds
-			timeout = "180"
+			timeout = defaultTimeout
 		}
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
 			v1.EnvVar{
@@ -818,6 +819,20 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 
 // EnsureFuncCronJob creates/updates a function cron job
 func EnsureFuncCronJob(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+	var maxSucccessfulHist, maxFailedHist int32
+	maxSucccessfulHist = 3
+	maxFailedHist = 1
+	var timeout int
+	if funcObj.Spec.Timeout != "" {
+		var err error
+		timeout, err = strconv.Atoi(funcObj.Spec.Timeout)
+		if err != nil {
+			return fmt.Errorf("Unable convert %s to a valid timeout", funcObj.Spec.Timeout)
+		}
+	} else {
+		timeout, _ = strconv.Atoi(defaultTimeout)
+	}
+	activeDeadlineSeconds := int64(timeout)
 	job := &batchv2alpha1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            fmt.Sprintf("trigger-%s", funcObj.Metadata.Name),
@@ -825,9 +840,12 @@ func EnsureFuncCronJob(client kubernetes.Interface, funcObj *spec.Function, or [
 			OwnerReferences: or,
 		},
 		Spec: batchv2alpha1.CronJobSpec{
-			Schedule: funcObj.Spec.Schedule,
+			Schedule:                   funcObj.Spec.Schedule,
+			SuccessfulJobsHistoryLimit: &maxSucccessfulHist,
+			FailedJobsHistoryLimit:     &maxFailedHist,
 			JobTemplate: batchv2alpha1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
+					ActiveDeadlineSeconds: &activeDeadlineSeconds,
 					Template: v1.PodTemplateSpec{
 						Spec: v1.PodSpec{
 							Containers: []v1.Container{
@@ -837,7 +855,7 @@ func EnsureFuncCronJob(client kubernetes.Interface, funcObj *spec.Function, or [
 									Args:  []string{"wget", "-qO-", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.Metadata.Name, funcObj.Metadata.Namespace)},
 								},
 							},
-							RestartPolicy: v1.RestartPolicyOnFailure,
+							RestartPolicy: v1.RestartPolicyNever,
 						},
 					},
 				},

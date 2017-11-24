@@ -40,6 +40,17 @@ Right now the runtimes that support this kind of events are Python, NodeJS and R
 
 The pods are deployed using the function handler as [group ID](https://kafka.apache.org/documentation/#intro_consumers). That means that the load will be balanced. If a function is scaled and its deployment has more than one replica only one pod will process a published message.
 
+## Scheduled Trigger
+
+This is meant for functions that should be triggered following a certain schedule. For specifying the execution frequency  we use the [Cron](https://en.wikipedia.org/wiki/Cron) format. Every time a scheduled function is executed, a [Job](https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/) is started. This Job will do a HTTP GET request to the function service and will be successful as far as the function returns 200 OK.
+
+For executing scheduled functions we use Kubernetes [CronJobs](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/) using mostly the default options which means:
+ - If a Job fails, it won't be restarted but it will be retried in the next scheduled event. The maximum time that a Job will exist is specified with the function timeout (180 seconds by default).
+ - The concurrency policy is set to `Allow` so concurrent jobs may exists.
+ - The history limit is set to maintain as maximum three successful jobs (and one failed).
+
+If for some reason you want to modify one of the default values for a certain function you can execute `kubectl edit cronjob trigger-<func_name>` (where `func_name` is the name of your function) and modify the fields required. Once it is saved the CronJob will be updated.
+
 ## Monitoring functions
 Kubeless runtimes are exposing metrics at `/metrics` endpoint and these metrics will be collected by Prometheus. We also include a prometheus setup in [`manifests/monitoring`](https://github.com/kubeless/kubeless/blob/master/manifests/monitoring/prometheus.yaml) to help you easier set it up. The metrics collected are: Number of calls, succeeded and error executions and the time spent per call.
 
