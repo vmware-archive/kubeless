@@ -75,6 +75,7 @@ load ../script/libtest
   test_kubeless_function get-ruby-deps
 }
 @test "Test function: get-dotnetcore" {
+  skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"
   test_kubeless_function get-dotnetcore
 }
 @test "Test function: post-python" {
@@ -87,6 +88,7 @@ load ../script/libtest
   test_kubeless_function post-ruby
 }
 @test "Test function: post-dotnetcore" {
+  skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"
   test_kubeless_function post-dotnetcore
 }
 @test "Test function: get-python-metadata" {
