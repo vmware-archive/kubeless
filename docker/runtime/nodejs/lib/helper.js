@@ -22,6 +22,7 @@ function loadFunc(name, additionalCode) {
     module: mod,
     __filename: modPath,
     __dirname: path.dirname(modPath),
+    Buffer,
     setInterval, setTimeout, setImmediate,
     clearInterval, clearTimeout, clearImmediate,
     console: console,
