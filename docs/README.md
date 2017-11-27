@@ -5,6 +5,7 @@
 - [Runtimes](runtimes.md)
 - [Ingress](ingress.md)
 - [Running on azure container services](kubeless-on-azure-container-services.md)
+- [Monitoring](monitoring.md) 
 
 ## Development
 
