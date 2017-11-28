@@ -166,6 +166,7 @@ pubsub-python:
 # then "tail -f" until it shows (with timeout)
 pubsub-python-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
+	kubeless topic publish --topic s3-python --data "$(DATA)"
 	pod=`kubectl get po -oname -l function=pubsub-python`; \
 	number="1"; \
 	timeout="60"; \
