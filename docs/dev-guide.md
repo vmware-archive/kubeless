@@ -61,16 +61,15 @@ cd $working_dir/kubeless
 make bootstrap
 ```
 
-Or if you want to use a containerized environment you can setup your build 
-environment using [minikube](https://github.com/kubernetes/minikube). If you
-have minikube installed you can start a fresh environment executing:
+Or if you want to use a containerized environment you can use [minikube](https://github.com/kubernetes/minikube). If you already have minikube
+use the following script to set it up:
 
 ```
 cd $working_dir/kubeless
 ./script/start-test-environment.sh
 ```
 
-This will start a new minikube environment and will open a bash shell in which
+This will start a new minikube virtual machine and will open a bash shell in which
 you can build any local binary or execute the tests. Note that the Kubeless code
 will be mounted from outside so you can still edit your files with your favourite
 text editor.
