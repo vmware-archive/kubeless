@@ -210,7 +210,7 @@ verify_k8s_tools() {
 }
 verify_minikube_running () {
     [[ $TEST_CONTEXT == minikube ]] || return 0
-    minikube status | grep -q "minikube: Running" && return 0
+    kubectl get nodes --context=minikube | grep -q "Ready" && return 0
     echo "ERROR: minikube not running."
     return 1
 }
@@ -262,7 +262,6 @@ deploy_function() {
         *pubsub*)
             func_topic=$(kubeless function describe "${func}" -o yaml|sed -n 's/topic: //p')
             echo_info "FUNC TOPIC: $func_topic"
-            _wait_for_kubeless_kafka_topic_ready ${func_topic:?};;
     esac
 }
 verify_function() {
