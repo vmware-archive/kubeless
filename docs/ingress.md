@@ -79,12 +79,10 @@ $ curl --data '{"Another": "Echo"}' --header "Host: get-python.192.168.99.100.ni
 
 ## Enable TLS
 
-By default, Kubeless doesn't take care of TLS setup for function. But you can do it manually. There is a [general guideline](https://docs.bitnami.com/kubernetes/how-to/secure-kubernetes-services-with-ingress-tls-letsencrypt/) to enable TLS for your Kubernetes service written by Bitnami folks. In that guide, LetsEncrypt and kube-lego are chosen. When you have it set, you can deploy function and create route with Kubeless CLI normally. Then the last step you have to do is modifying the created ingress object and adding this line to the annotation.
+By default, Kubeless doesn't take care of TLS setup for function. But you can do it manually by following the [standard procedure](https://kubernetes.io/docs/concepts/services-networking/ingress/#tls) of securing ingress. There is also [general guideline](https://docs.bitnami.com/kubernetes/how-to/secure-kubernetes-services-with-ingress-tls-letsencrypt/) to enable TLS for your Kubernetes service using LetsEncrypt and kube-lego written by Bitnami folks. When you have Kube-lego setup, you can deploy function and create route with flag `--enableTLSAcme` enabled as below:
 
 ```
-$ kubectl edit ingress route1
-...
-annotations:
-  kubernetes.io/tls-acme: 'true'
-...
+$ kubeless ingress create route1 --function get-python --enableTLSAcme
 ```
+
+Running above command, Kubeless will automatically create ingress object with annotation `kubernetes.io/tls-acme: 'true'` set.
