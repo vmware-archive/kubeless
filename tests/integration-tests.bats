@@ -22,9 +22,6 @@ load ../script/libtest
 @test "Verify needed kubernetes tools installed" {
   verify_k8s_tools
 }
-@test "Verify minikube running (if context=='minikube')" {
-  verify_minikube_running
-}
 @test "Verify k8s RBAC mode" {
   verify_rbac_mode
 }

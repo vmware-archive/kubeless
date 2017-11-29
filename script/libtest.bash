@@ -208,12 +208,6 @@ verify_k8s_tools() {
         return 1
     done
 }
-verify_minikube_running () {
-    [[ $TEST_CONTEXT == minikube ]] || return 0
-    kubectl get nodes --context=minikube | grep -q "Ready" && return 0
-    echo "ERROR: minikube not running."
-    return 1
-}
 verify_rbac_mode() {
     kubectl api-versions |&grep -q rbac && return 0
     echo "ERROR: Please run w/RBAC, eg minikube as: minikube start --extra-config=apiserver.Authorization.Mode=RBAC"
