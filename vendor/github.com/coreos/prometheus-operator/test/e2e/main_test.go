@@ -20,7 +20,10 @@ import (
 	"os"
 	"testing"
 
-	operatorFramework "github.com/coreos/prometheus-operator/test/e2e/framework"
+	"k8s.io/client-go/pkg/api"
+
+	"github.com/coreos/prometheus-operator/pkg/k8sutil"
+	operatorFramework "github.com/coreos/prometheus-operator/test/framework"
 )
 
 var framework *operatorFramework.Framework
@@ -32,7 +35,6 @@ func TestMain(m *testing.M) {
 	kubeconfig := flag.String("kubeconfig", "", "kube config path, e.g. $HOME/.kube/config")
 	opImage := flag.String("operator-image", "", "operator image, e.g. quay.io/coreos/prometheus-operator")
 	ns := flag.String("namespace", "prometheus-operator-e2e-tests", "e2e test namespace")
-	ip := flag.String("cluster-ip", "", "ip of the kubernetes cluster to use for external requests")
 	flag.Parse()
 
 	var (
@@ -40,8 +42,26 @@ func TestMain(m *testing.M) {
 		code int = 0
 	)
 
-	if framework, err = operatorFramework.New(*ns, *kubeconfig, *opImage, *ip); err != nil {
+	if framework, err = operatorFramework.New(*ns, *kubeconfig, *opImage); err != nil {
 		log.Printf("failed to setup framework: %v\n", err)
+		os.Exit(1)
+	}
+
+	err = k8sutil.WaitForCRDReady(framework.MonClient.Prometheuses(api.NamespaceAll).List)
+	if err != nil {
+		log.Printf("Prometheus CRD not ready: %v\n", err)
+		os.Exit(1)
+	}
+
+	err = k8sutil.WaitForCRDReady(framework.MonClient.ServiceMonitors(api.NamespaceAll).List)
+	if err != nil {
+		log.Printf("ServiceMonitor CRD not ready: %v\n", err)
+		os.Exit(1)
+	}
+
+	err = k8sutil.WaitForCRDReady(framework.MonClient.Alertmanagers(api.NamespaceAll).List)
+	if err != nil {
+		log.Printf("Alertmanagers CRD not ready: %v\n", err)
 		os.Exit(1)
 	}
 

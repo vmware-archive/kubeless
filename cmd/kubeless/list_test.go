@@ -27,8 +27,11 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/apimachinery"
+	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api"
@@ -41,8 +44,23 @@ import (
 )
 
 func fakeCRDClient(f func(req *http.Request) (*http.Response, error)) *restFake.RESTClient {
+	reg := registered.NewOrDie("v1")
+	legacySchema := schema.GroupVersion{
+		Group:   "",
+		Version: "v1",
+	}
+	crdSchema := schema.GroupVersion{
+		Group:   "k8s.io",
+		Version: "v1",
+	}
+	reg.RegisterGroup(apimachinery.GroupMeta{
+		GroupVersion: legacySchema,
+	})
+	reg.RegisterGroup(apimachinery.GroupMeta{
+		GroupVersion: crdSchema,
+	})
 	return &restFake.RESTClient{
-		APIRegistry:          api.Registry,
+		APIRegistry:          reg,
 		NegotiatedSerializer: api.Codecs,
 		Client:               restFake.CreateHTTPClient(f),
 	}

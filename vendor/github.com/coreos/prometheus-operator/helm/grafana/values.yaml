@@ -1,0 +1,85 @@
+nodeSelector: {}
+
+annotations: {}
+
+adminUser: "admin"
+adminPassword: "admin"
+
+service:
+
+  ## Annotations to be added to the Service
+  ##
+  annotations: {}
+
+  ## Cluster-internal IP address for Alertmanager Service
+  ##
+  clusterIP: ""
+
+  ## List of external IP addresses at which the Alertmanager Service will be available
+  ##
+  externalIPs: []
+
+  ## External IP address to assign to Alertmanager Service
+  ## Only used if service.type is 'LoadBalancer' and supported by cloud provider
+  ##
+  loadBalancerIP: ""
+
+  ## List of client IPs allowed to access Alertmanager Service
+  ## Only used if service.type is 'LoadBalancer' and supported by cloud provider
+  ##
+  loadBalancerSourceRanges: []
+
+  ## Port to expose on each node
+  ## Only used if service.type is 'NodePort'
+  ##
+  nodePort: 30902
+
+  ## Service type
+  ##
+  type: ClusterIP
+
+## Grafana Docker image
+##
+image:
+  repository: grafana/grafana
+  tag: 4.4.1
+
+storageSpec: {}
+#   class: default
+#   accessMode:
+#   resources:
+#     requests:
+#       storage: 2Gi
+#   selector: {}
+
+resources: {}
+  # requests:
+  #   memory: 400Mi
+
+ingress:
+  ## If true, Grafana Ingress will be created
+  ##
+  enabled: false
+
+  ## Annotations for Alertmanager Ingress
+  ##
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+
+  fqdn: ""
+
+  ## TLS configuration for Alertmanager Ingress
+  ## Secret must be manually created in the namespace
+  ##
+  tls: []
+    # - secretName: alertmanager-general-tls
+    #   hosts:
+    #     - alertmanager.example.com
+
+
+
+# Set datasource in beginning
+dataSource: {}
+
+serverDashboardFiles: {}

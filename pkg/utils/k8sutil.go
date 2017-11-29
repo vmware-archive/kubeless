@@ -371,7 +371,6 @@ func configureClient(group, version, apiPath string, config *rest.Config) *rest.
 	result.APIPath = apiPath
 	result.ContentType = runtime.ContentTypeJSON
 	result.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
-
 	schemeBuilder := runtime.NewSchemeBuilder(
 		func(scheme *runtime.Scheme) error {
 			scheme.AddKnownTypes(
@@ -977,7 +976,7 @@ func createServiceMonitor(funcName, ns string) error {
 		return err
 	}
 
-	_, err = smclient.ServiceMonitors(ns).Get(funcName)
+	_, err = smclient.ServiceMonitors(ns).Get(funcName, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			s := &monitoringv1alpha1.ServiceMonitor{

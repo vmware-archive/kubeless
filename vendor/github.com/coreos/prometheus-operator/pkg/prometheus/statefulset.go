@@ -30,15 +30,14 @@ import (
 	"k8s.io/client-go/pkg/apis/apps/v1beta1"
 
 	"github.com/blang/semver"
-	"github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
 
 const (
 	governingServiceName = "prometheus-operated"
-	defaultBaseImage     = "quay.io/prometheus/prometheus"
-	defaultVersion       = "v1.7.0"
+	DefaultVersion       = "v1.7.1"
 	defaultRetention     = "24h"
 
 	configMapsFilename = "configmaps.json"
@@ -52,18 +51,34 @@ var (
 		managedByOperatorLabel: managedByOperatorLabelValue,
 	}
 	probeTimeoutSeconds int32 = 3
+
+	CompatibilityMatrix = []string{
+		"v1.4.0",
+		"v1.4.1",
+		"v1.5.0",
+		"v1.5.1",
+		"v1.5.2",
+		"v1.5.3",
+		"v1.6.0",
+		"v1.6.1",
+		"v1.6.2",
+		"v1.6.3",
+		"v1.7.0",
+		"v1.7.1",
+		"v2.0.0-beta.0",
+	}
 )
 
-func makeStatefulSet(p v1alpha1.Prometheus, old *v1beta1.StatefulSet, config *Config, ruleConfigMaps []*v1.ConfigMap) (*v1beta1.StatefulSet, error) {
+func makeStatefulSet(p monitoringv1.Prometheus, old *v1beta1.StatefulSet, config *Config, ruleConfigMaps []*v1.ConfigMap) (*v1beta1.StatefulSet, error) {
 	// TODO(fabxc): is this the right point to inject defaults?
 	// Ideally we would do it before storing but that's currently not possible.
 	// Potentially an update handler on first insertion.
 
 	if p.Spec.BaseImage == "" {
-		p.Spec.BaseImage = defaultBaseImage
+		p.Spec.BaseImage = config.PrometheusDefaultBaseImage
 	}
 	if p.Spec.Version == "" {
-		p.Spec.Version = defaultVersion
+		p.Spec.Version = DefaultVersion
 	}
 	if p.Spec.Replicas != nil && *p.Spec.Replicas < minReplicas {
 		p.Spec.Replicas = &minReplicas
@@ -96,8 +111,8 @@ func makeStatefulSet(p v1alpha1.Prometheus, old *v1beta1.StatefulSet, config *Co
 	if p.Spec.ImagePullSecrets != nil && len(p.Spec.ImagePullSecrets) > 0 {
 		statefulset.Spec.Template.Spec.ImagePullSecrets = p.Spec.ImagePullSecrets
 	}
-
-	if vc := p.Spec.Storage; vc == nil {
+	storageSpec := p.Spec.Storage
+	if storageSpec == nil {
 		statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, v1.Volume{
 			Name: volumeName(p.Name),
 			VolumeSource: v1.VolumeSource{
@@ -105,34 +120,31 @@ func makeStatefulSet(p v1alpha1.Prometheus, old *v1beta1.StatefulSet, config *Co
 			},
 		})
 	} else {
-		pvc := v1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: volumeName(p.Name),
-			},
-			Spec: v1.PersistentVolumeClaimSpec{
-				AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
-				Resources:   vc.Resources,
-				Selector:    vc.Selector,
-			},
-		}
-		if len(vc.Class) > 0 {
-			pvc.ObjectMeta.Annotations = map[string]string{
-				"volume.beta.kubernetes.io/storage-class": vc.Class,
-			}
-		}
-		statefulset.Spec.VolumeClaimTemplates = append(statefulset.Spec.VolumeClaimTemplates, pvc)
+		pvcTemplate := storageSpec.VolumeClaimTemplate
+		pvcTemplate.Name = volumeName(p.Name)
+		pvcTemplate.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce}
+		pvcTemplate.Spec.Resources = storageSpec.VolumeClaimTemplate.Spec.Resources
+		pvcTemplate.Spec.Selector = storageSpec.VolumeClaimTemplate.Spec.Selector
+		statefulset.Spec.VolumeClaimTemplates = append(statefulset.Spec.VolumeClaimTemplates, pvcTemplate)
 	}
 
 	if old != nil {
 		statefulset.Annotations = old.Annotations
-
-		// mounted volumes are not reconciled as StatefulSets do not allow
-		// modification of the PodTemplate.
-		// TODO(brancz): remove this once StatefulSets allow modification of the
-		// PodTemplate.
-		statefulset.Spec.Template.Spec.Containers[0].VolumeMounts = old.Spec.Template.Spec.Containers[0].VolumeMounts
-		statefulset.Spec.Template.Spec.Volumes = old.Spec.Template.Spec.Volumes
 	}
+
+	if !config.StatefulSetUpdatesAvailable {
+		statefulset.Spec.UpdateStrategy = v1beta1.StatefulSetUpdateStrategy{}
+
+		if old != nil {
+			// Mounted volumes are not reconciled as StatefulSets do not allow
+			// modification of the PodTemplate.
+			//
+			// TODO(brancz): remove this when dropping 1.6 compatibility.
+			statefulset.Spec.Template.Spec.Containers[0].VolumeMounts = old.Spec.Template.Spec.Containers[0].VolumeMounts
+			statefulset.Spec.Template.Spec.Volumes = old.Spec.Template.Spec.Volumes
+		}
+	}
+
 	return statefulset, nil
 }
 
@@ -226,7 +238,7 @@ func makeConfigSecret(name string, configMaps []*v1.ConfigMap) (*v1.Secret, erro
 	}, nil
 }
 
-func makeStatefulSetService(p *v1alpha1.Prometheus) *v1.Service {
+func makeStatefulSetService(p *monitoringv1.Prometheus) *v1.Service {
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: governingServiceName,
@@ -251,7 +263,7 @@ func makeStatefulSetService(p *v1alpha1.Prometheus) *v1.Service {
 	return svc
 }
 
-func makeStatefulSetSpec(p v1alpha1.Prometheus, c *Config, ruleConfigMaps []*v1.ConfigMap) (*v1beta1.StatefulSetSpec, error) {
+func makeStatefulSetSpec(p monitoringv1.Prometheus, c *Config, ruleConfigMaps []*v1.ConfigMap) (*v1beta1.StatefulSetSpec, error) {
 	// Prometheus may take quite long to shut down to checkpoint existing data.
 	// Allow up to 10 minutes for clean termination.
 	terminationGracePeriod := int64(600)
@@ -264,6 +276,7 @@ func makeStatefulSetSpec(p v1alpha1.Prometheus, c *Config, ruleConfigMaps []*v1.
 	}
 
 	var promArgs []string
+	var securityContext v1.PodSecurityContext
 
 	switch version.Major {
 	case 1:
@@ -298,6 +311,8 @@ func makeStatefulSetSpec(p v1alpha1.Prometheus, c *Config, ruleConfigMaps []*v1.
 				"-storage.local.target-heap-size="+fmt.Sprintf("%d", reqMem.Value()/3*2),
 			)
 		}
+
+		securityContext = v1.PodSecurityContext{}
 	case 2:
 
 		// Prometheus 2.0 is in alpha and is highly experimental, and therefore
@@ -305,16 +320,25 @@ func makeStatefulSetSpec(p v1alpha1.Prometheus, c *Config, ruleConfigMaps []*v1.
 		// section is also regarded as experimental until a Prometheus 2.0 stable
 		// has been released. These flags will be updated to work with every new
 		// 2.0 release until a stable release. These flags are taregeted at version
-		// v2.0.0-alpha.1, there is no guarantee that these flags will continue to
+		// v2.0.0-alpha.3, there is no guarantee that these flags will continue to
 		// work for any further version, this feature is experimental and developed
 		// on a best effort basis.
 
 		promArgs = append(promArgs,
 			"-config.file=/etc/prometheus/config/prometheus.yaml",
-			"-storage.local.path=/var/prometheus/data",
-			"-storage.tsdb.no-lockfile",
+			"-storage.tsdb.path=/var/prometheus/data",
 			"-storage.tsdb.retention="+p.Spec.Retention,
+			"-web.enable-lifecycle",
 		)
+
+		gid := int64(2000)
+		uid := int64(1000)
+		nr := true
+		securityContext = v1.PodSecurityContext{
+			FSGroup: &gid,
+			RunAsNonRoot: &nr,
+			RunAsUser: &uid,
+		}
 	default:
 		return nil, errors.Errorf("unsupported Prometheus major version %s", version)
 	}
@@ -327,7 +351,13 @@ func makeStatefulSetSpec(p v1alpha1.Prometheus, c *Config, ruleConfigMaps []*v1.
 	if p.Spec.RoutePrefix != "" {
 		webRoutePrefix = p.Spec.RoutePrefix
 	}
-	promArgs = append(promArgs, "-web.route-prefix="+p.Spec.RoutePrefix)
+	promArgs = append(promArgs, "-web.route-prefix="+webRoutePrefix)
+
+	if version.Major == 2 {
+		for i, a := range promArgs {
+			promArgs[i] = "-" + a
+		}
+	}
 
 	localReloadURL := &url.URL{
 		Scheme: "http",
@@ -410,9 +440,13 @@ func makeStatefulSetSpec(p v1alpha1.Prometheus, c *Config, ruleConfigMaps []*v1.
 			Port: intstr.FromString("web"),
 		},
 	}
+
 	return &v1beta1.StatefulSetSpec{
 		ServiceName: governingServiceName,
 		Replicas:    p.Spec.Replicas,
+		UpdateStrategy: v1beta1.StatefulSetUpdateStrategy{
+			Type: v1beta1.RollingUpdateStatefulSetStrategyType,
+		},
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
@@ -463,6 +497,7 @@ func makeStatefulSetSpec(p v1alpha1.Prometheus, c *Config, ruleConfigMaps []*v1.
 						},
 					},
 				},
+				SecurityContext:               &securityContext,
 				ServiceAccountName:            p.Spec.ServiceAccountName,
 				NodeSelector:                  p.Spec.NodeSelector,
 				TerminationGracePeriodSeconds: &terminationGracePeriod,
@@ -484,7 +519,7 @@ func prefixedName(name string) string {
 	return fmt.Sprintf("prometheus-%s", name)
 }
 
-func subPathForStorage(s *v1alpha1.StorageSpec) string {
+func subPathForStorage(s *monitoringv1.StorageSpec) string {
 	if s == nil {
 		return ""
 	}

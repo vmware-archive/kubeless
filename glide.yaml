@@ -3,14 +3,14 @@ import:
 - package: github.com/sirupsen/logrus
 - package: github.com/spf13/cobra
 - package: k8s.io/apimachinery
-  version: 85ace5365f33b16fc735c866a12e3c765b9700f2
+  version: 1fd2e63a9a370677308a42f24fd40c86438afddf
 - package: k8s.io/client-go
   subpackages:
     - plugin/pkg/client/auth/gcp
-  version: v3.0.0
+  version: v4.0.0
 - package: github.com/gosuri/uitable
 - package: github.com/coreos/prometheus-operator
-  version: v0.10.1
+  version: 0.12.0
   subpackages:
   - pkg/client/monitoring/v1alpha1
 - package: github.com/robfig/cron

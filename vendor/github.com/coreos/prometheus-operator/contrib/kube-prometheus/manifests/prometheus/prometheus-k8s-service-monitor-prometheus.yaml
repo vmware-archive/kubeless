@@ -1,9 +1,9 @@
-apiVersion: monitoring.coreos.com/v1alpha1
+apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: prometheus
   labels:
-    app: prometheus
+    k8s-app: prometheus
 spec:
   selector:
     matchLabels:

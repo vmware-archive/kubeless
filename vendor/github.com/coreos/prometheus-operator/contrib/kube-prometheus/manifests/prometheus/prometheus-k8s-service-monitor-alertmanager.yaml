@@ -1,9 +1,9 @@
-apiVersion: monitoring.coreos.com/v1alpha1
+apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: alertmanager
   labels:
-    app: alertmanager
+    k8s-app: alertmanager
 spec:
   selector:
     matchLabels:
