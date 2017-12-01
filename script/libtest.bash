@@ -254,7 +254,7 @@ verify_function() {
     k8s_wait_for_pod_ready -l function=${func}
     case "${func}" in
         *pubsub*)
-            _wait_for_kubeless_kafka_server_ready;;
+            _wait_for_kubeless_kafka_server_ready
             func_topic=$(kubeless function describe "${func}" -o yaml|sed -n 's/topic: //p')
             echo_info "FUNC TOPIC: $func_topic"
     esac
