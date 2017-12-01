@@ -819,8 +819,40 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 	return err
 }
 
+func doRESTReq(restIface rest.Interface, groupVersion, verb, resource, elem, namespace string, body *[]byte) ([]byte, error) {
+	var req *rest.Request
+	switch verb {
+	case "get":
+		req = restIface.Get().Name(elem)
+		break
+	case "create":
+		req = restIface.Post().Body(*body)
+		break
+	case "update":
+		req = restIface.Put().Name(elem).Body(*body)
+		break
+	default:
+		return []byte{}, fmt.Errorf("Verb %s not supported", verb)
+	}
+	return req.AbsPath("apis", groupVersion, "namespaces", namespace, resource).DoRaw()
+}
+
+func doRESTCronJobReq(restIface rest.Interface, groupVersion, verb, elem, namespace string, body *[]byte) (batchv2alpha1.CronJob, error) {
+	jsonCronJob, err := doRESTReq(restIface, groupVersion, verb, "cronjobs", elem, namespace, body)
+	if err != nil {
+		return batchv2alpha1.CronJob{}, err
+	}
+	res := batchv2alpha1.CronJob{}
+	// We cannot use Into method to avoid the schema validation
+	err = json.Unmarshal(jsonCronJob, &res)
+	if err != nil {
+		return batchv2alpha1.CronJob{}, err
+	}
+	return res, nil
+}
+
 // EnsureFuncCronJob creates/updates a function cron job
-func EnsureFuncCronJob(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+func EnsureFuncCronJob(client rest.Interface, funcObj *spec.Function, or []metav1.OwnerReference, groupVersion string) error {
 	var maxSucccessfulHist, maxFailedHist int32
 	maxSucccessfulHist = 3
 	maxFailedHist = 1
@@ -835,9 +867,11 @@ func EnsureFuncCronJob(client kubernetes.Interface, funcObj *spec.Function, or [
 		timeout, _ = strconv.Atoi(defaultTimeout)
 	}
 	activeDeadlineSeconds := int64(timeout)
+	jobName := fmt.Sprintf("trigger-%s", funcObj.Metadata.Name)
 	job := &batchv2alpha1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            fmt.Sprintf("trigger-%s", funcObj.Metadata.Name),
+			Name:            jobName,
+			Namespace:       funcObj.Metadata.Namespace,
 			Labels:          funcObj.Metadata.Labels,
 			OwnerReferences: or,
 		},
@@ -865,16 +899,29 @@ func EnsureFuncCronJob(client kubernetes.Interface, funcObj *spec.Function, or [
 		},
 	}
 
-	_, err := client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Create(job)
+	// We need to use directly the REST API since the endpoint
+	// for CronJobs changes from Kubernetes 1.8
+	jobJSON, err := json.Marshal(job)
+	if err != nil {
+		return err
+	}
+	_, err = doRESTCronJobReq(client, groupVersion, "create", jobName, funcObj.Metadata.Namespace, &jobJSON)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var data []byte
-		data, err = json.Marshal(job)
+		newCronJob := batchv2alpha1.CronJob{}
+		newCronJob, err = doRESTCronJobReq(client, groupVersion, "get", jobName, funcObj.Metadata.Namespace, nil)
 		if err != nil {
 			return err
 		}
-		_, err = client.BatchV2alpha1().CronJobs(funcObj.Metadata.Namespace).Patch(job.Name, types.StrategicMergePatchType, data)
+		newCronJob.ObjectMeta.Labels = funcObj.Metadata.Labels
+		newCronJob.ObjectMeta.OwnerReferences = or
+		newCronJob.Spec = job.Spec
+		newCronJobJSON := []byte{}
+		newCronJobJSON, err = json.Marshal(newCronJob)
+		if err != nil {
+			return err
+		}
+		_, err = doRESTCronJobReq(client, groupVersion, "update", jobName, funcObj.Metadata.Namespace, &newCronJobJSON)
 	}
-
 	return err
 }
 
