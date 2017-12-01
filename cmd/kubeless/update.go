@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"io/ioutil"
 	"strings"
 
 	"github.com/kubeless/kubeless/pkg/langruntime"
@@ -108,13 +109,26 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		deps, err := cmd.Flags().GetString("dependencies")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		funcDeps := ""
+		if deps != "" {
+			bytes, err := ioutil.ReadFile(deps)
+			if err != nil {
+				logrus.Fatalf("Unable to read file %s: %v", deps, err)
+			}
+			funcDeps = string(bytes)
+		}
+
 		previousFunction, err := utils.GetFunction(funcName, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
 		cli := utils.GetClientOutOfCluster()
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, "", runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, envs, labels, previousFunction)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, envs, labels, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -141,6 +155,7 @@ func init() {
 	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
 	updateCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function")
 	updateCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
+	updateCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
 	updateCmd.Flags().StringP("trigger-topic", "", "", "Deploy a pubsub function to Kubeless")
 	updateCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	updateCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")

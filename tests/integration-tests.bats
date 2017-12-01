@@ -50,6 +50,9 @@ load ../script/libtest
 @test "Test function update: get-python" {
   test_kubeless_function_update get-python
 }
+@test "Test function update: get-python-deps" {
+  test_kubeless_function_update get-python-deps
+}
 @test "Test function ingress: get-python" {
   test_kubeless_ingress get-python
 }
