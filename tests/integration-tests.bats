@@ -28,21 +28,31 @@ load ../script/libtest
 @test "Test simple function failure without RBAC rules" {
   test_must_fail_without_rbac_roles
 }
-@test "Test simple function success with proper RBAC rules" {
-  test_must_pass_with_rbac_roles
-}
 # 'bats' lacks loop support, unroll-them-all ->
+@test "Deploy functions to evaluate" {
+  deploy_function get-python
+  deploy_function get-python-deps
+  deploy_function scheduled-get-python
+  deploy_function get-nodejs
+  deploy_function get-nodejs-deps
+  deploy_function timeout-nodejs
+  deploy_function get-nodejs-multi
+  deploy_function get-ruby
+  deploy_function get-ruby-deps
+  deploy_function get-python-metadata
+  deploy_function post-nodejs
+  deploy_function post-ruby
+  deploy_function pubsub-python
+  deploy_function pubsub-python34
+  deploy_function pubsub-nodejs
+  deploy_function pubsub-ruby
+  deploy_function webserver
+}
 @test "Test function: get-python" {
-  test_kubeless_function get-python
+  verify_function get-python
 }
 @test "Test function: get-python-deps" {
-  test_kubeless_function get-python-deps
-}
-@test "Test function: scheduled-get-python (part I)" {
-  # We just deploy the function in this test
-  # to give the cron job time to execute the
-  # function before verifying
-  deploy_function scheduled-get-python
+  verify_function get-python-deps
 }
 @test "Test function update: get-python" {
   test_kubeless_function_update get-python
@@ -57,59 +67,59 @@ load ../script/libtest
   test_kubeless_autoscale get-python
 }
 @test "Test function: get-nodejs" {
-  test_kubeless_function get-nodejs
+  verify_function get-nodejs
 }
 @test "Test function: get-nodejs-deps" {
-  test_kubeless_function get-nodejs-deps
+  verify_function get-nodejs-deps
 }
 @test "Test function: timeout-nodejs" {
-  test_kubeless_function timeout-nodejs
+  verify_function timeout-nodejs
 }
 @test "Test function: get-nodejs-multi" {
-  test_kubeless_function get-nodejs-multi
+  verify_function get-nodejs-multi
 }
 @test "Test function: get-ruby" {
-  test_kubeless_function get-ruby
+  verify_function get-ruby
 }
 @test "Test function: get-ruby-deps" {
-  test_kubeless_function get-ruby-deps
+  verify_function get-ruby-deps
 }
 @test "Test function: get-dotnetcore" {
   skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"
   test_kubeless_function get-dotnetcore
 }
 @test "Test function: post-python" {
-  test_kubeless_function post-python
+  verify_function post-python
 }
 @test "Test function: post-nodejs" {
-  test_kubeless_function post-nodejs
+  verify_function post-nodejs
 }
 @test "Test function: post-ruby" {
-  test_kubeless_function post-ruby
+  verify_function post-ruby
 }
 @test "Test function: post-dotnetcore" {
   skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"
   test_kubeless_function post-dotnetcore
 }
 @test "Test function: get-python-metadata" {
-  test_kubeless_function get-python-metadata
+  verify_function get-python-metadata
 }
 @test "Test function: pubsub-python" {
-  test_kubeless_function pubsub-python
+  verify_function pubsub-python
 }
 @test "Test function: pubsub-python34" {
-  test_kubeless_function pubsub-python34
+  verify_function pubsub-python34
 }
 @test "Test function update: pubsub-python" {
-  test_kubeless_function_update pubsub-python
+  verify_function pubsub-python
 }
 @test "Test function: pubsub-nodejs" {
-  test_kubeless_function pubsub-nodejs
+  verify_function pubsub-nodejs
 }
 @test "Test function: pubsub-ruby" {
-  test_kubeless_function pubsub-ruby
+  verify_function pubsub-ruby
 }
-@test "Test function: scheduled-get-python (part II)" {
+@test "Test function: scheduled-get-python" {
   # Now we can verify the scheduled function
   # without having to wait
   verify_function scheduled-get-python
@@ -129,7 +139,6 @@ load ../script/libtest
   test_topic_deletion
 }
 @test "Test custom runtime image" {
-  deploy_function webserver
   wait_for_endpoint webserver
   verify_function webserver
   update_function webserver
