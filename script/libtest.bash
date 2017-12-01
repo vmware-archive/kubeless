@@ -246,6 +246,9 @@ test_must_pass_with_rbac_roles() {
 deploy_function() {
     local func=${1:?} func_topic
     echo_info "TEST: $func"
+    case "${func}" in
+        *pubsub*) _wait_for_kubeless_kafka_server_ready;;
+    esac
     kubeless_function_delete ${func}
     make -sC examples ${func}
 }
@@ -254,7 +257,6 @@ verify_function() {
     k8s_wait_for_pod_ready -l function=${func}
     case "${func}" in
         *pubsub*)
-            _wait_for_kubeless_kafka_server_ready
             func_topic=$(kubeless function describe "${func}" -o yaml|sed -n 's/topic: //p')
             echo_info "FUNC TOPIC: $func_topic"
     esac
