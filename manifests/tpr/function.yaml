@@ -1,7 +1,0 @@
-apiVersion: extensions/v1beta1
-description: 'Kubeless: Serverless framework for Kubernetes'
-kind: ThirdPartyResource
-metadata:
-  name: function.k8s.io
-versions:
-- name: v1
