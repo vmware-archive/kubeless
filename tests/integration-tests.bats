@@ -46,10 +46,6 @@ load ../script/libtest
   deploy_function post-python
   deploy_function post-nodejs
   deploy_function post-ruby
-  deploy_function pubsub-python
-  deploy_function pubsub-python34
-  deploy_function pubsub-nodejs
-  deploy_function pubsub-ruby
   deploy_function webserver
 }
 @test "Test function: get-python" {
@@ -92,6 +88,13 @@ load ../script/libtest
   skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"
   test_kubeless_function get-dotnetcore
 }
+@test "Test custom runtime image" {
+  wait_for_endpoint webserver
+  verify_function webserver
+  update_function webserver
+  wait_for_endpoint webserver
+  verify_update_function webserver
+}
 @test "Test function: post-python" {
   verify_function post-python
 }
@@ -107,6 +110,13 @@ load ../script/libtest
 }
 @test "Test function: get-python-metadata" {
   verify_function get-python-metadata
+}
+@test "Deploy functions to evaluate (kafka dependent)" {
+  wait_for_kubeless_kafka_server_ready
+  deploy_function pubsub-python
+  deploy_function pubsub-python34
+  deploy_function pubsub-nodejs
+  deploy_function pubsub-ruby
 }
 @test "Test function: pubsub-python" {
   verify_function pubsub-python
@@ -141,13 +151,6 @@ load ../script/libtest
 }
 @test "Test topic deletion" {
   test_topic_deletion
-}
-@test "Test custom runtime image" {
-  wait_for_endpoint webserver
-  verify_function webserver
-  update_function webserver
-  wait_for_endpoint webserver
-  verify_update_function webserver
 }
 @test "Verify Kafka after restart (if context=='minikube')" {
     local topic=$RANDOM

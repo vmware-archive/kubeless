@@ -155,7 +155,7 @@ _wait_for_kubeless_controller_logline() {
     local string="${1:?}"
     k8s_wait_for_pod_logline "${string}" -n kubeless -l kubeless=controller
 }
-_wait_for_kubeless_kafka_server_ready() {
+wait_for_kubeless_kafka_server_ready() {
     [[ $(kubectl get pod -n kubeless kafka-0 -ojsonpath='{.metadata.annotations.ready}') == true ]] && return 0
     local test_topic=$RANDOM
     echo_info "Waiting for kafka-0 to be ready ..."
@@ -241,9 +241,6 @@ redeploy_with_rbac_roles() {
 deploy_function() {
     local func=${1:?} func_topic
     echo_info "TEST: $func"
-    case "${func}" in
-        *pubsub*) _wait_for_kubeless_kafka_server_ready;;
-    esac
     kubeless_function_delete ${func}
     make -sC examples ${func}
 }
