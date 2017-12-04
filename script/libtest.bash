@@ -155,7 +155,7 @@ _wait_for_kubeless_controller_logline() {
     local string="${1:?}"
     k8s_wait_for_pod_logline "${string}" -n kubeless -l kubeless=controller
 }
-_wait_for_kubeless_kafka_server_ready() {
+wait_for_kubeless_kafka_server_ready() {
     [[ $(kubectl get pod -n kubeless kafka-0 -ojsonpath='{.metadata.annotations.ready}') == true ]] && return 0
     local test_topic=$RANDOM
     echo_info "Waiting for kafka-0 to be ready ..."
@@ -232,34 +232,26 @@ test_must_fail_without_rbac_roles() {
     _wait_for_kubeless_controller_logline "User.*cannot"
     _call_simple_function 1
 }
-test_must_pass_with_rbac_roles() {
-    echo_info "RBAC TEST: function deploy/call must succeed with RBAC roles"
-    _delete_simple_function
+redeploy_with_rbac_roles() {
     kubeless_recreate $KUBELESS_JSONNET_RBAC $KUBELESS_JSONNET_RBAC
     _wait_for_kubeless_controller_ready
-    _deploy_simple_function
     _wait_for_kubeless_controller_logline "controller synced and ready"
-    _wait_for_simple_function_pod_ready
-    _call_simple_function 0
 }
 
 deploy_function() {
     local func=${1:?} func_topic
     echo_info "TEST: $func"
-    case "${func}" in
-        *pubsub*) _wait_for_kubeless_kafka_server_ready;;
-    esac
     kubeless_function_delete ${func}
     make -sC examples ${func}
+}
+verify_function() {
+    local func=${1:?}
     k8s_wait_for_pod_ready -l function=${func}
     case "${func}" in
         *pubsub*)
             func_topic=$(kubeless function describe "${func}" -o yaml|sed -n 's/topic: //p')
             echo_info "FUNC TOPIC: $func_topic"
     esac
-}
-verify_function() {
-    local func=${1:?}
     make -sC examples ${func}-verify
 }
 test_kubeless_function() {
@@ -323,5 +315,6 @@ sts_restart() {
     kubectl delete pod zoo-0 -n kubeless
     k8s_wait_for_uniq_pod -l kubeless=zookeeper -n kubeless
     k8s_wait_for_uniq_pod -l kubeless=kafka -n kubeless
+    wait_for_kubeless_kafka_server_ready
 }
 # vim: sw=4 ts=4 et si

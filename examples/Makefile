@@ -137,6 +137,18 @@ get-dotnetcore:
 get-dotnetcore-verify:
 	kubeless function call get-dotnetcore |egrep hello.world
 
+custom-get-python:
+	kubeless function deploy --runtime-image kubeless/get-python-example@sha256:a922942597ce617adbe808b9f0cdc3cf7ff987a1277adf0233dd47be5d85082a custom-get-python
+
+custom-get-python-verify:
+	kubeless function call custom-get-python |egrep hello.world
+
+custom-get-python-update:
+	kubeless function update --runtime-image kubeless/get-python-example@sha256:d2ca4ab086564afbac6d30c29614f1623ddb9163b818537742c42fd785fcf2ce custom-get-python
+
+custom-get-python-update-verify:
+	kubeless function call custom-get-python |egrep hello.world.updated
+
 get: get-python get-nodejs get-python-metadata get-ruby get-ruby-deps
 
 post-python:
@@ -266,15 +278,3 @@ pubsub-ruby-verify:
 	$$found
 
 post: pubsub-python pubsub-nodejs pubsub-ruby
-
-webserver:
-	kubeless function deploy --env APACHE_HTTP_PORT_NUMBER=8080 --runtime-image bitnami/apache:2.4.27-r0 webserver
-
-webserver-verify:
-	kubeless function call webserver |egrep "It works!"
-
-webserver-update:
-	kubeless function update --env NGINX_HTTP_PORT_NUMBER=8080 --runtime-image bitnami/nginx:1.12.1-r2 webserver
-
-webserver-update-verify:
-	kubeless function call webserver |egrep "Welcome to nginx!"
