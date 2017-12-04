@@ -232,15 +232,10 @@ test_must_fail_without_rbac_roles() {
     _wait_for_kubeless_controller_logline "User.*cannot"
     _call_simple_function 1
 }
-test_must_pass_with_rbac_roles() {
-    echo_info "RBAC TEST: function deploy/call must succeed with RBAC roles"
-    _delete_simple_function
+redeploy_with_rbac_roles() {
     kubeless_recreate $KUBELESS_JSONNET_RBAC $KUBELESS_JSONNET_RBAC
     _wait_for_kubeless_controller_ready
-    _deploy_simple_function
     _wait_for_kubeless_controller_logline "controller synced and ready"
-    _wait_for_simple_function_pod_ready
-    _call_simple_function 0
 }
 
 deploy_function() {

@@ -28,6 +28,9 @@ load ../script/libtest
 @test "Test simple function failure without RBAC rules" {
   test_must_fail_without_rbac_roles
 }
+@test "Redeploy with proper RBAC rules" {
+  redeploy_with_rbac_roles
+}
 # 'bats' lacks loop support, unroll-them-all ->
 @test "Deploy functions to evaluate" {
   deploy_function get-python
