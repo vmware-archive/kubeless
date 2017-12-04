@@ -43,6 +43,7 @@ load ../script/libtest
   deploy_function get-ruby
   deploy_function get-ruby-deps
   deploy_function get-python-metadata
+  deploy_function post-python
   deploy_function post-nodejs
   deploy_function post-ruby
   deploy_function pubsub-python
