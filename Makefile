@@ -88,3 +88,6 @@ bootstrap: bats ksonnet-lib
 	wget -O $$GOPATH/bin/kubecfg https://github.com/ksonnet/kubecfg/releases/download/v0.4.0/kubecfg-$$(go env GOOS)-$$(go env GOARCH); \
 	chmod +x $$GOPATH/bin/kubecfg; \
 	fi
+
+build_and_test:
+	./script/start-test-environment.sh "make binary && make controller-image CONTROLLER_IMAGE=bitnami/kubeless-controller:latest && make integration-tests"

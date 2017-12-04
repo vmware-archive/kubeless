@@ -42,7 +42,20 @@ scheduled-get-python:
 	kubeless function deploy scheduled-get-python --schedule "* * * * *" --runtime python2.7 --handler helloget.foo --from-file python/helloget.py
 
 scheduled-get-python-verify:
-	bash -c 'grep -q "GET / HTTP/1.1\" 200 11 \"\" \"Wget\"" <(timeout 70 kubectl logs -f $$(kubectl get po -l function=scheduled-get-python -oname))'
+	pod=`kubectl get po -oname -l function=scheduled-get-python`; \
+	number="1"; \
+	timeout="70"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		logs=`kubectl logs $$pod | grep "GET / HTTP/1.1\" 200 11 \"\" \"Wget\""`; \
+    	if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
 
 timeout-python:
 	$(eval TMPDIR := $(shell mktemp -d))
@@ -75,7 +88,7 @@ get-nodejs-deps:
 	kubeless function deploy get-nodejs-deps --trigger-http --runtime nodejs6 --handler helloget.handler --from-file nodejs/hellowithdeps.js --dependencies nodejs/package.json
 
 get-nodejs-deps-verify:
-	kubeless function call get-nodejs-deps --data '{"hello": "world"}' |egrep '{"hello":"world","date"'
+	kubeless function call get-nodejs-deps --data '{"hello": "world"}' | grep -q '"hello":"world","date"'
 
 get-nodejs-multi:
 	cd nodejs; zip helloFunctions.zip *js
@@ -162,9 +175,22 @@ pubsub-python:
 # Generate a random string to inject into s3 topic,
 # then "tail -f" until it shows (with timeout)
 pubsub-python-verify:
-	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	kubeless topic publish --topic s3-python --data "$(DATA)"
-	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-python))'
+	pod=`kubectl get po -oname -l function=pubsub-python`; \
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+    	if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
 
 pubsub-python-update:
 	kubeless topic create s3-python-2
@@ -178,27 +204,66 @@ pubsub-python34:
 	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/pubsub.py
 
 pubsub-python34-verify:
-	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	kubeless topic publish --topic s3-python34 --data "$(DATA)"
-	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-python34))'
+	pod=`kubectl get po -oname -l function=pubsub-python34`; \
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+    	if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
 
 pubsub-nodejs:
 	kubeless topic create s3-nodejs
 	kubeless function deploy pubsub-nodejs --trigger-topic s3-nodejs --runtime nodejs6 --handler pubsub-nodejs.handler --from-file nodejs/helloevent.js
 
 pubsub-nodejs-verify:
-	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	kubeless topic publish --topic s3-nodejs --data '{"test": "$(DATA)"}'
-	bash -c 'grep -q "{\"test\": \"$(DATA)\"}" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-nodejs))'
+	pod=`kubectl get po -oname -l function=pubsub-nodejs`; \
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+    	if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
 
 pubsub-ruby:
 	kubeless topic create s3-ruby
 	kubeless function deploy pubsub-ruby --trigger-topic s3-ruby --runtime ruby2.4 --handler pubsub-ruby.handler --from-file ruby/helloevent.rb
 
 pubsub-ruby-verify:
-	$(eval DATA := $(shell mktemp -u -p entry -t XXXXXXXX))
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	kubeless topic publish --topic s3-ruby --data "$(DATA)"
-	bash -c 'grep -q "$(DATA)" <(timeout 60 kubectl logs -f $$(kubectl get po -oname|grep pubsub-ruby))'
+	pod=`kubectl get po -oname -l function=pubsub-ruby`; \
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+    	if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
 
 post: pubsub-python pubsub-nodejs pubsub-ruby
 

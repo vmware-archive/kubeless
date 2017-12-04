@@ -208,12 +208,6 @@ verify_k8s_tools() {
         return 1
     done
 }
-verify_minikube_running () {
-    [[ $TEST_CONTEXT == minikube ]] || return 0
-    minikube status | grep -q "minikube: Running" && return 0
-    echo "ERROR: minikube not running."
-    return 1
-}
 verify_rbac_mode() {
     kubectl api-versions |&grep -q rbac && return 0
     echo "ERROR: Please run w/RBAC, eg minikube as: minikube start --extra-config=apiserver.Authorization.Mode=RBAC"
@@ -262,7 +256,6 @@ deploy_function() {
         *pubsub*)
             func_topic=$(kubeless function describe "${func}" -o yaml|sed -n 's/topic: //p')
             echo_info "FUNC TOPIC: $func_topic"
-            _wait_for_kubeless_kafka_topic_ready ${func_topic:?};;
     esac
 }
 verify_function() {

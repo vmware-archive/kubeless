@@ -61,6 +61,18 @@ cd $working_dir/kubeless
 make bootstrap
 ```
 
+Or if you want to use a containerized environment you can use [minikube](https://github.com/kubernetes/minikube). If you already have minikube
+use the following script to set it up:
+
+```
+cd $working_dir/kubeless
+./script/start-test-environment.sh
+```
+
+This will start a new minikube virtual machine and will open a bash shell in which
+you can build any local binary or execute the tests. Note that the Kubeless code
+will be mounted from outside so you can still edit your files with your favourite
+text editor.
 
 ### Building local binaries
 
@@ -151,56 +163,35 @@ Likely you go back and edit/build/test some more then `commit --amend` in a few 
 $ git push origin myfeature
 ```
 
+### Testing kubeless with local minikube
+
+The simplest way to try kubeless is deploying it with
+[minikube](https://github.com/kubernetes/minikube)
+
+You can start working with the local minikube VM and test your changes 
+building the controller image and running your tests. Once you are happy 
+with the result and you are ready to send a pull request you should run 
+the unit and end-to-end tests (to spot possible issues with your changes):
+
+```
+$ make validation
+$ make test
+$ make build_and_test
+```
+
+Note that for running the end-to-end tests you need to provide a clean 
+profile of minikube (you can create a specific profile for the tests with 
+`minikube profile tests`).
+
+Any new feature/bug fix made to the code should be accompanied by a unit or
+end to end test.
+
 ### Create a pull request
 
 1. Visit your fork at https://github.com/$your_github_username/kubeless.
 2. Click the `Compare & pull request` button next to your `myfeature` branch.
 3. Make sure you fill up clearly the description, point out the particular
    issue your PR is mitigating, and ask for code review.
-
-## Testing kubeless with local minikube
-
-The simplest way to try kubeless is deploying it with
-[minikube](https://github.com/kubernetes/minikube)
-
-```
-$ minikube start
-```
-
-You can choose to start minikube vm with your preferred VM driver (virtualbox
-xhyve vmwarefusion)
-
-```
-# Install Kubeless
-$ export RELEASE=v0.2.2
-$ kubectl create ns kubeless
-$ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
-
-# Verify the installation
-$ kubectl get po --all-namespaces
-NAMESPACE     NAME                                   READY     STATUS    RESTARTS   AGE
-kube-system   heapster-ptbc4                         1/1       Running   27         55d
-kube-system   influxdb-grafana-ml60t                 2/2       Running   54         55d
-kube-system   kube-addon-manager-minikube            1/1       Running   27         55d
-kube-system   kube-dns-v20-p8k3c                     3/3       Running   81         55d
-kube-system   kubernetes-dashboard-s9dv1             1/1       Running   27         55d
-kubeless      kafka-controller-2158053540-3q6pv      2/2       Running   2          11h
-kubeless      kubeless-controller-2330759281-d0l4v   2/2       Running   4          11h
-```
-
-Make sure your have `kubeless-controller` and `kafka-controller` running at the
-default `kubeless` namespace. For problems you might have with
-kubeless-controller, remember to take a look at its log:
-
-```
-$ kubectl logs kubeless-controller-2330759281-d0l4v -n kubeless -c kubeless -f
-```
-
-Or you might wanna check log of a particular function deployed to kubeless.
-
-```
-$ kubeless function logs <function_name> -f
-```
 
 ## Scripting build and publishing
 
