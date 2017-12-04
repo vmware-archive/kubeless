@@ -89,10 +89,10 @@ load ../script/libtest
   test_kubeless_function get-dotnetcore
 }
 @test "Test custom runtime image" {
-  wait_for_endpoint webserver
+  k8s_wait_for_pod_logline "Starting.apache" -l function=webserver
   verify_function webserver
   update_function webserver
-  wait_for_endpoint webserver
+  k8s_wait_for_pod_logline "Starting.nginx" -l function=webserver
   verify_update_function webserver
 }
 @test "Test function: post-python" {
