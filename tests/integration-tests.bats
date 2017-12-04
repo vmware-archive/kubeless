@@ -139,7 +139,7 @@ load ../script/libtest
   verify_function scheduled-get-python
 }
 @test "Test topic list" {
-  _wait_for_kubeless_kafka_server_ready
+  wait_for_kubeless_kafka_server_ready
   for topic in topic1 topic2; do
     kubeless topic create $topic
     _wait_for_kubeless_kafka_topic_ready $topic
