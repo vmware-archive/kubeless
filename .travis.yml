@@ -23,6 +23,8 @@ install:
   - make bootstrap
 
 script:
+  - ./script/prepare-integration-tests.sh &
+  - PREPARE_PID=$!
   - make test
   - make validation
   - make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
@@ -35,6 +37,8 @@ script:
     if [ "$TRAVIS_OS_NAME" = linux ]; then
       export TEST_DEBUG=1
       docker tag $CONTROLLER_IMAGE ${CONTROLLER_IMAGE_NAME}:latest
+      echo 'Waiting for integration tests environment'
+      wait $PREPARE_PID
       make integration-tests
     fi
 
