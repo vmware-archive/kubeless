@@ -315,5 +315,6 @@ sts_restart() {
     kubectl delete pod zoo-0 -n kubeless
     k8s_wait_for_uniq_pod -l kubeless=zookeeper -n kubeless
     k8s_wait_for_uniq_pod -l kubeless=kafka -n kubeless
+    wait_for_kubeless_kafka_server_ready
 }
 # vim: sw=4 ts=4 et si
