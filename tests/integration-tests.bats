@@ -46,7 +46,7 @@ load ../script/libtest
   deploy_function post-python
   deploy_function post-nodejs
   deploy_function post-ruby
-  deploy_function webserver
+  deploy_function custom-get-python
 }
 @test "Test function: get-python" {
   verify_function get-python
@@ -89,11 +89,8 @@ load ../script/libtest
   test_kubeless_function get-dotnetcore
 }
 @test "Test custom runtime image" {
-  k8s_wait_for_pod_logline "Starting.apache" -l function=webserver
-  verify_function webserver
-  update_function webserver
-  k8s_wait_for_pod_logline "Starting.nginx" -l function=webserver
-  verify_update_function webserver
+  verify_function custom-get-python
+  test_kubeless_function_update custom-get-python
 }
 @test "Test function: post-python" {
   verify_function post-python
