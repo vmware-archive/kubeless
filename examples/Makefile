@@ -21,6 +21,16 @@ get-python-deps:
 get-python-deps-verify:
 	kubeless function call get-python-deps |egrep Google
 
+get-python-deps-update:
+	$(eval TMPDIR := $(shell mktemp -d))
+	printf 'bs4\ntwitter\n' > $(TMPDIR)/requirements.txt
+	kubeless function update get-python-deps --dependencies $(TMPDIR)/requirements.txt
+	rm -rf $(TMPDIR)
+
+get-python-deps-update-verify:
+	$(eval pod := $(shell kubectl get pod -l function=get-python-deps -o go-template -o custom-columns=:metadata.name --no-headers=true))
+	kubectl exec -it $(pod) pip freeze | grep -q "twitter=="
+
 get-python-34:
 	kubeless function deploy get-python --trigger-http --runtime python3.4 --handler helloget.foo --from-file python/helloget.py
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python/"
