@@ -170,6 +170,26 @@ func (c *Controller) processNextItem() bool {
 	return true
 }
 
+func (c *Controller) getResouceGroupVersion(target string) (string, error) {
+	resources, err := c.clientset.Discovery().ServerResources()
+	if err != nil {
+		return "", err
+	}
+	groupVersion := ""
+	for _, resource := range resources {
+		for _, apiResource := range resource.APIResources {
+			if apiResource.Name == target {
+				groupVersion = resource.GroupVersion
+				break
+			}
+		}
+	}
+	if groupVersion == "" {
+		return "", fmt.Errorf("Resource %s not found in any group", target)
+	}
+	return groupVersion, nil
+}
+
 // ensureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
 func (c *Controller) ensureK8sResources(funcObj *spec.Function) error {
 	if len(funcObj.Metadata.Labels) == 0 {
@@ -204,7 +224,12 @@ func (c *Controller) ensureK8sResources(funcObj *spec.Function) error {
 	}
 
 	if funcObj.Spec.Type == "Scheduled" {
-		err = utils.EnsureFuncCronJob(c.clientset, funcObj, or)
+		restIface := c.clientset.BatchV2alpha1().RESTClient()
+		groupVersion, err := c.getResouceGroupVersion("cronjobs")
+		if err != nil {
+			return err
+		}
+		err = utils.EnsureFuncCronJob(restIface, funcObj, or, groupVersion)
 		if err != nil {
 			return err
 		}
