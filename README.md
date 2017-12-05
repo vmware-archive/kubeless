@@ -244,3 +244,13 @@ We would love to get your help, feel free to land a hand. We are currently looki
 * Optimize for functions startup time
 * Add distributed tracing (maybe using istio)
 * Decouple the triggers and runtimes
+
+## Community
+
+**Issues**: If you find any issues, please [file it](https://github.com/kubeless/kubeless/issues).
+
+**Meetings**: [Thursday at 10:30 UTC](https://meet.google.com/rbr-gcjp-xxz) (Weekly). [Convert to your timezone](http://www.thetimezoneconverter.com/?t=10:30&tz=UTC)
+
+Meeting notes and agenda can be found [here](https://docs.google.com/document/d/1-OsikjjQVHVFoXBHUbkRogrzzZijQ9MumFpLfWCCjwk/edit). Meeting records can be found [here](https://www.youtube.com/user/bitrock5/)
+
+**Slack**: We're fairly active on [slack](http://slack.oss.bitnami.com) and you can find us in the #kubeless channel.
