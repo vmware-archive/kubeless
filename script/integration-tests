@@ -39,13 +39,6 @@ install_bin() {
     test -n "${TRAVIS}" && sudo install -v ${exe} /usr/local/bin || install ${exe} ${GOPATH:?}/bin
 }
 
-which kubectl || {
-    KUBECTL_VERSION=$(wget -qO- https://storage.googleapis.com/kubernetes-release/release/stable.txt)
-    wget --no-clobber \
-        https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl
-    install_bin ./kubectl
-}
-
 # Start a k8s cluster (minikube, dind) if not running
 kubectl get nodes --context=${INTEGRATION_TESTS_CTX:?} || {
     cluster_up=./script/cluster-up-${INTEGRATION_TESTS_CTX}.sh
