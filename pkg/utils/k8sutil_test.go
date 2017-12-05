@@ -762,7 +762,11 @@ func TestCreateAutoscaleResource(t *testing.T) {
 	min := int32(1)
 	max := int32(10)
 	clientset := fake.NewSimpleClientset()
-	if err := CreateAutoscale(clientset, "foo", "myns", "cpu", min, max, "50"); err != nil {
+	hpaDef, err := GetHorizontalAutoscaleDefinition("foo", "myns", "cpu", min, max, "50")
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	if err := CreateAutoscale(clientset, hpaDef); err != nil {
 		t.Fatalf("Creating autoscale returned err: %v", err)
 	}
 

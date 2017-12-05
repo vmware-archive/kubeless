@@ -16,6 +16,19 @@ var autoscaleCreateCmd = &cobra.Command{
 		}
 		funcName := args[0]
 
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
+		}
+
+		function, err := utils.GetFunction(funcName, ns)
+		if err != nil {
+			logrus.Fatalf("Unable to find the function %s. Received %s: ", funcName, err)
+		}
+
 		min, err := cmd.Flags().GetInt32("min")
 		if err != nil {
 			logrus.Fatal(err)
@@ -28,17 +41,10 @@ var autoscaleCreateCmd = &cobra.Command{
 		} else if max < min {
 			logrus.Fatalf("max must be greater than or equal to min")
 		}
-		ns, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			logrus.Fatal(err.Error())
-		}
-		if ns == "" {
-			ns = utils.GetDefaultNamespace()
-		}
 
 		metric, err := cmd.Flags().GetString("metric")
 		if err != nil {
-			logrus.Fatal(err.Error())
+			logrus.Fatal(err)
 		}
 		if metric != "cpu" && metric != "qps" {
 			logrus.Fatalf("only supported metrics: cpu, qps")
@@ -46,15 +52,25 @@ var autoscaleCreateCmd = &cobra.Command{
 
 		value, err := cmd.Flags().GetString("value")
 		if err != nil {
-			logrus.Fatal(err.Error())
+			logrus.Fatal(err)
 		}
 
-		client := utils.GetClientOutOfCluster()
-
-		err = utils.CreateAutoscale(client, funcName, ns, metric, min, max, value)
+		hpa, err := utils.GetHorizontalAutoscaleDefinition(funcName, ns, metric, min, max, value)
 		if err != nil {
-			logrus.Fatalf("Can't create autoscale: %v", err)
+			logrus.Fatal(err)
 		}
+		function.Spec.HorizontalPodAutoscaler = hpa
+
+		crdClient, err := utils.GetCRDClientOutOfCluster()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		logrus.Infof("Redeploying function with autoscaling parameters...")
+		err = utils.UpdateK8sCustomResource(crdClient, &function)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		logrus.Infof("Autoscale for %s submitted for deployment", funcName)
 	},
 }
 

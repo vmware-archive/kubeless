@@ -920,14 +920,14 @@ func EnsureFuncCronJob(client rest.Interface, funcObj *spec.Function, or []metav
 	return err
 }
 
-// CreateAutoscale creates HPA object for function
-func CreateAutoscale(client kubernetes.Interface, funcName, ns, metric string, min, max int32, value string) error {
+// GetHorizontalAutoscaleDefinition return an HorizontalAutoscale definition based on its parameters
+func GetHorizontalAutoscaleDefinition(name, ns, metric string, min, max int32, value string) (v2alpha1.HorizontalPodAutoscaler, error) {
 	m := []v2alpha1.MetricSpec{}
 	switch metric {
 	case "cpu":
 		i, err := strconv.ParseInt(value, 10, 32)
 		if err != nil {
-			return err
+			return v2alpha1.HorizontalPodAutoscaler{}, err
 		}
 		i32 := int32(i)
 		m = []v2alpha1.MetricSpec{
@@ -942,7 +942,7 @@ func CreateAutoscale(client kubernetes.Interface, funcName, ns, metric string, m
 	case "qps":
 		q, err := resource.ParseQuantity(value)
 		if err != nil {
-			return err
+			return v2alpha1.HorizontalPodAutoscaler{}, err
 		}
 		m = []v2alpha1.MetricSpec{
 			{
@@ -952,36 +952,39 @@ func CreateAutoscale(client kubernetes.Interface, funcName, ns, metric string, m
 					TargetValue: q,
 					Target: v2alpha1.CrossVersionObjectReference{
 						Kind: "Service",
-						Name: funcName,
+						Name: name,
 					},
 				},
 			},
 		}
-		err = createServiceMonitor(funcName, ns)
+		err = createServiceMonitor(name, ns)
 		if err != nil {
-			return err
+			return v2alpha1.HorizontalPodAutoscaler{}, err
 		}
 	default:
-		return errors.New("metric is not supported")
+		return v2alpha1.HorizontalPodAutoscaler{}, errors.New("metric is not supported")
 	}
 
-	hpa := &v2alpha1.HorizontalPodAutoscaler{
+	return v2alpha1.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      funcName,
+			Name:      name,
 			Namespace: ns,
 		},
 		Spec: v2alpha1.HorizontalPodAutoscalerSpec{
 			ScaleTargetRef: v2alpha1.CrossVersionObjectReference{
 				Kind: "Deployment",
-				Name: funcName,
+				Name: name,
 			},
 			MinReplicas: &min,
 			MaxReplicas: max,
 			Metrics:     m,
 		},
-	}
+	}, nil
+}
 
-	_, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).Create(hpa)
+// CreateAutoscale creates HPA object for function
+func CreateAutoscale(client kubernetes.Interface, hpa v2alpha1.HorizontalPodAutoscaler) error {
+	_, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(hpa.ObjectMeta.Namespace).Create(&hpa)
 	if err != nil {
 		return err
 	}

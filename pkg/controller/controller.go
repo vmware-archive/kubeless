@@ -235,6 +235,10 @@ func (c *Controller) ensureK8sResources(funcObj *spec.Function) error {
 		}
 	}
 
+	if funcObj.Spec.HorizontalPodAutoscaler.Name != "" {
+		funcObj.Spec.HorizontalPodAutoscaler.OwnerReferences = or
+		err = utils.CreateAutoscale(c.clientset, funcObj.Spec.HorizontalPodAutoscaler)
+	}
 	return nil
 }
 
@@ -263,6 +267,12 @@ func (c *Controller) deleteK8sResources(ns, name string) error {
 
 	// delete cm
 	err = c.clientset.Core().ConfigMaps(ns).Delete(name, &metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+
+	// delete autoscale
+	err = utils.DeleteAutoscale(c.clientset, name, ns)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
