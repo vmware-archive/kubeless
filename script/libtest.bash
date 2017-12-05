@@ -43,7 +43,12 @@ kubecfg() {
 k8s_wait_for_pod_ready() {
     echo_info "Waiting for pod '${@}' to be ready ... "
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
-    until kubectl get pod "${@}" |&grep -q Running; do
+    # Retries just in case it is not stable
+    local -i successCount=0
+    while [ "$successCount" -lt "3" ]; do
+        if kubectl get pod "${@}" |&grep -q Running; then
+            ((successCount=successCount+1))
+        fi
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
@@ -217,6 +222,16 @@ wait_for_endpoint() {
         sleep 1
     done
 }
+wait_for_autoscale() {
+    local func=${1:?}
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    local hap=$()
+    echo_info "Waiting for HAP ${func} to be ready ..."
+    until kubectl get horizontalpodautoscalers | grep $func; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
+}
 test_must_fail_without_rbac_roles() {
     echo_info "RBAC TEST: function deploy/call must fail without RBAC roles"
     _delete_simple_function
@@ -240,13 +255,23 @@ deploy_function() {
 }
 verify_function() {
     local func=${1:?}
+    local make_task=${2:-${func}-verify}
     k8s_wait_for_pod_ready -l function=${func}
     case "${func}" in
         *pubsub*)
             func_topic=$(kubeless function describe "${func}" -o yaml|sed -n 's/topic: //p')
             echo_info "FUNC TOPIC: $func_topic"
     esac
-    make -sC examples ${func}-verify
+    local -i counter=0
+    until make -sC examples ${make_task}; do
+        echo_info "FUNC ${func} failed. Retrying..."
+        ((counter=counter+1))
+        if [ "$counter" -ge 3 ]; then
+            echo_info "FUNC ${func} failed ${counter} times. Exiting"
+            return 1;
+        fi
+        sleep 10
+    done
 }
 test_kubeless_function() {
     local func=${1:?}
@@ -260,14 +285,10 @@ update_function() {
     sleep 10
     k8s_wait_for_uniq_pod -l function=${func}
 }
-verify_update_function() {
-    local func=${1:?}
-    make -sC examples ${func}-update-verify
-}
 test_kubeless_function_update() {
     local func=${1:?}
     update_function $func
-    verify_update_function $func
+    verify_function $func ${func}-update-verify
 }
 test_kubeless_ingress() {
     local func=${1:?} domain=example.com act_ingress exp_ingress
@@ -285,6 +306,7 @@ test_kubeless_autoscale() {
     local val=10 num=3
     echo_info "TEST: autoscale ${func}"
     kubeless autoscale create ${func} --value ${val:?} --min ${num:?} --max ${num:?}
+    wait_for_autoscale ${func}
     kubeless autoscale list | fgrep -w ${func}
     act_autoscale=$(kubectl get horizontalpodautoscaler -ojsonpath='{range .items[*].spec}{@.scaleTargetRef.name}:{@.targetCPUUtilizationPercentage}:{@.minReplicas}:{@.maxReplicas}{end}')
     exp_autoscale="${func}:${val}:${num}:${num}"

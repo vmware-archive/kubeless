@@ -29,6 +29,7 @@ get-python-deps-update:
 
 get-python-deps-update-verify:
 	$(eval pod := $(shell kubectl get pod -l function=get-python-deps -o go-template -o custom-columns=:metadata.name --no-headers=true))
+	kubectl exec -it $(pod) pip freeze
 	kubectl exec -it $(pod) pip freeze | grep -q "twitter=="
 
 get-python-34:
