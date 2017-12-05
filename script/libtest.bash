@@ -74,7 +74,7 @@ k8s_wait_for_pod_logline() {
     local string="${1:?}"; shift
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     echo_info "Waiting for '${@}' to show logline '${string}' ..."
-    until kubectl logs --tail=100  "${@}"|&grep -q "${string}"; do
+    until kubectl logs "${@}"|&grep -q "${string}"; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
@@ -157,14 +157,8 @@ _wait_for_kubeless_controller_logline() {
 }
 wait_for_kubeless_kafka_server_ready() {
     [[ $(kubectl get pod -n kubeless kafka-0 -ojsonpath='{.metadata.annotations.ready}') == true ]] && return 0
-    local test_topic=$RANDOM
     echo_info "Waiting for kafka-0 to be ready ..."
     k8s_wait_for_pod_logline "Kafka.*Server.*started" -n kubeless kafka-0
-    sleep 10
-    kubeless topic list | grep -qw "${test_topic}" || {
-      kubeless topic create "${test_topic}" || true
-      _wait_for_kubeless_kafka_topic_ready "${test_topic}"
-    }
     kubectl annotate pods --overwrite -n kubeless kafka-0 ready=true
 }
 _wait_for_kubeless_kafka_topic_ready() {
