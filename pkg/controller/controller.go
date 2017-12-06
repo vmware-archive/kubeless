@@ -196,7 +196,6 @@ func (c *Controller) ensureK8sResources(funcObj *spec.Function) error {
 		funcObj.Metadata.Labels = make(map[string]string)
 	}
 	funcObj.Metadata.Labels["function"] = funcObj.Metadata.Name
-	funcObj.Metadata.Labels["created-by"] = "kubeless"
 
 	or, err := utils.GetOwnerReference(funcObj)
 	if err != nil {

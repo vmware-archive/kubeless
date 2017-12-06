@@ -93,7 +93,7 @@ func printAutoscale(w io.Writer, ass []v2alpha1.HorizontalPodAutoscaler, output 
 				v = i.Spec.Metrics[0].Object.TargetValue.String()
 			} else if i.Spec.Metrics[0].Resource != nil {
 				m = string(i.Spec.Metrics[0].Resource.Name)
-				v = fmt.Sprint(i.Spec.Metrics[0].Resource.TargetAverageUtilization)
+				v = fmt.Sprint(*i.Spec.Metrics[0].Resource.TargetAverageUtilization)
 			}
 
 			table.AddRow(n, ns, ta, fmt.Sprint(*min), fmt.Sprint(max), m, v)
