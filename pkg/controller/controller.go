@@ -197,18 +197,12 @@ func (c *Controller) ensureK8sResources(funcObj *spec.Function) error {
 	}
 	funcObj.Metadata.Labels["function"] = funcObj.Metadata.Name
 
-	t := true
-	or := []metav1.OwnerReference{
-		{
-			Kind:               "Function",
-			APIVersion:         "k8s.io",
-			Name:               funcObj.Metadata.Name,
-			UID:                funcObj.Metadata.UID,
-			BlockOwnerDeletion: &t,
-		},
+	or, err := utils.GetOwnerReference(funcObj)
+	if err != nil {
+		return err
 	}
 
-	err := utils.EnsureFuncConfigMap(c.clientset, funcObj, or)
+	err = utils.EnsureFuncConfigMap(c.clientset, funcObj, or)
 	if err != nil {
 		return err
 	}

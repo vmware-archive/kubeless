@@ -72,7 +72,7 @@ func getKV(input string) (string, string) {
 }
 
 func parseLabel(labels []string) map[string]string {
-	funcLabels := map[string]string{}
+	funcLabels := make(map[string]string)
 	for _, label := range labels {
 		k, v := getKV(label)
 		funcLabels[k] = v
@@ -207,9 +207,13 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		funcEnv = defaultFunction.Spec.Template.Spec.Containers[0].Env
 	}
 
-	funcLabels := parseLabel(labels)
+	funcLabels := defaultFunction.Metadata.Labels
 	if len(funcLabels) == 0 {
-		funcLabels = defaultFunction.Metadata.Labels
+		funcLabels = make(map[string]string)
+	}
+	ls := parseLabel(labels)
+	for k, v := range ls {
+		funcLabels[k] = v
 	}
 
 	resources := v1.ResourceRequirements{}

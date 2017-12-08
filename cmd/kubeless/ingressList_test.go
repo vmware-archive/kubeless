@@ -43,6 +43,9 @@ func TestIngressList(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "myns",
+			Labels: map[string]string{
+				"created-by": "kubeless",
+			},
 		},
 		Spec: xv1beta1.IngressSpec{
 			Rules: []xv1beta1.IngressRule{
@@ -70,6 +73,9 @@ func TestIngressList(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "myns",
+			Labels: map[string]string{
+				"created-by": "kubeless",
+			},
 		},
 		Spec: xv1beta1.IngressSpec{
 			Rules: []xv1beta1.IngressRule{
@@ -93,13 +99,24 @@ func TestIngressList(t *testing.T) {
 		},
 	}
 
-	client := fake.NewSimpleClientset(&ing1, &ing2)
+	ing3 := xv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ing3",
+			Namespace: "myns",
+		},
+	}
+
+	client := fake.NewSimpleClientset(&ing1, &ing2, &ing3)
 
 	output := listIngressOutput(t, client, "myns", "")
 	t.Log("output is", output)
 
 	if !strings.Contains(output, "foo") || !strings.Contains(output, "bar") {
-		t.Errorf("table output didn't mention both functions")
+		t.Errorf("table output didn't mention both ingress rules")
+	}
+
+	if strings.Contains(output, "ing3") {
+		t.Errorf("table output shouldn't mention ing3 ingress rule as it isn't created by kubeless")
 	}
 
 	// json output
