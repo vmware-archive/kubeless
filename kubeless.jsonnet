@@ -212,7 +212,14 @@ local crd = {
   description: "Kubernetes Native Serverless Framework",
 };
 
+local kubelessNamespace = {
+  apiVersion: "v1",
+  kind: "Namespace",
+  metadata: objectMeta.name("kubeless"),
+};
+
 {
+  kubelessNamespace: k.util.prune(kubelessNamespace),
   controllerAccount: k.util.prune(controllerAccount),
   controller: k.util.prune(controllerDeployment),
   kafkaSts: k.util.prune(kafkaSts),

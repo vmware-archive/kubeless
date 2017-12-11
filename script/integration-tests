@@ -69,7 +69,6 @@ trap k8s_context_restore 0
 k8s_context_save
 
 # Run the tests thru bats:
-kubectl create namespace kubeless
 bats tests/integration-tests.bats
 exit_code=$?
 
