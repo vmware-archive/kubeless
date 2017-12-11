@@ -18,7 +18,6 @@ package utils
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -278,7 +277,7 @@ func GetReadyPod(pods *v1.PodList) (v1.Pod, error) {
 			return pod, nil
 		}
 	}
-	return v1.Pod{}, errors.New("There is no pod ready")
+	return v1.Pod{}, fmt.Errorf("there is no pod ready")
 }
 
 func appendToCommand(orig string, command ...string) string {
@@ -402,12 +401,19 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 }
 
 // CreateIngress creates ingress rule for a specific function
-func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname, ns string, enableTLSAcme bool) error {
+func CreateIngress(client kubernetes.Interface, funcObj *spec.Function, ingressName, hostname, ns string, enableTLSAcme bool) error {
+
+	or, err := GetOwnerReference(funcObj)
+	if err != nil {
+		return err
+	}
 
 	ingress := &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ingressName,
-			Namespace: ns,
+			Name:            ingressName,
+			Namespace:       ns,
+			OwnerReferences: or,
+			Labels:          funcObj.Metadata.Labels,
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
@@ -419,7 +425,7 @@ func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname,
 								{
 									Path: "/",
 									Backend: v1beta1.IngressBackend{
-										ServiceName: funcName,
+										ServiceName: funcObj.Metadata.Name,
 										ServicePort: intstr.FromInt(8080),
 									},
 								},
@@ -447,7 +453,7 @@ func CreateIngress(client kubernetes.Interface, ingressName, funcName, hostname,
 		}
 	}
 
-	_, err := client.ExtensionsV1beta1().Ingresses(ns).Create(ingress)
+	_, err = client.ExtensionsV1beta1().Ingresses(ns).Create(ingress)
 	if err != nil {
 		return err
 	}
@@ -477,7 +483,7 @@ func DeleteIngress(client kubernetes.Interface, name, ns string) error {
 func splitHandler(handler string) (string, string, error) {
 	str := strings.Split(handler, ".")
 	if len(str) != 2 {
-		return "", "", errors.New("Failed: incorrect handler format. It should be module_name.handler_name")
+		return "", "", fmt.Errorf("failed: incorrect handler format. It should be module_name.handler_name")
 	}
 
 	return str[0], str[1], nil
@@ -921,7 +927,7 @@ func EnsureFuncCronJob(client rest.Interface, funcObj *spec.Function, or []metav
 }
 
 // GetHorizontalAutoscaleDefinition return an HorizontalAutoscale definition based on its parameters
-func GetHorizontalAutoscaleDefinition(name, ns, metric string, min, max int32, value string) (v2alpha1.HorizontalPodAutoscaler, error) {
+func GetHorizontalAutoscaleDefinition(name, ns, metric string, min, max int32, value string, labels map[string]string) (v2alpha1.HorizontalPodAutoscaler, error) {
 	m := []v2alpha1.MetricSpec{}
 	switch metric {
 	case "cpu":
@@ -957,18 +963,18 @@ func GetHorizontalAutoscaleDefinition(name, ns, metric string, min, max int32, v
 				},
 			},
 		}
-		err = createServiceMonitor(name, ns)
 		if err != nil {
 			return v2alpha1.HorizontalPodAutoscaler{}, err
 		}
 	default:
-		return v2alpha1.HorizontalPodAutoscaler{}, errors.New("metric is not supported")
+		return v2alpha1.HorizontalPodAutoscaler{}, fmt.Errorf("metric %s is not supported", metric)
 	}
 
 	return v2alpha1.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
+			Labels:    labels,
 		},
 		Spec: v2alpha1.HorizontalPodAutoscalerSpec{
 			ScaleTargetRef: v2alpha1.CrossVersionObjectReference{
@@ -1015,27 +1021,29 @@ func DeleteServiceMonitor(name, ns string) error {
 	return nil
 }
 
-func createServiceMonitor(funcName, ns string) error {
+// CreateServiceMonitor creates a Service Monitor for the given function
+func CreateServiceMonitor(funcObj *spec.Function, ns string, or []metav1.OwnerReference) error {
 	smclient, err := GetServiceMonitorClientOutOfCluster()
 	if err != nil {
 		return err
 	}
 
-	_, err = smclient.ServiceMonitors(ns).Get(funcName, metav1.GetOptions{})
+	_, err = smclient.ServiceMonitors(ns).Get(funcObj.Metadata.Name, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			s := &monitoringv1alpha1.ServiceMonitor{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      funcName,
+					Name:      funcObj.Metadata.Name,
 					Namespace: ns,
 					Labels: map[string]string{
 						"service-monitor": "function",
 					},
+					OwnerReferences: or,
 				},
 				Spec: monitoringv1alpha1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							"function": funcName,
+							"function": funcObj.Metadata.Name,
 						},
 					},
 					Endpoints: []monitoringv1alpha1.Endpoint{
@@ -1053,5 +1061,26 @@ func createServiceMonitor(funcName, ns string) error {
 		return nil
 	}
 
-	return errors.New("service monitor has already existed")
+	return fmt.Errorf("service monitor has already existed")
+}
+
+// GetOwnerReference returns ownerRef for appending to objects's metadata
+// created by kubeless-controller one a function is deployed.
+func GetOwnerReference(funcObj *spec.Function) ([]metav1.OwnerReference, error) {
+	if funcObj.Metadata.Name == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("function name can't be empty")
+	}
+	if funcObj.Metadata.UID == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("uid of function %s can't be empty", funcObj.Metadata.Name)
+	}
+	t := true
+	return []metav1.OwnerReference{
+		{
+			Kind:               "Function",
+			APIVersion:         "k8s.io",
+			Name:               funcObj.Metadata.Name,
+			UID:                funcObj.Metadata.UID,
+			BlockOwnerDeletion: &t,
+		},
+	}, nil
 }

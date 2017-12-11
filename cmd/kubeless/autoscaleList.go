@@ -59,7 +59,9 @@ func init() {
 }
 
 func doAutoscaleList(w io.Writer, client kubernetes.Interface, ns, output string) error {
-	asList, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).List(metav1.ListOptions{})
+	asList, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).List(metav1.ListOptions{
+		LabelSelector: "created-by=kubeless",
+	})
 	if err != nil {
 		return err
 	}
@@ -82,12 +84,16 @@ func printAutoscale(w io.Writer, ass []v2alpha1.HorizontalPodAutoscaler, output 
 			max := i.Spec.MaxReplicas
 			m := ""
 			v := ""
+			if len(i.Spec.Metrics) == 0 {
+				logrus.Errorf("The function autoscale %s isn't in correct format. It has no metric defined.", i.Name)
+				continue
+			}
 			if i.Spec.Metrics[0].Object != nil {
 				m = i.Spec.Metrics[0].Object.MetricName
 				v = i.Spec.Metrics[0].Object.TargetValue.String()
 			} else if i.Spec.Metrics[0].Resource != nil {
 				m = string(i.Spec.Metrics[0].Resource.Name)
-				v = fmt.Sprint(i.Spec.Metrics[0].Resource.TargetAverageUtilization)
+				v = fmt.Sprint(*i.Spec.Metrics[0].Resource.TargetAverageUtilization)
 			}
 
 			table.AddRow(n, ns, ta, fmt.Sprint(*min), fmt.Sprint(max), m, v)

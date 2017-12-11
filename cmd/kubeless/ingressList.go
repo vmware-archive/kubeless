@@ -59,7 +59,9 @@ func init() {
 }
 
 func doIngressList(w io.Writer, client kubernetes.Interface, ns, output string) error {
-	ingList, err := client.ExtensionsV1beta1().Ingresses(ns).List(v1.ListOptions{})
+	ingList, err := client.ExtensionsV1beta1().Ingresses(ns).List(v1.ListOptions{
+		LabelSelector: "created-by=kubeless",
+	})
 	if err != nil {
 		return err
 	}
@@ -73,6 +75,10 @@ func printIngress(w io.Writer, ings []v1beta1.Ingress, output string) error {
 		table := tablewriter.NewWriter(w)
 		table.SetHeader([]string{"Name", "namespace", "host", "path", "service name", "service port"})
 		for _, i := range ings {
+			if len(i.Spec.Rules) == 0 {
+				logrus.Errorf("The function ingress %s isn't in correct format. It has no rule defined.", i.Name)
+				continue
+			}
 			n := i.Name
 			h := i.Spec.Rules[0].Host
 			p := i.Spec.Rules[0].HTTP.Paths[0].Path

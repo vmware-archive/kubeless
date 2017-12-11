@@ -80,11 +80,33 @@ local kafkaContainer =
     }
   ]);
 
+local kafkaInitContainer =
+  container.default("volume-permissions", "busybox") +
+  container.imagePullPolicy("IfNotPresent") +
+  container.command(["sh", "-c", "chmod -R g+rwX /bitnami"]) +
+  container.volumeMounts([
+    {
+      name: "datadir",
+      mountPath: "/bitnami/kafka/data"
+    }
+  ]);
+
 local zookeeperContainer =
   container.default("zookeeper", "bitnami/zookeeper@sha256:f66625a8a25070bee18fddf42319ec58f0c49c376b19a5eb252e6a4814f07123") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(zookeeperEnv) +
   container.ports(zookeeperPorts) +
+  container.volumeMounts([
+    {
+      name: "zookeeper",
+      mountPath: "/bitnami/zookeeper"
+    }
+  ]);
+
+local zookeeperInitContainer =
+  container.default("volume-permissions", "busybox") +
+  container.imagePullPolicy("IfNotPresent") +
+  container.command(["sh", "-c", "chmod -R g+rwX /bitnami"]) +
   container.volumeMounts([
     {
       name: "zookeeper",
@@ -142,24 +164,19 @@ local zooVolumeCT = [
   }
 ];
 
-local securityCTX = {
-  "runAsUser": 1001,
-  "fsGroup": 1001
-};
-
 local kafkaSts =
   statefulset.default("kafka", namespace) +
   statefulset.spec({serviceName: "broker"}) +
   {spec+: {template: {metadata: {labels: kafkaLabel}}}} +
   {spec+: {volumeClaimTemplates: kafkaVolumeCT}} +
-  {spec+: {template+: {spec: {securityContext: securityCTX, containers: [kafkaContainer]}}}};
+  {spec+: {template+: {spec: {containers: [kafkaContainer], initContainers: [kafkaInitContainer]}}}};
 
 local zookeeperSts =
   statefulset.default("zoo", namespace) +
   statefulset.spec({serviceName: "zoo"}) +
   {spec+: {template: {metadata: {labels: zookeeperLabel}}}} +
   {spec+: {volumeClaimTemplates: zooVolumeCT}} +
-  {spec+: {template+: {spec: {securityContext: securityCTX, containers: [zookeeperContainer]}}}};
+  {spec+: {template+: {spec: {containers: [zookeeperContainer], initContainers: [zookeeperInitContainer]}}}};
 
 local kafkaSvc =
   service.default("kafka", namespace) +

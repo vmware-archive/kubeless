@@ -673,10 +673,18 @@ func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
 
 func TestCreateIngressResource(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
-	if err := CreateIngress(clientset, "foo", "bar", "foo.bar", "myns", false); err != nil {
+	f1 := &spec.Function{
+		Metadata: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "myns",
+			UID:       "1234",
+		},
+		Spec: spec.FunctionSpec{},
+	}
+	if err := CreateIngress(clientset, f1, "bar", "foo.bar", "myns", false); err != nil {
 		t.Fatalf("Creating ingress returned err: %v", err)
 	}
-	if err := CreateIngress(clientset, "foo", "bar", "foo.bar", "myns", false); err != nil {
+	if err := CreateIngress(clientset, f1, "bar", "foo.bar", "myns", false); err != nil {
 		if !k8sErrors.IsAlreadyExists(err) {
 			t.Fatalf("Expect object is already exists, got %v", err)
 		}
@@ -685,7 +693,16 @@ func TestCreateIngressResource(t *testing.T) {
 
 func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
-	if err := CreateIngress(clientset, "foo", "bar", "foo.bar", "myns", true); err != nil {
+	f1 := &spec.Function{
+		Metadata: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "myns",
+			UID:       "1234",
+		},
+		Spec: spec.FunctionSpec{},
+	}
+
+	if err := CreateIngress(clientset, f1, "foo", "foo.bar", "myns", true); err != nil {
 		t.Fatalf("Creating ingress returned err: %v", err)
 	}
 
@@ -762,7 +779,7 @@ func TestCreateAutoscaleResource(t *testing.T) {
 	min := int32(1)
 	max := int32(10)
 	clientset := fake.NewSimpleClientset()
-	hpaDef, err := GetHorizontalAutoscaleDefinition("foo", "myns", "cpu", min, max, "50")
+	hpaDef, err := GetHorizontalAutoscaleDefinition("foo", "myns", "cpu", min, max, "50", map[string]string{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}

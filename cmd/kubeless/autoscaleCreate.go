@@ -55,7 +55,7 @@ var autoscaleCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		hpa, err := utils.GetHorizontalAutoscaleDefinition(funcName, ns, metric, min, max, value)
+		hpa, err := utils.GetHorizontalAutoscaleDefinition(funcName, ns, metric, min, max, value, function.Metadata.Labels)
 		if err != nil {
 			logrus.Fatal(err)
 		}
