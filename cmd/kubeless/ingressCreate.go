@@ -27,7 +27,7 @@ var ingressCreateCmd = &cobra.Command{
 	Long:  `create a route to function`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 1 {
-			logrus.Fatal("Need exactly one argument - ingress name")
+			logrus.Fatal("Need exactly one argument - route name")
 		}
 		ingressName := args[0]
 		ns, err := cmd.Flags().GetString("namespace")
@@ -88,7 +88,7 @@ var ingressCreateCmd = &cobra.Command{
 
 		err = utils.CreateIngress(client, f, ingressName, hostName, ns, enableTLSAcme)
 		if err != nil {
-			logrus.Fatalf("Can't create ingress route: %v", err)
+			logrus.Fatalf("Can't create route: %v", err)
 		}
 	},
 }
@@ -96,5 +96,5 @@ var ingressCreateCmd = &cobra.Command{
 func init() {
 	ingressCreateCmd.Flags().StringP("hostname", "", "", "Specify a valid hostname for the function")
 	ingressCreateCmd.Flags().StringP("function", "", "", "Name of the function")
-	ingressCreateCmd.Flags().BoolP("enableTLSAcme", "", false, "If true, Ingress will be configured for use with kube-lego")
+	ingressCreateCmd.Flags().BoolP("enableTLSAcme", "", false, "If true, routing rule will be configured for use with kube-lego")
 }

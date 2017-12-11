@@ -112,11 +112,11 @@ func TestIngressList(t *testing.T) {
 	t.Log("output is", output)
 
 	if !strings.Contains(output, "foo") || !strings.Contains(output, "bar") {
-		t.Errorf("table output didn't mention both ingress rules")
+		t.Errorf("table output didn't mention both rules")
 	}
 
 	if strings.Contains(output, "ing3") {
-		t.Errorf("table output shouldn't mention ing3 ingress rule as it isn't created by kubeless")
+		t.Errorf("table output shouldn't mention ing3 rule as it isn't created by kubeless")
 	}
 
 	// json output

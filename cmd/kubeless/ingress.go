@@ -18,9 +18,9 @@ import (
 )
 
 var ingressCmd = &cobra.Command{
-	Use:   "ingress SUBCOMMAND",
+	Use:   "route SUBCOMMAND",
 	Short: "manage route to function on Kubeless",
-	Long:  `ingress command allows user to list, create, delete ingress rule for function on Kubeless`,
+	Long:  `route command allows user to list, create, delete routing rule for function on Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
@@ -31,7 +31,7 @@ func init() {
 
 	for _, cmd := range cmds {
 		ingressCmd.AddCommand(cmd)
-		cmd.Flags().StringP("namespace", "n", "", "Specify namespace for the ingress")
+		cmd.Flags().StringP("namespace", "n", "", "Specify namespace for the route")
 
 	}
 }
