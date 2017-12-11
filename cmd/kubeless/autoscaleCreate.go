@@ -65,12 +65,12 @@ var autoscaleCreateCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		logrus.Infof("Redeploying function with autoscaling parameters...")
+		logrus.Infof("Adding autoscaling rule to the function...")
 		err = utils.UpdateK8sCustomResource(crdClient, &function)
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		logrus.Infof("Autoscale for %s submitted for deployment", funcName)
+		logrus.Infof("Autoscaling rule for %s submitted for deployment", funcName)
 	},
 }
 
