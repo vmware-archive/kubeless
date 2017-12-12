@@ -14,9 +14,11 @@ limitations under the License.
 package main
 
 import (
+	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 )
 
 var autoscaleDeleteCmd = &cobra.Command{
@@ -27,7 +29,7 @@ var autoscaleDeleteCmd = &cobra.Command{
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - autoscale name")
 		}
-		asName := args[0]
+		funcName := args[0]
 
 		ns, err := cmd.Flags().GetString("namespace")
 		if err != nil {
@@ -37,16 +39,46 @@ var autoscaleDeleteCmd = &cobra.Command{
 			ns = utils.GetDefaultNamespace()
 		}
 
-		client := utils.GetClientOutOfCluster()
-
-		err = utils.DeleteAutoscale(client, asName, ns)
+		function, err := utils.GetFunction(funcName, ns)
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("Unable to find the function %s. Received %s: ", funcName, err)
 		}
 
-		err = utils.DeleteServiceMonitor(asName, ns)
-		if err != nil {
-			logrus.Fatal(err)
+		if function.Spec.HorizontalPodAutoscaler.Name != "" {
+			client := utils.GetClientOutOfCluster()
+
+			err = utils.DeleteAutoscale(client, function.Spec.HorizontalPodAutoscaler.Name, ns)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+
+			config, err := utils.BuildOutOfClusterConfig()
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			smclient, err := monitoringv1alpha1.NewForConfig(config)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			err = utils.DeleteServiceMonitor(*smclient, function.Spec.HorizontalPodAutoscaler.Name, ns)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+
+			function.Spec.HorizontalPodAutoscaler = v2alpha1.HorizontalPodAutoscaler{}
+			logrus.Info(function.Spec.HorizontalPodAutoscaler)
+			crdClient, err := utils.GetCRDClientOutOfCluster()
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			logrus.Infof("Removing autoscaling rule to the function...")
+			err = utils.UpdateK8sCustomResource(crdClient, &function)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			logrus.Infof("Removed Autoscaling rule for %s", funcName)
+		} else {
+			logrus.Fatalf("Not found an auto scale definition for %s", funcName)
 		}
 	},
 }

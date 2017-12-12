@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/sirupsen/logrus"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -191,6 +192,18 @@ func (c *Controller) getResouceGroupVersion(target string) (string, error) {
 	return groupVersion, nil
 }
 
+func (c *Controller) getServiceMonitorClient() (*monitoringv1alpha1.MonitoringV1alpha1Client, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	smclient, err := monitoringv1alpha1.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return smclient, nil
+}
+
 // ensureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
 func (c *Controller) ensureK8sResources(funcObj *spec.Function) error {
 	if len(funcObj.Metadata.Labels) == 0 {
@@ -230,11 +243,15 @@ func (c *Controller) ensureK8sResources(funcObj *spec.Function) error {
 		}
 	}
 
-	if funcObj.Spec.HorizontalPodAutoscaler.Name != "" {
+	if funcObj.Spec.HorizontalPodAutoscaler.Name != "" && funcObj.Spec.HorizontalPodAutoscaler.Spec.ScaleTargetRef.Name != "" {
 		funcObj.Spec.HorizontalPodAutoscaler.OwnerReferences = or
 		if funcObj.Spec.HorizontalPodAutoscaler.Spec.Metrics[0].Type == v2alpha1.ObjectMetricSourceType {
+			smclient, err := c.getServiceMonitorClient()
+			if err != nil {
+				return err
+			}
 			// A service monitor is needed when the metric is an object
-			err = utils.CreateServiceMonitor(funcObj, funcObj.Metadata.Namespace, or)
+			err = utils.CreateServiceMonitor(*smclient, funcObj, funcObj.Metadata.Namespace, or)
 			if err != nil {
 				return err
 			}
@@ -272,6 +289,16 @@ func (c *Controller) deleteK8sResources(ns, name string) error {
 
 	// delete cm
 	err = c.clientset.Core().ConfigMaps(ns).Delete(name, &metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+
+	// delete service monitor
+	smclient, err := c.getServiceMonitorClient()
+	if err != nil {
+		return err
+	}
+	err = utils.DeleteServiceMonitor(*smclient, name, ns)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}

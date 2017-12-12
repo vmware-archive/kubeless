@@ -930,26 +930,9 @@ func DeleteAutoscale(client kubernetes.Interface, name, ns string) error {
 	return nil
 }
 
-func getServiceMonitorClient() (*monitoringv1alpha1.MonitoringV1alpha1Client, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := monitoringv1alpha1.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	return client, nil
-}
-
 // DeleteServiceMonitor cleans the sm if it exists
-func DeleteServiceMonitor(name, ns string) error {
-	smclient, err := getServiceMonitorClient()
-	if err != nil {
-		return err
-	}
-	err = smclient.ServiceMonitors(ns).Delete(name, &metav1.DeleteOptions{})
+func DeleteServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, name, ns string) error {
+	err := smclient.ServiceMonitors(ns).Delete(name, &metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
@@ -958,13 +941,8 @@ func DeleteServiceMonitor(name, ns string) error {
 }
 
 // CreateServiceMonitor creates a Service Monitor for the given function
-func CreateServiceMonitor(funcObj *spec.Function, ns string, or []metav1.OwnerReference) error {
-	smclient, err := getServiceMonitorClient()
-	if err != nil {
-		return err
-	}
-
-	_, err = smclient.ServiceMonitors(ns).Get(funcObj.Metadata.Name, metav1.GetOptions{})
+func CreateServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, funcObj *spec.Function, ns string, or []metav1.OwnerReference) error {
+	_, err := smclient.ServiceMonitors(ns).Get(funcObj.Metadata.Name, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			s := &monitoringv1alpha1.ServiceMonitor{
