@@ -21,7 +21,7 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-var ingressCreateCmd = &cobra.Command{
+var routeCreateCmd = &cobra.Command{
 	Use:   "create <name> FLAG",
 	Short: "create a route to function",
 	Long:  `create a route to function`,
@@ -94,7 +94,7 @@ var ingressCreateCmd = &cobra.Command{
 }
 
 func init() {
-	ingressCreateCmd.Flags().StringP("hostname", "", "", "Specify a valid hostname for the function")
-	ingressCreateCmd.Flags().StringP("function", "", "", "Name of the function")
-	ingressCreateCmd.Flags().BoolP("enableTLSAcme", "", false, "If true, routing rule will be configured for use with kube-lego")
+	routeCreateCmd.Flags().StringP("hostname", "", "", "Specify a valid hostname for the function")
+	routeCreateCmd.Flags().StringP("function", "", "", "Name of the function")
+	routeCreateCmd.Flags().BoolP("enableTLSAcme", "", false, "If true, routing rule will be configured for use with kube-lego")
 }

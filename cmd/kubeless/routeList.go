@@ -28,7 +28,7 @@ import (
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
-var ingressListCmd = &cobra.Command{
+var routeListCmd = &cobra.Command{
 	Use:     "list FLAG",
 	Aliases: []string{"ls"},
 	Short:   "list all routes in Kubeless",
@@ -55,7 +55,7 @@ var ingressListCmd = &cobra.Command{
 }
 
 func init() {
-	ingressListCmd.Flags().StringP("out", "o", "", "Output format. One of: json|yaml")
+	routeListCmd.Flags().StringP("out", "o", "", "Output format. One of: json|yaml")
 }
 
 func doIngressList(w io.Writer, client kubernetes.Interface, ns, output string) error {
