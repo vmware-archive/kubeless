@@ -8,7 +8,7 @@ Though there is no standard on what http/https triggers of FAAS platform should 
 - a way to restrict http method GET/POST/DELETE etc used to invoke function
 - stage and version functions
 
-Kubeless already supports `--trigger-http`. It does seem reasonable to expect similar functionality with kube-router for http triggers. This proposal would like to articulate current gaps and suggest changes.
+Kubeless already supports `--trigger-http`. It does seem reasonable to expect similar functionality with kubeless for http triggers. This proposal would like to articulate current gaps and suggest changes.
 
 ## Challenges
 
