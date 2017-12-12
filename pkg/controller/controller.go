@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -231,9 +232,12 @@ func (c *Controller) ensureK8sResources(funcObj *spec.Function) error {
 
 	if funcObj.Spec.HorizontalPodAutoscaler.Name != "" {
 		funcObj.Spec.HorizontalPodAutoscaler.OwnerReferences = or
-		err = utils.CreateServiceMonitor(funcObj, funcObj.Metadata.Namespace, or)
-		if err != nil {
-			return err
+		if funcObj.Spec.HorizontalPodAutoscaler.Spec.Metrics[0].Type == v2alpha1.ObjectMetricSourceType {
+			// A service monitor is needed when the metric is an object
+			err = utils.CreateServiceMonitor(funcObj, funcObj.Metadata.Namespace, or)
+			if err != nil {
+				return err
+			}
 		}
 		err = utils.CreateAutoscale(c.clientset, funcObj.Spec.HorizontalPodAutoscaler)
 		if err != nil {

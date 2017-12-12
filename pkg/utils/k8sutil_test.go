@@ -22,6 +22,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 	av2alpha1 "k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 	batchv2alpha1 "k8s.io/client-go/pkg/apis/batch/v2alpha1"
 	xv1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
@@ -776,22 +777,24 @@ func TestGetLocalHostname(t *testing.T) {
 }
 
 func TestCreateAutoscaleResource(t *testing.T) {
-	min := int32(1)
-	max := int32(10)
 	clientset := fake.NewSimpleClientset()
-	hpaDef, err := GetHorizontalAutoscaleDefinition("foo", "myns", "cpu", min, max, "50", map[string]string{})
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
+	name := "foo"
+	ns := "myns"
+	hpaDef := v2alpha1.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
 	}
 	if err := CreateAutoscale(clientset, hpaDef); err != nil {
 		t.Fatalf("Creating autoscale returned err: %v", err)
 	}
 
-	hpa, err := clientset.AutoscalingV2alpha1().HorizontalPodAutoscalers("myns").Get("foo", metav1.GetOptions{})
+	hpa, err := clientset.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Creating autoscale returned err: %v", err)
 	}
-	if hpa.Spec.ScaleTargetRef.Name != "foo" {
+	if hpa.ObjectMeta.Name != "foo" {
 		t.Fatalf("Creating wrong scale target name")
 	}
 }

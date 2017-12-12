@@ -42,7 +42,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -161,20 +160,6 @@ func GetRestClientOutOfCluster(group, apiVersion, apiPath string) (*rest.RESTCli
 // GetCRDClientOutOfCluster returns crd client to the request from outside of cluster
 func GetCRDClientOutOfCluster() (*rest.RESTClient, error) {
 	return GetRestClientOutOfCluster("k8s.io", "v1", "/apis")
-}
-
-//GetServiceMonitorClientOutOfCluster returns sm client to the request from outside of cluster
-func GetServiceMonitorClientOutOfCluster() (*monitoringv1alpha1.MonitoringV1alpha1Client, error) {
-	config, err := BuildOutOfClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := monitoringv1alpha1.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	return client, nil
 }
 
 //GetDefaultNamespace returns the namespace set in current cluster context
@@ -926,68 +911,6 @@ func EnsureFuncCronJob(client rest.Interface, funcObj *spec.Function, or []metav
 	return err
 }
 
-// GetHorizontalAutoscaleDefinition return an HorizontalAutoscale definition based on its parameters
-func GetHorizontalAutoscaleDefinition(name, ns, metric string, min, max int32, value string, labels map[string]string) (v2alpha1.HorizontalPodAutoscaler, error) {
-	m := []v2alpha1.MetricSpec{}
-	switch metric {
-	case "cpu":
-		i, err := strconv.ParseInt(value, 10, 32)
-		if err != nil {
-			return v2alpha1.HorizontalPodAutoscaler{}, err
-		}
-		i32 := int32(i)
-		m = []v2alpha1.MetricSpec{
-			{
-				Type: v2alpha1.ResourceMetricSourceType,
-				Resource: &v2alpha1.ResourceMetricSource{
-					Name: v1.ResourceCPU,
-					TargetAverageUtilization: &i32,
-				},
-			},
-		}
-	case "qps":
-		q, err := resource.ParseQuantity(value)
-		if err != nil {
-			return v2alpha1.HorizontalPodAutoscaler{}, err
-		}
-		m = []v2alpha1.MetricSpec{
-			{
-				Type: v2alpha1.ObjectMetricSourceType,
-				Object: &v2alpha1.ObjectMetricSource{
-					MetricName:  "function_calls",
-					TargetValue: q,
-					Target: v2alpha1.CrossVersionObjectReference{
-						Kind: "Service",
-						Name: name,
-					},
-				},
-			},
-		}
-		if err != nil {
-			return v2alpha1.HorizontalPodAutoscaler{}, err
-		}
-	default:
-		return v2alpha1.HorizontalPodAutoscaler{}, fmt.Errorf("metric %s is not supported", metric)
-	}
-
-	return v2alpha1.HorizontalPodAutoscaler{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-			Labels:    labels,
-		},
-		Spec: v2alpha1.HorizontalPodAutoscalerSpec{
-			ScaleTargetRef: v2alpha1.CrossVersionObjectReference{
-				Kind: "Deployment",
-				Name: name,
-			},
-			MinReplicas: &min,
-			MaxReplicas: max,
-			Metrics:     m,
-		},
-	}, nil
-}
-
 // CreateAutoscale creates HPA object for function
 func CreateAutoscale(client kubernetes.Interface, hpa v2alpha1.HorizontalPodAutoscaler) error {
 	_, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(hpa.ObjectMeta.Namespace).Create(&hpa)
@@ -1007,9 +930,22 @@ func DeleteAutoscale(client kubernetes.Interface, name, ns string) error {
 	return nil
 }
 
+func getServiceMonitorClient() (*monitoringv1alpha1.MonitoringV1alpha1Client, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := monitoringv1alpha1.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
 // DeleteServiceMonitor cleans the sm if it exists
 func DeleteServiceMonitor(name, ns string) error {
-	smclient, err := GetServiceMonitorClientOutOfCluster()
+	smclient, err := getServiceMonitorClient()
 	if err != nil {
 		return err
 	}
@@ -1023,7 +959,7 @@ func DeleteServiceMonitor(name, ns string) error {
 
 // CreateServiceMonitor creates a Service Monitor for the given function
 func CreateServiceMonitor(funcObj *spec.Function, ns string, or []metav1.OwnerReference) error {
-	smclient, err := GetServiceMonitorClientOutOfCluster()
+	smclient, err := getServiceMonitorClient()
 	if err != nil {
 		return err
 	}
