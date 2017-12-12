@@ -14,24 +14,34 @@ limitations under the License.
 package main
 
 import (
+	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-var ingressCmd = &cobra.Command{
-	Use:   "ingress SUBCOMMAND",
-	Short: "manage route to function on Kubeless",
-	Long:  `ingress command allows user to list, create, delete ingress rule for function on Kubeless`,
+var routeDeleteCmd = &cobra.Command{
+	Use:   "delete <name>",
+	Short: "delete a route from Kubeless",
+	Long:  `delete a route from Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
+		if len(args) != 1 {
+			logrus.Fatal("Need exactly one argument - route name")
+		}
+		ingName := args[0]
+
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
+		}
+
+		client := utils.GetClientOutOfCluster()
+
+		err = utils.DeleteIngress(client, ingName, ns)
+		if err != nil {
+			logrus.Fatal(err)
+		}
 	},
-}
-
-func init() {
-	cmds := []*cobra.Command{ingressCreateCmd, ingressListCmd, ingressDeleteCmd}
-
-	for _, cmd := range cmds {
-		ingressCmd.AddCommand(cmd)
-		cmd.Flags().StringP("namespace", "n", "", "Specify namespace for the ingress")
-
-	}
 }

@@ -28,7 +28,7 @@ import (
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
-var ingressListCmd = &cobra.Command{
+var routeListCmd = &cobra.Command{
 	Use:     "list FLAG",
 	Aliases: []string{"ls"},
 	Short:   "list all routes in Kubeless",
@@ -55,7 +55,7 @@ var ingressListCmd = &cobra.Command{
 }
 
 func init() {
-	ingressListCmd.Flags().StringP("out", "o", "", "Output format. One of: json|yaml")
+	routeListCmd.Flags().StringP("out", "o", "", "Output format. One of: json|yaml")
 }
 
 func doIngressList(w io.Writer, client kubernetes.Interface, ns, output string) error {
@@ -76,7 +76,7 @@ func printIngress(w io.Writer, ings []v1beta1.Ingress, output string) error {
 		table.SetHeader([]string{"Name", "namespace", "host", "path", "service name", "service port"})
 		for _, i := range ings {
 			if len(i.Spec.Rules) == 0 {
-				logrus.Errorf("The function ingress %s isn't in correct format. It has no rule defined.", i.Name)
+				logrus.Errorf("The function route %s isn't in correct format. It has no rule defined.", i.Name)
 				continue
 			}
 			n := i.Name
