@@ -25,11 +25,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-
+	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/kubeless/kubeless/pkg/controller"
 	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -49,7 +50,17 @@ var rootCmd = &cobra.Command{
 			KubeCli:   utils.GetClient(),
 			CRDClient: crdClient,
 		}
-		c := controller.New(cfg)
+		restCfg, err := rest.InClusterConfig()
+		if err != nil {
+			logrus.Fatalf("Cannot get REST client: %v", err)
+		}
+		// ServiceMonitor client is needed for handling monitoring resources
+		smclient, err := monitoringv1alpha1.NewForConfig(restCfg)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		c := controller.New(cfg, smclient)
 		stopCh := make(chan struct{})
 		defer close(stopCh)
 

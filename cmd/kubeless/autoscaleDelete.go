@@ -14,7 +14,6 @@ limitations under the License.
 package main
 
 import (
-	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -45,28 +44,7 @@ var autoscaleDeleteCmd = &cobra.Command{
 		}
 
 		if function.Spec.HorizontalPodAutoscaler.Name != "" {
-			client := utils.GetClientOutOfCluster()
-
-			err = utils.DeleteAutoscale(client, function.Spec.HorizontalPodAutoscaler.Name, ns)
-			if err != nil {
-				logrus.Fatal(err)
-			}
-
-			config, err := utils.BuildOutOfClusterConfig()
-			if err != nil {
-				logrus.Fatal(err)
-			}
-			smclient, err := monitoringv1alpha1.NewForConfig(config)
-			if err != nil {
-				logrus.Fatal(err)
-			}
-			err = utils.DeleteServiceMonitor(*smclient, function.Spec.HorizontalPodAutoscaler.Name, ns)
-			if err != nil {
-				logrus.Fatal(err)
-			}
-
 			function.Spec.HorizontalPodAutoscaler = v2alpha1.HorizontalPodAutoscaler{}
-			logrus.Info(function.Spec.HorizontalPodAutoscaler)
 			crdClient, err := utils.GetCRDClientOutOfCluster()
 			if err != nil {
 				logrus.Fatal(err)
