@@ -6,13 +6,26 @@ local statefulset = k.apps.v1beta1.statefulSet;
 local container = k.core.v1.container;
 local service = k.core.v1.service;
 local serviceAccount = k.core.v1.serviceAccount;
+local configMap = k.core.v1.configMap;
 
 local namespace = "kubeless";
 local controller_account_name = "controller-acct";
 
+local controllerEnv = [
+  {
+    name: "KUBELESS_INGRESS_ENABLED",
+    valueFrom: {configMapKeyRef: {"name": "kubeless-config", key: "ingress-enabled"}}
+  },
+  {
+    name: "KUBELESS_SERVICE_TYPE",
+    valueFrom: {configMapKeyRef: {"name": "kubeless-config", key: "service-type"}}
+  }
+];
+
 local controllerContainer =
   container.default("kubeless-controller", "bitnami/kubeless-controller:latest") +
-  container.imagePullPolicy("IfNotPresent");
+  container.imagePullPolicy("IfNotPresent") +
+  container.env(controllerEnv);
 
 local kafkaEnv = [
   {
@@ -212,6 +225,10 @@ local crd = {
   description: "Kubernetes Native Serverless Framework",
 };
 
+local kubelessConfig  = configMap.default("kubeless-config", namespace) +
+    configMap.data({"ingress-enabled": "false"}) +
+    configMap.data({"service-type": "ClusterIP"});
+
 {
   controllerAccount: k.util.prune(controllerAccount),
   controller: k.util.prune(controllerDeployment),
@@ -222,4 +239,5 @@ local crd = {
   zookeeperSvc: k.util.prune(zookeeperSvc),
   zookeeperHeadlessSvc: k.util.prune(zookeeperHeadlessSvc),
   crd: k.util.prune(crd),
+  cfg: k.util.prune(kubelessConfig),
 }
