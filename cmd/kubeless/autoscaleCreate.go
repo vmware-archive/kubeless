@@ -1,11 +1,9 @@
 package main
 
 import (
-	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 var autoscaleCreateCmd = &cobra.Command{
@@ -18,6 +16,19 @@ var autoscaleCreateCmd = &cobra.Command{
 		}
 		funcName := args[0]
 
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
+		}
+
+		function, err := utils.GetFunction(funcName, ns)
+		if err != nil {
+			logrus.Fatalf("Unable to find the function %s. Received %s: ", funcName, err)
+		}
+
 		min, err := cmd.Flags().GetInt32("min")
 		if err != nil {
 			logrus.Fatal(err)
@@ -29,13 +40,6 @@ var autoscaleCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		} else if max < min {
 			logrus.Fatalf("max must be greater than or equal to min")
-		}
-		ns, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		if ns == "" {
-			ns = utils.GetDefaultNamespace()
 		}
 
 		metric, err := cmd.Flags().GetString("metric")
@@ -51,32 +55,22 @@ var autoscaleCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		hpa, err := getHorizontalAutoscaleDefinition(funcName, ns, metric, min, max, value, function.Metadata.Labels)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		function.Spec.HorizontalPodAutoscaler = hpa
+
 		crdClient, err := utils.GetCRDClientOutOfCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
-
-		f := &spec.Function{}
-		err = crdClient.Get().
-			Resource("functions").
-			Namespace(ns).
-			Name(funcName).
-			Do().
-			Into(f)
+		logrus.Infof("Adding autoscaling rule to the function...")
+		err = utils.UpdateK8sCustomResource(crdClient, &function)
 		if err != nil {
-			if k8sErrors.IsNotFound(err) {
-				logrus.Fatalf("function %s doesn't exist in namespace %s", funcName, ns)
-			} else {
-				logrus.Fatalf("error validate input %v", err)
-			}
+			logrus.Fatal(err)
 		}
-
-		client := utils.GetClientOutOfCluster()
-
-		err = utils.CreateAutoscale(client, f, ns, metric, min, max, value)
-		if err != nil {
-			logrus.Fatalf("Can't create autoscale: %v", err)
-		}
+		logrus.Infof("Autoscaling rule for %s submitted for deployment", funcName)
 	},
 }
 

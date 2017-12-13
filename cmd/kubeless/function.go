@@ -26,6 +26,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -35,6 +36,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 )
 
 var functionCmd = &cobra.Command{
@@ -288,4 +290,65 @@ func getDeploymentStatus(cli kubernetes.Interface, funcName, ns string) (string,
 		status += " NOT READY"
 	}
 	return status, nil
+}
+
+func getHorizontalAutoscaleDefinition(name, ns, metric string, min, max int32, value string, labels map[string]string) (v2alpha1.HorizontalPodAutoscaler, error) {
+	m := []v2alpha1.MetricSpec{}
+	switch metric {
+	case "cpu":
+		i, err := strconv.ParseInt(value, 10, 32)
+		if err != nil {
+			return v2alpha1.HorizontalPodAutoscaler{}, err
+		}
+		i32 := int32(i)
+		m = []v2alpha1.MetricSpec{
+			{
+				Type: v2alpha1.ResourceMetricSourceType,
+				Resource: &v2alpha1.ResourceMetricSource{
+					Name: v1.ResourceCPU,
+					TargetAverageUtilization: &i32,
+				},
+			},
+		}
+	case "qps":
+		q, err := resource.ParseQuantity(value)
+		if err != nil {
+			return v2alpha1.HorizontalPodAutoscaler{}, err
+		}
+		m = []v2alpha1.MetricSpec{
+			{
+				Type: v2alpha1.ObjectMetricSourceType,
+				Object: &v2alpha1.ObjectMetricSource{
+					MetricName:  "function_calls",
+					TargetValue: q,
+					Target: v2alpha1.CrossVersionObjectReference{
+						Kind: "Service",
+						Name: name,
+					},
+				},
+			},
+		}
+		if err != nil {
+			return v2alpha1.HorizontalPodAutoscaler{}, err
+		}
+	default:
+		return v2alpha1.HorizontalPodAutoscaler{}, fmt.Errorf("metric %s is not supported", metric)
+	}
+
+	return v2alpha1.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+			Labels:    labels,
+		},
+		Spec: v2alpha1.HorizontalPodAutoscalerSpec{
+			ScaleTargetRef: v2alpha1.CrossVersionObjectReference{
+				Kind: "Deployment",
+				Name: name,
+			},
+			MinReplicas: &min,
+			MaxReplicas: max,
+			Metrics:     m,
+		},
+	}, nil
 }

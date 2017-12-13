@@ -6,7 +6,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/batch/v2alpha1"
+	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
+	batchv2alpha1 "k8s.io/client-go/pkg/apis/batch/v2alpha1"
 	xv1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	ktesting "k8s.io/client-go/testing"
 )
@@ -42,7 +43,11 @@ func TestDeleteK8sResources(t *testing.T) {
 		ObjectMeta: myNsFoo,
 	}
 
-	clientset := fake.NewSimpleClientset(&deploy, &svc, &cm)
+	hpa := v2alpha1.HorizontalPodAutoscaler{
+		ObjectMeta: myNsFoo,
+	}
+
+	clientset := fake.NewSimpleClientset(&deploy, &svc, &cm, &hpa)
 
 	controller := Controller{
 		clientset: clientset,
@@ -53,7 +58,7 @@ func TestDeleteK8sResources(t *testing.T) {
 
 	t.Log("Actions:", clientset.Actions())
 
-	for _, kind := range []string{"services", "configmaps", "deployments"} {
+	for _, kind := range []string{"services", "configmaps", "deployments", "horizontalpodautoscalers"} {
 		a := findAction(clientset, "delete", kind)
 		if a == nil {
 			t.Errorf("failed to delete %s", kind)
@@ -81,7 +86,7 @@ func TestDeleteK8sResources(t *testing.T) {
 	}
 
 	// Test deleting cronjob
-	job := v2alpha1.CronJob{
+	job := batchv2alpha1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "myns",
 			Name:      "trigger-foo",

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/sirupsen/logrus"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api"
+	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -54,6 +56,7 @@ type Controller struct {
 	logger    *logrus.Entry
 	clientset kubernetes.Interface
 	crdclient rest.Interface
+	smclient  *monitoringv1alpha1.MonitoringV1alpha1Client
 	Functions map[string]*spec.Function
 	queue     workqueue.RateLimitingInterface
 	informer  cache.SharedIndexInformer
@@ -66,7 +69,7 @@ type Config struct {
 }
 
 // New initializes a controller object
-func New(cfg Config) *Controller {
+func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Controller {
 	lw := cache.NewListWatchFromClient(cfg.CRDClient, "functions", api.NamespaceAll, fields.Everything())
 
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
@@ -102,6 +105,7 @@ func New(cfg Config) *Controller {
 	return &Controller{
 		logger:    logrus.WithField("pkg", "controller"),
 		clientset: cfg.KubeCli,
+		smclient:  smclient,
 		crdclient: cfg.CRDClient,
 		informer:  informer,
 		queue:     queue,
@@ -229,6 +233,42 @@ func (c *Controller) ensureK8sResources(funcObj *spec.Function) error {
 		}
 	}
 
+	if funcObj.Spec.HorizontalPodAutoscaler.Name != "" && funcObj.Spec.HorizontalPodAutoscaler.Spec.ScaleTargetRef.Name != "" {
+		funcObj.Spec.HorizontalPodAutoscaler.OwnerReferences = or
+		if funcObj.Spec.HorizontalPodAutoscaler.Spec.Metrics[0].Type == v2alpha1.ObjectMetricSourceType {
+			// A service monitor is needed when the metric is an object
+			err = utils.CreateServiceMonitor(*c.smclient, funcObj, funcObj.Metadata.Namespace, or)
+			if err != nil {
+				return err
+			}
+		}
+		err = utils.CreateAutoscale(c.clientset, funcObj.Spec.HorizontalPodAutoscaler)
+		if err != nil {
+			return err
+		}
+	} else {
+		// HorizontalPodAutoscaler doesn't exists, try to delete if it already existed
+		err = c.deleteAutoscale(funcObj.Metadata.Namespace, funcObj.Metadata.Name)
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Controller) deleteAutoscale(ns, name string) error {
+	if c.smclient != nil {
+		// Delete Service monitor if the client is available
+		err := utils.DeleteServiceMonitor(*c.smclient, name, ns)
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return err
+		}
+	}
+	// delete autoscale
+	err := utils.DeleteAutoscale(c.clientset, name, ns)
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
 	return nil
 }
 
@@ -257,6 +297,12 @@ func (c *Controller) deleteK8sResources(ns, name string) error {
 
 	// delete cm
 	err = c.clientset.Core().ConfigMaps(ns).Delete(name, &metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+
+	// delete service monitor
+	err = c.deleteAutoscale(ns, name)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
