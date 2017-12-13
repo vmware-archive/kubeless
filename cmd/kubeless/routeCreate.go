@@ -14,7 +14,7 @@ limitations under the License.
 package main
 
 import (
-	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1"	
+	spec "github.com/kubeless/kubeless/pkg/apis/kubeless/v1"	
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

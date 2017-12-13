@@ -31,7 +31,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1"	
+	spec "github.com/kubeless/kubeless/pkg/apis/kubeless/v1"	
 	"github.com/kubeless/kubeless/pkg/utils"
 )
 

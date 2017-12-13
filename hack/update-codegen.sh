@@ -18,7 +18,7 @@ HACK_DIR=$(dirname "${BASH_SOURCE}")
 REPO_ROOT=${HACK_DIR}/..
 
 ${REPO_ROOT}/vendor/k8s.io/code-generator/generate-groups.sh \
-  all \
+  client,informer,lister \
   github.com/kubeless/kubeless/pkg/client \
   github.com/kubeless/kubeless/pkg/apis \
   kubeless:v1 \

@@ -22,7 +22,7 @@ import (
 
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/utils"
-	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1"	
+	spec "github.com/kubeless/kubeless/pkg/apis/kubeless/v1"	
 
 	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"

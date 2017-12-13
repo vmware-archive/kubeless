@@ -25,7 +25,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/kubeless/kubeless/pkg/spec"
+	spec "github.com/kubeless/kubeless/pkg/apis/kubeless/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"

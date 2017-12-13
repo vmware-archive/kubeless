@@ -40,7 +40,7 @@ import (
 	"k8s.io/client-go/rest"
 	restFake "k8s.io/client-go/rest/fake"
 
-	"github.com/kubeless/kubeless/pkg/spec"
+	spec "github.com/kubeless/kubeless/pkg/apis/kubeless/v1"
 )
 
 func fakeCRDClient(f func(req *http.Request) (*http.Response, error)) *restFake.RESTClient {
