@@ -186,7 +186,6 @@ pubsub-python:
 # Generate a random string to inject into s3 topic,
 # then "tail -f" until it shows (with timeout)
 pubsub-python-verify:
-	kubeless topic create s3-python
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	kubeless topic publish --topic s3-python --data "$(DATA)"
 	pod=`kubectl get po -oname -l function=pubsub-python`; \
@@ -205,7 +204,6 @@ pubsub-python-verify:
 	$$found
 
 pubsub-python-update:
-	kubeless topic create s3-python-2
 	kubeless function update pubsub-python --trigger-topic s3-python-2
 
 pubsub-python-update-verify:
@@ -215,7 +213,6 @@ pubsub-python34:
 	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/pubsub.py
 
 pubsub-python34-verify:
-	kubeless topic create s3-python34
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	kubeless topic publish --topic s3-python34 --data "$(DATA)"
 	pod=`kubectl get po -oname -l function=pubsub-python34`; \
@@ -237,7 +234,6 @@ pubsub-nodejs:
 	kubeless function deploy pubsub-nodejs --trigger-topic s3-nodejs --runtime nodejs6 --handler pubsub-nodejs.handler --from-file nodejs/helloevent.js
 
 pubsub-nodejs-verify:
-	kubeless topic create s3-nodejs
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	kubeless topic publish --topic s3-nodejs --data '{"test": "$(DATA)"}'
 	pod=`kubectl get po -oname -l function=pubsub-nodejs`; \
@@ -259,7 +255,6 @@ pubsub-ruby:
 	kubeless function deploy pubsub-ruby --trigger-topic s3-ruby --runtime ruby2.4 --handler pubsub-ruby.handler --from-file ruby/helloevent.rb
 
 pubsub-ruby-verify:
-	kubeless topic create s3-ruby
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	kubeless topic publish --topic s3-ruby --data "$(DATA)"
 	pod=`kubectl get po -oname -l function=pubsub-ruby`; \
