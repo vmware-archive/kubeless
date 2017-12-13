@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+
+	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1"	
 )
 
 var autoscaleCreateCmd = &cobra.Command{

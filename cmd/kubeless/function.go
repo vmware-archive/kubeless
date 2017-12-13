@@ -29,7 +29,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/kubeless/kubeless/pkg/spec"
+	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1"	
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

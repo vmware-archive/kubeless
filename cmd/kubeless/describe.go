@@ -22,7 +22,8 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
-	"github.com/kubeless/kubeless/pkg/spec"
+	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1"	
+
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

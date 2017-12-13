@@ -33,7 +33,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/kubeless/kubeless/pkg/spec"
+	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1"	
 	"github.com/kubeless/kubeless/pkg/utils"
 )
 
