@@ -42,12 +42,13 @@ try {
 const { vmscript, sandbox } = helper.loadFunc(modName, functionCallingCode);
 
 kafkaConsumer.on('message', (message) => {
-  const end = statistics.timeHistogram.labels(message.topic).startTimer();
+  const funcLabel = modName + "-" + message.topic;
+  const end = statistics.timeHistogram.labels(funcLabel).startTimer();
   const handleError = (err) => {
-    statistics.errorsCounter.labels(message.topic).inc();
+    statistics.errorsCounter.labels(funcLabel).inc();
     console.error(`Function failed to execute: ${err.stack}`);
   };
-  statistics.callsCounter.labels(message.topic).inc();
+  statistics.callsCounter.labels(funcLabel).inc();
   const reqSandbox = Object.assign({
     message: message.value,
     end,
