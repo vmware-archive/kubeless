@@ -16,3 +16,7 @@ import:
 - package: github.com/robfig/cron
 - package: golang.org/x/sys
   version: 82aafbf43bf885069dc71b7e7c2f9d7a614d47da
+- package: k8s.io/code-generator
+  version: release-1.8
+- package: k8s.io/gengo
+  version: 9e661e9308f078838e266cca1c673922088c0ea4
