@@ -14,32 +14,76 @@ go_import_path: github.com/kubeless/kubeless
 services:
   - docker
 env:
+  matrix:
+    - TEST_TARGET=unit
+    - TEST_TARGET=minikube
+    - TEST_TARGET=GKE
   global:
     - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller
     - CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}
     - CGO_ENABLED=0
+    - GKE_VERSION=1.7.8-gke.0
     - secure: QTXmAe9Z5WkWq8KDvcP5JauyYrYaupywLUQjlE2SJWuD1wvgcQxPlkWF5NpSAL70TqnGhkmCmsfQBdJ+T59/yYjTldfnFumkp1dABdIURFPQc8h7IeF+evSSmwgaGwTc7bRPu9cprH1yflwyAEQmnzKGkT91ZHszZxfyMDFKPcFJhBdz2lcOsJRIetgrMOBS0sguZVnnY08okq6F0DEDk3SYT9RoPN0/NjyerPpxJ7arS2bN02R6ogBZM7LiTUF6aFuA3vaVKZarVBXYL5ZDr0HvHcSuT0T8F+CGDM7KALldOWgrNbDiVLXBliwRpQbxmKMti7gSftym77MYZHvfq7kKWNrJ/CkV0yXIBrvC0+CQ8Q6E7+dx6pD5HRPB4KGTvAJASZPpysDOcLvjIJh6UvCnQ6I0anoIeK3Socm3NQeEYr6gLVOtZfoiIL1D27NgOEtgviEMQ/haNW9x6O6LT4K/j5NAjm/mcW4/h5Z7vJHBnIbEVsXCe5hj8QmoH1hJvkRcgT5eB5E5dCidt+hMed/cD/ERb1XG1fnK6uBHLS3+sm86ZEyMu7/uI2OQkBtvhPthdcPsCB6rnJMdkIg2vq981vlxA7d2uWhhLX8lfhKMKLEhZtNJPBdcXNvo6a5GxbhHWlPIH7wli2be9t/UuZBRuSINnN4HBAXKWD364lo=
+    - secure: l+ws8gZwmr/6NFXKbta9c6RYAZTFouD2VFoORzWIh2h/TzW68fKD2H2Mymt/s/2qJxYgJTI83D7XlTfCGSZQ8u62eLJKNnIXjOnLX3V1nDZNhNjvsy26u7JsINdYe1c0/rxeTLoXi58Lk4mWzGaA6ba3/ZL6qNUr+seD8HwpeJU9gahEyxl3Lrd1vRSp52lJVIvNkSKuBGFECjcab3iwJJhoaHFDTjNKGyWdpVIbBzk3K2bpzjdrpvXojxX4/sqNOcR5JZfSIuR24zvuI1q47ba2BZM7UmiMh/YPWGwY/6OAQtCmkaRD3f5w/aeW8PqKh/aJ0XE/ddQFCKyP1QjUOtOLaxwrQJN9gPZ0xIdBbzT/Q7VZq/jLF85qHyrqdcCj7u8GJVit98aBgKTbuNB7C8W2BVt3FUMTSgPzIdZ52My31kwUI03O+5dTRk7GSOU02++aAqui29WI4dNqVjHVJ1fQxwTDVVWreDD2DllNnO24ijpWM4a1L2SzBMzmedh6FxvIewvsAdmM7t5TfmCX4zsUJ4x/nUE69p9HpX3xYpiByzj0MMwYIsk3kOfkjkICZ2VKA5fQuJgybVE0xLFB0BJs6eP/hvv8L/wPKEgHfdqdioBNnFszHjR0aRIxPCsCPe3GL7+MfGd4nfxCcRlmu8d19eaMTH7GUAiz2mbQwzg=
+    - secure: wv+2LnwA/nn4wDhGE+o0ZCXZNjeAyBpGAukE/2EHTzRJvAKwFmGDgh770GypXbYZFNauzFspHIIp1KYpOoRzvmffuWUsCEbNjuoI04JeER9PRKoyV1Www/iv/LMwuGsbm1kqNvYXVDZU+nbnAB3kagN4+tfgkmGK8SExU1RMzCkgMzS65mEs89gQ/aheuYSbnpxzNIu/NqdZyzHt+OUBIjmQ5wtUdPOte0y8kFH5CaM702MfHWo1ygvKXAQnjxlynmX3zLOE91lPHUmcfcvV4fSdez0YrPrjCRhVaZMRX0E0XJ11sfBijEYziDnVHEWSZNemqerN+LvN8di4MZTrTu4JSdnp8k9ANB/gnYVtF495xfEKsSYIXT08nb0zKqNJ+5dVd/sIa3hiYF0X17aXsmBvfakv7O4VKdRS2j7YUrUOqxYIyLPIfNSv7dfxMWsjMjh5G1TZnbS4JBrQcMlt1jsNqLois+JnFyQ2iyFlBEuUC8OY4RFQjVjpNq23xgOPKIIvaLet/Ks22oNgEJSZF54z+wowsiB4YqwtYuvf8Wu5mSsf9B3xfzEQgOHjsy/PBdDPcnnk+uT69ji31fym++jiUwX90kdoBSoEiNfYNznCW5WX6ReMWOa2tW+cYNrNLDVBiFIvfZpmwu1FHJ4eAciGK4P3kuxab+oFhgqgUGg=
+    - secure: ZlQURkLv/f3RmXSU2ICcqw7R2Wvvf5U/XZL/HpbPefdI1ThSQBWdVrRxH3s/I7ASBk9b0kD7LYeiiGD6Hs6xQAmwKPVjCjSc8/6oTMQQhaHeYH42BHuRlXWhII/qrCkiNHXiqcb2PcF6dgfWBHpJz13PCpiFgrr+iH0XYWQsGZQz12AfsSbpqFwKAlPtl9rf4JNKwOF4jr/VVUrHE3avY35UMYWMDrLlqJts5HD9tTaMCne0cQcljwyeT0NBa0/H1+IhLx5nKgiwwtDrU38UJvO/1gaNZF5kWXBLn9uWP6cTr/lv3zPX0K3HIXICm3KylV1HBdIHGAURSePrBnNiLxod4WQcion8ww3/Ah/Q7O9j/NiFerRcSyHjemAA0b5ePmTyptIaEnOXt44mLcTVf5vCT2rSPHYxxgO7BReoRl9mmLhq+ykl1iCcQF6Oph8i3wlotZO7PRjL2KqYcCEsVh1v/QCQnk3SrEC/2P40dN1UKBIAuGNrv6IlvyEwEMiy4oMjk1By5sVo/euYBdTOqVZJw7e8PLKY6G4govqvnh2bH2WZMKA4SEwfREQtmGmUPVVerH0ce4VinKROVAzn++EWdKpbvuqyYR2kiByfci7lL00jsqQYEWQnm4WZ2ZzaBv9EuOe7F9yYWRXBpkidNgTyR3PcDiM3r3mTbXPG4yE=
 before_install:
-  - set -e
-
+- set -e
+- export GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/gcloud.json
+- openssl aes-256-cbc -K $encrypted_1dbafa65b3ad_key -iv $encrypted_1dbafa65b3ad_iv
+  -in .github/gcloud.json.enc -out $GOOGLE_APPLICATION_CREDENTIALS -d
 install:
   - make bootstrap
+  - |
+    if [[ "$TEST_TARGET" == "GKE" ]]; then
+      if [ ! -d $HOME/gcloud/google-cloud-sdk ]; then
+        mkdir -p $HOME/gcloud &&
+        wget -q https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz --directory-prefix=$HOME/gcloud &&
+        cd $HOME/gcloud &&
+        tar xzf google-cloud-sdk.tar.gz &&
+        printf '\ny\n\ny\ny\n' | ./google-cloud-sdk/install.sh &&
+        cd $TRAVIS_BUILD_DIR;
+      fi
+      gcloud -q config set project $GKE_PROJECT
+      if [ -a $GOOGLE_APPLICATION_CREDENTIALS ]; then
+        gcloud -q auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS;
+      fi
+      echo "Starting GKE cluster"
+      ./script/start-gke-env.sh $GKE_PROJECT $ZONE $GKE_VERSION $GKE_ADMIN > $TRAVIS_BUILD_DIR/gke-start.log 2>&1 & 
+      GKE_START_PID=$!
+    fi
 
 script:
-  - make test
-  - make validation
-  - make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
   - |
-    if [ "$TRAVIS_OS_NAME" = linux ]; then
+    case $TEST_TARGET in
+    unit)
+      make test
+      make validation
+      ;;
+    minikube)
+      make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
       make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
-    fi
-  - make all-yaml
-  - |
-    if [ "$TRAVIS_OS_NAME" = linux ]; then
       export TEST_DEBUG=1
       docker tag $CONTROLLER_IMAGE ${CONTROLLER_IMAGE_NAME}:latest
       make integration-tests
-    fi
+      ;;
+    GKE)
+      make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
+      make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
+      docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+      docker push $CONTROLLER_IMAGE
+      sed -i.bak 's/'":latest"'/'":${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}"'/g' kubeless.jsonnet
+      echo "Waiting for the GKE cluster to be ready"
+      tail -f $TRAVIS_BUILD_DIR/gke-start.log &
+      wait $GKE_START_PID
+      if ! kubectl get pods -n kubeless 2>&1 | grep -q "No resources found"; then
+        echo "Waiting for a previous installation to be cleaned"
+        bash -c 'grep -q "No resources found" <(timeout 60 kubectl get pods -n kubeless -w 2>&1)'
+      fi
+      export TEST_DEBUG=1
+      ./script/integration-tests gke_$PROJECT_$ZONE_$PROJECT
+      ;;
+    esac
 
 after_success:
   - |
@@ -51,6 +95,7 @@ after_success:
     fi
 
 before_deploy:
+  - make all-yaml
   - make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary-cross
   - for d in bundles/kubeless_*; do zip -r9 $d.zip $d/; done
   - |

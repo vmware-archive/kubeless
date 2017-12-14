@@ -336,6 +336,10 @@ func getHorizontalAutoscaleDefinition(name, ns, metric string, min, max int32, v
 	}
 
 	return v2alpha1.HorizontalPodAutoscaler{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "autoscaling/v2alpha1",
+			Kind:       "HorizontalPodAutoscaler",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,

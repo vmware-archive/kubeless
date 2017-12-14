@@ -103,7 +103,10 @@ func (c *Cmd) RoundTripCallback(conn *websocket.Conn) (*http.Response, error) {
 	wg.Wait()
 	close(errChan)
 	err := <-errChan
-	return nil, err
+	return &http.Response{
+		Status:     "OK",
+		StatusCode: 200,
+	}, err
 }
 
 // A RoundTripCallback is used to process the websocket from an
