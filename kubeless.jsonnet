@@ -97,6 +97,7 @@ local kafkaContainer =
 local kafkaInitContainer =
   container.default("volume-permissions", "busybox") +
   container.imagePullPolicy("IfNotPresent") +
+  container.resources({requests: {memory: "1Gi"}}) +
   container.command(["sh", "-c", "chmod -R g+rwX /bitnami"]) +
   container.volumeMounts([
     {
