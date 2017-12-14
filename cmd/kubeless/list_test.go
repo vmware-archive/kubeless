@@ -106,6 +106,9 @@ func TestList(t *testing.T) {
 						},
 					},
 				},
+				Status: spec.FunctionStatus{
+					Status: "READY",
+				},
 			},
 			{
 				Metadata: metav1.ObjectMeta{
@@ -149,6 +152,9 @@ func TestList(t *testing.T) {
 						},
 					},
 				},
+				Status: spec.FunctionStatus{
+					Status: "NOT READY",
+				},
 			},
 			{
 				Metadata: metav1.ObjectMeta{
@@ -167,6 +173,9 @@ func TestList(t *testing.T) {
 							Containers: []v1.Container{{}},
 						},
 					},
+				},
+				Status: spec.FunctionStatus{
+					Status: "MISSING",
 				},
 			},
 		},
@@ -223,14 +232,14 @@ func TestList(t *testing.T) {
 		t.Errorf("table output didn't mention both functions")
 	}
 	// Status
-	m, err := regexp.MatchString("foo.*1/1 READY", output)
+	m, err := regexp.MatchString("foo.*READY", output)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !m {
 		t.Errorf("table output didn't mention deployment status")
 	}
-	m, err = regexp.MatchString("bar.*0/2 NOT READY", output)
+	m, err = regexp.MatchString("bar.*NOT READY", output)
 	if err != nil {
 		t.Fatal(err)
 	}
