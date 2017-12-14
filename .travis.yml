@@ -33,7 +33,7 @@ before_install:
 install:
   - make bootstrap
   - |
-    if [[ "$TEST_TARGET" == "GKE" && -n "$GKE_PROJECT" ]]; then
+    if [[ "$TEST_TARGET" == "GKE" ]]; then
       export GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/client_secrets.json
       openssl aes-256-cbc -K $encrypted_8c979a11ab68_key -iv $encrypted_8c979a11ab68_iv -in .github/gcloud.json.enc -out $GOOGLE_APPLICATION_CREDENTIALS -d
       if [ ! -d $HOME/gcloud/google-cloud-sdk ]; then
@@ -68,24 +68,20 @@ script:
       make integration-tests
       ;;
     GKE)
-      if [ -n "$GKE_PROJECT" ]; then
-        make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
-        make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
-        docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-        docker push $CONTROLLER_IMAGE
-        sed -i.bak 's/'":latest"'/'":${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}"'/g' kubeless.jsonnet
-        echo "Waiting for the GKE cluster to be ready"
-        tail -f $TRAVIS_BUILD_DIR/gke-start.log &
-        wait $GKE_START_PID
-        if ! kubectl get pods -n kubeless 2>&1 | grep -q "No resources found"; then
-          echo "Waiting for a previous installation to be cleaned"
-          bash -c 'grep -q "No resources found" <(timeout 60 kubectl get pods -n kubeless -w 2>&1)'
-        fi
-        export TEST_DEBUG=1
-        ./script/integration-tests gke_$PROJECT_$ZONE_$PROJECT
-      else
-        echo "Skipping GKE tests"
+      make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
+      make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
+      docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+      docker push $CONTROLLER_IMAGE
+      sed -i.bak 's/'":latest"'/'":${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}"'/g' kubeless.jsonnet
+      echo "Waiting for the GKE cluster to be ready"
+      tail -f $TRAVIS_BUILD_DIR/gke-start.log &
+      wait $GKE_START_PID
+      if ! kubectl get pods -n kubeless 2>&1 | grep -q "No resources found"; then
+        echo "Waiting for a previous installation to be cleaned"
+        bash -c 'grep -q "No resources found" <(timeout 60 kubectl get pods -n kubeless -w 2>&1)'
       fi
+      export TEST_DEBUG=1
+      ./script/integration-tests gke_$PROJECT_$ZONE_$PROJECT
       ;;
     esac
 
