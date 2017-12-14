@@ -84,6 +84,7 @@ local kafkaContainer =
   container.default("broker", "bitnami/kafka@sha256:0c4be25cd3b31176a4c738da64d988d614b939021bedf7e1b0cc72b37a071ecb") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(kafkaEnv) +
+  container.resources({requests: {memory: "1Gi"}}) +
   container.ports({containerPort: 9092}) +
   container.livenessProbe({tcpSocket: {port: 9092}, initialDelaySeconds: 30}) +
   container.volumeMounts([
