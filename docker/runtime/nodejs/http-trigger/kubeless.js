@@ -40,10 +40,11 @@ app.all('*', (req, res) => {
     res.header('Access-Control-Allow-Headers', req.headers['access-control-request-headers'])
     res.end();
   } else {
-    const end = statistics.timeHistogram.labels(req.method).startTimer();
-    statistics.callsCounter.labels(req.method).inc();
+    const funcLabel = modName + "-" + req.method;
+    const end = statistics.timeHistogram.labels(funcLabel).startTimer();
+    statistics.callsCounter.labels(funcLabel).inc();
     const handleError = (err) => {
-      statistics.errorsCounter.labels(req.method).inc();
+      statistics.errorsCounter.labels(funcLabel).inc();
       res.status(500).send('Internal Server Error');
       console.error(`Function failed to execute: ${err.stack}`);
     };
