@@ -56,22 +56,19 @@ install:
 
 script:
   - |
+    make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
+    make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
     case $TEST_TARGET in
     unit)
       make test
       make validation
       ;;
     minikube)
-      make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
-      make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
       export TEST_DEBUG=1
-      docker tag $CONTROLLER_IMAGE ${CONTROLLER_IMAGE_NAME}:latest
       make integration-tests
       ;;
     GKE)
       if [[ -n "$GKE_ADMIN" && "$TRAVIS_EVENT_TYPE" != "pull_request" ]]; then
-        make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
-        make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
         docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
         docker push $CONTROLLER_IMAGE
         sed -i.bak 's/'":latest"'/'":${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}"'/g' kubeless.jsonnet
@@ -106,6 +103,7 @@ before_deploy:
   - |
     if [ "$TRAVIS_OS_NAME" = linux ]; then
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+      docker tag $CONTROLLER_IMAGE ${CONTROLLER_IMAGE_NAME}:latest
       docker push $CONTROLLER_IMAGE
       NEW_DIGEST=$(./script/find_digest.sh ${CONTROLLER_IMAGE_NAME} ${TRAVIS_TAG} | cut -d " " -f 2)
       OLD_DIGEST=":latest"
