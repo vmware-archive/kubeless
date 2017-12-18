@@ -38,12 +38,7 @@ install:
       export GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/client_secrets.json
       openssl aes-256-cbc -K $encrypted_1dbafa65b3ad_key -iv $encrypted_1dbafa65b3ad_iv -in .github/gcloud.json.enc -out $GOOGLE_APPLICATION_CREDENTIALS -d
       if [ ! -d $HOME/gcloud/google-cloud-sdk ]; then
-        mkdir -p $HOME/gcloud &&
-        wget -q https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz --directory-prefix=$HOME/gcloud &&
-        cd $HOME/gcloud &&
-        tar xzf google-cloud-sdk.tar.gz &&
-        printf '\ny\n\ny\ny\n' | ./google-cloud-sdk/install.sh &&
-        cd $TRAVIS_BUILD_DIR;
+        curl https://sdk.cloud.google.com | bash
       fi
       gcloud -q config set project $GKE_PROJECT
       if [ -a $GOOGLE_APPLICATION_CREDENTIALS ]; then
