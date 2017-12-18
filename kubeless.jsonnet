@@ -85,7 +85,6 @@ local kafkaContainer =
   container.imagePullPolicy("IfNotPresent") +
   container.env(kafkaEnv) +
   container.ports({containerPort: 9092}) +
-  container.resources({requests: {memory: "1Gi"}}) +
   container.livenessProbe({tcpSocket: {port: 9092}, initialDelaySeconds: 30}) +
   container.volumeMounts([
     {
@@ -109,7 +108,6 @@ local zookeeperContainer =
   container.default("zookeeper", "bitnami/zookeeper@sha256:f66625a8a25070bee18fddf42319ec58f0c49c376b19a5eb252e6a4814f07123") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(zookeeperEnv) +
-  container.resources({requests: {memory: "1Gi"}}) +
   container.ports(zookeeperPorts) +
   container.volumeMounts([
     {
