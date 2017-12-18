@@ -149,7 +149,7 @@ $ curl -L --data '{"Another": "Echo"}' localhost:8080/api/v1/proxy/namespaces/de
 {"Another": "Echo"}
 ```
 
-Kubeless also supports [ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) which means you can provide your custom URL to the function. Please refer to [this doc](./docs/ingress.md) for more details.
+Kubeless also supports [ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) which means you can provide your custom URL to the function. Please refer to [this doc](./docs/routing.md) for more details.
 
 ### PubSub function
 
