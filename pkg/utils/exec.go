@@ -136,10 +136,10 @@ func (d *WebsocketRoundTripper) RoundTrip(r *http.Request) (*http.Response, erro
 	wsconf.Protocol = []string{"channel.k8s.io"}
 
 	conn, err := websocket.DialConfig(wsconf)
-	conn.PayloadType = websocket.BinaryFrame
 	if err != nil {
 		return nil, err
 	}
+	conn.PayloadType = websocket.BinaryFrame
 	defer conn.Close()
 
 	return d.Do(conn)
