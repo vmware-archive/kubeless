@@ -58,6 +58,7 @@ script:
   - |
     make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
     make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
+    make all-yaml
     case $TEST_TARGET in
     unit)
       make test
@@ -71,7 +72,8 @@ script:
       if [[ -n "$GKE_ADMIN" && "$TRAVIS_EVENT_TYPE" != "pull_request" ]]; then
         docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
         docker push $CONTROLLER_IMAGE
-        sed -i.bak 's/'":latest"'/'":${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}"'/g' kubeless.jsonnet
+        sed -i.bak 's/'":latest"'/'":${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}"'/g' kubeless.yaml
+        sed -i.bak 's/'":latest"'/'":${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}"'/g' kubeless-rbac.yaml
         echo "Waiting for the GKE cluster to be ready"
         tail -f $TRAVIS_BUILD_DIR/gke-start.log &
         wait $GKE_START_PID
@@ -97,7 +99,6 @@ after_success:
     fi
 
 before_deploy:
-  - make all-yaml
   - make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary-cross
   - for d in bundles/kubeless_*; do zip -r9 $d.zip $d/; done
   - |
