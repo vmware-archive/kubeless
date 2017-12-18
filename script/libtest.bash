@@ -131,7 +131,7 @@ kubeless_recreate() {
     local jsonnet_del=${1:?missing jsonnet delete manifest} jsonnet_upd=${2:?missing jsonnet update manifest}
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     echo_info "Delete kubeless namespace, wait to be gone ... "
-    kubecfg delete ${jsonnet_del}
+    kubecfg delete ${jsonnet_del} || true
     kubectl delete namespace kubeless >& /dev/null || true
     while kubectl get namespace kubeless >& /dev/null; do
         ((cnt=cnt-1)) || return 1
