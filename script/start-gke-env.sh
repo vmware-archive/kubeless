@@ -34,6 +34,12 @@ else
     echo "Creating cluster $CLUSTER in $ZONE (v$VERSION)"
     # Bypass the warning about using alpha features
     echo 'y' | gcloud container clusters create --cluster-version=$VERSION --zone $ZONE $CLUSTER --num-nodes 5 --no-enable-legacy-authorization --enable-kubernetes-alpha
+    # Wait for the cluster to respond
+    cnt=20
+    until kubectl get pods; do
+        ((cnt=cnt-1)) || (echo "Waited 20 seconds but cluster is not reachable" && return 1)
+        sleep 1
+    done
     kubectl create clusterrolebinding kubeless-cluster-admin --clusterrole=cluster-admin --user=$ADMIN
 fi
 
