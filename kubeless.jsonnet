@@ -81,9 +81,10 @@ local zookeeperPorts = [
 ];
 
 local kafkaContainer =
-  container.default("broker", "bitnami/kafka@sha256:0c4be25cd3b31176a4c738da64d988d614b939021bedf7e1b0cc72b37a071ecb") +
+  container.default("broker", "bitnami/kafka@sha256:93673b3065a925ef2a0a6c121191d278a7e3784e0a006730d836d4043988d398") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(kafkaEnv) +
+  container.resources({requests: {memory: "1Gi"}}) +
   container.ports({containerPort: 9092}) +
   container.livenessProbe({tcpSocket: {port: 9092}, initialDelaySeconds: 30}) +
   container.volumeMounts([
@@ -105,7 +106,7 @@ local kafkaInitContainer =
   ]);
 
 local zookeeperContainer =
-  container.default("zookeeper", "bitnami/zookeeper@sha256:f66625a8a25070bee18fddf42319ec58f0c49c376b19a5eb252e6a4814f07123") +
+  container.default("zookeeper", "bitnami/zookeeper@sha256:916aa56e37cb828e67c5c77e3cb38fa7c01bf8d84047d5a898d0ffcd5716208c") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(zookeeperEnv) +
   container.ports(zookeeperPorts) +
