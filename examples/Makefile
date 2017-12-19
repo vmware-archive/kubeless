@@ -204,13 +204,6 @@ pubsub-python-verify:
 	done; \
 	$$found
 
-pubsub-python-update:
-	kubeless topic create s3-python-2 || true
-	kubeless function update pubsub-python --trigger-topic s3-python-2
-
-pubsub-python-update-verify:
-	kubectl describe $$(kubectl get po -oname|grep pubsub-python) | grep -e "TOPIC_NAME:\s*s3-python-2"
-
 pubsub-python34:
 	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/pubsub.py
 
@@ -252,6 +245,13 @@ pubsub-nodejs-verify:
 		number=`expr $$number + 1`; \
 	done; \
 	$$found
+
+pubsub-nodejs-update:
+	kubeless topic create s3-nodejs-2 || true
+	kubeless function update pubsub-nodejs --trigger-topic s3-nodejs-2
+
+pubsub-nodejs-update-verify:
+	kubectl describe $$(kubectl get po -oname|grep pubsub-nodejs) | grep -e "TOPIC_NAME:\s*s3-nodejs-2"
 
 pubsub-ruby:
 	kubeless function deploy pubsub-ruby --trigger-topic s3-ruby --runtime ruby2.4 --handler pubsub-ruby.handler --from-file ruby/helloevent.rb

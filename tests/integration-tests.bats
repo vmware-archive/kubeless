@@ -123,29 +123,27 @@ load ../script/libtest
   verify_function get-python-metadata
   kubeless_function_delete get-python-metadata
 }
-@test "Deploy functions to evaluate (kafka dependent)" {
+@test "Wait for kafka" {
   wait_for_kubeless_kafka_server_ready
-  deploy_function pubsub-python
-  deploy_function pubsub-python34
-  deploy_function pubsub-nodejs
-  deploy_function pubsub-ruby
 }
 @test "Test function: pubsub-python" {
+  deploy_function pubsub-python
   verify_function pubsub-python
-}
-@test "Test function update: pubsub-python" {
-  test_kubeless_function_update pubsub-python
   kubeless_function_delete pubsub-python
 }
 @test "Test function: pubsub-python34" {
+  deploy_function pubsub-python34
   verify_function pubsub-python34
   kubeless_function_delete pubsub-python34
 }
 @test "Test function: pubsub-nodejs" {
+  deploy_function pubsub-nodejs
   verify_function pubsub-nodejs
+  test_kubeless_function_update pubsub-nodejs
   kubeless_function_delete pubsub-nodejs
 }
 @test "Test function: pubsub-ruby" {
+  deploy_function pubsub-ruby
   verify_function pubsub-ruby
   kubeless_function_delete pubsub-ruby
 }
