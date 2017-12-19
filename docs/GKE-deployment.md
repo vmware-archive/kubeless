@@ -1,6 +1,6 @@
 # Deploying Kubeless to Google Kubernetes Engine (GKE)
 
-This guide goes over the required steps for deploying Kubeless in GKE. There are a few pain points that you need to know in order to successfully deploy Kubeless in a GKE environment. First your google cloud account should have privileges enough to create and manage clusters. You can login into your account using the `gcloud` CLI tool:
+This guide goes over the required steps for deploying Kubeless in GKE. There are a few pain points that you need to know in order to successfully deploy Kubeless in a GKE environment. First your google cloud account should have enough privileges to create and manage clusters. You can login to your account using the `gcloud` CLI tool:
 
 ```
 $ gcloud auth login
@@ -29,13 +29,13 @@ gcloud container clusters create \
   --enable-kubernetes-alpha
 ```
 
-Right now the version that is being tested in the Kubeless CI/CD system is GKE 1.7 so that's the one we are specifying as the desired version.
+At the moment of writing this document, the CI/CD system is testing Kubeless against GKE 1.7 so that's the one we are specifying as the desired version. You can check the current version tested in [the Travis file](../.travis.yml).
 
-The default number of nodes is 3. That default number is enough for small deployments but it is recommened to use at least 4 or 5 nodes so you don't run out of resources after deploying a few functions.
+The default number of nodes is 3. That default number is enough for small deployments but it is recommened to use at least 5 or 7 nodes so you don't run out of resources after deploying a few functions.
 
-In the case of GKE 1.7 the legacy authorization system sets every RBAC account by default as admin so it is not really restricting the access. For disabling it we set the flag `--no-enable-legacy-authorization`. 
+By default GKE 1.7 disables Role Based Access Control (RBAC), giving all users and service accounts admin privileges. The --no-enable-legacy-authorization enables RBAC for greater security.
 
-Finally if you want to use Alpha features like autoscaling or scheduled actions in GKE 1.7 you need to set the flag `--enable-kubernetes-alpha`. Note that this will cause that the new cluster is marked to be deleted after 30 days. For non-testing environments this flag should be ommited.
+Finally if you want to use Alpha features like autoscaling or scheduled actions in GKE 1.7 you need to set the flag `--enable-kubernetes-alpha`. Note that this will cause the cluster to be marked for deletion after 30 days. For non-testing environments this flag should be ommited.
 
 After a few minutes you should be able to see your cluster running:
 ```
@@ -46,13 +46,13 @@ my-cluster  us-east1-c  1.7.8-gke.0 ALPHA (29 days left)  35.227.111.43  n1-stan
 
 ## Creating the admin clusterrolebinding
 
-For deploying Kubeless in your cluster, your user should have permissions enough for creating cluster roles and cluster role bindings. For doing so you need to give your current GKE account admin privileges in the new cluster. This is not being done by default so you need to do it manually:
+For deploying Kubeless in your cluster, your user should have enough permissions for creating cluster roles and cluster role bindings. For doing so you need to give your current GKE account admin privileges in the new cluster. This is not being done by default so you need to do it manually:
 
 ```
 kubectl create clusterrolebinding kubeless-cluster-admin --clusterrole=cluster-admin --user=<your-gke-user>
 ```
 
-The above command may fail with `Error from server (Forbidden): User "your-gke-user" cannot create clusterrolebindings.rbac.authorization.k8s.io at the cluster scope`. This error is showed since your account doesn't have privileges to create `clusterrolebindings` (even if you are able to create clusters). If that is the case you can still perform the above operation but using as user the `admin` user that is created by default in the cluster. You can retrieve the admin password executing:
+The above command may fail with `Error from server (Forbidden): User "your-gke-user" cannot create clusterrolebindings.rbac.authorization.k8s.io at the cluster scope`. This error is shown since your account doesn't have privileges to create `clusterrolebindings` (even if you are able to create clusters). If that is the case you can still perform the above operation using the default `admin` user. You can retrieve the admin password executing:
 
 ```
 gcloud container clusters describe my-cluster --zone <my-cluster-zone>
