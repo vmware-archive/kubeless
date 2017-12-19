@@ -78,7 +78,7 @@ load ../script/libtest
 }
 @test "Test function: timeout-nodejs" {
   verify_function timeout-nodejs
-  kubeless_function_delete get-nodejs-deps
+  kubeless_function_delete timeout-nodejs
 }
 @test "Test function: get-nodejs-multi" {
   verify_function get-nodejs-multi

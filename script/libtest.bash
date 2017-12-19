@@ -264,7 +264,7 @@ verify_function() {
             echo_info "FUNC ${func} failed ${counter} times. Exiting"
             return 1;
         fi
-        sleep 10
+        sleep `expr 10 \* $counter`
     done
 }
 test_kubeless_function() {
