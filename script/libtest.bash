@@ -14,13 +14,11 @@
 
 # k8s and kubeless helpers, specially "wait"-ers on pod ready/deleted/etc
 
-KUBELESS_JSONNET=kubeless.jsonnet
-KUBELESS_JSONNET_RBAC=kubeless-rbac.jsonnet
+KUBELESS_MANIFEST=kubeless.yaml
+KUBELESS_MANIFEST_RBAC=kubeless-rbac.yaml
 
 KUBECTL_BIN=$(which kubectl)
-KUBECFG_BIN=$(which kubecfg)
 : ${KUBECTL_BIN:?ERROR: missing binary: kubectl}
-: ${KUBECFG_BIN:?ERROR: missing binary: kubecfg}
 
 export TEST_MAX_WAIT_SEC=360
 
@@ -35,15 +33,17 @@ export -f echo_info
 kubectl() {
     ${KUBECTL_BIN:?} --context=${TEST_CONTEXT:?} "$@"
 }
-kubecfg() {
-    ${KUBECFG_BIN:?} --context=${TEST_CONTEXT:?} "$@"
-}
 
 ## k8s specific Helper functions
 k8s_wait_for_pod_ready() {
     echo_info "Waiting for pod '${@}' to be ready ... "
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
-    until kubectl get pod "${@}" |&grep -q Running; do
+    # Retries just in case it is not stable
+    local -i successCount=0
+    while [ "$successCount" -lt "3" ]; do
+        if kubectl get pod "${@}" |&grep -q Running; then
+            ((successCount=successCount+1))
+        fi
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
@@ -123,17 +123,17 @@ _wait_for_cmd_ok() {
 
 ## Specific for kubeless
 kubeless_recreate() {
-    local jsonnet_del=${1:?missing jsonnet delete manifest} jsonnet_upd=${2:?missing jsonnet update manifest}
+    local manifest_del=${1:?missing delete manifest} manifest_upd=${2:?missing update manifest}
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     echo_info "Delete kubeless namespace, wait to be gone ... "
-    kubecfg delete ${jsonnet_del}
+    kubectl delete -f ${manifest_del} || true
     kubectl delete namespace kubeless >& /dev/null || true
     while kubectl get namespace kubeless >& /dev/null; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
     kubectl create namespace kubeless
-    kubecfg update ${jsonnet_upd}
+    kubectl create -f ${manifest_upd}
 }
 kubeless_function_delete() {
     local func=${1:?}; shift
@@ -217,17 +217,27 @@ wait_for_endpoint() {
         sleep 1
     done
 }
+wait_for_autoscale() {
+    local func=${1:?}
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    local hap=$()
+    echo_info "Waiting for HAP ${func} to be ready ..."
+    until kubectl get horizontalpodautoscalers | grep $func; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
+}
 test_must_fail_without_rbac_roles() {
     echo_info "RBAC TEST: function deploy/call must fail without RBAC roles"
     _delete_simple_function
-    kubeless_recreate $KUBELESS_JSONNET_RBAC $KUBELESS_JSONNET
+    kubeless_recreate $KUBELESS_MANIFEST_RBAC $KUBELESS_MANIFEST
     _wait_for_kubeless_controller_ready
     _deploy_simple_function
     _wait_for_kubeless_controller_logline "User.*cannot"
     _call_simple_function 1
 }
 redeploy_with_rbac_roles() {
-    kubeless_recreate $KUBELESS_JSONNET_RBAC $KUBELESS_JSONNET_RBAC
+    kubeless_recreate $KUBELESS_MANIFEST_RBAC $KUBELESS_MANIFEST_RBAC
     _wait_for_kubeless_controller_ready
     _wait_for_kubeless_controller_logline "controller synced and ready"
 }
@@ -240,13 +250,23 @@ deploy_function() {
 }
 verify_function() {
     local func=${1:?}
+    local make_task=${2:-${func}-verify}
     k8s_wait_for_pod_ready -l function=${func}
     case "${func}" in
         *pubsub*)
             func_topic=$(kubeless function describe "${func}" -o yaml|sed -n 's/topic: //p')
             echo_info "FUNC TOPIC: $func_topic"
     esac
-    make -sC examples ${func}-verify
+    local -i counter=0
+    until make -sC examples ${make_task}; do
+        echo_info "FUNC ${func} failed. Retrying..."
+        ((counter=counter+1))
+        if [ "$counter" -ge 3 ]; then
+            echo_info "FUNC ${func} failed ${counter} times. Exiting"
+            return 1;
+        fi
+        sleep 10
+    done
 }
 test_kubeless_function() {
     local func=${1:?}
@@ -260,14 +280,10 @@ update_function() {
     sleep 10
     k8s_wait_for_uniq_pod -l function=${func}
 }
-verify_update_function() {
-    local func=${1:?}
-    make -sC examples ${func}-update-verify
-}
 test_kubeless_function_update() {
     local func=${1:?}
     update_function $func
-    verify_update_function $func
+    verify_function $func ${func}-update-verify
 }
 test_kubeless_ingress() {
     local func=${1:?} domain=example.com act_ingress exp_ingress
@@ -285,6 +301,7 @@ test_kubeless_autoscale() {
     local val=10 num=3
     echo_info "TEST: autoscale ${func}"
     kubeless autoscale create ${func} --value ${val:?} --min ${num:?} --max ${num:?}
+    wait_for_autoscale ${func}
     kubeless autoscale list | fgrep -w ${func}
     act_autoscale=$(kubectl get horizontalpodautoscaler -ojsonpath='{range .items[*].spec}{@.scaleTargetRef.name}:{@.targetCPUUtilizationPercentage}:{@.minReplicas}:{@.maxReplicas}{end}')
     exp_autoscale="${func}:${val}:${num}:${num}"
