@@ -64,7 +64,8 @@ validation:
 	./script/validate-git-marks
 
 integration-tests:
-	./script/integration-tests
+	./script/integration-tests deployment
+	./script/integration-tests basic
 
 minikube-rbac-test:
 	./script/integration-test-rbac minikube
