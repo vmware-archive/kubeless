@@ -20,10 +20,11 @@ import (
 	"archive/zip"
 	"io"
 	"io/ioutil"
-	"k8s.io/client-go/pkg/api/v1"
 	"os"
 	"reflect"
 	"testing"
+
+	"k8s.io/client-go/pkg/api/v1"
 
 	"github.com/kubeless/kubeless/pkg/spec"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -98,7 +99,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, []string{"TEST=1"}, []string{"test=1"}, spec.Function{})
+	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, []string{"TEST=1"}, []string{"test=1"}, []string{"test=1"}, spec.Function{})
 	if err != nil {
 		t.Error(err)
 	}
@@ -112,6 +113,9 @@ func TestGetFunctionDescription(t *testing.T) {
 			Name:      "test",
 			Namespace: "default",
 			Labels: map[string]string{
+				"test": "1",
+			},
+			Annotations: map[string]string{
 				"test": "1",
 			},
 		},
@@ -154,7 +158,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should take the default values
-	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", "", false, []string{}, []string{}, expectedFunction)
+	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", "", false, []string{}, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -173,7 +177,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
-	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", "20", false, []string{"TEST=2"}, []string{"test=2"}, expectedFunction)
+	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", "20", false, []string{"TEST=2"}, []string{"test=2"}, []string{"test=2"}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -187,6 +191,9 @@ func TestGetFunctionDescription(t *testing.T) {
 			Name:      "test",
 			Namespace: "default",
 			Labels: map[string]string{
+				"test": "2",
+			},
+			Annotations: map[string]string{
 				"test": "2",
 			},
 		},
@@ -257,7 +264,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 	file.Close()
 	zipW.Close()
-	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", "", false, []string{}, []string{}, expectedFunction)
+	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", "", false, []string{}, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
