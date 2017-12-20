@@ -30,6 +30,7 @@ var (
 	GITCOMMIT = "HEAD"
 )
 
+//VersionCmd contains first-class command for version
 var VersionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version of Kubeless",

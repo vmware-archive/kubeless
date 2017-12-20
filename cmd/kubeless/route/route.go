@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//RouteCmd contains first-class command for route
 var RouteCmd = &cobra.Command{
 	Use:   "route SUBCOMMAND",
 	Short: "manage route to function on Kubeless",

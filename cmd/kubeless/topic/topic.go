@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//TopicCmd contains first-class command for topic
 var TopicCmd = &cobra.Command{
 	Use:   "topic SUBCOMMAND",
 	Short: "manage message topics in Kubeless",

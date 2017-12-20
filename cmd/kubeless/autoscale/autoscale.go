@@ -24,6 +24,7 @@ import (
 	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 )
 
+//AutoscaleCmd contains first-class command for autoscale
 var AutoscaleCmd = &cobra.Command{
 	Use:   "autoscale SUBCOMMAND",
 	Short: "manage autoscale to function on Kubeless",

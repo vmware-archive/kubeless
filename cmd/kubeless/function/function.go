@@ -37,6 +37,7 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 )
 
+//FunctionCmd contains first-class command for function
 var FunctionCmd = &cobra.Command{
 	Use:   "function SUBCOMMAND",
 	Short: "function specific operations",
