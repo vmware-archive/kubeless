@@ -1,4 +1,4 @@
-package main
+package autoscale
 
 import (
 	"github.com/kubeless/kubeless/pkg/utils"

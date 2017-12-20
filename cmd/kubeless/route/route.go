@@ -11,13 +11,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package route
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var ingressCmd = &cobra.Command{
+var RouteCmd = &cobra.Command{
 	Use:   "route SUBCOMMAND",
 	Short: "manage route to function on Kubeless",
 	Long:  `route command allows user to list, create, delete routing rule for function on Kubeless`,
@@ -30,7 +30,7 @@ func init() {
 	cmds := []*cobra.Command{routeCreateCmd, routeListCmd, routeDeleteCmd}
 
 	for _, cmd := range cmds {
-		ingressCmd.AddCommand(cmd)
+		RouteCmd.AddCommand(cmd)
 		cmd.Flags().StringP("namespace", "n", "", "Specify namespace for the route")
 
 	}
