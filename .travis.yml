@@ -54,8 +54,7 @@ before_install:
     # or if the build is from the "master" branch
     minikube_kafka)
         if [[ "$TRAVIS_PULL_REQUEST" != false ]]; then
-          # CHANGE SLUG
-          pr_kafka_title=$(curl -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/repos/andresmgot/kubeless/pulls/${TRAVIS_PULL_REQUEST}" | grep title | grep -i kafka || true)
+          pr_kafka_title=$(curl -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title | grep -i kafka || true)
         fi
         if [[ "$TRAVIS_BRANCH" == master || "$pr_kafka_title" != "" ]]; then
           export SHOULD_TEST=1
