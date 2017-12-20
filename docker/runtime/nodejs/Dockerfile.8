@@ -1,7 +1,7 @@
-FROM node:8-alpine
+FROM node:8
 
 ARG TARGET=http-trigger
-RUN apk add --no-cache git
+RUN apt-get update &&  apt-get install git
 
 ADD lib/helper.js /lib/
 ADD ${TARGET}/kubeless.js /
