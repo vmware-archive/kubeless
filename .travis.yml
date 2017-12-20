@@ -36,9 +36,8 @@ before_install:
   # Decide if we should run the tests
   - |
     case $TEST_TARGET in
-    # We will only build assets when doing unit tests or minikube end-2-end tests
-    unit)
-    minikube)
+    # We will always build assets when doing unit tests or minikube end-2-end tests
+    unit|minikube)
       export SHOULD_TEST=1
       ;;
     # In case of GKE we will only want to build if it is
@@ -53,14 +52,14 @@ before_install:
     # it is a Pull Request related to Kafka (discovered from the PR title)
     # or if the build is from the "master" branch
     minikube_kafka)
-        if [[ "$TRAVIS_PULL_REQUEST" != false ]]; then
-          pr_kafka_title=$(curl -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title | grep -i kafka || true)
-        fi
-        if [[ "$TRAVIS_BRANCH" == master || "$pr_kafka_title" != "" ]]; then
-          export SHOULD_TEST=1
-        fi
+      if [[ "$TRAVIS_PULL_REQUEST" != false ]]; then
+        pr_kafka_title=$(curl -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title | grep -i kafka || true)
       fi
-    fi
+      if [[ "$TRAVIS_BRANCH" == master || "$pr_kafka_title" != "" ]]; then
+        export SHOULD_TEST=1
+      fi
+      ;;
+    esac
 install:
   - |
     if [[ "$SHOULD_TEST" == "1" ]]; then
