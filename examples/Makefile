@@ -42,11 +42,11 @@ scheduled-get-python:
 	kubeless function deploy scheduled-get-python --schedule "* * * * *" --runtime python2.7 --handler helloget.foo --from-file python/helloget.py
 
 scheduled-get-python-verify:
-	pod=`kubectl get po -oname -l function=scheduled-get-python`; \
 	number="1"; \
 	timeout="70"; \
 	found=false; \
 	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=scheduled-get-python`; \
 		logs=`kubectl logs $$pod | grep "GET / HTTP/1.1\" 200 11 \"\" \"Wget\""`; \
     	if [ "$$logs" != "" ]; then \
 			found=true; \
@@ -189,11 +189,11 @@ pubsub-python:
 pubsub-python-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	kubeless topic publish --topic s3-python --data "$(DATA)"
-	pod=`kubectl get po -oname -l function=pubsub-python`; \
 	number="1"; \
 	timeout="60"; \
 	found=false; \
 	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=pubsub-python`; \
 		logs=`kubectl logs $$pod | grep $(DATA)`; \
     	if [ "$$logs" != "" ]; then \
 			found=true; \
@@ -204,24 +204,17 @@ pubsub-python-verify:
 	done; \
 	$$found
 
-pubsub-python-update:
-	kubeless topic create s3-python-2 || true
-	kubeless function update pubsub-python --trigger-topic s3-python-2
-
-pubsub-python-update-verify:
-	kubectl describe $$(kubectl get po -oname|grep pubsub-python) | grep -e "TOPIC_NAME:\s*s3-python-2"
-
 pubsub-python34:
 	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/pubsub.py
 
 pubsub-python34-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	kubeless topic publish --topic s3-python34 --data "$(DATA)"
-	pod=`kubectl get po -oname -l function=pubsub-python34`; \
 	number="1"; \
 	timeout="60"; \
 	found=false; \
 	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=pubsub-python34`; \
 		logs=`kubectl logs $$pod | grep $(DATA)`; \
     	if [ "$$logs" != "" ]; then \
 			found=true; \
@@ -238,11 +231,11 @@ pubsub-nodejs:
 pubsub-nodejs-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	kubeless topic publish --topic s3-nodejs --data '{"test": "$(DATA)"}'
-	pod=`kubectl get po -oname -l function=pubsub-nodejs`; \
 	number="1"; \
 	timeout="60"; \
 	found=false; \
 	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=pubsub-nodejs`; \
 		logs=`kubectl logs $$pod | grep $(DATA)`; \
     	if [ "$$logs" != "" ]; then \
 			found=true; \
@@ -253,17 +246,24 @@ pubsub-nodejs-verify:
 	done; \
 	$$found
 
+pubsub-nodejs-update:
+	kubeless topic create s3-nodejs-2 || true
+	kubeless function update pubsub-nodejs --trigger-topic s3-nodejs-2
+
+pubsub-nodejs-update-verify:
+	kubectl describe $$(kubectl get po -oname|grep pubsub-nodejs) | grep -e "TOPIC_NAME:\s*s3-nodejs-2"
+
 pubsub-ruby:
 	kubeless function deploy pubsub-ruby --trigger-topic s3-ruby --runtime ruby2.4 --handler pubsub-ruby.handler --from-file ruby/helloevent.rb
 
 pubsub-ruby-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	kubeless topic publish --topic s3-ruby --data "$(DATA)"
-	pod=`kubectl get po -oname -l function=pubsub-ruby`; \
 	number="1"; \
 	timeout="60"; \
 	found=false; \
 	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=pubsub-ruby`; \
 		logs=`kubectl logs $$pod | grep $(DATA)`; \
     	if [ "$$logs" != "" ]; then \
 			found=true; \

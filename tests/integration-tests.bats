@@ -59,81 +59,99 @@ load ../script/libtest
 }
 @test "Test function update: get-python-deps" {
   test_kubeless_function_update get-python-deps
+  kubeless_function_delete get-python-deps
 }
 @test "Test function ingress: get-python" {
   test_kubeless_ingress get-python
 }
 @test "Test function autoscale: get-python" {
   test_kubeless_autoscale get-python
+  kubeless_function_delete get-python
 }
 @test "Test function: get-nodejs" {
   verify_function get-nodejs
+  kubeless_function_delete get-nodejs
 }
 @test "Test function: get-nodejs-deps" {
   verify_function get-nodejs-deps
+  kubeless_function_delete get-nodejs-deps
 }
 @test "Test function: timeout-nodejs" {
   verify_function timeout-nodejs
+  kubeless_function_delete timeout-nodejs
 }
 @test "Test function: get-nodejs-multi" {
   verify_function get-nodejs-multi
+  kubeless_function_delete get-nodejs-multi
 }
 @test "Test function: get-ruby" {
   verify_function get-ruby
+  kubeless_function_delete get-ruby
 }
 @test "Test function: get-ruby-deps" {
   verify_function get-ruby-deps
+  kubeless_function_delete get-ruby-deps
 }
 @test "Test function: get-dotnetcore" {
   skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"
   test_kubeless_function get-dotnetcore
+  kubeless_function_delete get-dotnetcore
 }
 @test "Test custom runtime image" {
   verify_function custom-get-python
   test_kubeless_function_update custom-get-python
+  kubeless_function_delete custom-get-python
 }
 @test "Test function: post-python" {
   verify_function post-python
+  kubeless_function_delete post-python
 }
 @test "Test function: post-nodejs" {
   verify_function post-nodejs
+  kubeless_function_delete post-nodejs
 }
 @test "Test function: post-ruby" {
   verify_function post-ruby
+  kubeless_function_delete post-ruby
 }
 @test "Test function: post-dotnetcore" {
   skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"
   test_kubeless_function post-dotnetcore
+  kubeless_function_delete post-dotnetcore
 }
 @test "Test function: get-python-metadata" {
   verify_function get-python-metadata
+  kubeless_function_delete get-python-metadata
 }
-@test "Deploy functions to evaluate (kafka dependent)" {
+@test "Wait for kafka" {
   wait_for_kubeless_kafka_server_ready
-  deploy_function pubsub-python
-  deploy_function pubsub-python34
-  deploy_function pubsub-nodejs
-  deploy_function pubsub-ruby
 }
 @test "Test function: pubsub-python" {
+  deploy_function pubsub-python
   verify_function pubsub-python
+  kubeless_function_delete pubsub-python
 }
 @test "Test function: pubsub-python34" {
+  deploy_function pubsub-python34
   verify_function pubsub-python34
-}
-@test "Test function update: pubsub-python" {
-  verify_function pubsub-python
+  kubeless_function_delete pubsub-python34
 }
 @test "Test function: pubsub-nodejs" {
+  deploy_function pubsub-nodejs
   verify_function pubsub-nodejs
+  test_kubeless_function_update pubsub-nodejs
+  kubeless_function_delete pubsub-nodejs
 }
 @test "Test function: pubsub-ruby" {
+  deploy_function pubsub-ruby
   verify_function pubsub-ruby
+  kubeless_function_delete pubsub-ruby
 }
 @test "Test function: scheduled-get-python" {
   # Now we can verify the scheduled function
   # without having to wait
   verify_function scheduled-get-python
+  kubeless_function_delete scheduled-get-python
 }
 @test "Test topic list" {
   wait_for_kubeless_kafka_server_ready

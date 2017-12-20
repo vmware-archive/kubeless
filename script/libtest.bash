@@ -139,7 +139,6 @@ kubeless_function_delete() {
     local func=${1:?}; shift
     echo_info "Deleting function "${func}" in case still present ... "
     kubeless function ls |grep -w "${func}" && kubeless function delete "${func}" >& /dev/null || true
-    k8s_wait_for_pod_gone -l function="${func}"
 }
 kubeless_function_deploy() {
     local func=${1:?}; shift
@@ -265,7 +264,7 @@ verify_function() {
             echo_info "FUNC ${func} failed ${counter} times. Exiting"
             return 1;
         fi
-        sleep 10
+        sleep `expr 10 \* $counter`
     done
 }
 test_kubeless_function() {
