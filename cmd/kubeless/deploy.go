@@ -126,13 +126,19 @@ var deployCmd = &cobra.Command{
 			funcDeps = string(bytes)
 		}
 
+		annotations, err := cmd.Flags().GetStringSlice("annotations")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		cli := utils.GetClientOutOfCluster()
 		defaultFunctionSpec := spec.Function{}
 		defaultFunctionSpec.Spec.Type = "HTTP"
 		defaultFunctionSpec.Metadata.Labels = map[string]string{
 			"created-by": "kubeless",
 		}
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, envs, labels, defaultFunctionSpec)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage,
+			mem, timeout, triggerHTTP, envs, labels, annotations, defaultFunctionSpec)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -166,4 +172,5 @@ func init() {
 	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 	deployCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
 	deployCmd.Flags().StringP("timeout", "", "180", "Maximum timeout (in seconds) for the function to complete its execution")
+	deployCmd.Flags().StringSliceP("annotations", "", []string{}, "Specify annotations of the function. Both separator ':' and '=' are allowed. For example: --annotations foo1=bar1,foo2:bar2")
 }

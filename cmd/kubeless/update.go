@@ -127,8 +127,14 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		annotations, err := cmd.Flags().GetStringSlice("annotations")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		cli := utils.GetClientOutOfCluster()
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, envs, labels, previousFunction)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage,
+			mem, timeout, triggerHTTP, envs, labels, annotations, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -161,4 +167,5 @@ func init() {
 	updateCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 	updateCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
 	updateCmd.Flags().StringP("timeout", "", "180", "Maximum timeout (in seconds) for the function to complete its execution")
+	updateCmd.Flags().StringSliceP("annotations", "", []string{}, "Specify annotations of the function. Both separator ':' and '=' are allowed. For example: --annotations foo1=bar1,foo2:bar2")
 }

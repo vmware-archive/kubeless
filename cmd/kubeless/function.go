@@ -82,6 +82,15 @@ func parseLabel(labels []string) map[string]string {
 	return funcLabels
 }
 
+func parseAnnotations(annotations []string) map[string]string {
+	funcAnnotations := make(map[string]string)
+	for _, annotation := range annotations {
+		k, v := getKV(annotation)
+		funcAnnotations[k] = v
+	}
+	return funcAnnotations
+}
+
 func parseEnv(envs []string) []v1.EnvVar {
 	funcEnv := []v1.EnvVar{}
 	for _, env := range envs {
@@ -132,7 +141,8 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, envs, labels []string, defaultFunction spec.Function) (*spec.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage,
+	mem, timeout string, triggerHTTP bool, envs, labels []string, annotations []string, defaultFunction spec.Function) (*spec.Function, error) {
 
 	if handler == "" {
 		handler = defaultFunction.Spec.Handler
@@ -218,6 +228,14 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		funcLabels[k] = v
 	}
 
+	funcAnnotations := defaultFunction.Metadata.Annotations
+	if len(funcAnnotations) == 0 {
+		funcAnnotations = make(map[string]string)
+	}
+	for k, v := range parseAnnotations(annotations) {
+		funcAnnotations[k] = v
+	}
+
 	resources := v1.ResourceRequirements{}
 	if mem != "" {
 		funcMem, err := parseMemory(mem)
@@ -248,9 +266,10 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 			APIVersion: "k8s.io/v1",
 		},
 		Metadata: metav1.ObjectMeta{
-			Name:      funcName,
-			Namespace: ns,
-			Labels:    funcLabels,
+			Name:        funcName,
+			Namespace:   ns,
+			Labels:      funcLabels,
+			Annotations: funcAnnotations,
 		},
 		Spec: spec.FunctionSpec{
 			Handler:             handler,

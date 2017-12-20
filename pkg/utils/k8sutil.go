@@ -514,6 +514,7 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            funcObj.Metadata.Name,
 			Labels:          funcObj.Metadata.Labels,
+			Annotations:     funcObj.Metadata.Annotations,
 			OwnerReferences: or,
 		},
 		Data: configMapData,
@@ -529,6 +530,7 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 			return err
 		}
 		newConfigMap.ObjectMeta.Labels = funcObj.Metadata.Labels
+		newConfigMap.ObjectMeta.Annotations = funcObj.Metadata.Annotations
 		newConfigMap.ObjectMeta.OwnerReferences = or
 		newConfigMap.Data = configMap.Data
 		_, err = client.Core().ConfigMaps(funcObj.Metadata.Namespace).Update(newConfigMap)
@@ -547,6 +549,7 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            funcObj.Metadata.Name,
 			Labels:          funcObj.Metadata.Labels,
+			Annotations:     funcObj.Metadata.Annotations,
 			OwnerReferences: or,
 		},
 		Spec: v1.ServiceSpec{
@@ -573,6 +576,7 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 			return err
 		}
 		newSvc.ObjectMeta.Labels = funcObj.Metadata.Labels
+		newSvc.ObjectMeta.Annotations = funcObj.Metadata.Annotations
 		newSvc.ObjectMeta.OwnerReferences = or
 		newSvc.Spec.Ports = svc.Spec.Ports
 		newSvc.Spec.Selector = svc.Spec.Selector
@@ -606,6 +610,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            funcObj.Metadata.Name,
 			Labels:          funcObj.Metadata.Labels,
+			Annotations:     funcObj.Metadata.Annotations,
 			OwnerReferences: or,
 		},
 		Spec: v1beta1.DeploymentSpec{
@@ -633,6 +638,9 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 	}
 	if len(dpm.Spec.Template.ObjectMeta.Annotations) == 0 {
 		dpm.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	}
+	for k, v := range funcObj.Metadata.Annotations {
+		dpm.Spec.Template.ObjectMeta.Annotations[k] = v
 	}
 	for k, v := range podAnnotations {
 		//only append k-v from podAnnotations if it doesn't exist in deployment podTemplateSpec annotation
@@ -783,6 +791,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		var newDpm *v1beta1.Deployment
 		newDpm, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Get(funcObj.Metadata.Name, metav1.GetOptions{})
 		newDpm.ObjectMeta.Labels = funcObj.Metadata.Labels
+		newDpm.ObjectMeta.Annotations = funcObj.Metadata.Annotations
 		newDpm.ObjectMeta.OwnerReferences = or
 		newDpm.Spec = dpm.Spec
 		_, err = client.Extensions().Deployments(funcObj.Metadata.Namespace).Update(newDpm)
@@ -868,6 +877,7 @@ func EnsureFuncCronJob(client rest.Interface, funcObj *spec.Function, or []metav
 			Name:            jobName,
 			Namespace:       funcObj.Metadata.Namespace,
 			Labels:          funcObj.Metadata.Labels,
+			Annotations:     funcObj.Metadata.Annotations,
 			OwnerReferences: or,
 		},
 		Spec: batchv2alpha1.CronJobSpec{
@@ -904,6 +914,7 @@ func EnsureFuncCronJob(client rest.Interface, funcObj *spec.Function, or []metav
 			return err
 		}
 		newCronJob.ObjectMeta.Labels = funcObj.Metadata.Labels
+		newCronJob.ObjectMeta.Annotations = funcObj.Metadata.Annotations
 		newCronJob.ObjectMeta.OwnerReferences = or
 		newCronJob.Spec = job.Spec
 		err = doRESTReq(client, groupVersion, "update", "cronjobs", jobName, funcObj.Metadata.Namespace, &newCronJob, nil)
