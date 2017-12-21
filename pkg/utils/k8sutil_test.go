@@ -712,7 +712,15 @@ func TestCreateIngressResource(t *testing.T) {
 			Namespace: "myns",
 			UID:       "1234",
 		},
-		Spec: spec.FunctionSpec{},
+		Spec: spec.FunctionSpec{
+			ServiceSpec: v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{
+						TargetPort: intstr.FromInt(8080),
+					},
+				},
+			},
+		},
 	}
 	if err := CreateIngress(clientset, f1, "bar", "foo.bar", "myns", false); err != nil {
 		t.Fatalf("Creating ingress returned err: %v", err)
@@ -721,6 +729,10 @@ func TestCreateIngressResource(t *testing.T) {
 		if !k8sErrors.IsAlreadyExists(err) {
 			t.Fatalf("Expect object is already exists, got %v", err)
 		}
+	}
+	f1.Spec.ServiceSpec.Ports = []v1.ServicePort{}
+	if err := CreateIngress(clientset, f1, "bar", "foo.bar", "myns", false); err == nil {
+		t.Fatal("Expect create ingress fails, got success")
 	}
 }
 
@@ -732,7 +744,15 @@ func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
 			Namespace: "myns",
 			UID:       "1234",
 		},
-		Spec: spec.FunctionSpec{},
+		Spec: spec.FunctionSpec{
+			ServiceSpec: v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{
+						TargetPort: intstr.FromInt(8080),
+					},
+				},
+			},
+		},
 	}
 
 	if err := CreateIngress(clientset, f1, "foo", "foo.bar", "myns", true); err != nil {

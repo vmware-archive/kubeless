@@ -387,10 +387,18 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 
 // CreateIngress creates ingress rule for a specific function
 func CreateIngress(client kubernetes.Interface, funcObj *spec.Function, ingressName, hostname, ns string, enableTLSAcme bool) error {
-
 	or, err := GetOwnerReference(funcObj)
 	if err != nil {
 		return err
+	}
+
+	if len(funcObj.Spec.ServiceSpec.Ports) == 0 {
+		return fmt.Errorf("can't create route due to service port isn't defined")
+	}
+
+	port := funcObj.Spec.ServiceSpec.Ports[0].TargetPort
+	if port.IntVal <= 0 || port.IntVal > 65535 {
+		return fmt.Errorf("Invalid port number %d specified", port.IntVal)
 	}
 
 	ingress := &v1beta1.Ingress{
