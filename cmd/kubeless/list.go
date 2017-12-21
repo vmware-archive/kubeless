@@ -157,7 +157,7 @@ func printFunctions(w io.Writer, functions []*spec.Function, cli kubernetes.Inte
 		table := uitable.New()
 		table.MaxColWidth = 50
 		table.Wrap = true
-		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "DEPENDENCIES", "STATUS", "MEMORY", "ENV", "LABEL", "SCHEDULE")
+		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "DEPENDENCIES", "STATUS", "MEMORY", "ENV", "LABEL", "ANNOTATIONS", "SCHEDULE")
 		for _, f := range functions {
 			n := f.Metadata.Name
 			h := f.Spec.Handler
@@ -196,7 +196,15 @@ func printFunctions(w io.Writer, functions []*spec.Function, cli kubernetes.Inte
 				}
 				label = buffer.String()
 			}
-			table.AddRow(n, ns, h, r, t, tp, deps, status, mem, env, label, s)
+			annotations := ""
+			if len(f.Metadata.Annotations) > 0 {
+				var buffer bytes.Buffer
+				for k, v := range f.Metadata.Annotations {
+					buffer.WriteString(k + " : " + v + "\n")
+				}
+				annotations = buffer.String()
+			}
+			table.AddRow(n, ns, h, r, t, tp, deps, status, mem, env, label, annotations, s)
 		}
 		fmt.Fprintln(w, table)
 	} else {
