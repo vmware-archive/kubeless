@@ -147,9 +147,9 @@ func GetFunctionImage(runtime, ftype string) (string, error) {
 
 	imageNameEnvVar := ""
 	if ftype == pubsubFunc {
-		imageNameEnvVar = strings.ToUpper(runtimeInf.ID) + "_PUBSUB_RUNTIME"
+		imageNameEnvVar = strings.ToUpper(runtimeInf.ID) + getVersionFromRuntime(runtime) + "_PUBSUB_RUNTIME"
 	} else {
-		imageNameEnvVar = strings.ToUpper(runtimeInf.ID) + "_RUNTIME"
+		imageNameEnvVar = strings.ToUpper(runtimeInf.ID) + getVersionFromRuntime(runtime) + "_RUNTIME"
 	}
 	imageName := os.Getenv(imageNameEnvVar)
 	if imageName == "" {

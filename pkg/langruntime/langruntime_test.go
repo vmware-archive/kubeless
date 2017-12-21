@@ -54,7 +54,7 @@ func TestGetFunctionImage(t *testing.T) {
 	}
 
 	expectedImageName := "ruby-test-image"
-	os.Setenv("RUBY_RUNTIME", expectedImageName)
+	os.Setenv("RUBY2.4_RUNTIME", expectedImageName)
 	imageR, errR := GetFunctionImage("ruby2.4", "HTTP")
 	if errR != nil {
 		t.Fatalf("Retrieving the image returned err: %v", errR)
@@ -62,10 +62,10 @@ func TestGetFunctionImage(t *testing.T) {
 	if imageR != expectedImageName {
 		t.Fatalf("Expecting " + imageR + " to be set to " + expectedImageName)
 	}
-	os.Unsetenv("RUBY_RUNTIME")
+	os.Unsetenv("RUBY2.4_RUNTIME")
 
 	expectedImageName = "ruby-pubsub-test-image"
-	os.Setenv("RUBY_PUBSUB_RUNTIME", "ruby-pubsub-test-image")
+	os.Setenv("RUBY2.4_PUBSUB_RUNTIME", "ruby-pubsub-test-image")
 	imageR, errR = GetFunctionImage("ruby2.4", "PubSub")
 	if errR != nil {
 		t.Fatalf("Retrieving the image returned err: %v", errR)
@@ -73,7 +73,7 @@ func TestGetFunctionImage(t *testing.T) {
 	if imageR != expectedImageName {
 		t.Fatalf("Expecting " + imageR + " to be set to " + expectedImageName)
 	}
-	os.Unsetenv("RUBY_PUBSUB_RUNTIME")
+	os.Unsetenv("RUBY2.4_PUBSUB_RUNTIME")
 }
 
 func TestGetRuntimes(t *testing.T) {
