@@ -16,21 +16,6 @@
 
 load ../script/libtest
 
-@test "Verify TEST_CONTEXT envvar" {
-  : ${TEST_CONTEXT:?}
-}
-@test "Verify needed kubernetes tools installed" {
-  verify_k8s_tools
-}
-@test "Verify k8s RBAC mode" {
-  verify_rbac_mode
-}
-@test "Test simple function failure without RBAC rules" {
-  test_must_fail_without_rbac_roles
-}
-@test "Redeploy with proper RBAC rules" {
-  redeploy_with_rbac_roles
-}
 # 'bats' lacks loop support, unroll-them-all ->
 @test "Deploy functions to evaluate" {
   deploy_function get-python
@@ -123,54 +108,10 @@ load ../script/libtest
   verify_function get-python-metadata
   kubeless_function_delete get-python-metadata
 }
-@test "Wait for kafka" {
-  wait_for_kubeless_kafka_server_ready
-}
-@test "Test function: pubsub-python" {
-  deploy_function pubsub-python
-  verify_function pubsub-python
-  kubeless_function_delete pubsub-python
-}
-@test "Test function: pubsub-python34" {
-  deploy_function pubsub-python34
-  verify_function pubsub-python34
-  kubeless_function_delete pubsub-python34
-}
-@test "Test function: pubsub-nodejs" {
-  deploy_function pubsub-nodejs
-  verify_function pubsub-nodejs
-  test_kubeless_function_update pubsub-nodejs
-  kubeless_function_delete pubsub-nodejs
-}
-@test "Test function: pubsub-ruby" {
-  deploy_function pubsub-ruby
-  verify_function pubsub-ruby
-  kubeless_function_delete pubsub-ruby
-}
 @test "Test function: scheduled-get-python" {
   # Now we can verify the scheduled function
   # without having to wait
   verify_function scheduled-get-python
   kubeless_function_delete scheduled-get-python
-}
-@test "Test topic list" {
-  wait_for_kubeless_kafka_server_ready
-  for topic in topic1 topic2; do
-    kubeless topic create $topic
-    _wait_for_kubeless_kafka_topic_ready $topic
-  done
-
-  kubeless topic list >$BATS_TMPDIR/kubeless-topic-list
-  grep -qxF topic1 $BATS_TMPDIR/kubeless-topic-list
-  grep -qxF topic2 $BATS_TMPDIR/kubeless-topic-list
-}
-@test "Test topic deletion" {
-  test_topic_deletion
-}
-@test "Verify Kafka after restart (if context=='minikube')" {
-    local topic=$RANDOM
-    kubeless topic create $topic
-    sts_restart
-    kubeless topic list | grep $topic
 }
 # vim: ts=2 sw=2 si et syntax=sh

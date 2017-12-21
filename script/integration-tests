@@ -27,6 +27,8 @@ test -n "${TRAVIS_K8S_CONTEXT}" && set -- ${TRAVIS_K8S_CONTEXT}
 # minikube seems to be more stable than dind, sp for kafka
 INTEGRATION_TESTS_CTX=${1:-minikube}
 
+INTEGRATION_TESTS_TARGET=${2:-default}
+
 # Check for some needed tools, install (some) if missing
 which bats > /dev/null || {
    echo "ERROR: 'bats' is required to run these tests," \
@@ -63,7 +65,20 @@ k8s_context_save
 
 # Run the tests thru bats:
 kubectl create namespace kubeless
-bats tests/integration-tests.bats
+case $INTEGRATION_TESTS_TARGET in
+deployment)
+    bats tests/deployment-tests.bats
+    ;;
+basic)
+    bats tests/integration-tests.bats
+    ;;
+kafka)
+    bats tests/integration-tests-kafka.bats
+    ;;
+*)
+    bats tests/deployment-tests.bats && bats tests/integration-tests.bats && bats tests/integration-tests-kafka.bats
+    ;;
+esac
 exit_code=$?
 
 # Just showing remaining k8s objects
