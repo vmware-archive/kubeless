@@ -13,7 +13,7 @@ app.use(morgan('combined'));
 const modName = process.env.MOD_NAME;
 const funcHandler = process.env.FUNC_HANDLER;
 const timeout = Number(process.env.FUNC_TIMEOUT || '180');
-const funcPort = process.env.FUNC_PORT || 8080;
+const funcPort = Number(process.env.FUNC_PORT || '8080');
 
 const kafkaSvc = _.get(process.env, 'KUBELESS_KAFKA_SVC', 'kafka');
 const kafkaNamespace = _.get(process.env, 'KUBELESS_KAFKA_NAMESPACE', 'kubeless');

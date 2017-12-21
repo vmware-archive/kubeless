@@ -14,7 +14,7 @@ app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
 const modName = process.env.MOD_NAME;
 const funcHandler = process.env.FUNC_HANDLER;
 const timeout = Number(process.env.FUNC_TIMEOUT || '180');
-const funcPort = process.env.FUNC_PORT || 8080;
+const funcPort = Number(process.env.FUNC_PORT || '8080');
 
 const statistics = helper.prepareStatistics('method', client);
 helper.routeLivenessProbe(app);
