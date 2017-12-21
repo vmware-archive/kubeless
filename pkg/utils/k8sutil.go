@@ -411,7 +411,7 @@ func CreateIngress(client kubernetes.Interface, funcObj *spec.Function, ingressN
 									Path: "/",
 									Backend: v1beta1.IngressBackend{
 										ServiceName: funcObj.Metadata.Name,
-										ServicePort: intstr.FromInt(8080),
+										ServicePort: funcObj.Spec.ServiceSpec.Ports[0].TargetPort,
 									},
 								},
 							},
