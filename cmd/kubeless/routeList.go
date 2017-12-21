@@ -22,7 +22,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"io"
 
-	"github.com/olekukonko/tablewriter"
+	"github.com/gosuri/uitable"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
@@ -72,8 +72,10 @@ func doIngressList(w io.Writer, client kubernetes.Interface, ns, output string) 
 // printIngress formats the output of ingress list
 func printIngress(w io.Writer, ings []v1beta1.Ingress, output string) error {
 	if output == "" {
-		table := tablewriter.NewWriter(w)
-		table.SetHeader([]string{"Name", "namespace", "host", "path", "service name", "service port"})
+		table := uitable.New()
+		table.MaxColWidth = 50
+		table.Wrap = true
+		table.AddRow("NAME", "NAMESPACE", "HOST", "PATH", "SERVICE NAME", "SERVICE PORT")
 		for _, i := range ings {
 			if len(i.Spec.Rules) == 0 {
 				logrus.Errorf("The function route %s isn't in correct format. It has no rule defined.", i.Name)
@@ -85,9 +87,9 @@ func printIngress(w io.Writer, ings []v1beta1.Ingress, output string) error {
 			ns := i.Namespace
 			sN := i.Spec.Rules[0].HTTP.Paths[0].Backend.ServiceName
 			sP := i.Spec.Rules[0].HTTP.Paths[0].Backend.ServicePort
-			table.Append([]string{n, ns, h, p, sN, sP.String()})
+			table.AddRow(n, ns, h, p, sN, sP.String())
 		}
-		table.Render()
+		fmt.Fprintln(w, table)
 	} else {
 		for _, i := range ings {
 			switch output {
