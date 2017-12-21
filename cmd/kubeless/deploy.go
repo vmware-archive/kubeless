@@ -126,6 +126,14 @@ var deployCmd = &cobra.Command{
 			funcDeps = string(bytes)
 		}
 
+		if runtime == "" && runtimeImage == "" {
+			logrus.Fatal("Either `--runtime` or `--runtime-image` flag must be specified.")
+		}
+
+		if runtime != "" && handler == "" {
+			logrus.Fatal("You must specify handler for the runtime.")
+		}
+
 		cli := utils.GetClientOutOfCluster()
 		defaultFunctionSpec := spec.Function{}
 		defaultFunctionSpec.Spec.Type = "HTTP"
