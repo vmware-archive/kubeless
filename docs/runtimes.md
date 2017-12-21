@@ -9,6 +9,18 @@ Each runtime is encapsulated in a container image. The reference to these images
 
 Runtimes have a maximum timeout set by the environment variable FUNC_TIMEOUT. This environment variable can be set using the CLI option `--timeout`. The default value is 180 seconds. If a function takes more than that in being executed, the process will be terminated.
 
+## Configuring Default Runtime Container Images
+The Kubeless controller defines a set of default container images per supported runtime variant.
+These default container images can be configured via Kubernetes environment variables on the Kubeless controller's deployment container.
+Some examples:
+| Runtime Variant | Environment Variable Name |
+| --- | --- |
+| NodeJS 6.X HTTP Trigger | NODEJS6_RUNTIME |
+| NodeJS 8.X Event Trigger | NODEJS8_PUBSUB_RUNTIME |
+| Python 2.7.x HTTP Trigger | PYTHON2.7_RUNTIME |
+| Ruby 2.4.x HTTP Trigger | RUBY2.4_RUNTIME |
+| ... | ... |
+
 # Runtime variants
 ## HTTP Trigger
 This variant is used when the function is meant to be triggered through HTTP. For doing so we use a web framework that is in charge of receiving request and redirect them to the function. This kind of trigger is supported for all the runtimes.
