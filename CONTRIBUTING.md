@@ -27,7 +27,7 @@ Consult the [Developer's guide](./docs/dev-guide.md) to setup yourself up.
 2. The [repo owners](OWNERS) will respond to your issue promptly.
 3. If your proposed change is accepted, fork the desired repo, develop and test your code changes.
 4. Submit a pull request making sure you fill up clearly the description, point out the particular
-   issue your PR is mitigating, and ask for code review. You will be asked to add tests (either unit or e2e tests depending on the patch) and update any affected documentation.
+   issue your PR is mitigating, and ask for code review. If the PR is related to Kafka, include at least the tag [Kafka] in the title. You will be asked to add tests (either unit or e2e tests depending on the patch) and update any affected documentation.
 
 ## Issues
 
