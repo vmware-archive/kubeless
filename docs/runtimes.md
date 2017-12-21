@@ -13,6 +13,7 @@ Runtimes have a maximum timeout set by the environment variable FUNC_TIMEOUT. Th
 The Kubeless controller defines a set of default container images per supported runtime variant.
 These default container images can be configured via Kubernetes environment variables on the Kubeless controller's deployment container.
 Some examples:
+
 | Runtime Variant | Environment Variable Name |
 | --- | --- |
 | NodeJS 6.X HTTP Trigger | NODEJS6_RUNTIME |
