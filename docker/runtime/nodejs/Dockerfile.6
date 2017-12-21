@@ -1,7 +1,7 @@
-FROM node:6-alpine
+FROM node:6
 
 ARG TARGET=http-trigger
-RUN apk add --no-cache git
+RUN apt-get update &&  apt-get install git
 
 ADD ${TARGET}/package.json /
 
