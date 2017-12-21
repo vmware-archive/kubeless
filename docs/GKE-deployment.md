@@ -73,3 +73,38 @@ export KUBELESS_VERSION=<latest version>
 kubectl create namespace kubeless
 kubectl create -f https://github.com/kubeless/kubeless/releases/download/v$KUBELESS_VERSION/kubeless-rbac-v$KUBELESS_VERSION.yaml
 ```
+
+## Kubeless on GKE 1.8.x
+
+On GKE 1.8.x, when you have finished the above steps, there is still one step required to make the Kafka/Zookeeper PVC bounded. Checking PVC you will see they are pending:
+
+```
+kubectl get pvc -n kubeless
+NAME              STATUS    VOLUME    CAPACITY   ACCESSMODES   STORAGECLASS   AGE
+datadir-kafka-0   Pending                                                     2m
+zookeeper-zoo-0   Pending                                                     2m
+```
+
+Because there are no correlative PV available, you have to create them. On GKE, you might want to go with [GKE Persistent Disk](https://kubernetes.io/docs/concepts/storage/volumes/#gcepersistentdisk). First, create two PD with this command:
+
+```
+gcloud compute disks create --size=1GB --zone=<your_GKE_zone> kubeless-kafka
+gcloud compute disks create --size=1GB --zone=<your_GKE_zone> kubeless-zookeeper
+```
+
+Then create Kafka and Zookeeper PV:
+
+```
+kubectl create -f docs/misc/kafka-pv.yaml
+kubectl create -f docs/misc/zookeeper-pv.yaml
+```
+
+Once both PV are created, the PVC will be bounded shortly and you will see Kafka and Zookeeper running:
+
+```
+kubectl get pod -n kubeless
+NAME                                   READY     STATUS    RESTARTS   AGE
+kafka-0                                1/1       Running   1          30m
+kubeless-controller-659755588f-bwch6   1/1       Running   0          30m
+zoo-0                                  1/1       Running   0          30m
+```
