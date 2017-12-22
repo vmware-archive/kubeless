@@ -1,44 +1,39 @@
-# Kubeless release flow
+# Introduction
 
 Kubeless leverages [travis-ci](https://travis-ci.org/) to construct an automated release flow. A release package includes kubeless binaries for multiple platforms (linux and osx are supported) and one yaml file to deploy kubeless controller.
 
-A release is triggered by [Travis Github Releases](https://docs.travis-ci.com/user/deployment/releases/) and based on github tagging. Once a commit in the master branch is tagged, a travis job will be started to build and upload assets to Github release page under a new release with the tag name. The setup is described at `before_deploy` and `deploy` sections in `.travis.yaml`:
+# Checks before releasing
 
-```yaml
-before_deploy:
-  - make binary-cross
-  - for d in bundles/kubeless_*; do zip -r9 $d.zip $d/; done
-  - |
-    if [ "$TRAVIS_OS_NAME" = linux ]; then
-      docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-      docker push $CONTROLLER_IMAGE
-      NEW_DIGEST=$(./script/find_digest.sh ${CONTROLLER_IMAGE_NAME} ${TRAVIS_TAG} | cut -d " " -f 2)
-      OLD_DIGEST=$(cat kubeless.yaml | grep ${CONTROLLER_IMAGE_NAME} |  cut -d "@" -f 2)
-      sed 's/'"$OLD_DIGEST"'/'"$NEW_DIGEST"'/g' kubeless.yaml > kubeless-${TRAVIS_TAG}.yaml
-    fi
-```
+Before releasing it is necessary to check that the rest of projects of the Kubeless environment do not present regressions for the new changes. Before creating a new release, deploy Kubeless using the latest commit of master. Make sure that the latest image build in Travis for the Kubeless controller is being used. After that, ensure that the following projects support the new version:
+
+ - [Serverless Plugin](https://github.com/serverless/serverless-kubeless)
+ - [Kubeless UI](https://github.com/kubeless/kubeless-ui)
+
+If any error is found after doing some manual testing, make sure the error is addressed before doing a release.
+
+# Kubeless release flow
+
+A release is triggered by [Travis Github Releases](https://docs.travis-ci.com/user/deployment/releases/) and based on github tagging. Once a commit in the master branch is tagged, a travis job will be started to build and upload assets to Github release page under a new release with the tag name. The setup is described at `before_deploy` and `deploy` sections in `.travis.yaml`.
 
 `before_deploy` defines commands executed before releasing. At this stage, we prepare assets which will be uploaded including kubeless binaries and the yaml file. The yaml file is converted from [kubeless.jsonnet](https://github.com/kubeless/kubeless/blob/master/kubeless.jsonnet) file using [kubecfg](https://github.com/ksonnet/kubecfg). The kubeless-controller is built in format of docker image and push to [Bitnami repository](https://hub.docker.com/r/bitnami/kubeless-controller/) on DockerHub. Because we use sha256 digest for labeling docker images to be deployed when installing kubeless, we need to update these digests for the new release.
-
-```yaml
-deploy:
-  provider: releases
-  api_key:
-    secure: "daSVcUjHGO5L1SlyX3+GOz/Hv4KqkC/ObdRAbr7n7bvZUQewN5ll9Q5z5gvOI9z+zY9nnYFVppaOLfdWGjSldxjepwdHFB0F/oBXVwD+l7WOWacpq8+0+Zm71gG31YMl9ImkgmFll9WwXcG/2MLSGUsyBInGLzyRT0l5OhG6PNWLO3p7YZBKr9ihF3nxeRucfwn2uMUuyVnlEyBCyqmpxeKMNK3J9FY9j3jTmTmRQCBc9UEGGcX2p7R+LtLEvg/nxllVZyHQYc6UhuXWC6imx1mo6NAsVNSvbgJ0ufWrwcd+43XmU5eO8IPMlkb/EVgzp40XWoMrsxQZLEhnkLuApLFMdgn3ioJynBmtYiP3mQZ67Dt5zQiA7+UW/D+1CVjb7hVTzk76Vm4oEEq1KUs2xnA+kaUKprTLrlW4EusiSqKPZWG+hrqlC6VGYTSpQBtx9Hgo5yHZ0r5zoNCrXy3ISsCf8ublH+eiQ5tQ4pFD42AlLKGOQEpL6cvu2zl7+KZfWDqXG8dnjni7aguuPEdXnUm/bsv7JWKwFFV8CHfmBuWruU+VG1iVvSOmATlwQgb72ZsE+bJw5nFWTbrsVeK+hXSBk1tiWWDJzYEC9e81hFKxw8ltPHnG+dos941FXjNVG81L6TcuCgc42Ca4Kf7ICirjdmCKT3e7FW60IFw8SLM="
-  file_glob: true
-  file:
-    - kubeless-${TRAVIS_TAG}.yaml
-    - bundles/kubeless_*.zip
-  skip_cleanup: true
-  overwrite: true
-  on:
-    tags: true
-    repo: kubeless/kubeless
-    go: 1.8
-    os: linux
-```
 
 `deploy` defines configuration for a github release. API key is encrypted version of our Github token with scope `public_repo`. The condition for a release to be triggered is defined at `on` section:
 - it will be triggered once a commit is tagged
 - the repository is `kubeless/kubeless`
 - only travis job for `os: linux` and `go: 1.8` can do the release
+
+Once the release job has finished a `Draft` with the release notes will appear in the [releases page](https://github.com/kubeless/kubeless/releases). Review the notes and include a summary of the changes included in the release. Delete information that is not useful for the users. Make sure that breaking changes are properly highlighted. After that click on "Publish" for making the new release available for anyone.
+
+# Update the rest of projects to use the new version
+
+_Note: This steps are suitable for being automated in the Travis release job_
+
+Once the new version is available, there are several projects/files that require to be updated in order to point to the latest version:
+ 
+ - Kubeless root README: Update the installation instructions to point to the latest release.
+ - Serverless plugin: Update the `KUBELESS_VERSION` environment variable in the `.travis` file to point to the latest version.
+ - Brew recipes: Update the version and hash of the Kubeless version in:
+   - (DEPRECATED) [Kubeless Organization Brew recipe](https://github.com/kubeless/homebrew-tap/blob/master/Formula/kubeless.rb): Update the version and the sha256 of the Zip file with the latest release.
+   - [Upstream brew recipe](https://github.com/Homebrew/homebrew-core/blob/master/Formula/kubeless.rb): Update the version and the commit of the tag including that version.
+ - KubeApps: Update the reference of the controller image and checkout the kubeless submodule to point to the tagged commit. After that ping a KubeApps maintainer to merge the changes and update the manifests in the KubeApps repository. You can find an example of update [here](https://github.com/kubeapps/manifest/pull/34).
+ 
