@@ -6,7 +6,7 @@ controller:
     replicaCount: 1
     image:
       repository: bitnami/kubeless-controller@sha256
-      tag: d07986d575a80179ae15205c6fa5eb3bf9f4f4f46235c79ad6b284e5d3df22d0 
+      tag: 53592e0f023353665569313a1662a3aff18141e48caf4beca54d68436e71e0dc
       pullPolicy: IfNotPresent
 
 ## UI configuration
@@ -16,7 +16,7 @@ ui:
     ui:
       image:
         repository: bitnami/kubeless-ui
-        tag: development
+        tag: v0.1.0
         pullPolicy: IfNotPresent
     proxy:
       image:
@@ -44,5 +44,5 @@ kafka:
     replicaCount: 1
     image:
       repository: bitnami/kafka@sha256
-      tag: ef0b1332408c0361d457852622d3a180f3609b9d98f1a85a9a809adaecfe9b52
+      tag: 0c4be25cd3b31176a4c738da64d988d614b939021bedf7e1b0cc72b37a071ecb
       pullPolicy: IfNotPresent
