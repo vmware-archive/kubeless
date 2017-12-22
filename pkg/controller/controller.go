@@ -26,6 +26,7 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -341,6 +342,12 @@ func (c *Controller) processItem(key string) error {
 		return err
 	}
 
+	err = c.updateFunctionStatus(funcObj)
+	if err != nil {
+		c.logger.Errorf("Failed to update function status: %v", err)
+		return err
+	}
+
 	c.logger.Infof("Updated Function %s", key)
 	return nil
 }
@@ -423,6 +430,55 @@ func (c *Controller) collectConfigMap() error {
 			key := fmt.Sprintf("%s/%s", m.Namespace, m.OwnerReferences[0].Name)
 			c.queue.Add(key)
 		}
+	}
+
+	return nil
+}
+func cloneFunction(in interface{}) (*spec.Function, error) {
+	var scheme = runtime.NewScheme()
+	clone, err := scheme.DeepCopy(in)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := clone.(*spec.Function)
+	if !ok {
+		return nil, fmt.Errorf("unexpected type: %T", clone)
+	}
+
+	return out, nil
+}
+
+func (c *Controller) updateFunctionStatus(funcObj *spec.Function) error {
+
+	funcObjCopy, err := cloneFunction(funcObj)
+	if err != nil {
+		return err
+	}
+
+	status := spec.FunctionStatus{Status: spec.NotReadyPhase}
+
+	// TODO: We need a sync loop to periodically check if actual state and
+	// desired state are as expected. Refect the status as per the check.
+	ticker := time.NewTicker(time.Millisecond * 500)
+	go func() {
+		for range ticker.C {
+			dpm, err := c.clientset.ExtensionsV1beta1().Deployments(funcObj.Metadata.Namespace).Get(funcObj.Metadata.Name, metav1.GetOptions{})
+			if err != nil {
+				return
+			}
+			if dpm.Status.ReadyReplicas > 0 {
+				status = spec.FunctionStatus{Status: spec.ReadyPhase}
+			}
+		}
+	}()
+	time.Sleep(time.Millisecond * 30000)
+	ticker.Stop()
+
+	funcObjCopy.Status = status
+	err = utils.UpdateK8sCustomResource(c.crdclient, funcObjCopy)
+	if err != nil {
+		return err
 	}
 
 	return nil

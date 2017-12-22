@@ -28,6 +28,7 @@ type Function struct {
 	metav1.TypeMeta `json:",inline"`
 	Metadata        metav1.ObjectMeta `json:"metadata"`
 	Spec            FunctionSpec      `json:"spec"`
+	Status          FunctionStatus    `json:"status,omitempty"`
 }
 
 // FunctionSpec contains func specification
@@ -44,6 +45,25 @@ type FunctionSpec struct {
 	Deps                    string                           `json:"deps"`                  // Function dependencies
 	Template                v1.PodTemplateSpec               `json:"template" protobuf:"bytes,3,opt,name=template"`
 	HorizontalPodAutoscaler v2alpha1.HorizontalPodAutoscaler `json:"horizontalPodAutoscaler" protobuf:"bytes,3,opt,name=horizontalPodAutoscaler"`
+}
+
+// FunctionPhase is a string representation of the lifecycle phase of function
+type FunctionPhase string
+
+// TODO: As we define function, triggers and runtime the status should
+// evolve to capture the life-cycle of the function
+const (
+
+	// ReadyPhase means the function has been deployed and can respond to triggers
+	ReadyPhase FunctionPhase = "READY"
+
+	// NotReadyPhase means the function is not ready to respond to triggers
+	NotReadyPhase FunctionPhase = "NOT READY"
+)
+
+// FunctionStatus captures the current status of the function.
+type FunctionStatus struct {
+	Status FunctionPhase `json:"status"`
 }
 
 // FunctionList contains map of functions

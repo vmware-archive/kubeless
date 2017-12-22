@@ -27,7 +27,6 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -140,12 +139,7 @@ func printFunctions(w io.Writer, functions []*spec.Function, cli kubernetes.Inte
 			t := f.Spec.Type
 			tp := f.Spec.Topic
 			ns := f.Metadata.Namespace
-			status, err := getDeploymentStatus(cli, f.Metadata.Name, f.Metadata.Namespace)
-			if err != nil && k8sErrors.IsNotFound(err) {
-				status = "MISSING: Check controller logs"
-			} else if err != nil {
-				return err
-			}
+			status := f.Status.Status
 			deps, err := parseDeps(f.Spec.Deps, r)
 			if err != nil {
 				return err
@@ -170,12 +164,7 @@ func printFunctions(w io.Writer, functions []*spec.Function, cli kubernetes.Inte
 			}
 			s := f.Spec.Schedule
 			ns := f.Metadata.Namespace
-			status, err := getDeploymentStatus(cli, f.Metadata.Name, f.Metadata.Namespace)
-			if err != nil && k8sErrors.IsNotFound(err) {
-				status = "MISSING: Check controller logs"
-			} else if err != nil {
-				return err
-			}
+			status := f.Status.Status
 			mem := ""
 			env := ""
 			if len(f.Spec.Template.Spec.Containers[0].Resources.Requests) != 0 {
