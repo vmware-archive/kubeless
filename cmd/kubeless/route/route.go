@@ -1,5 +1,5 @@
 /*
-Copyright 2016 Skippbox, Ltd.
+Copyright (c) 2016-2017 Bitnami
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -11,27 +11,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package route
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var autoscaleCmd = &cobra.Command{
-	Use:   "autoscale SUBCOMMAND",
-	Short: "manage autoscale to function on Kubeless",
-	Long:  `autoscale command allows user to list, create, delete autoscale rule for function on Kubeless`,
+//RouteCmd contains first-class command for route
+var RouteCmd = &cobra.Command{
+	Use:   "route SUBCOMMAND",
+	Short: "manage route to function on Kubeless",
+	Long:  `route command allows user to list, create, delete routing rule for function on Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
 }
 
 func init() {
-	cmds := []*cobra.Command{autoscaleCreateCmd, autoscaleListCmd, autoscaleDeleteCmd}
+	cmds := []*cobra.Command{routeCreateCmd, routeListCmd, routeDeleteCmd}
 
 	for _, cmd := range cmds {
-		autoscaleCmd.AddCommand(cmd)
-		cmd.Flags().StringP("namespace", "n", "", "Specify namespace for the autoscale")
+		RouteCmd.AddCommand(cmd)
+		cmd.Flags().StringP("namespace", "n", "", "Specify namespace for the route")
 
 	}
 }

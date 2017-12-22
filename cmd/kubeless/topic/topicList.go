@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package topic
 
 import (
 	"io"
@@ -26,20 +26,16 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-var topicDeleteCmd = &cobra.Command{
-	Use:   "delete <topic_name>",
-	Short: "delete a topic from Kubeless",
-	Long:  `delete a topic from Kubeless`,
+var topicListCmd = &cobra.Command{
+	Use:     "list FLAG",
+	Aliases: []string{"ls"},
+	Short:   "list all topics created in Kubeless",
+	Long:    `list all topics created in Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) != 1 {
-			logrus.Fatal("Need exactly one argument - topic name")
-		}
 		ctlNamespace, err := cmd.Flags().GetString("kafka-namespace")
 		if err != nil {
 			logrus.Fatal(err)
 		}
-
-		topicName := args[0]
 
 		conf, err := utils.BuildOutOfClusterConfig()
 		if err != nil {
@@ -48,20 +44,18 @@ var topicDeleteCmd = &cobra.Command{
 
 		k8sClientSet := utils.GetClientOutOfCluster()
 
-		err = deleteTopic(conf, k8sClientSet, ctlNamespace, topicName, cmd.OutOrStdout())
+		err = listTopic(conf, k8sClientSet, ctlNamespace, cmd.OutOrStdout())
 		if err != nil {
 			logrus.Fatal(err)
 		}
 	},
 }
 
-func deleteTopic(conf *rest.Config, clientset kubernetes.Interface, ctlNamespace, topicName string, out io.Writer) error {
+func listTopic(conf *rest.Config, clientset kubernetes.Interface, ctlNamespace string, out io.Writer) error {
 	command := []string{
 		"bash", "/opt/bitnami/kafka/bin/kafka-topics.sh",
 		"--zookeeper", "zookeeper." + ctlNamespace + ":2181",
-		"--delete",
-		"--topic", topicName,
+		"--list",
 	}
-
 	return execCommand(conf, clientset, ctlNamespace, command, out)
 }

@@ -16,6 +16,12 @@ limitations under the License.
 
 package version
 
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+)
+
 var (
 	// VERSION will be overwritten automatically by the build system
 	VERSION = "devel"
@@ -23,3 +29,13 @@ var (
 	// GITCOMMIT will be overwritten automatically by the build system
 	GITCOMMIT = "HEAD"
 )
+
+//VersionCmd contains first-class command for version
+var VersionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version of Kubeless",
+	Long:  ``,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("Kubeless version: " + VERSION + " (" + GITCOMMIT + ")")
+	},
+}

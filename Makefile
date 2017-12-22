@@ -9,7 +9,7 @@ CONTROLLER_IMAGE = kubeless-controller:latest
 OS = linux
 ARCH = amd64
 BUNDLES = bundles
-GO_PACKAGES = ./cmd/... ./pkg/... ./version/...
+GO_PACKAGES = ./cmd/... ./pkg/...
 GO_FILES := $(shell find $(shell $(GO) list -f '{{.Dir}}' $(GO_PACKAGES)) -name \*.go)
 
 export KUBECFG_JPATH := $(CURDIR)/ksonnet-lib
