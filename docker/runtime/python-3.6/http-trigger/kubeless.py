@@ -31,7 +31,7 @@ def funcWrap(q, req):
     else:
         q.put(func(req))
 
-@app.route('/', method=['GET', 'POST'])
+@app.route('/', method=['GET', 'POST', 'PATCH', 'DELETE'])
 def handler():
     req = bottle.request
     method = req.method
@@ -39,10 +39,7 @@ def handler():
     with func_errors.labels(method).count_exceptions():
         with func_hist.labels(method).time():
             q = Queue()
-            if method == 'GET':
-                p = Process(target=funcWrap, args=(q,None,))
-            else:
-                p = Process(target=funcWrap, args=(q,bottle.request,))
+            p = Process(target=funcWrap, args=(q,bottle.request,))
             p.start()
             p.join(timeout)
             # If thread is still active
