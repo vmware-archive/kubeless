@@ -37,7 +37,7 @@ rescue
 end
 
 set :server, 'webrick'
-set :port, 8080
+set :port, ENV['FUNC_PORT'] || 8080
 
 def funcWrapper(mod, t)
     status = Timeout::timeout(t) {
