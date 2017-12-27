@@ -116,6 +116,18 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		headless, err := cmd.Flags().GetBool("headless")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		port, err := cmd.Flags().GetInt32("port")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		if port <= 0 || port > 65535 {
+			logrus.Fatalf("Invalid port number %d specified", port)
+		}
 
 		funcDeps := ""
 		if deps != "" {
@@ -140,7 +152,7 @@ var deployCmd = &cobra.Command{
 		defaultFunctionSpec.Metadata.Labels = map[string]string{
 			"created-by": "kubeless",
 		}
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, envs, labels, defaultFunctionSpec)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, &headless, &port, envs, labels, defaultFunctionSpec)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -174,4 +186,6 @@ func init() {
 	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 	deployCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
 	deployCmd.Flags().StringP("timeout", "", "180", "Maximum timeout (in seconds) for the function to complete its execution")
+	deployCmd.Flags().Bool("headless", false, "Deploy http-based function without a single service IP and load balancing support from Kubernetes. See: https://kubernetes.io/docs/concepts/services-networking/service/#headless-services")
+	deployCmd.Flags().Int32("port", 8080, "Deploy http-based function with a custom port")
 }

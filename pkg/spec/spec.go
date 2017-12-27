@@ -42,6 +42,7 @@ type FunctionSpec struct {
 	Schedule                string                           `json:"schedule"`              // Function scheduled time (for Schedule type)
 	Timeout                 string                           `json:"timeout"`               // Maximum timeout for the function to complete its execution
 	Deps                    string                           `json:"deps"`                  // Function dependencies
+	ServiceSpec             v1.ServiceSpec                   `json:"service"`
 	Template                v1.PodTemplateSpec               `json:"template" protobuf:"bytes,3,opt,name=template"`
 	HorizontalPodAutoscaler v2alpha1.HorizontalPodAutoscaler `json:"horizontalPodAutoscaler" protobuf:"bytes,3,opt,name=horizontalPodAutoscaler"`
 }

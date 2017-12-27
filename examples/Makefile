@@ -21,6 +21,12 @@ get-python-deps:
 get-python-deps-verify:
 	kubeless function call get-python-deps |egrep Google
 
+get-python-custom-port:
+	kubeless function deploy get-python-custom-port --trigger-http --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --port 8081
+
+get-python-custom-port-verify:
+	kubeless function call get-python-custom-port |egrep hello.world
+
 get-python-deps-update:
 	$(eval TMPDIR := $(shell mktemp -d))
 	printf 'bs4\ntwitter\n' > $(TMPDIR)/requirements.txt
@@ -37,6 +43,13 @@ get-python-34:
 
 get-python-34-verify:
 	kubeless function call get-python |egrep hello.world
+
+get-python-36:
+	kubeless function deploy get-python-36 --trigger-http --runtime python3.6 --handler helloget.foo --from-file python/helloget.py
+	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python-36/"
+
+get-python-36-verify:
+	kubeless function call get-python-36 |egrep hello.world
 
 scheduled-get-python:
 	kubeless function deploy scheduled-get-python --schedule "* * * * *" --runtime python2.7 --handler helloget.foo --from-file python/helloget.py
@@ -73,6 +86,13 @@ get-nodejs:
 
 get-nodejs-verify:
 	kubeless function call get-nodejs |egrep hello.world
+
+get-nodejs-custom-port:
+	kubeless function deploy get-nodejs-custom-port --trigger-http --runtime nodejs6 --handler helloget.foo --from-file nodejs/helloget.js --port 8083
+	echo "curl localhost:8083/api/v1/proxy/namespaces/default/services/get-nodejs-custom-port/"
+
+get-nodejs-custom-port-verify:
+	kubeless function call get-nodejs-custom-port |egrep hello.world
 
 timeout-nodejs:
 	$(eval TMPDIR := $(shell mktemp -d))
@@ -119,6 +139,13 @@ get-ruby-deps:
 get-ruby-deps-verify:
 	kubeless function call get-ruby-deps |egrep hello.world
 
+get-ruby-custom-port:
+	kubeless function deploy get-ruby-custom-port --trigger-http --runtime ruby2.4 --handler helloget.foo --from-file ruby/helloget.rb --port 8082
+	echo "curl localhost:8082/api/v1/proxy/namespaces/default/services/get-ruby-custom-port/"
+
+get-ruby-custom-port-verify:
+	kubeless function call get-ruby-custom-port |egrep hello.world
+
 timeout-ruby:
 	$(eval TMPDIR := $(shell mktemp -d))
 	printf 'def foo(c)\n%4swhile true do;sleep(1);end\n%4s"hello world"\nend' > $(TMPDIR)/hello-loop.rb
@@ -149,7 +176,7 @@ custom-get-python-update:
 custom-get-python-update-verify:
 	kubeless function call custom-get-python |egrep hello.world.updated
 
-get: get-python get-nodejs get-python-metadata get-ruby get-ruby-deps
+get: get-python get-nodejs get-python-metadata get-ruby get-ruby-deps get-python-custom-port
 
 post-python:
 	kubeless function deploy post-python --trigger-http --runtime python2.7 --handler hellowithdata.handler --from-file python/hellowithdata.py
@@ -157,6 +184,13 @@ post-python:
 
 post-python-verify:
 	kubeless function call post-python --data '{"it-s": "alive"}'|egrep "it.*alive"
+
+post-python-custom-port:
+	kubeless function deploy post-python-custom-port --trigger-http --runtime python2.7 --handler hellowithdata.handler --from-file python/hellowithdata.py --port 8081
+	echo "curl --data '{\"hello\":\"world\"}' localhost:8081/api/v1/proxy/namespaces/default/services/post-python-custom-port/ --header \"Content-Type:application/json\""
+
+post-python-custom-port-verify:
+	kubeless function call post-python-custom-port --data '{"it-s": "alive"}'|egrep "it.*alive"
 
 post-nodejs:
 	kubeless function deploy post-nodejs --trigger-http --runtime nodejs6 --handler hellowithdata.handler --from-file nodejs/hellowithdata.js
@@ -178,7 +212,7 @@ post-dotnetcore:
 post-dotnetcore-verify:
 	kubeless function call post-dotnetcore --data '{"it-s": "alive"}'|egrep "it.*alive"
 
-post: post-python post-nodejs post-ruby
+post: post-python post-nodejs post-ruby post-python-custom-port
 
 pubsub-python:
 	kubeless topic create s3-python || true
@@ -215,6 +249,27 @@ pubsub-python34-verify:
 	found=false; \
 	while [ $$number -le $$timeout ] ; do \
 		pod=`kubectl get po -oname -l function=pubsub-python34`; \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+    	if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
+
+pubsub-python36:
+	kubeless function deploy pubsub-python36 --trigger-topic s3-python36 --runtime python3.6 --handler pubsub-python.handler --from-file python/pubsub.py
+
+pubsub-python36-verify:
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
+	kubeless topic publish --topic s3-python36 --data "$(DATA)"
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=pubsub-python36`; \
 		logs=`kubectl logs $$pod | grep $(DATA)`; \
     	if [ "$$logs" != "" ]; then \
 			found=true; \

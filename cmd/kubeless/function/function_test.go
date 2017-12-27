@@ -28,6 +28,7 @@ import (
 	"github.com/kubeless/kubeless/pkg/spec"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -97,7 +98,9 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, []string{"TEST=1"}, []string{"test=1"}, spec.Function{})
+	inputHeadless := true
+	inputPort := int32(80)
+	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, spec.Function{})
 	if err != nil {
 		t.Error(err)
 	}
@@ -125,6 +128,23 @@ func TestGetFunctionDescription(t *testing.T) {
 			Topic:               "",
 			Schedule:            "",
 			Timeout:             "10",
+			ServiceSpec: v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{
+						Name:       "function-port",
+						Port:       int32(80),
+						TargetPort: intstr.FromInt(80),
+						NodePort:   0,
+						Protocol:   v1.ProtocolTCP,
+					},
+				},
+				Selector: map[string]string{
+					"test":     "1",
+					"function": "test",
+				},
+				Type:      v1.ServiceTypeClusterIP,
+				ClusterIP: v1.ClusterIPNone,
+			},
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -153,7 +173,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should take the default values
-	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", "", false, []string{}, []string{}, expectedFunction)
+	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", "", false, nil, nil, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -172,7 +192,9 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
-	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", "20", false, []string{"TEST=2"}, []string{"test=2"}, expectedFunction)
+	input3Headless := false
+	input3Port := int32(8080)
+	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", "20", false, &input3Headless, &input3Port, []string{"TEST=2"}, []string{"test=2"}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -200,6 +222,22 @@ func TestGetFunctionDescription(t *testing.T) {
 			Topic:               "test_topic",
 			Schedule:            "",
 			Timeout:             "20",
+			ServiceSpec: v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{
+						Name:       "function-port",
+						Port:       int32(8080),
+						TargetPort: intstr.FromInt(8080),
+						NodePort:   0,
+						Protocol:   v1.ProtocolTCP,
+					},
+				},
+				Selector: map[string]string{
+					"test":     "2",
+					"function": "test",
+				},
+				Type: v1.ServiceTypeClusterIP,
+			},
 			Template: v1.PodTemplateSpec{
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
@@ -256,7 +294,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 	file.Close()
 	zipW.Close()
-	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", "", false, []string{}, []string{}, expectedFunction)
+	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", "", false, nil, nil, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
