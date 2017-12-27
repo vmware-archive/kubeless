@@ -23,13 +23,16 @@ load ../script/libtest
   deploy_function scheduled-get-python
   deploy_function get-python-custom-port
   deploy_function get-nodejs
+  deploy_function get-nodejs-custom-port
   deploy_function get-nodejs-deps
   deploy_function timeout-nodejs
   deploy_function get-nodejs-multi
   deploy_function get-ruby
+  deploy_function get-ruby-custom-port
   deploy_function get-ruby-deps
   deploy_function get-python-metadata
   deploy_function post-python
+  deploy_function post-python-custom-port
   deploy_function post-nodejs
   deploy_function post-ruby
   deploy_function custom-get-python
@@ -61,6 +64,10 @@ load ../script/libtest
   verify_function get-nodejs
   kubeless_function_delete get-nodejs
 }
+@test "Test function: get-nodejs-custom-port" {
+  verify_function get-nodejs-custom-port
+  kubeless_function_delete get-nodejs-custom-port
+}
 @test "Test function: get-nodejs-deps" {
   verify_function get-nodejs-deps
   kubeless_function_delete get-nodejs-deps
@@ -76,6 +83,10 @@ load ../script/libtest
 @test "Test function: get-ruby" {
   verify_function get-ruby
   kubeless_function_delete get-ruby
+}
+@test "Test function: get-ruby-custom-port" {
+  verify_function get-ruby-custom-port
+  kubeless_function_delete get-ruby-custom-port
 }
 @test "Test function: get-ruby-deps" {
   verify_function get-ruby-deps
@@ -94,6 +105,10 @@ load ../script/libtest
 @test "Test function: post-python" {
   verify_function post-python
   kubeless_function_delete post-python
+}
+@test "Test function: post-python-custom-port" {
+  verify_function post-python-custom-port
+  kubeless_function_delete post-python-custom-port
 }
 @test "Test function: post-nodejs" {
   verify_function post-nodejs

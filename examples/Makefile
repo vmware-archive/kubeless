@@ -80,6 +80,13 @@ get-nodejs:
 get-nodejs-verify:
 	kubeless function call get-nodejs |egrep hello.world
 
+get-nodejs-custom-port:
+	kubeless function deploy get-nodejs-custom-port --trigger-http --runtime nodejs6 --handler helloget.foo --from-file nodejs/helloget.js --port 8083
+	echo "curl localhost:8083/api/v1/proxy/namespaces/default/services/get-nodejs-custom-port/"
+
+get-nodejs-custom-port-verify:
+	kubeless function call get-nodejs-custom-port |egrep hello.world
+
 timeout-nodejs:
 	$(eval TMPDIR := $(shell mktemp -d))
 	printf 'module.exports = { foo: function (req, res) { while(true) {} } }\n' > $(TMPDIR)/hello-loop.js
@@ -125,6 +132,13 @@ get-ruby-deps:
 get-ruby-deps-verify:
 	kubeless function call get-ruby-deps |egrep hello.world
 
+get-ruby-custom-port:
+	kubeless function deploy get-ruby-custom-port --trigger-http --runtime ruby2.4 --handler helloget.foo --from-file ruby/helloget.rb --port 8082
+	echo "curl localhost:8082/api/v1/proxy/namespaces/default/services/get-ruby-custom-port/"
+
+get-ruby-custom-port-verify:
+	kubeless function call get-ruby-custom-port |egrep hello.world
+
 timeout-ruby:
 	$(eval TMPDIR := $(shell mktemp -d))
 	printf 'def foo(c)\n%4swhile true do;sleep(1);end\n%4s"hello world"\nend' > $(TMPDIR)/hello-loop.rb
@@ -155,7 +169,7 @@ custom-get-python-update:
 custom-get-python-update-verify:
 	kubeless function call custom-get-python |egrep hello.world.updated
 
-get: get-python get-nodejs get-python-metadata get-ruby get-ruby-deps
+get: get-python get-nodejs get-python-metadata get-ruby get-ruby-deps get-python-custom-port
 
 post-python:
 	kubeless function deploy post-python --trigger-http --runtime python2.7 --handler hellowithdata.handler --from-file python/hellowithdata.py
@@ -163,6 +177,13 @@ post-python:
 
 post-python-verify:
 	kubeless function call post-python --data '{"it-s": "alive"}'|egrep "it.*alive"
+
+post-python-custom-port:
+	kubeless function deploy post-python-custom-port --trigger-http --runtime python2.7 --handler hellowithdata.handler --from-file python/hellowithdata.py --port 8081
+	echo "curl --data '{\"hello\":\"world\"}' localhost:8081/api/v1/proxy/namespaces/default/services/post-python-custom-port/ --header \"Content-Type:application/json\""
+
+post-python-custom-port-verify:
+	kubeless function call post-python-custom-port --data '{"it-s": "alive"}'|egrep "it.*alive"
 
 post-nodejs:
 	kubeless function deploy post-nodejs --trigger-http --runtime nodejs6 --handler hellowithdata.handler --from-file nodejs/hellowithdata.js
@@ -184,7 +205,7 @@ post-dotnetcore:
 post-dotnetcore-verify:
 	kubeless function call post-dotnetcore --data '{"it-s": "alive"}'|egrep "it.*alive"
 
-post: post-python post-nodejs post-ruby
+post: post-python post-nodejs post-ruby post-python-custom-port
 
 pubsub-python:
 	kubeless topic create s3-python || true
