@@ -44,6 +44,13 @@ get-python-34:
 get-python-34-verify:
 	kubeless function call get-python |egrep hello.world
 
+get-python-36:
+	kubeless function deploy get-python-36 --trigger-http --runtime python3.6 --handler helloget.foo --from-file python/helloget.py
+	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python-36/"
+
+get-python-36-verify:
+	kubeless function call get-python-36 |egrep hello.world
+
 scheduled-get-python:
 	kubeless function deploy scheduled-get-python --schedule "* * * * *" --runtime python2.7 --handler helloget.foo --from-file python/helloget.py
 
@@ -242,6 +249,27 @@ pubsub-python34-verify:
 	found=false; \
 	while [ $$number -le $$timeout ] ; do \
 		pod=`kubectl get po -oname -l function=pubsub-python34`; \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+    	if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
+
+pubsub-python36:
+	kubeless function deploy pubsub-python36 --trigger-topic s3-python36 --runtime python3.6 --handler pubsub-python.handler --from-file python/pubsub.py
+
+pubsub-python36-verify:
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
+	kubeless topic publish --topic s3-python36 --data "$(DATA)"
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=pubsub-python36`; \
 		logs=`kubectl logs $$pod | grep $(DATA)`; \
     	if [ "$$logs" != "" ]; then \
 			found=true; \
