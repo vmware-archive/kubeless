@@ -343,7 +343,7 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 	expectedContainer := v1.Container{
 		Name:  f1Name,
-		Image: "kubeless/python@sha256:ba948a6783b93d75037b7b1806a3925d441401ae6fba18282f712a1b1a786899",
+		Image: "tuna/python@sha256:777905dfd628e91192b61c104e30aca9c429b84844de2a1187398ee50593ab5e",
 		Ports: []v1.ContainerPort{
 			{
 				ContainerPort: int32(f1Port),
