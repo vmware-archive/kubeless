@@ -21,6 +21,12 @@ get-python-deps:
 get-python-deps-verify:
 	kubeless function call get-python-deps |egrep Google
 
+get-python-custom-port:
+	kubeless function deploy get-python-custom-port --trigger-http --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --port 8081
+
+get-python-custom-port-verify:
+	kubeless function call get-python-custom-port |egrep hello.world
+
 get-python-deps-update:
 	$(eval TMPDIR := $(shell mktemp -d))
 	printf 'bs4\ntwitter\n' > $(TMPDIR)/requirements.txt

@@ -21,6 +21,7 @@ load ../script/libtest
   deploy_function get-python
   deploy_function get-python-deps
   deploy_function scheduled-get-python
+  deploy_function get-python-custom-port
   deploy_function get-nodejs
   deploy_function get-nodejs-deps
   deploy_function timeout-nodejs
@@ -38,6 +39,9 @@ load ../script/libtest
 }
 @test "Test function: get-python-deps" {
   verify_function get-python-deps
+}
+@test "Test function: get-python-custom-port" {
+  verify_function get-python-custom-port
 }
 @test "Test function update: get-python" {
   test_kubeless_function_update get-python
