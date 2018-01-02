@@ -46,7 +46,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -598,6 +597,9 @@ func svcPort(funcObj *spec.Function) int32 {
 
 // EnsureFuncDeployment creates/updates a function deployment
 func EnsureFuncDeployment(client kubernetes.Interface, funcObj *api.Function, or []metav1.OwnerReference) error {
+
+	var err error
+
 	runtimeVolumeName := funcObj.ObjectMeta.Name
 	depsVolumeName := funcObj.ObjectMeta.Name + "-deps"
 	podAnnotations := map[string]string{
@@ -629,11 +631,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *api.Function, or
 	}
 
 	//copy all func's Spec.Template to the deployment
-	tmplCopy, err := api.Scheme.DeepCopy(funcObj.Spec.Template)
-	if err != nil {
-		return err
-	}
-	dpm.Spec.Template = tmplCopy.(v1.PodTemplateSpec)
+	dpm.Spec.Template = *funcObj.Spec.Template.DeepCopy()
 
 	//append data to dpm spec
 	if len(dpm.Spec.Template.ObjectMeta.Labels) == 0 {
@@ -929,7 +927,7 @@ func EnsureFuncCronJob(client rest.Interface, funcObj *api.Function, or []metav1
 
 // CreateAutoscale creates HPA object for function
 func CreateAutoscale(client kubernetes.Interface, hpa v2beta1.HorizontalPodAutoscaler) error {
-	_, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(hpa.ObjectMeta.Namespace).Create(&hpa)
+	_, err := client.AutoscalingV2beta1().HorizontalPodAutoscalers(hpa.ObjectMeta.Namespace).Create(&hpa)
 	if err != nil {
 		return err
 	}
@@ -939,7 +937,7 @@ func CreateAutoscale(client kubernetes.Interface, hpa v2beta1.HorizontalPodAutos
 
 // DeleteAutoscale deletes an autoscale rule
 func DeleteAutoscale(client kubernetes.Interface, name, ns string) error {
-	err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).Delete(name, &metav1.DeleteOptions{})
+	err := client.AutoscalingV2beta1().HorizontalPodAutoscalers(ns).Delete(name, &metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}

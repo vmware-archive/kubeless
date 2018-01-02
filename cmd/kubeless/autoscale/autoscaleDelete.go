@@ -44,7 +44,7 @@ var autoscaleDeleteCmd = &cobra.Command{
 		}
 
 		if function.Spec.HorizontalPodAutoscaler.Name != "" {
-			function.Spec.HorizontalPodAutoscaler = v2alpha1.HorizontalPodAutoscaler{}
+			function.Spec.HorizontalPodAutoscaler = v2beta1.HorizontalPodAutoscaler{}
 			crdClient, err := utils.GetCRDClientOutOfCluster()
 			if err != nil {
 				logrus.Fatal(err)

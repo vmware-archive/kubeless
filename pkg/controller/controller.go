@@ -23,6 +23,7 @@ import (
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -69,7 +70,7 @@ type Config struct {
 
 // New initializes a controller object
 func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Controller {
-	lw := cache.NewListWatchFromClient(cfg.CRDClient, "functions", api.NamespaceAll, fields.Everything())
+	lw := cache.NewListWatchFromClient(cfg.CRDClient, "functions", corev1.NamespaceAll, fields.Everything())
 
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
@@ -234,7 +235,7 @@ func (c *Controller) ensureK8sResources(funcObj *api.Function) error {
 
 	if funcObj.Spec.HorizontalPodAutoscaler.Name != "" && funcObj.Spec.HorizontalPodAutoscaler.Spec.ScaleTargetRef.Name != "" {
 		funcObj.Spec.HorizontalPodAutoscaler.OwnerReferences = or
-		if funcObj.Spec.HorizontalPodAutoscaler.Spec.Metrics[0].Type == v2alpha1.ObjectMetricSourceType {
+		if funcObj.Spec.HorizontalPodAutoscaler.Spec.Metrics[0].Type == v2beta1.ObjectMetricSourceType {
 			// A service monitor is needed when the metric is an object
 			err = utils.CreateServiceMonitor(*c.smclient, funcObj, funcObj.ObjectMeta.Namespace, or)
 			if err != nil {
@@ -361,7 +362,7 @@ func (c *Controller) garbageCollect() error {
 }
 
 func (c *Controller) collectServices() error {
-	srvs, err := c.clientset.CoreV1().Services(api.NamespaceAll).List(metav1.ListOptions{})
+	srvs, err := c.clientset.CoreV1().Services(corev1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -386,7 +387,7 @@ func (c *Controller) collectServices() error {
 }
 
 func (c *Controller) collectDeployment() error {
-	ds, err := c.clientset.AppsV1beta1().Deployments(api.NamespaceAll).List(metav1.ListOptions{})
+	ds, err := c.clientset.AppsV1beta1().Deployments(corev1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -407,7 +408,7 @@ func (c *Controller) collectDeployment() error {
 }
 
 func (c *Controller) collectConfigMap() error {
-	cm, err := c.clientset.CoreV1().ConfigMaps(api.NamespaceAll).List(metav1.ListOptions{})
+	cm, err := c.clientset.CoreV1().ConfigMaps(corev1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}

@@ -44,19 +44,19 @@ func init() {
 	}
 }
 
-func getHorizontalAutoscaleDefinition(name, ns, metric string, min, max int32, value string, labels map[string]string) (v2alpha1.HorizontalPodAutoscaler, error) {
-	m := []v2alpha1.MetricSpec{}
+func getHorizontalAutoscaleDefinition(name, ns, metric string, min, max int32, value string, labels map[string]string) (v2beta1.HorizontalPodAutoscaler, error) {
+	m := []v2beta1.MetricSpec{}
 	switch metric {
 	case "cpu":
 		i, err := strconv.ParseInt(value, 10, 32)
 		if err != nil {
-			return v2alpha1.HorizontalPodAutoscaler{}, err
+			return v2beta1.HorizontalPodAutoscaler{}, err
 		}
 		i32 := int32(i)
-		m = []v2alpha1.MetricSpec{
+		m = []v2beta1.MetricSpec{
 			{
-				Type: v2alpha1.ResourceMetricSourceType,
-				Resource: &v2alpha1.ResourceMetricSource{
+				Type: v2beta1.ResourceMetricSourceType,
+				Resource: &v2beta1.ResourceMetricSource{
 					Name: v1.ResourceCPU,
 					TargetAverageUtilization: &i32,
 				},
@@ -65,15 +65,15 @@ func getHorizontalAutoscaleDefinition(name, ns, metric string, min, max int32, v
 	case "qps":
 		q, err := resource.ParseQuantity(value)
 		if err != nil {
-			return v2alpha1.HorizontalPodAutoscaler{}, err
+			return v2beta1.HorizontalPodAutoscaler{}, err
 		}
-		m = []v2alpha1.MetricSpec{
+		m = []v2beta1.MetricSpec{
 			{
-				Type: v2alpha1.ObjectMetricSourceType,
-				Object: &v2alpha1.ObjectMetricSource{
+				Type: v2beta1.ObjectMetricSourceType,
+				Object: &v2beta1.ObjectMetricSource{
 					MetricName:  "function_calls",
 					TargetValue: q,
-					Target: v2alpha1.CrossVersionObjectReference{
+					Target: v2beta1.CrossVersionObjectReference{
 						Kind: "Service",
 						Name: name,
 					},
@@ -81,13 +81,13 @@ func getHorizontalAutoscaleDefinition(name, ns, metric string, min, max int32, v
 			},
 		}
 		if err != nil {
-			return v2alpha1.HorizontalPodAutoscaler{}, err
+			return v2beta1.HorizontalPodAutoscaler{}, err
 		}
 	default:
-		return v2alpha1.HorizontalPodAutoscaler{}, fmt.Errorf("metric %s is not supported", metric)
+		return v2beta1.HorizontalPodAutoscaler{}, fmt.Errorf("metric %s is not supported", metric)
 	}
 
-	return v2alpha1.HorizontalPodAutoscaler{
+	return v2beta1.HorizontalPodAutoscaler{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "autoscaling/v2beta1",
 			Kind:       "HorizontalPodAutoscaler",
@@ -97,8 +97,8 @@ func getHorizontalAutoscaleDefinition(name, ns, metric string, min, max int32, v
 			Namespace: ns,
 			Labels:    labels,
 		},
-		Spec: v2alpha1.HorizontalPodAutoscalerSpec{
-			ScaleTargetRef: v2alpha1.CrossVersionObjectReference{
+		Spec: v2beta1.HorizontalPodAutoscalerSpec{
+			ScaleTargetRef: v2beta1.CrossVersionObjectReference{
 				Kind: "Deployment",
 				Name: name,
 			},
