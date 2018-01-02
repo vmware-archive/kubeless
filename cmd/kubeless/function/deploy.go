@@ -149,7 +149,7 @@ var deployCmd = &cobra.Command{
 		cli := utils.GetClientOutOfCluster()
 		defaultFunctionSpec := api.Function{}
 		defaultFunctionSpec.Spec.Type = "HTTP"
-		defaultFunctionSpec.Metadata.Labels = map[string]string{
+		defaultFunctionSpec.ObjectMeta.Labels = map[string]string{
 			"created-by": "kubeless",
 		}
 		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, &headless, &port, envs, labels, defaultFunctionSpec)

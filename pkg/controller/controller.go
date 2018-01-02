@@ -195,10 +195,10 @@ func (c *Controller) getResouceGroupVersion(target string) (string, error) {
 
 // ensureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
 func (c *Controller) ensureK8sResources(funcObj *api.Function) error {
-	if len(funcObj.Metadata.Labels) == 0 {
-		funcObj.Metadata.Labels = make(map[string]string)
+	if len(funcObj.ObjectMeta.Labels) == 0 {
+		funcObj.ObjectMeta.Labels = make(map[string]string)
 	}
-	funcObj.Metadata.Labels["function"] = funcObj.Metadata.Name
+	funcObj.ObjectMeta.Labels["function"] = funcObj.ObjectMeta.Name
 
 	or, err := utils.GetOwnerReference(funcObj)
 	if err != nil {
@@ -236,7 +236,7 @@ func (c *Controller) ensureK8sResources(funcObj *api.Function) error {
 		funcObj.Spec.HorizontalPodAutoscaler.OwnerReferences = or
 		if funcObj.Spec.HorizontalPodAutoscaler.Spec.Metrics[0].Type == v2alpha1.ObjectMetricSourceType {
 			// A service monitor is needed when the metric is an object
-			err = utils.CreateServiceMonitor(*c.smclient, funcObj, funcObj.Metadata.Namespace, or)
+			err = utils.CreateServiceMonitor(*c.smclient, funcObj, funcObj.ObjectMeta.Namespace, or)
 			if err != nil {
 				return err
 			}
@@ -247,7 +247,7 @@ func (c *Controller) ensureK8sResources(funcObj *api.Function) error {
 		}
 	} else {
 		// HorizontalPodAutoscaler doesn't exists, try to delete if it already existed
-		err = c.deleteAutoscale(funcObj.Metadata.Namespace, funcObj.Metadata.Name)
+		err = c.deleteAutoscale(funcObj.ObjectMeta.Namespace, funcObj.ObjectMeta.Name)
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return err
 		}

@@ -56,7 +56,7 @@ func TestEnsureConfigMap(t *testing.T) {
 	}
 	f1Name := "f1"
 	f1 := &api.Function{
-		Metadata: metav1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
 			Labels:    funcLabels,
@@ -96,7 +96,7 @@ func TestEnsureConfigMap(t *testing.T) {
 	// It should skip the dependencies field in case it is not supported
 	f2Name := "f2"
 	f2 := &api.Function{
-		Metadata: metav1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      f2Name,
 			Namespace: ns,
 		},
@@ -124,7 +124,7 @@ func TestEnsureConfigMap(t *testing.T) {
 
 	// If there is already a config map it should update the previous one
 	f2 = &api.Function{
-		Metadata: metav1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      f2Name,
 			Namespace: ns,
 		},
@@ -172,7 +172,7 @@ func TestEnsureService(t *testing.T) {
 	}
 	f1Name := "f1"
 	f1 := &api.Function{
-		Metadata: metav1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
 			Labels:    funcLabels,
@@ -234,7 +234,7 @@ func TestEnsureService(t *testing.T) {
 	newLabels := map[string]string{
 		"foobar": "barfoo",
 	}
-	f1.Metadata.Labels = newLabels
+	f1.ObjectMeta.Labels = newLabels
 	err = EnsureFuncService(clientset, f1, or)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
@@ -266,7 +266,7 @@ func TestEnsureDeployment(t *testing.T) {
 	f1Name := "f1"
 	f1Port := int32(8080)
 	f1 := &api.Function{
-		Metadata: metav1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
 			Labels:    funcLabels,
@@ -406,7 +406,7 @@ func TestEnsureDeployment(t *testing.T) {
 	// If no handler and function is given it should not fail
 	f2 := api.Function{}
 	f2 = *f1
-	f2.Metadata.Name = "func2"
+	f2.ObjectMeta.Name = "func2"
 	f2.Spec.Function = ""
 	f2.Spec.Handler = ""
 	err = EnsureFuncDeployment(clientset, &f2, or)
@@ -421,7 +421,7 @@ func TestEnsureDeployment(t *testing.T) {
 	// If the Image has been already provided it should not resolve it
 	f3 := api.Function{}
 	f3 = *f1
-	f3.Metadata.Name = "func3"
+	f3.ObjectMeta.Name = "func3"
 	f3.Spec.Template.Spec.Containers[0].Image = "test-image"
 	err = EnsureFuncDeployment(clientset, &f3, or)
 	if err != nil {
@@ -438,7 +438,7 @@ func TestEnsureDeployment(t *testing.T) {
 	// If no function is given it should not use an init container
 	f4 := api.Function{}
 	f4 = *f1
-	f4.Metadata.Name = "func4"
+	f4.ObjectMeta.Name = "func4"
 	f4.Spec.Function = ""
 	f4.Spec.Deps = ""
 	err = EnsureFuncDeployment(clientset, &f4, or)
@@ -456,7 +456,7 @@ func TestEnsureDeployment(t *testing.T) {
 	// If the function is the type PubSub it should not contain a livenessProbe
 	f5 := api.Function{}
 	f5 = *f1
-	f5.Metadata.Name = "func5"
+	f5.ObjectMeta.Name = "func5"
 	f5.Spec.Type = "PubSub"
 	err = EnsureFuncDeployment(clientset, &f5, or)
 	if err != nil {
@@ -489,7 +489,7 @@ func TestEnsureDeployment(t *testing.T) {
 	// It should return an error if some dependencies are given but the runtime is not supported
 	f7 := api.Function{}
 	f7 = *f1
-	f7.Metadata.Name = "func7"
+	f7.ObjectMeta.Name = "func7"
 	f7.Spec.Deps = "deps"
 	f7.Spec.Runtime = "cobol"
 	err = EnsureFuncDeployment(clientset, &f7, or)
@@ -500,7 +500,7 @@ func TestEnsureDeployment(t *testing.T) {
 	// If a timeout is specified it should set an environment variable FUNC_TIMEOUT
 	f8 := api.Function{}
 	f8 = *f1
-	f8.Metadata.Name = "func8"
+	f8.ObjectMeta.Name = "func8"
 	f8.Spec.Timeout = "10"
 	err = EnsureFuncDeployment(clientset, &f8, or)
 	if err != nil {
@@ -556,7 +556,7 @@ func TestEnsureCronJob(t *testing.T) {
 	ns := "default"
 	f1Name := "func1"
 	f1 := &pi.Function{
-		Metadata: metav1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
 		},
@@ -706,7 +706,7 @@ func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
 func TestCreateIngressResource(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	f1 := &api.Function{
-		Metadata: metav1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "myns",
 			UID:       "1234",
@@ -738,7 +738,7 @@ func TestCreateIngressResource(t *testing.T) {
 func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	f1 := &api.Function{
-		Metadata: metav1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "myns",
 			UID:       "1234",

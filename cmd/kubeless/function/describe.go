@@ -75,7 +75,7 @@ func print(f api.Function, name, output string) error {
 		table := uitable.New()
 		table.MaxColWidth = 80
 		table.Wrap = true
-		label, err := json.Marshal(f.Metadata.Labels)
+		label, err := json.Marshal(f.ObjectMeta.Labels)
 		if err != nil {
 			return err
 		}
@@ -84,7 +84,7 @@ func print(f api.Function, name, output string) error {
 			return err
 		}
 		table.AddRow("Name:", name)
-		table.AddRow("Namespace:", fmt.Sprintf(f.Metadata.Namespace))
+		table.AddRow("Namespace:", fmt.Sprintf(f.ObjectMeta.Namespace))
 		table.AddRow("Handler:", fmt.Sprintf(f.Spec.Handler))
 		table.AddRow("Runtime:", fmt.Sprintf(f.Spec.Runtime))
 		table.AddRow("Type:", fmt.Sprintf(f.Spec.Type))

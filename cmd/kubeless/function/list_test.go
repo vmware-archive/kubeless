@@ -88,7 +88,7 @@ func TestList(t *testing.T) {
 	listObj := api.FunctionList{
 		Items: []*api.Function{
 			{
-				Metadata: metav1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "myns",
 				},
@@ -107,7 +107,7 @@ func TestList(t *testing.T) {
 				},
 			},
 			{
-				Metadata: metav1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "myns",
 					Labels: map[string]string{
@@ -150,7 +150,7 @@ func TestList(t *testing.T) {
 				},
 			},
 			{
-				Metadata: metav1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "wrong",
 					Namespace: "myns",
 				},
