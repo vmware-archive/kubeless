@@ -17,7 +17,7 @@ import (
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
+	"k8s.io/api/autoscaling/v2beta1"
 )
 
 var autoscaleDeleteCmd = &cobra.Command{

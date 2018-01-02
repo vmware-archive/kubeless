@@ -9,8 +9,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/pkg/api/v1"
-	av2alpha1 "k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
+	"k8s.io/api/core/v1"
+	av2alpha1 "k8s.io/api/autoscaling/v2beta1"
 )
 
 func listAutoscaleOutput(t *testing.T, client kubernetes.Interface, ns, output string) string {

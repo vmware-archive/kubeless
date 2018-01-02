@@ -31,13 +31,13 @@ import (
 	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/sirupsen/logrus"
 
+	"k8s.io/api/autoscaling/v2beta1"
+	batchv1 "k8s.io/api/batch/v1"
+	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
-	batchv1 "k8s.io/client-go/pkg/apis/batch/v1"
-	batchv2alpha1 "k8s.io/client-go/pkg/apis/batch/v2alpha1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -45,6 +45,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -171,7 +172,7 @@ func GetDefaultNamespace() string {
 	if ns, _, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides).Namespace(); err == nil {
 		return ns
 	}
-	return api.NamespaceDefault
+	return v1.NamespaceDefault
 }
 
 // GetFunction returns specification of a function
@@ -354,7 +355,7 @@ func configureClient(group, version, apiPath string, config *rest.Config) *rest.
 	result.GroupVersion = &groupversion
 	result.APIPath = apiPath
 	result.ContentType = runtime.ContentTypeJSON
-	result.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: api.Codecs}
+	result.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
 	schemeBuilder := runtime.NewSchemeBuilder(
 		func(scheme *runtime.Scheme) error {
 			scheme.AddKnownTypes(
@@ -364,8 +365,8 @@ func configureClient(group, version, apiPath string, config *rest.Config) *rest.
 			)
 			return nil
 		})
-	metav1.AddToGroupVersion(api.Scheme, groupversion)
-	schemeBuilder.AddToScheme(api.Scheme)
+	metav1.AddToGroupVersion(scheme.Scheme, groupversion)
+	schemeBuilder.AddToScheme(scheme.Scheme)
 	return &result
 }
 
@@ -571,7 +572,7 @@ func serviceSpec(funcObj *spec.Function) v1.ServiceSpec {
 }
 
 // EnsureFuncService creates/updates a function service
-func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+func EnsureFuncService(client kubernetes.Interface, funcObj *api.Function, or []metav1.OwnerReference) error {
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            funcObj.Metadata.Name,
@@ -879,7 +880,7 @@ func doRESTReq(restIface rest.Interface, groupVersion, verb, resource, elem, nam
 }
 
 // EnsureFuncCronJob creates/updates a function cron job
-func EnsureFuncCronJob(client rest.Interface, funcObj *spec.Function, or []metav1.OwnerReference, groupVersion string) error {
+func EnsureFuncCronJob(client rest.Interface, funcObj *api.Function, or []metav1.OwnerReference, groupVersion string) error {
 	var maxSucccessfulHist, maxFailedHist int32
 	maxSucccessfulHist = 3
 	maxFailedHist = 1
@@ -944,7 +945,7 @@ func EnsureFuncCronJob(client rest.Interface, funcObj *spec.Function, or []metav
 }
 
 // CreateAutoscale creates HPA object for function
-func CreateAutoscale(client kubernetes.Interface, hpa v2alpha1.HorizontalPodAutoscaler) error {
+func CreateAutoscale(client kubernetes.Interface, hpa v2beta1.HorizontalPodAutoscaler) error {
 	_, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(hpa.ObjectMeta.Namespace).Create(&hpa)
 	if err != nil {
 		return err
@@ -973,7 +974,7 @@ func DeleteServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, 
 }
 
 // CreateServiceMonitor creates a Service Monitor for the given function
-func CreateServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, funcObj *spec.Function, ns string, or []metav1.OwnerReference) error {
+func CreateServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, funcObj *api.Function, ns string, or []metav1.OwnerReference) error {
 	_, err := smclient.ServiceMonitors(ns).Get(funcObj.Metadata.Name, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
@@ -1012,7 +1013,7 @@ func CreateServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, 
 
 // GetOwnerReference returns ownerRef for appending to objects's metadata
 // created by kubeless-controller one a function is deployed.
-func GetOwnerReference(funcObj *spec.Function) ([]metav1.OwnerReference, error) {
+func GetOwnerReference(funcObj *api.Function) ([]metav1.OwnerReference, error) {
 	if funcObj.Metadata.Name == "" {
 		return []metav1.OwnerReference{}, fmt.Errorf("function name can't be empty")
 	}

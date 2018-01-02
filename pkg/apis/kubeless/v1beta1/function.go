@@ -17,9 +17,9 @@ limitations under the License.
 package v1beta1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/api/core/v1"
 	"k8s.io/api/autoscaling/v2beta1"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // +genclient
@@ -34,17 +34,18 @@ type Function struct {
 
 // FunctionSpec contains func specification
 type FunctionSpec struct {
-	Handler                 string                           `json:"handler"`               // Function handler: "file.function"
-	Function                string                           `json:"function"`              // Function file content or URL of the function
-	FunctionContentType     string                           `json:"function-content-type"` // Function file content type (plain text, base64 or zip)
-	Checksum                string                           `json:"checksum"`              // Checksum of the file
-	Runtime                 string                           `json:"runtime"`               // Function runtime to use
-	Type                    string                           `json:"type"`                  // Function trigger type
-	Topic                   string                           `json:"topic"`                 // Function topic trigger (for PubSub type)
-	Schedule                string                           `json:"schedule"`              // Function scheduled time (for Schedule type)
-	Timeout                 string                           `json:"timeout"`               // Maximum timeout for the function to complete its execution
-	Deps                    string                           `json:"deps"`                  // Function dependencies
-	Template                v1.PodTemplateSpec               `json:"template" protobuf:"bytes,3,opt,name=template"`
+	Handler                 string                          `json:"handler"`               // Function handler: "file.function"
+	Function                string                          `json:"function"`              // Function file content or URL of the function
+	FunctionContentType     string                          `json:"function-content-type"` // Function file content type (plain text, base64 or zip)
+	Checksum                string                          `json:"checksum"`              // Checksum of the file
+	Runtime                 string                          `json:"runtime"`               // Function runtime to use
+	Type                    string                          `json:"type"`                  // Function trigger type
+	Topic                   string                          `json:"topic"`                 // Function topic trigger (for PubSub type)
+	Schedule                string                          `json:"schedule"`              // Function scheduled time (for Schedule type)
+	Timeout                 string                          `json:"timeout"`               // Maximum timeout for the function to complete its execution
+	Deps                    string                          `json:"deps"`                  // Function dependencies
+	ServiceSpec             v1.ServiceSpec                  `json:"service"`
+	Template                v1.PodTemplateSpec              `json:"template" protobuf:"bytes,3,opt,name=template"`
 	HorizontalPodAutoscaler v2beta1.HorizontalPodAutoscaler `json:"horizontalPodAutoscaler" protobuf:"bytes,3,opt,name=horizontalPodAutoscaler"`
 }
 

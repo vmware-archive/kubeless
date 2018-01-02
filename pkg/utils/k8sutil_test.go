@@ -21,12 +21,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
-	av2alpha1 "k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
-	batchv2alpha1 "k8s.io/client-go/pkg/apis/batch/v2alpha1"
-	xv1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/api/core/v1"
+	"k8s.io/api/autoscaling/v2beta1"
+	av2beta1 "k8s.io/api/autoscaling/v2beta1"
+	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
+	xv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	restFake "k8s.io/client-go/rest/fake"
 	ktesting "k8s.io/client-go/testing"
@@ -857,7 +856,7 @@ func TestDeleteAutoscaleResource(t *testing.T) {
 		Name:      "foo",
 	}
 
-	as := av2alpha1.HorizontalPodAutoscaler{
+	as := av2beta1.HorizontalPodAutoscaler{
 		ObjectMeta: myNsFoo,
 	}
 
