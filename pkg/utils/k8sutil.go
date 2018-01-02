@@ -370,22 +370,6 @@ func configureClient(group, version, apiPath string, config *rest.Config) *rest.
 	return &result
 }
 
-// addInitContainerAnnotation is a hot fix to add annotation to deployment for init container to run
-func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
-	if len(dpm.Spec.Template.Spec.InitContainers) > 0 {
-		value, err := json.Marshal(dpm.Spec.Template.Spec.InitContainers)
-		if err != nil {
-			return err
-		}
-		if dpm.Spec.Template.Annotations == nil {
-			dpm.Spec.Template.Annotations = make(map[string]string)
-		}
-		dpm.Spec.Template.Annotations[v1.PodInitContainersAnnotationKey] = string(value)
-		dpm.Spec.Template.Annotations[v1.PodInitContainersBetaAnnotationKey] = string(value)
-	}
-	return nil
-}
-
 // CreateIngress creates ingress rule for a specific function
 func CreateIngress(client kubernetes.Interface, funcObj *api.Function, ingressName, hostname, ns string, enableTLSAcme bool) error {
 	or, err := GetOwnerReference(funcObj)
@@ -791,8 +775,6 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *api.Function, or
 		// update deployment for loading dependencies
 		langruntime.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
 	}
-	//TODO: remove this when init containers becomes a stable feature
-	addInitContainerAnnotation(dpm)
 
 	// add liveness Probe to deployment
 	if funcObj.Spec.Type != pubsubFunc {
