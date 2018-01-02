@@ -22,7 +22,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
-	"github.com/kubeless/kubeless/pkg/spec"
+	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -69,7 +69,7 @@ func init() {
 	describeCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 }
 
-func print(f spec.Function, name, output string) error {
+func print(f api.Function, name, output string) error {
 	switch output {
 	case "":
 		table := uitable.New()

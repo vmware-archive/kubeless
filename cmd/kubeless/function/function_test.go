@@ -25,7 +25,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/kubeless/kubeless/pkg/spec"
+	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -101,24 +101,24 @@ func TestGetFunctionDescription(t *testing.T) {
 
 	inputHeadless := true
 	inputPort := int32(80)
-	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, spec.Function{})
+	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, api.Function{})
 	if err != nil {
 		t.Error(err)
 	}
 	parsedMem, _ := parseMemory("128Mi")
-	expectedFunction := spec.Function{
+	expectedFunction := api.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
 			APIVersion: "k8s.io/v1",
 		},
-		Metadata: metav1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: "default",
 			Labels: map[string]string{
 				"test": "1",
 			},
 		},
-		Spec: spec.FunctionSpec{
+		Spec: api.FunctionSpec{
 			Handler:             "file.handler",
 			Runtime:             "runtime",
 			Type:                "HTTP",
@@ -200,19 +200,19 @@ func TestGetFunctionDescription(t *testing.T) {
 		t.Error(err)
 	}
 	parsedMem2, _ := parseMemory("256Mi")
-	newFunction := spec.Function{
+	newFunction := api.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
 			APIVersion: "k8s.io/v1",
 		},
-		Metadata: metav1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: "default",
 			Labels: map[string]string{
 				"test": "2",
 			},
 		},
-		Spec: spec.FunctionSpec{
+		Spec: api.FunctionSpec{
 			Handler:             "file.handler2",
 			Runtime:             "runtime2",
 			Type:                "PubSub",

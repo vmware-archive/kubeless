@@ -29,7 +29,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/kubeless/kubeless/pkg/spec"
+	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -131,7 +131,7 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, defaultFunction spec.Function) (*spec.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, defaultFunction api.Function) (*api.Function, error) {
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
 		Kind:       "Function",
@@ -204,7 +204,7 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		funcEnv = defaultFunction.Spec.Template.Spec.Containers[0].Env
 	}
 
-	funcLabels := defaultFunction.Metadata.Labels
+	funcLabels := defaultFunction.ObjectMeta.Labels
 	if len(funcLabels) == 0 {
 		funcLabels = make(map[string]string)
 	}
@@ -212,7 +212,7 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 	for k, v := range ls {
 		funcLabels[k] = v
 	}
-	function.Metadata = metav1.ObjectMeta{
+	function.ObjectMeta = metav1.ObjectMeta{
 		Name:      funcName,
 		Namespace: ns,
 		Labels:    funcLabels,
@@ -223,7 +223,7 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		funcMem, err := parseMemory(mem)
 		if err != nil {
 			err = fmt.Errorf("Wrong format of the memory value: %v", err)
-			return &spec.Function{}, err
+			return &api.Function{}, err
 		}
 		resource := map[v1.ResourceName]resource.Quantity{
 			v1.ResourceMemory: funcMem,

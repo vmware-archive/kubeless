@@ -28,7 +28,7 @@ import (
 
 	"github.com/kubeless/kubeless/pkg/langruntime"
 
-	"github.com/kubeless/kubeless/pkg/spec"
+	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/sirupsen/logrus"
 
 	"k8s.io/client-go/kubernetes"
@@ -175,12 +175,12 @@ func GetDefaultNamespace() string {
 }
 
 // GetFunction returns specification of a function
-func GetFunction(funcName, ns string) (spec.Function, error) {
-	var f spec.Function
+func GetFunction(funcName, ns string) (api.Function, error) {
+	var f api.Function
 
 	crdClient, err := GetCRDClientOutOfCluster()
 	if err != nil {
-		return spec.Function{}, err
+		return api.Function{}, err
 	}
 
 	err = crdClient.Get().
@@ -193,14 +193,14 @@ func GetFunction(funcName, ns string) (spec.Function, error) {
 		if k8sErrors.IsNotFound(err) {
 			logrus.Fatalf("Function %s is not found", funcName)
 		}
-		return spec.Function{}, err
+		return api.Function{}, err
 	}
 
 	return f, nil
 }
 
 // CreateK8sCustomResource will create a custom function object
-func CreateK8sCustomResource(crdClient rest.Interface, f *spec.Function) error {
+func CreateK8sCustomResource(crdClient rest.Interface, f *api.Function) error {
 	err := crdClient.Post().
 		Resource("functions").
 		Namespace(f.Metadata.Namespace).
@@ -214,7 +214,7 @@ func CreateK8sCustomResource(crdClient rest.Interface, f *spec.Function) error {
 }
 
 // UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(crdClient rest.Interface, f *spec.Function) error {
+func UpdateK8sCustomResource(crdClient rest.Interface, f *api.Function) error {
 	data, err := json.Marshal(f)
 	if err != nil {
 		return err
@@ -359,8 +359,8 @@ func configureClient(group, version, apiPath string, config *rest.Config) *rest.
 		func(scheme *runtime.Scheme) error {
 			scheme.AddKnownTypes(
 				groupversion,
-				&spec.Function{},
-				&spec.FunctionList{},
+				&api.Function{},
+				&api.FunctionList{},
 			)
 			return nil
 		})
@@ -386,7 +386,7 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 }
 
 // CreateIngress creates ingress rule for a specific function
-func CreateIngress(client kubernetes.Interface, funcObj *spec.Function, ingressName, hostname, ns string, enableTLSAcme bool) error {
+func CreateIngress(client kubernetes.Interface, funcObj *api.Function, ingressName, hostname, ns string, enableTLSAcme bool) error {
 	or, err := GetOwnerReference(funcObj)
 	if err != nil {
 		return err
@@ -500,7 +500,7 @@ func getFileName(handler, funcContentType, runtime string) (string, error) {
 }
 
 // EnsureFuncConfigMap creates/updates a config map with a function specification
-func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *api.Function, or []metav1.OwnerReference) error {
 	configMapData := map[string]string{}
 	var err error
 	if funcObj.Spec.Handler != "" {
@@ -611,7 +611,7 @@ func svcPort(funcObj *spec.Function) int32 {
 }
 
 // EnsureFuncDeployment creates/updates a function deployment
-func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
+func EnsureFuncDeployment(client kubernetes.Interface, funcObj *api.Function, or []metav1.OwnerReference) error {
 	runtimeVolumeName := funcObj.Metadata.Name
 	depsVolumeName := funcObj.Metadata.Name + "-deps"
 	podAnnotations := map[string]string{

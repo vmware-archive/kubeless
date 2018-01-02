@@ -14,7 +14,7 @@ limitations under the License.
 package route
 
 import (
-	"github.com/kubeless/kubeless/pkg/spec"
+	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -68,7 +68,7 @@ var routeCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		f := &spec.Function{}
+		f := &api.Function{}
 		err = crdClient.Get().
 			Resource("functions").
 			Namespace(ns).

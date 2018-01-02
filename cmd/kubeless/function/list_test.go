@@ -40,7 +40,7 @@ import (
 	"k8s.io/client-go/rest"
 	restFake "k8s.io/client-go/rest/fake"
 
-	"github.com/kubeless/kubeless/pkg/spec"
+	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 )
 
 func fakeCRDClient(f func(req *http.Request) (*http.Response, error)) *restFake.RESTClient {
@@ -86,14 +86,14 @@ func objBody(object interface{}) io.ReadCloser {
 
 func TestList(t *testing.T) {
 	funcMem, _ := parseMemory("128Mi")
-	listObj := spec.FunctionList{
-		Items: []*spec.Function{
+	listObj := api.FunctionList{
+		Items: []*api.Function{
 			{
 				Metadata: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "myns",
 				},
-				Spec: spec.FunctionSpec{
+				Spec: api.FunctionSpec{
 					Handler:  "fhandler",
 					Function: "ffunction",
 					Runtime:  "fruntime",
@@ -115,7 +115,7 @@ func TestList(t *testing.T) {
 						"foo": "bar",
 					},
 				},
-				Spec: spec.FunctionSpec{
+				Spec: api.FunctionSpec{
 					Handler:  "bhandler",
 					Function: "bfunction",
 					Runtime:  "nodejs6",
@@ -155,7 +155,7 @@ func TestList(t *testing.T) {
 					Name:      "wrong",
 					Namespace: "myns",
 				},
-				Spec: spec.FunctionSpec{
+				Spec: api.FunctionSpec{
 					Handler:  "fhandler",
 					Function: "ffunction",
 					Runtime:  "fruntime",

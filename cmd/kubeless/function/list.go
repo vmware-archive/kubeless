@@ -31,7 +31,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	"github.com/kubeless/kubeless/pkg/spec"
+	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/utils"
 )
 
@@ -72,9 +72,9 @@ func init() {
 }
 
 func doList(w io.Writer, crdClient rest.Interface, apiV1Client kubernetes.Interface, ns, output string, args []string) error {
-	var list []*spec.Function
+	var list []*api.Function
 	if len(args) == 0 {
-		funcList := spec.FunctionList{}
+		funcList := api.FunctionList{}
 		err := crdClient.Get().
 			Resource("functions").
 			Namespace(ns).
@@ -85,9 +85,9 @@ func doList(w io.Writer, crdClient rest.Interface, apiV1Client kubernetes.Interf
 		}
 		list = funcList.Items
 	} else {
-		list = make([]*spec.Function, 0, len(args))
+		list = make([]*api.Function, 0, len(args))
 		for _, arg := range args {
-			f := spec.Function{}
+			f := api.Function{}
 			err := crdClient.Get().
 				Resource("functions").
 				Namespace(ns).
@@ -127,7 +127,7 @@ func parseDeps(deps, runtime string) (res string, err error) {
 }
 
 // printFunctions formats the output of function list
-func printFunctions(w io.Writer, functions []*spec.Function, cli kubernetes.Interface, output string) error {
+func printFunctions(w io.Writer, functions []*api.Function, cli kubernetes.Interface, output string) error {
 	if output == "" {
 		table := uitable.New()
 		table.MaxColWidth = 50

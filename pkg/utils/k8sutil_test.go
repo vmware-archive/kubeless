@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kubeless/kubeless/pkg/spec"
+	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apimachinery"
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
@@ -56,13 +56,13 @@ func TestEnsureConfigMap(t *testing.T) {
 		"foo": "bar",
 	}
 	f1Name := "f1"
-	f1 := &spec.Function{
+	f1 := &api.Function{
 		Metadata: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
 			Labels:    funcLabels,
 		},
-		Spec: spec.FunctionSpec{
+		Spec: api.FunctionSpec{
 			Function: "function",
 			Deps:     "deps",
 			Handler:  "foo.bar",
@@ -96,12 +96,12 @@ func TestEnsureConfigMap(t *testing.T) {
 
 	// It should skip the dependencies field in case it is not supported
 	f2Name := "f2"
-	f2 := &spec.Function{
+	f2 := &api.Function{
 		Metadata: metav1.ObjectMeta{
 			Name:      f2Name,
 			Namespace: ns,
 		},
-		Spec: spec.FunctionSpec{
+		Spec: api.FunctionSpec{
 			Function: "function",
 			Handler:  "foo.bar",
 			Runtime:  "cobol",
@@ -124,12 +124,12 @@ func TestEnsureConfigMap(t *testing.T) {
 	}
 
 	// If there is already a config map it should update the previous one
-	f2 = &spec.Function{
+	f2 = &api.Function{
 		Metadata: metav1.ObjectMeta{
 			Name:      f2Name,
 			Namespace: ns,
 		},
-		Spec: spec.FunctionSpec{
+		Spec: api.FunctionSpec{
 			Function: "function2",
 			Handler:  "foo2.bar2",
 			Runtime:  "python3.4",
@@ -172,13 +172,13 @@ func TestEnsureService(t *testing.T) {
 		"foo": "bar",
 	}
 	f1Name := "f1"
-	f1 := &spec.Function{
+	f1 := &api.Function{
 		Metadata: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
 			Labels:    funcLabels,
 		},
-		Spec: spec.FunctionSpec{
+		Spec: api.FunctionSpec{
 			Function: "function",
 			Deps:     "deps",
 			Handler:  "foo.bar",
@@ -266,13 +266,13 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 	f1Name := "f1"
 	f1Port := int32(8080)
-	f1 := &spec.Function{
+	f1 := &api.Function{
 		Metadata: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
 			Labels:    funcLabels,
 		},
-		Spec: spec.FunctionSpec{
+		Spec: api.FunctionSpec{
 			Function: "function",
 			Deps:     "deps",
 			Handler:  "foo.bar",
@@ -405,7 +405,7 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If no handler and function is given it should not fail
-	f2 := spec.Function{}
+	f2 := api.Function{}
 	f2 = *f1
 	f2.Metadata.Name = "func2"
 	f2.Spec.Function = ""
@@ -420,7 +420,7 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If the Image has been already provided it should not resolve it
-	f3 := spec.Function{}
+	f3 := api.Function{}
 	f3 = *f1
 	f3.Metadata.Name = "func3"
 	f3.Spec.Template.Spec.Containers[0].Image = "test-image"
@@ -437,7 +437,7 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If no function is given it should not use an init container
-	f4 := spec.Function{}
+	f4 := api.Function{}
 	f4 = *f1
 	f4.Metadata.Name = "func4"
 	f4.Spec.Function = ""
@@ -455,7 +455,7 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If the function is the type PubSub it should not contain a livenessProbe
-	f5 := spec.Function{}
+	f5 := api.Function{}
 	f5 = *f1
 	f5.Metadata.Name = "func5"
 	f5.Spec.Type = "PubSub"
@@ -472,7 +472,7 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// It should update a deployment if it is already present
-	f6 := spec.Function{}
+	f6 := api.Function{}
 	f6 = *f1
 	f6.Spec.Handler = "foo.bar2"
 	err = EnsureFuncDeployment(clientset, &f6, or)
@@ -488,7 +488,7 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// It should return an error if some dependencies are given but the runtime is not supported
-	f7 := spec.Function{}
+	f7 := api.Function{}
 	f7 = *f1
 	f7.Metadata.Name = "func7"
 	f7.Spec.Deps = "deps"
@@ -499,7 +499,7 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If a timeout is specified it should set an environment variable FUNC_TIMEOUT
-	f8 := spec.Function{}
+	f8 := api.Function{}
 	f8 = *f1
 	f8.Metadata.Name = "func8"
 	f8.Spec.Timeout = "10"
@@ -556,12 +556,12 @@ func TestEnsureCronJob(t *testing.T) {
 	}
 	ns := "default"
 	f1Name := "func1"
-	f1 := &spec.Function{
+	f1 := &pi.Function{
 		Metadata: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
 		},
-		Spec: spec.FunctionSpec{
+		Spec: api.FunctionSpec{
 			Timeout:  "120",
 			Schedule: "*/10 * * * *",
 		},
@@ -706,13 +706,13 @@ func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
 
 func TestCreateIngressResource(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
-	f1 := &spec.Function{
+	f1 := &api.Function{
 		Metadata: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "myns",
 			UID:       "1234",
 		},
-		Spec: spec.FunctionSpec{
+		Spec: api.FunctionSpec{
 			ServiceSpec: v1.ServiceSpec{
 				Ports: []v1.ServicePort{
 					{
@@ -738,13 +738,13 @@ func TestCreateIngressResource(t *testing.T) {
 
 func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
-	f1 := &spec.Function{
+	f1 := &api.Function{
 		Metadata: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "myns",
 			UID:       "1234",
 		},
-		Spec: spec.FunctionSpec{
+		Spec: api.FunctionSpec{
 			ServiceSpec: v1.ServiceSpec{
 				Ports: []v1.ServicePort{
 					{
