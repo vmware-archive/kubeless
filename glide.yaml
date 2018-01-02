@@ -3,16 +3,22 @@ import:
 - package: github.com/sirupsen/logrus
 - package: github.com/spf13/cobra
 - package: k8s.io/apimachinery
-  version: 1fd2e63a9a370677308a42f24fd40c86438afddf
+  version: 9d38e20d609d27e00d4ec18f7b9db67105a2bde0
 - package: k8s.io/client-go
   subpackages:
     - plugin/pkg/client/auth/gcp
-  version: v4.0.0
+  version: v5.0.0
+- package: k8s.io/api
+  version: fe29995db37613b9c5b2a647544cf627bfa8d299
+- package: k8s.io/code-generator
+  version: master
+- package: k8s.io/gengo
+  version: master
 - package: github.com/gosuri/uitable
 - package: github.com/coreos/prometheus-operator
-  version: 0.12.0
+  version: 197eb012d973f5aaf4d0446fd8f638f1b9067128
   subpackages:
   - pkg/client/monitoring/v1alpha1
 - package: github.com/robfig/cron
 - package: golang.org/x/sys
-  version: 82aafbf43bf885069dc71b7e7c2f9d7a614d47da
+  version: 7ddbeae9ae08c6a06a59597f0c9edbc5ff2444ce
