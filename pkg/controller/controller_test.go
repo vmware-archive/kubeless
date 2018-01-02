@@ -3,12 +3,12 @@ package controller
 import (
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/api/core/v1"
 	"k8s.io/api/autoscaling/v2beta1"
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
+	"k8s.io/api/core/v1"
 	xv1beta1 "k8s.io/api/extensions/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 )
 
@@ -43,7 +43,7 @@ func TestDeleteK8sResources(t *testing.T) {
 		ObjectMeta: myNsFoo,
 	}
 
-	hpa := v2alpha1.HorizontalPodAutoscaler{
+	hpa := v2beta1.HorizontalPodAutoscaler{
 		ObjectMeta: myNsFoo,
 	}
 

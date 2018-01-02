@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/api/autoscaling/v2beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestGetHorizontalAutoscaleDefinition(t *testing.T) {
@@ -40,7 +40,7 @@ func TestGetHorizontalAutoscaleDefinition(t *testing.T) {
 	if hpa.Spec.MaxReplicas != max {
 		t.Errorf("Unexpected max replicas. Expecting %d got %d", max, hpa.Spec.MaxReplicas)
 	}
-	if hpa.Spec.Metrics[0].Type != v2alpha1.ResourceMetricSourceType ||
+	if hpa.Spec.Metrics[0].Type != v2beta1.ResourceMetricSourceType ||
 		*hpa.Spec.Metrics[0].Resource.TargetAverageUtilization != int32(10) {
 		t.Error("Unexpected metric")
 	}
@@ -50,7 +50,7 @@ func TestGetHorizontalAutoscaleDefinition(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %v", err)
 	}
-	if hpa.Spec.Metrics[0].Type != v2alpha1.ObjectMetricSourceType ||
+	if hpa.Spec.Metrics[0].Type != v2beta1.ObjectMetricSourceType ||
 		hpa.Spec.Metrics[0].Object.TargetValue.String() != "10" {
 		t.Error("Unexpected metric")
 	}

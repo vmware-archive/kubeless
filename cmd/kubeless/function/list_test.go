@@ -26,6 +26,8 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apimachinery"
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
@@ -34,8 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	restFake "k8s.io/client-go/rest/fake"
 
@@ -60,7 +61,7 @@ func fakeCRDClient(f func(req *http.Request) (*http.Response, error)) *restFake.
 	})
 	return &restFake.RESTClient{
 		APIRegistry:          reg,
-		NegotiatedSerializer: api.Codecs,
+		NegotiatedSerializer: scheme.Codecs,
 		Client:               restFake.CreateHTTPClient(f),
 	}
 }

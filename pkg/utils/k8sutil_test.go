@@ -13,6 +13,10 @@ import (
 	"testing"
 
 	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
+	"k8s.io/api/core/v1"
+	xv1beta1 "k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apimachinery"
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
@@ -21,11 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/api/core/v1"
-	"k8s.io/api/autoscaling/v2beta1"
-	av2beta1 "k8s.io/api/autoscaling/v2beta1"
-	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
-	xv1beta1 "k8s.io/api/extensions/v1beta1"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	restFake "k8s.io/client-go/rest/fake"
 	ktesting "k8s.io/client-go/testing"
@@ -533,7 +533,7 @@ func fakeRESTClient(f func(req *http.Request) (*http.Response, error)) *restFake
 	})
 	return &restFake.RESTClient{
 		APIRegistry:          reg,
-		NegotiatedSerializer: api.Codecs,
+		NegotiatedSerializer: scheme.Codecs,
 		Client:               restFake.CreateHTTPClient(f),
 	}
 }
@@ -555,7 +555,7 @@ func TestEnsureCronJob(t *testing.T) {
 	}
 	ns := "default"
 	f1Name := "func1"
-	f1 := &pi.Function{
+	f1 := &api.Function{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
@@ -809,7 +809,7 @@ func fakeConfig() *rest.Config {
 				Group:   "",
 				Version: "v1",
 			},
-			NegotiatedSerializer: api.Codecs,
+			NegotiatedSerializer: scheme.Codecs,
 		},
 	}
 }
@@ -831,7 +831,7 @@ func TestCreateAutoscaleResource(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	name := "foo"
 	ns := "myns"
-	hpaDef := v2alpha1.HorizontalPodAutoscaler{
+	hpaDef := v2beta1.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
@@ -841,7 +841,7 @@ func TestCreateAutoscaleResource(t *testing.T) {
 		t.Fatalf("Creating autoscale returned err: %v", err)
 	}
 
-	hpa, err := clientset.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).Get(name, metav1.GetOptions{})
+	hpa, err := clientset.AutoscalingV2beta1().HorizontalPodAutoscalers(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Creating autoscale returned err: %v", err)
 	}
@@ -856,7 +856,7 @@ func TestDeleteAutoscaleResource(t *testing.T) {
 		Name:      "foo",
 	}
 
-	as := av2beta1.HorizontalPodAutoscaler{
+	as := v2beta1.HorizontalPodAutoscaler{
 		ObjectMeta: myNsFoo,
 	}
 
