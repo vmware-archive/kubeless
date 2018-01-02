@@ -15,9 +15,10 @@
 package v1alpha1
 
 import (
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 // Prometheus defines a Prometheus deployment.
@@ -49,6 +50,10 @@ type PrometheusList struct {
 // Specification of the desired behavior of the Prometheus cluster. More info:
 // http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status
 type PrometheusSpec struct {
+	// Standard object’s metadata. More info:
+	// http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
+	// Metadata Labels and Annotations gets propagated to the prometheus pods.
+	PodMetadata *metav1.ObjectMeta `json:"podMetadata,omitempty"`
 	// ServiceMonitors to be selected for target discovery.
 	ServiceMonitorSelector *metav1.LabelSelector `json:"serviceMonitorSelector,omitempty"`
 	// Version of Prometheus to be deployed.
@@ -265,6 +270,10 @@ type Alertmanager struct {
 // Specification of the desired behavior of the Alertmanager cluster. More info:
 // http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status
 type AlertmanagerSpec struct {
+	// Standard object’s metadata. More info:
+	// http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
+	// Metadata Labels and Annotations gets propagated to the prometheus pods.
+	PodMetadata *metav1.ObjectMeta `json:"podMetadata,omitempty"`
 	// Version the cluster should be on.
 	Version string `json:"version,omitempty"`
 	// Base image that is used to deploy pods.
@@ -341,4 +350,28 @@ type NamespaceSelector struct {
 	// TODO(fabxc): this should embed metav1.LabelSelector eventually.
 	// Currently the selector is only used for namespaces which require more complex
 	// implementation to support label selections.
+}
+
+func (l *Alertmanager) DeepCopyObject() runtime.Object {
+	panic("DeepCopyObject not implemented for Alertmanager")
+}
+
+func (l *AlertmanagerList) DeepCopyObject() runtime.Object {
+	panic("DeepCopyObject not implemented for AlertmanagerList")
+}
+
+func (l *Prometheus) DeepCopyObject() runtime.Object {
+	panic("DeepCopyObject not implemented for Prometheus")
+}
+
+func (l *PrometheusList) DeepCopyObject() runtime.Object {
+	panic("DeepCopyObject not implemented for PrometheusList")
+}
+
+func (l *ServiceMonitor) DeepCopyObject() runtime.Object {
+	panic("DeepCopyObject not implemented for ServiceMonitor")
+}
+
+func (l *ServiceMonitorList) DeepCopyObject() runtime.Object {
+	panic("DeepCopyObject not implemented for ServiceMonitorList")
 }

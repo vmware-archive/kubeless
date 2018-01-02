@@ -24,7 +24,6 @@ package unix
 #include <fcntl.h>
 #include <netdb.h>
 #include <limits.h>
-#include <poll.h>
 #include <signal.h>
 #include <termios.h>
 #include <termio.h>
@@ -257,6 +256,10 @@ type BpfTimeval C.struct_bpf_timeval
 
 type BpfHdr C.struct_bpf_hdr
 
+// sysconf information
+
+const _SC_PAGESIZE = C._SC_PAGESIZE
+
 // Terminal handling
 
 type Termios C.struct_termios
@@ -264,20 +267,3 @@ type Termios C.struct_termios
 type Termio C.struct_termio
 
 type Winsize C.struct_winsize
-
-// poll
-
-type PollFd C.struct_pollfd
-
-const (
-	POLLERR    = C.POLLERR
-	POLLHUP    = C.POLLHUP
-	POLLIN     = C.POLLIN
-	POLLNVAL   = C.POLLNVAL
-	POLLOUT    = C.POLLOUT
-	POLLPRI    = C.POLLPRI
-	POLLRDBAND = C.POLLRDBAND
-	POLLRDNORM = C.POLLRDNORM
-	POLLWRBAND = C.POLLWRBAND
-	POLLWRNORM = C.POLLWRNORM
-)

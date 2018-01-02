@@ -21,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/prometheus-operator/pkg/analytics"
 	"github.com/coreos/prometheus-operator/pkg/client/monitoring"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
@@ -29,6 +28,8 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/api/apps/v1beta1"
+	"k8s.io/api/core/v1"
 	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,10 +39,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/apps/v1beta1"
-	extensionsobjold "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -66,7 +63,6 @@ type Operator struct {
 	cmapInf cache.SharedIndexInformer
 	secrInf cache.SharedIndexInformer
 	ssetInf cache.SharedIndexInformer
-	nodeInf cache.SharedIndexInformer
 
 	queue workqueue.RateLimitingInterface
 
@@ -77,17 +73,59 @@ type Operator struct {
 	config                 Config
 }
 
+type Labels struct {
+	LabelsString string
+	LabelsMap    map[string]string
+}
+
+// Implement the flag.Value interface
+func (labels *Labels) String() string {
+	return labels.LabelsString
+}
+
+// Merge labels create a new map with labels merged.
+func (labels *Labels) Merge(otherLabels map[string]string) map[string]string {
+	mergedLabels := map[string]string{}
+
+	for key, value := range otherLabels {
+		mergedLabels[key] = value
+	}
+
+	for key, value := range labels.LabelsMap {
+		mergedLabels[key] = value
+	}
+	return mergedLabels
+}
+
+// Implement the flag.Set interface
+func (labels *Labels) Set(value string) error {
+	m := map[string]string{}
+	if value != "" {
+		splited := strings.Split(value, ",")
+		for _, pair := range splited {
+			sp := strings.Split(pair, "=")
+			m[sp[0]] = sp[1]
+		}
+	}
+	(*labels).LabelsMap = m
+	(*labels).LabelsString = value
+	return nil
+}
+
 // Config defines configuration parameters for the Operator.
 type Config struct {
 	Host                         string
 	KubeletObject                string
 	TLSInsecure                  bool
-	StatefulSetUpdatesAvailable  bool
 	TLSConfig                    rest.TLSClientConfig
 	ConfigReloaderImage          string
 	PrometheusConfigReloader     string
 	AlertmanagerDefaultBaseImage string
 	PrometheusDefaultBaseImage   string
+	Namespace                    string
+	Labels                       Labels
+	CrdGroup                     string
+	CrdKinds                     monitoringv1.CrdKinds
 }
 
 type BasicAuthCredentials struct {
@@ -106,7 +144,7 @@ func New(conf Config, logger log.Logger) (*Operator, error) {
 		return nil, err
 	}
 
-	mclient, err := monitoring.NewForConfig(cfg)
+	mclient, err := monitoring.NewForConfig(&conf.CrdKinds, conf.CrdGroup, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -145,8 +183,8 @@ func New(conf Config, logger log.Logger) (*Operator, error) {
 
 	c.promInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
-			ListFunc:  mclient.MonitoringV1().Prometheuses(api.NamespaceAll).List,
-			WatchFunc: mclient.MonitoringV1().Prometheuses(api.NamespaceAll).Watch,
+			ListFunc:  mclient.MonitoringV1().Prometheuses(c.config.Namespace).List,
+			WatchFunc: mclient.MonitoringV1().Prometheuses(c.config.Namespace).Watch,
 		},
 		&monitoringv1.Prometheus{}, resyncPeriod, cache.Indexers{},
 	)
@@ -158,8 +196,8 @@ func New(conf Config, logger log.Logger) (*Operator, error) {
 
 	c.smonInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
-			ListFunc:  mclient.MonitoringV1().ServiceMonitors(api.NamespaceAll).List,
-			WatchFunc: mclient.MonitoringV1().ServiceMonitors(api.NamespaceAll).Watch,
+			ListFunc:  mclient.MonitoringV1().ServiceMonitors(c.config.Namespace).List,
+			WatchFunc: mclient.MonitoringV1().ServiceMonitors(c.config.Namespace).Watch,
 		},
 		&monitoringv1.ServiceMonitor{}, resyncPeriod, cache.Indexers{},
 	)
@@ -170,7 +208,7 @@ func New(conf Config, logger log.Logger) (*Operator, error) {
 	})
 
 	c.cmapInf = cache.NewSharedIndexInformer(
-		cache.NewListWatchFromClient(c.kclient.Core().RESTClient(), "configmaps", api.NamespaceAll, nil),
+		cache.NewListWatchFromClient(c.kclient.Core().RESTClient(), "configmaps", c.config.Namespace, fields.Everything()),
 		&v1.ConfigMap{}, resyncPeriod, cache.Indexers{},
 	)
 	c.cmapInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -179,7 +217,7 @@ func New(conf Config, logger log.Logger) (*Operator, error) {
 		UpdateFunc: c.handleConfigMapUpdate,
 	})
 	c.secrInf = cache.NewSharedIndexInformer(
-		cache.NewListWatchFromClient(c.kclient.Core().RESTClient(), "secrets", api.NamespaceAll, nil),
+		cache.NewListWatchFromClient(c.kclient.Core().RESTClient(), "secrets", c.config.Namespace, fields.Everything()),
 		&v1.Secret{}, resyncPeriod, cache.Indexers{},
 	)
 	c.secrInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -189,7 +227,7 @@ func New(conf Config, logger log.Logger) (*Operator, error) {
 	})
 
 	c.ssetInf = cache.NewSharedIndexInformer(
-		cache.NewListWatchFromClient(c.kclient.AppsV1beta1().RESTClient(), "statefulsets", api.NamespaceAll, nil),
+		cache.NewListWatchFromClient(c.kclient.AppsV1beta1().RESTClient(), "statefulsets", c.config.Namespace, fields.Everything()),
 		&v1beta1.StatefulSet{}, resyncPeriod, cache.Indexers{},
 	)
 	c.ssetInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -197,18 +235,6 @@ func New(conf Config, logger log.Logger) (*Operator, error) {
 		DeleteFunc: c.handleDeleteStatefulSet,
 		UpdateFunc: c.handleUpdateStatefulSet,
 	})
-
-	if kubeletSyncEnabled {
-		c.nodeInf = cache.NewSharedIndexInformer(
-			cache.NewListWatchFromClient(c.kclient.Core().RESTClient(), "nodes", api.NamespaceAll, nil),
-			&v1.Node{}, resyncPeriod, cache.Indexers{},
-		)
-		c.nodeInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    c.handleAddNode,
-			DeleteFunc: c.handleDeleteNode,
-			UpdateFunc: c.handleUpdateNode,
-		})
-	}
 
 	return c, nil
 }
@@ -230,12 +256,6 @@ func (c *Operator) Run(stopc <-chan struct{}) error {
 		}
 		c.logger.Log("msg", "connection established", "cluster-version", v)
 
-		mv, err := k8sutil.GetMinorVersion(c.kclient.Discovery())
-		if mv < 7 {
-			c.config.StatefulSetUpdatesAvailable = false
-		}
-
-		c.config.StatefulSetUpdatesAvailable = true
 		if err := c.createCRDs(); err != nil {
 			errChan <- errors.Wrap(err, "creating CRDs failed")
 			return
@@ -262,7 +282,7 @@ func (c *Operator) Run(stopc <-chan struct{}) error {
 	go c.ssetInf.Run(stopc)
 
 	if c.kubeletSyncEnabled {
-		go c.nodeInf.Run(stopc)
+		go c.reconcileNodeEndpoints(stopc)
 	}
 
 	<-stopc
@@ -284,7 +304,6 @@ func (c *Operator) handleAddPrometheus(obj interface{}) {
 		return
 	}
 
-	analytics.PrometheusCreated()
 	c.logger.Log("msg", "Prometheus added", "key", key)
 	c.enqueue(key)
 }
@@ -295,7 +314,6 @@ func (c *Operator) handleDeletePrometheus(obj interface{}) {
 		return
 	}
 
-	analytics.PrometheusDeleted()
 	c.logger.Log("msg", "Prometheus deleted", "key", key)
 	c.enqueue(key)
 }
@@ -310,9 +328,21 @@ func (c *Operator) handleUpdatePrometheus(old, cur interface{}) {
 	c.enqueue(key)
 }
 
-func (c *Operator) handleAddNode(obj interface{})         { c.syncNodeEndpoints() }
-func (c *Operator) handleDeleteNode(obj interface{})      { c.syncNodeEndpoints() }
-func (c *Operator) handleUpdateNode(old, cur interface{}) { c.syncNodeEndpoints() }
+func (c *Operator) reconcileNodeEndpoints(stopc <-chan struct{}) {
+	ticker := time.NewTicker(3 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stopc:
+			return
+		case <-ticker.C:
+			err := c.syncNodeEndpoints()
+			if err != nil {
+				c.logger.Log("msg", "syncing nodes into Endpoints object failed", "err", err)
+			}
+		}
+	}
+}
 
 // nodeAddresses returns the provided node's address, based on the priority:
 // 1. NodeInternalIP
@@ -321,7 +351,7 @@ func (c *Operator) handleUpdateNode(old, cur interface{}) { c.syncNodeEndpoints(
 // 3. NodeHostName
 //
 // Copied from github.com/prometheus/prometheus/discovery/kubernetes/node.go
-func nodeAddress(node *v1.Node) (string, map[v1.NodeAddressType][]string, error) {
+func nodeAddress(node v1.Node) (string, map[v1.NodeAddressType][]string, error) {
 	m := map[v1.NodeAddressType][]string{}
 	for _, a := range node.Status.Addresses {
 		m[a.Type] = append(m[a.Type], a.Address)
@@ -333,23 +363,19 @@ func nodeAddress(node *v1.Node) (string, map[v1.NodeAddressType][]string, error)
 	if addresses, ok := m[v1.NodeExternalIP]; ok {
 		return addresses[0], m, nil
 	}
-	// NodeLegacyHostIP support has been removed in 1.7, this is here for prolonged 1.6 support.
-	if addresses, ok := m[v1.NodeAddressType("LegacyHostIP")]; ok {
-		return addresses[0], m, nil
-	}
 	if addresses, ok := m[v1.NodeHostName]; ok {
 		return addresses[0], m, nil
 	}
 	return "", m, fmt.Errorf("host address unknown")
 }
 
-func (c *Operator) syncNodeEndpoints() {
+func (c *Operator) syncNodeEndpoints() error {
 	eps := &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: c.kubeletObjectName,
-			Labels: map[string]string{
+			Labels: c.config.Labels.Merge(map[string]string{
 				"k8s-app": "kubelet",
-			},
+			}),
 		},
 		Subsets: []v1.EndpointSubset{
 			{
@@ -371,16 +397,18 @@ func (c *Operator) syncNodeEndpoints() {
 		},
 	}
 
-	cache.ListAll(c.nodeInf.GetStore(), labels.Everything(), func(obj interface{}) {
-		n := obj.(*v1.Node)
+	nodes, err := c.kclient.CoreV1().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		return errors.Wrap(err, "listing nodes failed")
+	}
+
+	for _, n := range nodes.Items {
 		address, _, err := nodeAddress(n)
 		if err != nil {
-			c.logger.Log("msg", "failed to determine hostname for node", "err", err, "node", n.Name)
-			return
+			return errors.Wrapf(err, "failed to determine hostname for node (%s)", n.Name)
 		}
 		eps.Subsets[0].Addresses = append(eps.Subsets[0].Addresses, v1.EndpointAddress{
-			IP:       address,
-			NodeName: &n.Name,
+			IP: address,
 			TargetRef: &v1.ObjectReference{
 				Kind:       "Node",
 				Name:       n.Name,
@@ -388,14 +416,14 @@ func (c *Operator) syncNodeEndpoints() {
 				APIVersion: n.APIVersion,
 			},
 		})
-	})
+	}
 
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: c.kubeletObjectName,
-			Labels: map[string]string{
+			Labels: c.config.Labels.Merge(map[string]string{
 				"k8s-app": "kubelet",
-			},
+			}),
 		},
 		Spec: v1.ServiceSpec{
 			Type:      v1.ServiceTypeClusterIP,
@@ -409,15 +437,17 @@ func (c *Operator) syncNodeEndpoints() {
 		},
 	}
 
-	err := k8sutil.CreateOrUpdateService(c.kclient.CoreV1().Services(c.kubeletObjectNamespace), svc)
+	err = k8sutil.CreateOrUpdateService(c.kclient.CoreV1().Services(c.kubeletObjectNamespace), svc)
 	if err != nil {
-		c.logger.Log("msg", "synchronizing kubelet service object failed", "err", err, "namespace", c.kubeletObjectNamespace, "name", svc.Name)
+		return errors.Wrap(err, "synchronizing kubelet service object failed")
 	}
 
 	err = k8sutil.CreateOrUpdateEndpoints(c.kclient.CoreV1().Endpoints(c.kubeletObjectNamespace), eps)
 	if err != nil {
-		c.logger.Log("msg", "synchronizing kubelet endpoints object failed", "err", err, "namespace", c.kubeletObjectNamespace, "name", eps.Name)
+		return errors.Wrap(err, "synchronizing kubelet endpoints object failed")
 	}
+
+	return nil
 }
 
 func (c *Operator) handleSmonAdd(obj interface{}) {
@@ -655,7 +685,7 @@ func (c *Operator) sync(key string) error {
 	}
 
 	// Create Secret if it doesn't exist.
-	s, err := makeEmptyConfig(p.Name, ruleFileConfigMaps)
+	s, err := makeEmptyConfig(p, ruleFileConfigMaps, c.config)
 	if err != nil {
 		return errors.Wrap(err, "generating empty config secret failed")
 	}
@@ -665,7 +695,7 @@ func (c *Operator) sync(key string) error {
 
 	// Create governing service if it doesn't exist.
 	svcClient := c.kclient.Core().Services(p.Namespace)
-	if err := k8sutil.CreateOrUpdateService(svcClient, makeStatefulSetService(p)); err != nil {
+	if err := k8sutil.CreateOrUpdateService(svcClient, makeStatefulSetService(p, c.config)); err != nil {
 		return errors.Wrap(err, "synchronizing governing service failed")
 	}
 
@@ -692,11 +722,6 @@ func (c *Operator) sync(key string) error {
 	}
 	if _, err := ssetClient.Update(sset); err != nil {
 		return errors.Wrap(err, "updating statefulset failed")
-	}
-
-	err = c.syncVersion(key, p)
-	if err != nil {
-		return errors.Wrap(err, "syncing version failed")
 	}
 
 	return nil
@@ -727,52 +752,6 @@ func ListOptions(name string) metav1.ListOptions {
 			"prometheus": name,
 		})).String(),
 	}
-}
-
-// syncVersion ensures that all running pods for a Prometheus have the required version.
-// It kills pods with the wrong version one-after-one and lets the StatefulSet controller
-// create new pods.
-//
-// TODO(brancz): remove this once the 1.6 support is removed.
-func (c *Operator) syncVersion(key string, p *monitoringv1.Prometheus) error {
-	if c.config.StatefulSetUpdatesAvailable {
-		return nil
-	}
-
-	status, oldPods, err := PrometheusStatus(c.kclient, p)
-	if err != nil {
-		return errors.Wrap(err, "retrieving Prometheus status failed")
-	}
-
-	// If the StatefulSet is still busy scaling, don't interfere by killing pods.
-	// We enqueue ourselves again to until the StatefulSet is ready.
-	expectedReplicas := int32(1)
-	if p.Spec.Replicas != nil {
-		expectedReplicas = *p.Spec.Replicas
-	}
-	if status.Replicas != expectedReplicas {
-		return fmt.Errorf("scaling in progress, %d expected replicas, %d found replicas", expectedReplicas, status.Replicas)
-	}
-	if status.Replicas == 0 {
-		return nil
-	}
-	if len(oldPods) == 0 {
-		return nil
-	}
-	if status.UnavailableReplicas > 0 {
-		return fmt.Errorf("waiting for %d unavailable pods to become ready", status.UnavailableReplicas)
-	}
-
-	// TODO(fabxc): delete oldest pod first.
-	if err := c.kclient.Core().Pods(p.Namespace).Delete(oldPods[0].Name, nil); err != nil {
-		return err
-	}
-
-	// If there are further pods that need updating, we enqueue ourselves again.
-	if len(oldPods) > 1 {
-		return fmt.Errorf("%d out-of-date pods remaining", len(oldPods)-1)
-	}
-	return nil
 }
 
 // PrometheusStatus evaluates the current status of a Prometheus deployment with respect
@@ -830,6 +809,8 @@ func needsUpdate(pod *v1.Pod, tmpl v1.PodTemplateSpec) bool {
 	return false
 }
 
+// TODO(brancz): Remove this function once Kubernetes 1.7 compatibility is dropped.
+// Starting with Kubernetes 1.8 OwnerReferences are properly handled for CRDs.
 func (c *Operator) destroyPrometheus(key string) error {
 	ssetKey := prometheusKeyToStatefulSetKey(key)
 	obj, exists, err := c.ssetInf.GetStore().GetByKey(ssetKey)
@@ -974,7 +955,7 @@ func (c *Operator) createConfig(p *monitoringv1.Prometheus, ruleFileConfigMaps [
 		return errors.Wrap(err, "generating config failed")
 	}
 
-	s, err := makeConfigSecret(p.Name, ruleFileConfigMaps)
+	s, err := makeConfigSecret(p, ruleFileConfigMaps, c.config)
 	if err != nil {
 		return errors.Wrap(err, "generating base secret failed")
 	}
@@ -1031,32 +1012,18 @@ func (c *Operator) selectServiceMonitors(p *monitoringv1.Prometheus) (map[string
 	return res, nil
 }
 
-func (c *Operator) createTPRs() error {
-	tprs := []*extensionsobjold.ThirdPartyResource{
-		k8sutil.NewPrometheusTPRDefinition(),
-		k8sutil.NewServiceMonitorTPRDefinition(),
-	}
-	tprClient := c.kclient.Extensions().ThirdPartyResources()
-
-	for _, tpr := range tprs {
-		if _, err := tprClient.Create(tpr); err != nil && !apierrors.IsAlreadyExists(err) {
-			return err
-		}
-		c.logger.Log("msg", "TPR created", "tpr", tpr.Name)
-	}
-
-	// We have to wait for the TPRs to be ready. Otherwise the initial watch may fail.
-	err := k8sutil.WaitForCRDReady(c.mclient.MonitoringV1alpha1().Prometheuses(api.NamespaceAll).List)
-	if err != nil {
-		return err
-	}
-	return k8sutil.WaitForCRDReady(c.mclient.MonitoringV1alpha1().ServiceMonitors(api.NamespaceAll).List)
-}
-
 func (c *Operator) createCRDs() error {
+	_, pErr := c.mclient.MonitoringV1().Prometheuses(c.config.Namespace).List(metav1.ListOptions{})
+	_, sErr := c.mclient.MonitoringV1().ServiceMonitors(c.config.Namespace).List(metav1.ListOptions{})
+	if pErr == nil && sErr == nil {
+		// If Prometheus and ServiceMonitor objects are already registered, we
+		// won't attempt to do so again.
+		return nil
+	}
+
 	crds := []*extensionsobj.CustomResourceDefinition{
-		k8sutil.NewPrometheusCustomResourceDefinition(),
-		k8sutil.NewServiceMonitorCustomResourceDefinition(),
+		k8sutil.NewPrometheusCustomResourceDefinition(c.config.CrdKinds.Prometheus, c.config.CrdGroup, c.config.Labels.LabelsMap),
+		k8sutil.NewServiceMonitorCustomResourceDefinition(c.config.CrdKinds.ServiceMonitor, c.config.CrdGroup, c.config.Labels.LabelsMap),
 	}
 
 	crdClient := c.crdclient.ApiextensionsV1beta1().CustomResourceDefinitions()
@@ -1069,9 +1036,9 @@ func (c *Operator) createCRDs() error {
 	}
 
 	// We have to wait for the CRDs to be ready. Otherwise the initial watch may fail.
-	err := k8sutil.WaitForCRDReady(c.mclient.MonitoringV1().Prometheuses(api.NamespaceAll).List)
+	err := k8sutil.WaitForCRDReady(c.mclient.MonitoringV1().Prometheuses(c.config.Namespace).List)
 	if err != nil {
 		return err
 	}
-	return k8sutil.WaitForCRDReady(c.mclient.MonitoringV1().ServiceMonitors(api.NamespaceAll).List)
+	return k8sutil.WaitForCRDReady(c.mclient.MonitoringV1().ServiceMonitors(c.config.Namespace).List)
 }

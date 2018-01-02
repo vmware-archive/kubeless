@@ -1,3 +1,8 @@
+<br>
+<div class="alert alert-info" role="alert">
+    <i class="fa fa-exclamation-triangle"></i><b> Note:</b> Starting with v0.12.0, Prometheus Operator requires use of Kubernetes v1.7.x and up.
+</div>
+
 # Prometheus Operator
 
 Operators were introduced by CoreOS as a class of software that operates other software, putting operational knowledge collected by humans into software. Read more in the [original blog post](https://coreos.com/blog/introducing-operators.html).
@@ -96,7 +101,7 @@ spec:
       - args:
         - --kubelet-service=kube-system/kubelet
         - --config-reloader-image=quay.io/coreos/configmap-reload:v0.0.1
-        image: quay.io/coreos/prometheus-operator:v0.12.0
+        image: quay.io/coreos/prometheus-operator:v0.15.0
         name: prometheus-operator
         ports:
         - containerPort: 8080
@@ -250,7 +255,6 @@ spec:
   serviceMonitorSelector:
     matchLabels:
       team: frontend
-  version: v1.7.0
   resources:
     requests:
       memory: 400Mi

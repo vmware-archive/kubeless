@@ -20,6 +20,7 @@ Many of the most widely used Go projects are built using Cobra including:
 * [Nanobox](https://github.com/nanobox-io/nanobox)/[Nanopack](https://github.com/nanopack)
 * [rclone](http://rclone.org/)
 * [nehm](https://github.com/bogem/nehm)
+* [Pouch](https://github.com/alibaba/pouch)
 
 [![Build Status](https://travis-ci.org/spf13/cobra.svg "Travis CI status")](https://travis-ci.org/spf13/cobra)
 [![CircleCI status](https://circleci.com/gh/spf13/cobra.png?circle-token=:circle-token "CircleCI status")](https://circleci.com/gh/spf13/cobra)
@@ -559,6 +560,13 @@ Like help, the function and template are overridable through public methods:
 cmd.SetUsageFunc(f func(*Command) error)
 cmd.SetUsageTemplate(s string)
 ```
+
+## Version Flag
+
+Cobra adds a top-level '--version' flag if the Version field is set on the root command.
+Running an application with the '--version' flag will print the version to stdout using
+the version template. The template can be customized using the
+`cmd.SetVersionTemplate(s string)` function.
 
 ## PreRun and PostRun Hooks
 

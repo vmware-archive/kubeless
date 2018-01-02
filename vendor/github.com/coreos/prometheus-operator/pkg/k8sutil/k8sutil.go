@@ -24,6 +24,8 @@ import (
 	"github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	version "github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
+	"k8s.io/api/core/v1"
+	extensionsobjold "k8s.io/api/extensions/v1beta1"
 	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,8 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
 	clientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/pkg/api/v1"
-	extensionsobjold "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 )
 
@@ -205,52 +205,56 @@ func NewAlertmanagerTPRDefinition() *extensionsobjold.ThirdPartyResource {
 	}
 }
 
-func NewPrometheusCustomResourceDefinition() *extensionsobj.CustomResourceDefinition {
+func NewPrometheusCustomResourceDefinition(crdkind monitoringv1.CrdKind, group string, labels map[string]string) *extensionsobj.CustomResourceDefinition {
 	return &extensionsobj.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: monitoringv1.PrometheusName + "." + monitoringv1.Group,
+			Name:   crdkind.Plural + "." + group,
+			Labels: labels,
 		},
 		Spec: extensionsobj.CustomResourceDefinitionSpec{
-			Group:   monitoringv1.Group,
+			Group:   group,
 			Version: monitoringv1.Version,
 			Scope:   extensionsobj.NamespaceScoped,
 			Names: extensionsobj.CustomResourceDefinitionNames{
-				Plural: monitoringv1.PrometheusName,
-				Kind:   monitoringv1.PrometheusesKind,
+				Plural: crdkind.Plural,
+				Kind:   crdkind.Kind,
 			},
 		},
 	}
 }
 
-func NewServiceMonitorCustomResourceDefinition() *extensionsobj.CustomResourceDefinition {
+func NewServiceMonitorCustomResourceDefinition(crdkind monitoringv1.CrdKind, group string, labels map[string]string) *extensionsobj.CustomResourceDefinition {
 	return &extensionsobj.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: monitoringv1.ServiceMonitorName + "." + monitoringv1.Group,
+			Name:   crdkind.Plural + "." + group,
+			Labels: labels,
 		},
+
 		Spec: extensionsobj.CustomResourceDefinitionSpec{
-			Group:   monitoringv1.Group,
+			Group:   group,
 			Version: monitoringv1.Version,
 			Scope:   extensionsobj.NamespaceScoped,
 			Names: extensionsobj.CustomResourceDefinitionNames{
-				Plural: monitoringv1.ServiceMonitorName,
-				Kind:   monitoringv1.ServiceMonitorsKind,
+				Plural: crdkind.Plural,
+				Kind:   crdkind.Kind,
 			},
 		},
 	}
 }
 
-func NewAlertmanagerCustomResourceDefinition() *extensionsobj.CustomResourceDefinition {
+func NewAlertmanagerCustomResourceDefinition(crdkind monitoringv1.CrdKind, group string, labels map[string]string) *extensionsobj.CustomResourceDefinition {
 	return &extensionsobj.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: monitoringv1.AlertmanagerName + "." + monitoringv1.Group,
+			Name:   crdkind.Plural + "." + group,
+			Labels: labels,
 		},
 		Spec: extensionsobj.CustomResourceDefinitionSpec{
-			Group:   monitoringv1.Group,
+			Group:   group,
 			Version: monitoringv1.Version,
 			Scope:   extensionsobj.NamespaceScoped,
 			Names: extensionsobj.CustomResourceDefinitionNames{
-				Plural: monitoringv1.AlertmanagerName,
-				Kind:   monitoringv1.AlertmanagersKind,
+				Plural: crdkind.Plural,
+				Kind:   crdkind.Kind,
 			},
 		},
 	}

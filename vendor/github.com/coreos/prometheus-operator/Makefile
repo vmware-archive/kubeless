@@ -7,11 +7,15 @@ PROMU := $(GOPATH)/bin/promu
 PREFIX ?= $(shell pwd)
 
 pkgs = $(shell go list ./... | grep -v /vendor/ | grep -v /test/)
+HELM_BUCKET_NAME=coreos-charts
 
 all: check-license format build test
 
 build: promu
 	@$(PROMU) build --prefix $(PREFIX)
+
+short-build:
+	go install github.com/coreos/prometheus-operator/cmd/operator
 
 crossbuild: promu
 	@$(PROMU) crossbuild
@@ -29,8 +33,7 @@ container:
 	docker build -t $(REPO):$(TAG) .
 
 e2e-test:
-	go test -timeout 20m -v ./test/migration/ $(TEST_RUN_ARGS) --kubeconfig=$(KUBECONFIG) --operator-image=$(REPO):$(TAG) --namespace=$(NAMESPACE)
-	go test -timeout 20m -v ./test/e2e/ $(TEST_RUN_ARGS) --kubeconfig=$(KUBECONFIG) --operator-image=$(REPO):$(TAG) --namespace=$(NAMESPACE)
+	go test -timeout 55m -v ./test/e2e/ $(TEST_RUN_ARGS) --kubeconfig=$(KUBECONFIG) --operator-image=$(REPO):$(TAG) --namespace=$(NAMESPACE)
 
 e2e-status:
 	kubectl get prometheus,alertmanager,servicemonitor,statefulsets,deploy,svc,endpoints,pods,cm,secrets,replicationcontrollers --all-namespaces
@@ -69,6 +72,18 @@ jsonnet:
 	jsonnet -J /ksonnet-lib hack/generate/prometheus-operator-rbac.jsonnet | json2yaml > contrib/kube-prometheus/manifests/prometheus-operator/prometheus-operator.yaml
 
 jsonnet-docker:
-	docker build -f scripts/jenkins/jsonnet/Dockerfile -t po-jsonnet .
+	docker build -f scripts/jsonnet/Dockerfile -t po-jsonnet .
+
+helm-package:
+	mkdir -p /tmp/helm
+	(cd $(CURDIR)/helm && helm package $(HELM_PACKAGES)  -d /tmp/helm && cd -)
+	helm repo index /tmp/helm --url https://s3-eu-west-1.amazonaws.com/$(HELM_BUCKET_NAME)/stable/ --debug
+	aws s3 sync --acl public-read /tmp/helm/ s3://$(HELM_BUCKET_NAME)/stable/
+
+helm-packages:
+	make helm-package HELM_PACKAGES=exporter-*
+	make helm-package HELM_PACKAGES="alertmanager grafana prometheus prometheus-operator"
+	(cd $(CURDIR)/helm/'kube-prometheus' && helm dep update && cd -)
+	make helm-package HELM_PACKAGES='kube-prometheus'
 
 .PHONY: all build crossbuild test format check-license container e2e-test e2e-status e2e clean-e2e embedmd apidocgen docs

@@ -338,5 +338,4 @@ const (
 	SYS_PKEY_MPROTECT          = 329
 	SYS_PKEY_ALLOC             = 330
 	SYS_PKEY_FREE              = 331
-	SYS_STATX                  = 332
 )

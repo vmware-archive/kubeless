@@ -17,15 +17,43 @@ config:
     receiver: webhook
     repeat_interval: 12h
 
+## Alertmanager template files to include
+#
+templateFiles: {}
+#
+# An example template:
+#   template_1.tmpl: |-
+#       {{ define "cluster" }}{{ .ExternalURL | reReplaceAll ".*alertmanager\\.(.*)" "$1" }}{{ end }}
+#
+#       {{ define "slack.myorg.text" }}
+#       {{- $root := . -}}
+#       {{ range .Alerts }}
+#         *Alert:* {{ .Annotations.summary }} - `{{ .Labels.severity }}`
+#         *Cluster:*  {{ template "cluster" $root }}
+#         *Description:* {{ .Annotations.description }}
+#         *Graph:* <{{ .GeneratorURL }}|:chart_with_upwards_trend:>
+#         *Runbook:* <{{ .Annotations.runbook }}|:spiral_note_pad:>
+#         *Details:*
+#           {{ range .Labels.SortedPairs }} • *{{ .Name }}:* `{{ .Value }}`
+#           {{ end }}
+
 ## External URL at which Alertmanager will be reachable
 ##
 externalUrl: ""
+
+## If true, create a serviceMonitor for alertmanager
+##
+selfServiceMonitor: true
 
 ## Alertmanager container image
 ##
 image:
   repository: quay.io/prometheus/alertmanager
   tag: v0.7.1
+
+## Labels to be added to the Alertmanager
+##
+labels: {}
 
 ingress:
   ## If true, Alertmanager Ingress will be created
@@ -37,6 +65,10 @@ ingress:
   annotations: {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
+
+  ## Labels to be added to the Ingress
+  ##
+  labels: {}
 
   fqdn: ""
 
@@ -81,6 +113,10 @@ service:
   ##
   externalIPs: []
 
+  ## Labels to be added to the Service
+  ##
+  labels: {}
+
   ## External IP address to assign to Alertmanager Service
   ## Only used if service.type is 'LoadBalancer' and supported by cloud provider
   ##
@@ -108,8 +144,9 @@ rbacEnable: true
 ## Ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/user-guides/storage.md
 ##
 storageSpec: {}
-#   class: default
-#   resources:
-#     requests:
-#       storage: 2Gi
+#   volumeClaimTemplate:
+#     spec:
+#       resources:
+#         requests:
+#           storage: 50Gi
 #   selector: {}
