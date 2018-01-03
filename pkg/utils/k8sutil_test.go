@@ -918,3 +918,53 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 }
+
+func TestServiceSpec(t *testing.T) {
+	f1 := &spec.Function{
+		Metadata: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "myns",
+			Labels: map[string]string{
+				"function": "foo",
+			},
+		},
+		Spec: spec.FunctionSpec{
+			ServiceSpec: v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{
+						TargetPort: intstr.FromInt(9000),
+					},
+				},
+				Selector: map[string]string{
+					"function": "foo",
+				},
+			},
+		},
+	}
+
+	eSvc := v1.ServiceSpec{
+		Ports: []v1.ServicePort{
+			{
+				Name:       "function-port",
+				Protocol:   v1.ProtocolTCP,
+				Port:       8080,
+				TargetPort: intstr.FromInt(8080),
+			},
+		},
+		Selector: map[string]string{
+			"function": "foo",
+		},
+		Type: v1.ServiceTypeClusterIP,
+	}
+
+	aSvc := serviceSpec(f1)
+	if !reflect.DeepEqual(f1.Spec.ServiceSpec, aSvc) {
+		t.Errorf("Unexpected result:\n %+v", aSvc)
+	}
+
+	f1.Spec.ServiceSpec = v1.ServiceSpec{}
+	aSvc = serviceSpec(f1)
+	if !reflect.DeepEqual(aSvc, eSvc) {
+		t.Errorf("Unexpected result:\n %+v", aSvc)
+	}
+}
