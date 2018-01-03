@@ -549,6 +549,27 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *spec.Function, or
 	return err
 }
 
+// this function resolves backward incompatibility in case user uses old client which doesn't include serviceSpec into funcSpec.
+// if serviceSpec is empty, we will use the default serviceSpec whose port is 8080
+func serviceSpec(funcObj *spec.Function) v1.ServiceSpec {
+	if len(funcObj.Spec.ServiceSpec.Ports) != 0 && len(funcObj.Spec.ServiceSpec.Selector) != 0 {
+		return funcObj.Spec.ServiceSpec
+	}
+
+	return v1.ServiceSpec{
+		Ports: []v1.ServicePort{
+			{
+				Name:       "function-port",
+				Protocol:   v1.ProtocolTCP,
+				Port:       8080,
+				TargetPort: intstr.FromInt(8080),
+			},
+		},
+		Selector: funcObj.Metadata.Labels,
+		Type:     v1.ServiceTypeClusterIP,
+	}
+}
+
 // EnsureFuncService creates/updates a function service
 func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
 	svc := &v1.Service{
@@ -557,7 +578,7 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 			Labels:          funcObj.Metadata.Labels,
 			OwnerReferences: or,
 		},
-		Spec: funcObj.Spec.ServiceSpec,
+		Spec: serviceSpec(funcObj),
 	}
 
 	_, err := client.Core().Services(funcObj.Metadata.Namespace).Create(svc)
@@ -582,6 +603,13 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *spec.Function, or [
 	return err
 }
 
+func svcPort(funcObj *spec.Function) int32 {
+	if len(funcObj.Spec.ServiceSpec.Ports) != 0 {
+		return funcObj.Spec.ServiceSpec.Ports[0].Port
+	}
+	return int32(8080)
+}
+
 // EnsureFuncDeployment creates/updates a function deployment
 func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, or []metav1.OwnerReference) error {
 	runtimeVolumeName := funcObj.Metadata.Name
@@ -594,7 +622,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 		// "targets")
 		"prometheus.io/scrape": "true",
 		"prometheus.io/path":   "/metrics",
-		"prometheus.io/port":   strconv.Itoa(int(funcObj.Spec.ServiceSpec.Ports[0].Port)),
+		"prometheus.io/port":   strconv.Itoa(int(svcPort(funcObj))),
 	}
 
 	//add deployment
@@ -697,13 +725,13 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
 		v1.EnvVar{
 			Name:  "FUNC_PORT",
-			Value: strconv.Itoa(int(funcObj.Spec.ServiceSpec.Ports[0].Port)),
+			Value: strconv.Itoa(int(svcPort(funcObj))),
 		},
 	)
 
 	dpm.Spec.Template.Spec.Containers[0].Name = funcObj.Metadata.Name
 	dpm.Spec.Template.Spec.Containers[0].Ports = append(dpm.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{
-		ContainerPort: funcObj.Spec.ServiceSpec.Ports[0].Port,
+		ContainerPort: svcPort(funcObj),
 	})
 	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
 		v1.EnvVar{
@@ -773,7 +801,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *spec.Function, o
 			Handler: v1.Handler{
 				HTTPGet: &v1.HTTPGetAction{
 					Path: "/healthz",
-					Port: intstr.FromInt(int(funcObj.Spec.ServiceSpec.Ports[0].Port)),
+					Port: intstr.FromInt(int(svcPort(funcObj))),
 				},
 			},
 		}
