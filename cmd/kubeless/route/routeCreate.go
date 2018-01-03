@@ -14,11 +14,9 @@ limitations under the License.
 package route
 
 import (
-	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 var routeCreateCmd = &cobra.Command{
@@ -27,20 +25,15 @@ var routeCreateCmd = &cobra.Command{
 	Long:  `create a route to function`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 1 {
-			logrus.Fatal("Need exactly one argument - route name")
+			logrus.Fatal("Need exactly one argument - function name")
 		}
-		ingressName := args[0]
+		funcName := args[0]
 		ns, err := cmd.Flags().GetString("namespace")
 		if err != nil {
 			logrus.Fatal(err)
 		}
 		if ns == "" {
 			ns = utils.GetDefaultNamespace()
-		}
-
-		funcName, err := cmd.Flags().GetString("function")
-		if err != nil {
-			logrus.Fatal(err)
 		}
 
 		hostName, err := cmd.Flags().GetString("hostname")
@@ -68,33 +61,27 @@ var routeCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		f := &spec.Function{}
-		err = crdClient.Get().
-			Resource("functions").
-			Namespace(ns).
-			Name(funcName).
-			Do().
-			Into(f)
-
+		function, err := utils.GetFunction(crdClient, funcName, ns)
 		if err != nil {
-			if k8sErrors.IsNotFound(err) {
-				logrus.Fatalf("function %s doesn't exist in namespace %s", funcName, ns)
-			} else {
-				logrus.Fatalf("error validate input %v", err)
-			}
+			logrus.Fatalf("Unable to find the function %s. Received %s: ", funcName, err)
 		}
 
-		client := utils.GetClientOutOfCluster()
-
-		err = utils.CreateIngress(client, f, ingressName, hostName, ns, enableTLSAcme)
+		route, err := getRouteDefinition(function, funcName, hostName, ns, enableTLSAcme)
 		if err != nil {
-			logrus.Fatalf("Can't create route: %v", err)
+			logrus.Fatalf("Unable to construct routing rule for the function %s: %v", funcName, err)
 		}
+		function.Spec.Route = route
+
+		logrus.Infof("Adding routing rule to the function...")
+		err = utils.UpdateK8sCustomResource(crdClient, &function)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		logrus.Infof("Routing rule for %s submitted for deployment", funcName)
 	},
 }
 
 func init() {
 	routeCreateCmd.Flags().StringP("hostname", "", "", "Specify a valid hostname for the function")
-	routeCreateCmd.Flags().StringP("function", "", "", "Name of the function")
 	routeCreateCmd.Flags().BoolP("enableTLSAcme", "", false, "If true, routing rule will be configured for use with kube-lego")
 }

@@ -175,15 +175,10 @@ func GetDefaultNamespace() string {
 }
 
 // GetFunction returns specification of a function
-func GetFunction(funcName, ns string) (spec.Function, error) {
+func GetFunction(crdClient *rest.RESTClient, funcName, ns string) (spec.Function, error) {
 	var f spec.Function
 
-	crdClient, err := GetCRDClientOutOfCluster()
-	if err != nil {
-		return spec.Function{}, err
-	}
-
-	err = crdClient.Get().
+	err := crdClient.Get().
 		Resource("functions").
 		Namespace(ns).
 		Name(funcName).
@@ -386,67 +381,8 @@ func addInitContainerAnnotation(dpm *v1beta1.Deployment) error {
 }
 
 // CreateIngress creates ingress rule for a specific function
-func CreateIngress(client kubernetes.Interface, funcObj *spec.Function, ingressName, hostname, ns string, enableTLSAcme bool) error {
-	or, err := GetOwnerReference(funcObj)
-	if err != nil {
-		return err
-	}
-
-	if len(funcObj.Spec.ServiceSpec.Ports) == 0 {
-		return fmt.Errorf("can't create route due to service port isn't defined")
-	}
-
-	port := funcObj.Spec.ServiceSpec.Ports[0].TargetPort
-	if port.IntVal <= 0 || port.IntVal > 65535 {
-		return fmt.Errorf("Invalid port number %d specified", port.IntVal)
-	}
-
-	ingress := &v1beta1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            ingressName,
-			Namespace:       ns,
-			OwnerReferences: or,
-			Labels:          funcObj.Metadata.Labels,
-		},
-		Spec: v1beta1.IngressSpec{
-			Rules: []v1beta1.IngressRule{
-				{
-					Host: hostname,
-					IngressRuleValue: v1beta1.IngressRuleValue{
-						HTTP: &v1beta1.HTTPIngressRuleValue{
-							Paths: []v1beta1.HTTPIngressPath{
-								{
-									Path: "/",
-									Backend: v1beta1.IngressBackend{
-										ServiceName: funcObj.Metadata.Name,
-										ServicePort: funcObj.Spec.ServiceSpec.Ports[0].TargetPort,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	if enableTLSAcme {
-		// add annotations and TLS configuration for kube-lego
-		ingressAnnotations := map[string]string{
-			"kubernetes.io/tls-acme":             "true",
-			"ingress.kubernetes.io/ssl-redirect": "true",
-		}
-		ingress.ObjectMeta.Annotations = ingressAnnotations
-
-		ingress.Spec.TLS = []v1beta1.IngressTLS{
-			{
-				Hosts:      []string{hostname},
-				SecretName: ingressName + "-tls",
-			},
-		}
-	}
-
-	_, err = client.ExtensionsV1beta1().Ingresses(ns).Create(ingress)
+func CreateIngress(client kubernetes.Interface, ingress v1beta1.Ingress) error {
+	_, err := client.ExtensionsV1beta1().Ingresses(ingress.Namespace).Create(&ingress)
 	if err != nil {
 		return err
 	}
@@ -465,7 +401,7 @@ func GetLocalHostname(config *rest.Config, funcName string) (string, error) {
 }
 
 // DeleteIngress deletes an ingress rule
-func DeleteIngress(client kubernetes.Interface, name, ns string) error {
+func DeleteIngress(client kubernetes.Interface, ns, name string) error {
 	err := client.ExtensionsV1beta1().Ingresses(ns).Delete(name, &metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err

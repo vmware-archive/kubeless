@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 // Function object
@@ -45,6 +46,7 @@ type FunctionSpec struct {
 	ServiceSpec             v1.ServiceSpec                   `json:"service"`
 	Template                v1.PodTemplateSpec               `json:"template" protobuf:"bytes,3,opt,name=template"`
 	HorizontalPodAutoscaler v2alpha1.HorizontalPodAutoscaler `json:"horizontalPodAutoscaler" protobuf:"bytes,3,opt,name=horizontalPodAutoscaler"`
+	Route                   v1beta1.Ingress                  `json:"route" protobuf:"bytes,2,opt,name=route"`
 }
 
 // FunctionList contains map of functions

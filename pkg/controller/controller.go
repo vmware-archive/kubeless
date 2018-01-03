@@ -253,6 +253,20 @@ func (c *Controller) ensureK8sResources(funcObj *spec.Function) error {
 			return err
 		}
 	}
+
+	if funcObj.Spec.Route.Name != "" {
+		funcObj.Spec.Route.OwnerReferences = or
+		err = utils.CreateIngress(c.clientset, funcObj.Spec.Route)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = utils.DeleteIngress(c.clientset, funcObj.Metadata.Namespace, funcObj.Metadata.Name)
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return err
+		}
+	}
+
 	return nil
 }
 

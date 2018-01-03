@@ -26,7 +26,7 @@ var autoscaleDeleteCmd = &cobra.Command{
 	Long:  `delete an autoscale from Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 1 {
-			logrus.Fatal("Need exactly one argument - autoscale name")
+			logrus.Fatal("Need exactly one argument - function name")
 		}
 		funcName := args[0]
 
@@ -37,18 +37,18 @@ var autoscaleDeleteCmd = &cobra.Command{
 		if ns == "" {
 			ns = utils.GetDefaultNamespace()
 		}
+		crdClient, err := utils.GetCRDClientOutOfCluster()
+		if err != nil {
+			logrus.Fatal(err)
+		}
 
-		function, err := utils.GetFunction(funcName, ns)
+		function, err := utils.GetFunction(crdClient, funcName, ns)
 		if err != nil {
 			logrus.Fatalf("Unable to find the function %s. Received %s: ", funcName, err)
 		}
 
 		if function.Spec.HorizontalPodAutoscaler.Name != "" {
 			function.Spec.HorizontalPodAutoscaler = v2alpha1.HorizontalPodAutoscaler{}
-			crdClient, err := utils.GetCRDClientOutOfCluster()
-			if err != nil {
-				logrus.Fatal(err)
-			}
 			logrus.Infof("Removing autoscaling rule to the function...")
 			err = utils.UpdateK8sCustomResource(crdClient, &function)
 			if err != nil {
