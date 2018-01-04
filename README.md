@@ -115,6 +115,7 @@ Other available trigger options (defaults to `--trigger-http`) are:
 * `--trigger-topic` to trigger the function with a certain Kafka topic. See the [next example](#pubsub-function).
 * `--timeout string` to specify the timeout (in seconds) for the function to complete its execution (default "180")
 * `--schedule` to trigger the function following a certain schedule using Cron notation. F.e. `--schedule "*/10 * * * *"` would trigger the function every 10 minutes.
+* `--env` to pass env vars to the function like `--env foo=bar,bar=foo`. Check the [more detail](https://github.com/kubeless/kubeless/pull/316#issuecomment-332172876)
 
 You can find the rest of options available when deploying a function executing `kubeless function deploy --help`
 
