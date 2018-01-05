@@ -107,6 +107,7 @@ Let's dissect the command:
 * `--runtime python2.7`: This is the runtime we want to use to run our function. Available runtimes are shown in the help information.
 * `--from-file test.py`: This is the file containing the function code. It is supported to specify a zip file as far as it doesn't exceed the maximum size for an etcd entry (1 MB).
 * `--handler test.foobar`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `foobar` from the file `test.py`.
+* `--env` to pass env vars to the function like `--env foo=bar,bar=foo`. See the [detail](https://github.com/kubeless/kubeless/pull/316#issuecomment-332172876)
 * `--trigger-http`: This sets the function trigger.
 
 Other available trigger options (defaults to `--trigger-http`) are:
