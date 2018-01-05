@@ -21,11 +21,11 @@ import (
 	"strings"
 	"testing"
 
+	xv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
-	xv1beta1 "k8s.io/api/extensions/v1beta1"
 )
 
 func listIngressOutput(t *testing.T, client kubernetes.Interface, ns, output string) string {

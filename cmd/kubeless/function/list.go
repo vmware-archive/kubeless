@@ -53,14 +53,14 @@ var listCmd = &cobra.Command{
 			ns = utils.GetDefaultNamespace()
 		}
 
-		crdClient, err := utils.GetCRDClientOutOfCluster()
+		kubelessClient, err := utils.GetFunctionClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not list functions: %v", err)
 		}
 
 		apiV1Client := utils.GetClientOutOfCluster()
 
-		if err := doList(cmd.OutOrStdout(), crdClient, apiV1Client, ns, output, args); err != nil {
+		if err := doList(cmd.OutOrStdout(), kubelessClient.RESTClient(), apiV1Client, ns, output, args); err != nil {
 			logrus.Fatal(err.Error())
 		}
 	},
@@ -71,11 +71,11 @@ func init() {
 	listCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 }
 
-func doList(w io.Writer, crdClient rest.Interface, apiV1Client kubernetes.Interface, ns, output string, args []string) error {
+func doList(w io.Writer, kubelessClient rest.Interface, apiV1Client kubernetes.Interface, ns, output string, args []string) error {
 	var list []*api.Function
 	if len(args) == 0 {
 		funcList := api.FunctionList{}
-		err := crdClient.Get().
+		err := kubelessClient.Get().
 			Resource("functions").
 			Namespace(ns).
 			Do().
@@ -88,7 +88,7 @@ func doList(w io.Writer, crdClient rest.Interface, apiV1Client kubernetes.Interf
 		list = make([]*api.Function, 0, len(args))
 		for _, arg := range args {
 			f := api.Function{}
-			err := crdClient.Get().
+			err := kubelessClient.Get().
 				Resource("functions").
 				Namespace(ns).
 				Name(arg).

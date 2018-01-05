@@ -54,6 +54,8 @@ import (
 
 	// Adding explicitely the GCP auth plugin
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
+	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 )
 
 const (
@@ -125,22 +127,6 @@ func GetRestClient() (*rest.RESTClient, error) {
 	return restClient, nil
 }
 
-// GetCRDClient returns crd client to the request from inside of cluster
-func GetCRDClient() (*rest.RESTClient, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-	crdConfig := configureClient("k8s.io", "v1", "/apis", config)
-
-	crdclient, err := rest.RESTClientFor(crdConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return crdclient, nil
-}
-
 // GetRestClientOutOfCluster returns a REST client based on a group, API version and path
 func GetRestClientOutOfCluster(group, apiVersion, apiPath string) (*rest.RESTClient, error) {
 	config, err := BuildOutOfClusterConfig()
@@ -158,9 +144,30 @@ func GetRestClientOutOfCluster(group, apiVersion, apiPath string) (*rest.RESTCli
 	return client, nil
 }
 
-// GetCRDClientOutOfCluster returns crd client to the request from outside of cluster
-func GetCRDClientOutOfCluster() (*rest.RESTClient, error) {
-	return GetRestClientOutOfCluster("k8s.io", "v1", "/apis")
+func GetFunctionClientInCluster() (*versioned.Clientset, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	kubelessClient, err := versioned.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return kubelessClient, nil
+}
+
+func GetFunctionClientOutCluster() (*versioned.Clientset, error) {
+	config, err := BuildOutOfClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	kubelessClient, err := versioned.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return kubelessClient, nil
 }
 
 //GetDefaultNamespace returns the namespace set in current cluster context
@@ -179,12 +186,12 @@ func GetDefaultNamespace() string {
 func GetFunction(funcName, ns string) (api.Function, error) {
 	var f api.Function
 
-	crdClient, err := GetCRDClientOutOfCluster()
+	kubelessClient, err := GetFunctionClientOutCluster()
 	if err != nil {
 		return api.Function{}, err
 	}
 
-	err = crdClient.Get().
+	err = kubelessClient.RESTClient().Get().
 		Resource("functions").
 		Namespace(ns).
 		Name(funcName).
@@ -201,8 +208,8 @@ func GetFunction(funcName, ns string) (api.Function, error) {
 }
 
 // CreateK8sCustomResource will create a custom function object
-func CreateK8sCustomResource(crdClient rest.Interface, f *api.Function) error {
-	err := crdClient.Post().
+func CreateK8sCustomResource(kubelessClient rest.Interface, f *api.Function) error {
+	err := kubelessClient.Post().
 		Resource("functions").
 		Namespace(f.ObjectMeta.Namespace).
 		Body(f).
@@ -215,12 +222,12 @@ func CreateK8sCustomResource(crdClient rest.Interface, f *api.Function) error {
 }
 
 // UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(crdClient rest.Interface, f *api.Function) error {
+func UpdateK8sCustomResource(kubelessClient rest.Interface, f *api.Function) error {
 	data, err := json.Marshal(f)
 	if err != nil {
 		return err
 	}
-	return crdClient.Patch(types.MergePatchType).
+	return kubelessClient.Patch(types.MergePatchType).
 		Namespace(f.ObjectMeta.Namespace).
 		Resource("functions").
 		Name(f.ObjectMeta.Name).
@@ -229,8 +236,8 @@ func UpdateK8sCustomResource(crdClient rest.Interface, f *api.Function) error {
 }
 
 // DeleteK8sCustomResource will delete custom function object
-func DeleteK8sCustomResource(crdClient *rest.RESTClient, funcName, ns string) error {
-	err := crdClient.Delete().
+func DeleteK8sCustomResource(kubelessClient rest.Interface, funcName, ns string) error {
+	err := kubelessClient.Delete().
 		Resource("functions").
 		Namespace(ns).
 		Name(funcName).

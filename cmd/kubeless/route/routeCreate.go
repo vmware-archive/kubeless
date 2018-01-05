@@ -63,13 +63,13 @@ var routeCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		crdClient, err := utils.GetCRDClientOutOfCluster()
+		kubelessClient, err := utils.GetFunctionClientOutCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
 		f := &api.Function{}
-		err = crdClient.Get().
+		err = kubelessClient.RESTClient().Get().
 			Resource("functions").
 			Namespace(ns).
 			Name(funcName).

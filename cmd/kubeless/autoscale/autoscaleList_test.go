@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
+	av2alpha1 "k8s.io/api/autoscaling/v2beta1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/api/core/v1"
-	av2alpha1 "k8s.io/api/autoscaling/v2beta1"
 )
 
 func listAutoscaleOutput(t *testing.T, client kubernetes.Interface, ns, output string) string {

@@ -45,12 +45,12 @@ var autoscaleDeleteCmd = &cobra.Command{
 
 		if function.Spec.HorizontalPodAutoscaler.Name != "" {
 			function.Spec.HorizontalPodAutoscaler = v2beta1.HorizontalPodAutoscaler{}
-			crdClient, err := utils.GetCRDClientOutOfCluster()
+			kubelessClient, err := utils.GetFunctionClientOutCluster()
 			if err != nil {
 				logrus.Fatal(err)
 			}
 			logrus.Infof("Removing autoscaling rule to the function...")
-			err = utils.UpdateK8sCustomResource(crdClient, &function)
+			err = utils.UpdateK8sCustomResource(kubelessClient.RESTClient(), &function)
 			if err != nil {
 				logrus.Fatal(err)
 			}
