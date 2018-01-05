@@ -17,69 +17,55 @@ limitations under the License.
 package controller
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/sirupsen/logrus"
+	"k8s.io/api/autoscaling/v2beta1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/api/autoscaling/v2beta1"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
+	kv1beta1 "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/utils"
 )
 
 const (
-	crdName    = "function.k8s.io"
 	maxRetries = 5
 	funcKind   = "Function"
-	funcAPI    = "k8s.io"
-)
-
-var (
-	errVersionOutdated = errors.New("Requested version is outdated in apiserver")
-	initRetryWaitTime  = 30 * time.Second
+	funcAPI    = "kubeless.io"
 )
 
 // Controller object
 type Controller struct {
-	logger    *logrus.Entry
-	clientset kubernetes.Interface
-	crdclient rest.Interface
-	smclient  *monitoringv1alpha1.MonitoringV1alpha1Client
-	Functions map[string]*api.Function
-	queue     workqueue.RateLimitingInterface
-	informer  cache.SharedIndexInformer
+	logger         *logrus.Entry
+	clientset      kubernetes.Interface
+	kubelessclient versioned.Interface
+	smclient       *monitoringv1alpha1.MonitoringV1alpha1Client
+	Functions      map[string]*api.Function
+	queue          workqueue.RateLimitingInterface
+	informer       cache.SharedIndexInformer
 }
 
 // Config contains k8s client of a controller
 type Config struct {
-	KubeCli   kubernetes.Interface
-	CRDClient rest.Interface
+	KubeCli        kubernetes.Interface
+	FunctionClient versioned.Interface
 }
 
 // New initializes a controller object
 func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Controller {
-	lw := cache.NewListWatchFromClient(cfg.CRDClient, "functions", corev1.NamespaceAll, fields.Everything())
-
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
-	informer := cache.NewSharedIndexInformer(
-		lw,
-		&api.Function{},
-		0,
-		cache.Indexers{},
-	)
+	informer := kv1beta1.NewFunctionInformer(cfg.FunctionClient, corev1.NamespaceAll, 0, cache.Indexers{})
 
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -103,12 +89,12 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 	})
 
 	return &Controller{
-		logger:    logrus.WithField("pkg", "controller"),
-		clientset: cfg.KubeCli,
-		smclient:  smclient,
-		crdclient: cfg.CRDClient,
-		informer:  informer,
-		queue:     queue,
+		logger:         logrus.WithField("pkg", "controller"),
+		clientset:      cfg.KubeCli,
+		smclient:       smclient,
+		kubelessclient: cfg.FunctionClient,
+		informer:       informer,
+		queue:          queue,
 	}
 }
 
