@@ -18,10 +18,6 @@ package function
 
 import (
 	"bytes"
-	"encoding/json"
-	"io"
-	"io/ioutil"
-	"net/http"
 	"regexp"
 	"strings"
 	"testing"
@@ -29,44 +25,16 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/apimachinery"
-	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
-	restFake "k8s.io/client-go/rest/fake"
 
 	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
+	fFake "github.com/kubeless/kubeless/pkg/client/clientset/versioned/fake"
 )
 
-func fakeCRDClient(f func(req *http.Request) (*http.Response, error)) *restFake.RESTClient {
-	reg := registered.NewOrDie("v1")
-	legacySchema := schema.GroupVersion{
-		Group:   "",
-		Version: "v1",
-	}
-	crdSchema := schema.GroupVersion{
-		Group:   "k8s.io",
-		Version: "v1",
-	}
-	reg.RegisterGroup(apimachinery.GroupMeta{
-		GroupVersion: legacySchema,
-	})
-	reg.RegisterGroup(apimachinery.GroupMeta{
-		GroupVersion: crdSchema,
-	})
-	return &restFake.RESTClient{
-		APIRegistry:          reg,
-		NegotiatedSerializer: scheme.Codecs,
-		Client:               restFake.CreateHTTPClient(f),
-	}
-}
-
-func listOutput(t *testing.T, client rest.Interface, apiV1Client kubernetes.Interface, ns, output string, args []string) string {
+func listOutput(t *testing.T, client versioned.Interface, apiV1Client kubernetes.Interface, ns, output string, args []string) string {
 	var buf bytes.Buffer
 
 	if err := doList(&buf, client, apiV1Client, ns, output, args); err != nil {
@@ -74,14 +42,6 @@ func listOutput(t *testing.T, client rest.Interface, apiV1Client kubernetes.Inte
 	}
 
 	return buf.String()
-}
-
-func objBody(object interface{}) io.ReadCloser {
-	output, err := json.Marshal(object)
-	if err != nil {
-		panic(err)
-	}
-	return ioutil.NopCloser(bytes.NewReader([]byte(output)))
 }
 
 func TestList(t *testing.T) {
@@ -172,27 +132,8 @@ func TestList(t *testing.T) {
 		},
 	}
 
-	client := fakeCRDClient(func(req *http.Request) (*http.Response, error) {
-		header := http.Header{}
-		header.Set("Content-Type", runtime.ContentTypeJSON)
-		switch req.URL.Path {
-		case "/namespaces/myns/functions":
-			return &http.Response{
-				StatusCode: 200,
-				Header:     header,
-				Body:       objBody(&listObj),
-			}, nil
-		case "/namespaces/myns/functions/foo":
-			return &http.Response{
-				StatusCode: 200,
-				Header:     header,
-				Body:       objBody(listObj.Items[0]),
-			}, nil
-		default:
-			t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
-			return nil, nil
-		}
-	})
+	client := fFake.NewSimpleClientset(listObj.Items[0], listObj.Items[1], listObj.Items[2])
+
 	deploymentFoo := v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",

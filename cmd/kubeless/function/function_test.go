@@ -109,7 +109,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	expectedFunction := api.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
-			APIVersion: "k8s.io/v1",
+			APIVersion: "kubeless.io/v1beta1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
@@ -203,7 +203,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	newFunction := api.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
-			APIVersion: "k8s.io/v1",
+			APIVersion: "kubeless.io/v1beta1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
