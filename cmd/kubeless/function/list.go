@@ -28,10 +28,11 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 
 	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	"github.com/kubeless/kubeless/pkg/utils"
 )
 
@@ -60,7 +61,7 @@ var listCmd = &cobra.Command{
 
 		apiV1Client := utils.GetClientOutOfCluster()
 
-		if err := doList(cmd.OutOrStdout(), kubelessClient.RESTClient(), apiV1Client, ns, output, args); err != nil {
+		if err := doList(cmd.OutOrStdout(), kubelessClient, apiV1Client, ns, output, args); err != nil {
 			logrus.Fatal(err.Error())
 		}
 	},
@@ -71,15 +72,10 @@ func init() {
 	listCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 }
 
-func doList(w io.Writer, kubelessClient rest.Interface, apiV1Client kubernetes.Interface, ns, output string, args []string) error {
+func doList(w io.Writer, kubelessClient versioned.Interface, apiV1Client kubernetes.Interface, ns, output string, args []string) error {
 	var list []*api.Function
 	if len(args) == 0 {
-		funcList := api.FunctionList{}
-		err := kubelessClient.Get().
-			Resource("functions").
-			Namespace(ns).
-			Do().
-			Into(&funcList)
+		funcList, err := kubelessClient.KubelessV1beta1().Functions(ns).List(metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -87,17 +83,11 @@ func doList(w io.Writer, kubelessClient rest.Interface, apiV1Client kubernetes.I
 	} else {
 		list = make([]*api.Function, 0, len(args))
 		for _, arg := range args {
-			f := api.Function{}
-			err := kubelessClient.Get().
-				Resource("functions").
-				Namespace(ns).
-				Name(arg).
-				Do().
-				Into(&f)
+			f, err := kubelessClient.KubelessV1beta1().Functions(ns).Get(arg, metav1.GetOptions{})
 			if err != nil {
 				return fmt.Errorf("Error listing function %s: %v", arg, err)
 			}
-			list = append(list, &f)
+			list = append(list, f)
 		}
 	}
 

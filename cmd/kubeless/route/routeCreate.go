@@ -14,11 +14,11 @@ limitations under the License.
 package route
 
 import (
-	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var routeCreateCmd = &cobra.Command{
@@ -68,14 +68,7 @@ var routeCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		f := &api.Function{}
-		err = kubelessClient.RESTClient().Get().
-			Resource("functions").
-			Namespace(ns).
-			Name(funcName).
-			Do().
-			Into(f)
-
+		f, err := kubelessClient.KubelessV1beta1().Functions(ns).Get(funcName, metav1.GetOptions{})
 		if err != nil {
 			if k8sErrors.IsNotFound(err) {
 				logrus.Fatalf("function %s doesn't exist in namespace %s", funcName, ns)

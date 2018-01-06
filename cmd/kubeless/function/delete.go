@@ -45,7 +45,7 @@ var deleteCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		err = utils.DeleteK8sCustomResource(kubelessClient.RESTClient(), funcName, ns)
+		err = utils.DeleteK8sCustomResource(kubelessClient, funcName, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}

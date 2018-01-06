@@ -163,7 +163,7 @@ var deployCmd = &cobra.Command{
 		}
 
 		logrus.Infof("Deploying function...")
-		err = utils.CreateK8sCustomResource(kubelessClient.RESTClient(), f)
+		err = utils.CreateK8sCustomResource(kubelessClient, f)
 		if err != nil {
 			logrus.Fatalf("Failed to deploy %s. Received:\n%s", funcName, err)
 		}

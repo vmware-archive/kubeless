@@ -38,15 +38,11 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -112,39 +108,7 @@ func GetClientOutOfCluster() kubernetes.Interface {
 	return clientset
 }
 
-// GetRestClient returns a k8s restclient to the request from inside of cluster
-func GetRestClient() (*rest.RESTClient, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	restClient, err := rest.RESTClientFor(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return restClient, nil
-}
-
-// GetRestClientOutOfCluster returns a REST client based on a group, API version and path
-func GetRestClientOutOfCluster(group, apiVersion, apiPath string) (*rest.RESTClient, error) {
-	config, err := BuildOutOfClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	crdConfig := configureClient(group, apiVersion, apiPath, config)
-
-	client, err := rest.RESTClientFor(crdConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
-}
-
-func GetFunctionClientInCluster() (*versioned.Clientset, error) {
+func GetFunctionClientInCluster() (versioned.Interface, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -157,7 +121,7 @@ func GetFunctionClientInCluster() (*versioned.Clientset, error) {
 	return kubelessClient, nil
 }
 
-func GetFunctionClientOutCluster() (*versioned.Clientset, error) {
+func GetFunctionClientOutCluster() (versioned.Interface, error) {
 	config, err := BuildOutOfClusterConfig()
 	if err != nil {
 		return nil, err
@@ -184,18 +148,12 @@ func GetDefaultNamespace() string {
 
 // GetFunction returns specification of a function
 func GetFunction(funcName, ns string) (api.Function, error) {
-	var f api.Function
-
 	kubelessClient, err := GetFunctionClientOutCluster()
 	if err != nil {
 		return api.Function{}, err
 	}
 
-	err = kubelessClient.RESTClient().Get().
-		Resource("functions").
-		Namespace(ns).
-		Name(funcName).
-		Do().Into(&f)
+	f, err := kubelessClient.KubelessV1beta1().Functions(ns).Get(funcName, metav1.GetOptions{})
 
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
@@ -204,45 +162,32 @@ func GetFunction(funcName, ns string) (api.Function, error) {
 		return api.Function{}, err
 	}
 
-	return f, nil
+	return *f, nil
 }
 
 // CreateK8sCustomResource will create a custom function object
-func CreateK8sCustomResource(kubelessClient rest.Interface, f *api.Function) error {
-	err := kubelessClient.Post().
-		Resource("functions").
-		Namespace(f.ObjectMeta.Namespace).
-		Body(f).
-		Do().Error()
+func CreateK8sCustomResource(kubelessClient versioned.Interface, f *api.Function) error {
+	_, err := kubelessClient.KubelessV1beta1().Functions(f.Namespace).Create(f)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
 // UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(kubelessClient rest.Interface, f *api.Function) error {
+func UpdateK8sCustomResource(kubelessClient versioned.Interface, f *api.Function) error {
 	data, err := json.Marshal(f)
 	if err != nil {
 		return err
 	}
-	return kubelessClient.Patch(types.MergePatchType).
-		Namespace(f.ObjectMeta.Namespace).
-		Resource("functions").
-		Name(f.ObjectMeta.Name).
-		Body(data).
-		Do().Error()
+
+	_, err = kubelessClient.KubelessV1beta1().Functions(f.Namespace).Patch(f.Name, types.MergePatchType, data)
+	return err
 }
 
 // DeleteK8sCustomResource will delete custom function object
-func DeleteK8sCustomResource(kubelessClient rest.Interface, funcName, ns string) error {
-	err := kubelessClient.Delete().
-		Resource("functions").
-		Namespace(ns).
-		Name(funcName).
-		Do().Error()
-
+func DeleteK8sCustomResource(kubelessClient versioned.Interface, funcName, ns string) error {
+	err := kubelessClient.KubelessV1beta1().Functions(ns).Delete(funcName, &metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
@@ -348,33 +293,6 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 		VolumeMounts:    []v1.VolumeMount{runtimeVolume, depsVolume},
 		ImagePullPolicy: v1.PullIfNotPresent,
 	}, nil
-}
-
-// configureClient configures crd client
-func configureClient(group, version, apiPath string, config *rest.Config) *rest.Config {
-	var result rest.Config
-	result = *config
-	groupversion := schema.GroupVersion{
-		Group:   group,
-		Version: version,
-	}
-
-	result.GroupVersion = &groupversion
-	result.APIPath = apiPath
-	result.ContentType = runtime.ContentTypeJSON
-	result.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
-	schemeBuilder := runtime.NewSchemeBuilder(
-		func(scheme *runtime.Scheme) error {
-			scheme.AddKnownTypes(
-				groupversion,
-				&api.Function{},
-				&api.FunctionList{},
-			)
-			return nil
-		})
-	metav1.AddToGroupVersion(scheme.Scheme, groupversion)
-	schemeBuilder.AddToScheme(scheme.Scheme)
-	return &result
 }
 
 // CreateIngress creates ingress rule for a specific function

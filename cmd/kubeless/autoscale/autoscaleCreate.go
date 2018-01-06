@@ -66,7 +66,7 @@ var autoscaleCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		logrus.Infof("Adding autoscaling rule to the function...")
-		err = utils.UpdateK8sCustomResource(kubelessClient.RESTClient(), &function)
+		err = utils.UpdateK8sCustomResource(kubelessClient, &function)
 		if err != nil {
 			logrus.Fatal(err)
 		}
