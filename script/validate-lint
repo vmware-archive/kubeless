@@ -20,7 +20,7 @@ source "$(dirname "$BASH_SOURCE")/.validate"
 # of subpackages, vendoring excluded, as given by:
 #
 IFS=$'\n'
-files=( $(validate_diff --diff-filter=ACMR --name-only -- '*.go' | grep -v '^vendor/\|^integration' || true) )
+files=( $(validate_diff --diff-filter=ACMR --name-only -- '*.go' | grep -v '^vendor/\|^pkg/client/\|^pkg/apis/kubeless/v1beta1/zz_generated.deepcopy.go\|^integration' || true) )
 unset IFS
 
 errors=()

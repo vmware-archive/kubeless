@@ -22,8 +22,11 @@ func Resource(resource string) schema.GroupResource {
 }
 
 var (
+	// SchemeBuilder collects the scheme builder functions for the Kubeless API
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
-	AddToScheme   = SchemeBuilder.AddToScheme
+
+	// AddToScheme applies the SchemeBuilder functions to a specified scheme
+	AddToScheme = SchemeBuilder.AddToScheme
 )
 
 // Adds the list of known types to Scheme.

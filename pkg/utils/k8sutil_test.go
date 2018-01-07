@@ -919,15 +919,15 @@ func TestGetProvisionContainer(t *testing.T) {
 }
 
 func TestServiceSpec(t *testing.T) {
-	f1 := &spec.Function{
-		Metadata: metav1.ObjectMeta{
+	f1 := &api.Function{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "myns",
 			Labels: map[string]string{
 				"function": "foo",
 			},
 		},
-		Spec: spec.FunctionSpec{
+		Spec: api.FunctionSpec{
 			ServiceSpec: v1.ServiceSpec{
 				Ports: []v1.ServicePort{
 					{
