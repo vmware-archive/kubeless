@@ -22,7 +22,7 @@ local controller_roles = [
     verbs: ["list", "delete"],
   },
   {
-    apiGroups: ["k8s.io"],
+    apiGroups: ["kubeless.io"],
     resources: ["functions"],
     verbs: ["get", "list", "watch"],
   },
