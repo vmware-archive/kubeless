@@ -536,7 +536,7 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *api.Function, or 
 
 // this function resolves backward incompatibility in case user uses old client which doesn't include serviceSpec into funcSpec.
 // if serviceSpec is empty, we will use the default serviceSpec whose port is 8080
-func serviceSpec(funcObj *spec.Function) v1.ServiceSpec {
+func serviceSpec(funcObj *api.Function) v1.ServiceSpec {
 	if len(funcObj.Spec.ServiceSpec.Ports) != 0 && len(funcObj.Spec.ServiceSpec.Selector) != 0 {
 		return funcObj.Spec.ServiceSpec
 	}
@@ -550,7 +550,7 @@ func serviceSpec(funcObj *spec.Function) v1.ServiceSpec {
 				TargetPort: intstr.FromInt(8080),
 			},
 		},
-		Selector: funcObj.Metadata.Labels,
+		Selector: funcObj.ObjectMeta.Labels,
 		Type:     v1.ServiceTypeClusterIP,
 	}
 }
@@ -588,7 +588,7 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *api.Function, or []
 	return err
 }
 
-func svcPort(funcObj *spec.Function) int32 {
+func svcPort(funcObj *api.Function) int32 {
 	if len(funcObj.Spec.ServiceSpec.Ports) != 0 {
 		return funcObj.Spec.ServiceSpec.Ports[0].Port
 	}
