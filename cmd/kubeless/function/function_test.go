@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 )
 
 func TestParseLabel(t *testing.T) {
@@ -300,5 +301,19 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 	if result4.Spec.FunctionContentType != "base64+zip" {
 		t.Errorf("Should return base64+zip, received %s", result4.Spec.FunctionContentType)
+	}
+
+	// It should maintain previous HPA definition
+	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, spec.Function{
+		Spec: spec.FunctionSpec{
+			HorizontalPodAutoscaler: v2alpha1.HorizontalPodAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "previous-hpa",
+				},
+			},
+		},
+	})
+	if result5.Spec.HorizontalPodAutoscaler.ObjectMeta.Name != "previous-hpa" {
+		t.Error("should maintain previous HPA definition")
 	}
 }

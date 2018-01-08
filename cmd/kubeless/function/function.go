@@ -132,43 +132,42 @@ func getContentType(filename string, fbytes []byte) string {
 }
 
 func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, defaultFunction spec.Function) (*spec.Function, error) {
-
-	if handler == "" {
-		handler = defaultFunction.Spec.Handler
+	function := defaultFunction
+	function.TypeMeta = metav1.TypeMeta{
+		Kind:       "Function",
+		APIVersion: "k8s.io/v1",
+	}
+	if handler != "" {
+		function.Spec.Handler = handler
 	}
 
-	var function, checksum, contentType string
-	if file == "" {
-		contentType = defaultFunction.Spec.FunctionContentType
-		function = defaultFunction.Spec.Function
-		checksum = defaultFunction.Spec.Checksum
-	} else {
+	if file != "" {
 		functionBytes, err := ioutil.ReadFile(file)
 		if err != nil {
-			return &spec.Function{}, err
+			return nil, err
 		}
-		contentType = getContentType(file, functionBytes)
-		if contentType == "text" {
-			function = string(functionBytes)
+		function.Spec.FunctionContentType = getContentType(file, functionBytes)
+		if function.Spec.FunctionContentType == "text" {
+			function.Spec.Function = string(functionBytes)
 		} else {
-			function = base64.StdEncoding.EncodeToString(functionBytes)
+			function.Spec.Function = base64.StdEncoding.EncodeToString(functionBytes)
 		}
-		checksum, err = getFileSha256(file)
+		function.Spec.Checksum, err = getFileSha256(file)
 		if err != nil {
-			return &spec.Function{}, err
+			return nil, err
 		}
 	}
 
-	if deps == "" {
-		deps = defaultFunction.Spec.Deps
+	if deps != "" {
+		function.Spec.Deps = deps
 	}
 
-	if runtime == "" {
-		runtime = defaultFunction.Spec.Runtime
+	if runtime != "" {
+		function.Spec.Runtime = runtime
 	}
 
-	if timeout == "" {
-		timeout = defaultFunction.Spec.Timeout
+	if timeout != "" {
+		function.Spec.Timeout = timeout
 	}
 
 	triggers := []bool{triggerHTTP, topic != "", schedule != ""}
@@ -182,25 +181,22 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		return nil, errors.New("exactly one of --trigger-http, --trigger-topic, --schedule must be specified")
 	}
 
-	funcType := ""
 	switch {
 	case triggerHTTP:
-		funcType = "HTTP"
-		topic = ""
-		schedule = ""
+		function.Spec.Type = "HTTP"
+		function.Spec.Topic = ""
+		function.Spec.Schedule = ""
 		break
 	case schedule != "":
-		funcType = "Scheduled"
-		topic = ""
+		function.Spec.Type = "Scheduled"
+		function.Spec.Schedule = schedule
+		function.Spec.Topic = ""
 		break
 	case topic != "":
-		funcType = "PubSub"
-		schedule = ""
+		function.Spec.Type = "PubSub"
+		function.Spec.Topic = topic
+		function.Spec.Schedule = ""
 		break
-	default:
-		funcType = defaultFunction.Spec.Type
-		topic = defaultFunction.Spec.Topic
-		schedule = defaultFunction.Spec.Schedule
 	}
 
 	funcEnv := parseEnv(envs)
@@ -215,6 +211,11 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 	ls := parseLabel(labels)
 	for k, v := range ls {
 		funcLabels[k] = v
+	}
+	function.Metadata = metav1.ObjectMeta{
+		Name:      funcName,
+		Namespace: ns,
+		Labels:    funcLabels,
 	}
 
 	resources := v1.ResourceRequirements{}
@@ -239,6 +240,13 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 
 	if len(runtimeImage) == 0 && len(defaultFunction.Spec.Template.Spec.Containers) != 0 {
 		runtimeImage = defaultFunction.Spec.Template.Spec.Containers[0].Image
+	}
+	function.Spec.Template.Spec.Containers = []v1.Container{
+		{
+			Env:       funcEnv,
+			Resources: resources,
+			Image:     runtimeImage,
+		},
 	}
 
 	selectorLabels := map[string]string{}
@@ -274,42 +282,9 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		svcSpec.Ports[0].Port = defaultFunction.Spec.ServiceSpec.Ports[0].Port
 		svcSpec.Ports[0].TargetPort = defaultFunction.Spec.ServiceSpec.Ports[0].TargetPort
 	}
+	function.Spec.ServiceSpec = svcSpec
 
-	return &spec.Function{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Function",
-			APIVersion: "k8s.io/v1",
-		},
-		Metadata: metav1.ObjectMeta{
-			Name:      funcName,
-			Namespace: ns,
-			Labels:    funcLabels,
-		},
-		Spec: spec.FunctionSpec{
-			Handler:             handler,
-			Runtime:             runtime,
-			Type:                funcType,
-			Function:            function,
-			Checksum:            checksum,
-			FunctionContentType: contentType,
-			Deps:                deps,
-			Topic:               topic,
-			Schedule:            schedule,
-			Timeout:             timeout,
-			ServiceSpec:         svcSpec,
-			Template: v1.PodTemplateSpec{
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						{
-							Env:       funcEnv,
-							Resources: resources,
-							Image:     runtimeImage,
-						},
-					},
-				},
-			},
-		},
-	}, nil
+	return &function, nil
 }
 
 func getDeploymentStatus(cli kubernetes.Interface, funcName, ns string) (string, error) {
