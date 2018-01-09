@@ -21,7 +21,8 @@ env:
     - TEST_TARGET=GKE
   global:
     - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller
-    - CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}
+    - CONTROLLER_TAG=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}
+    - CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
     - CGO_ENABLED=0
     - TEST_DEBUG=1
     - GKE_VERSION=1.7.8-gke.0
@@ -91,6 +92,8 @@ script:
       make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
       make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
       make all-yaml
+      sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless.yaml
+      sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless-rbac.yaml
       case $TEST_TARGET in
       unit)
         make test
@@ -107,8 +110,6 @@ script:
       GKE)
         docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
         docker push $CONTROLLER_IMAGE
-        sed -i.bak 's/'":latest"'/'":${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}"'/g' kubeless.yaml
-        sed -i.bak 's/'":latest"'/'":${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}"'/g' kubeless-rbac.yaml
         echo "Waiting for the GKE cluster to be ready"
         tail -f $TRAVIS_BUILD_DIR/gke-start.log &
         wait $GKE_START_PID
@@ -145,11 +146,10 @@ before_deploy:
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
       docker tag $CONTROLLER_IMAGE ${CONTROLLER_IMAGE_NAME}:latest
       docker push $CONTROLLER_IMAGE
-      NEW_DIGEST=$(./script/find_digest.sh ${CONTROLLER_IMAGE_NAME} ${TRAVIS_TAG} | cut -d " " -f 2)
-      OLD_DIGEST=":latest"
-      sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless.yaml > kubeless-${TRAVIS_TAG}.yaml
-      sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
-      sed 's/'"$OLD_DIGEST"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
+      NEW_DIGEST=$(./script/find_digest.sh  ${CONTROLLER_IMAGE_NAME} ${TRAVIS_TAG} | cut -d " " -f 2)
+      sed 's/'"${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless.yaml > kubeless-${TRAVIS_TAG}.yaml
+      sed 's/'"${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
+      sed 's/'"${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
     fi
 
 deploy:
