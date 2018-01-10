@@ -36,6 +36,11 @@ local controller_roles = [
     resources: ["horizontalpodautoscalers"],
     verbs: ["create", "get", "delete", "list", "update", "patch"],
   },
+  {
+    apiGroups: ["monitoring.coreos.com"],
+    resources: ["alertmanagers", "prometheuses", "servicemonitors"],
+    verbs: ["*"],
+  },
 ];
 
 local controllerAccount = kubeless.controllerAccount;
