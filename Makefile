@@ -54,6 +54,9 @@ controller-build:
 controller-image: docker/controller
 	$(DOCKER) build -t $(CONTROLLER_IMAGE) $<
 
+update:
+	./hack/update-codegen.sh
+
 test:
 	$(GO) test $(GO_FLAGS) $(GO_PACKAGES)
 
