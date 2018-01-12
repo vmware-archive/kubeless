@@ -206,6 +206,12 @@ verify_rbac_mode() {
     echo "ERROR: Please run w/RBAC, eg minikube as: minikube start --extra-config=apiserver.Authorization.Mode=RBAC"
     return 1
 }
+
+verify_supported_autoscaling_group() {
+    kubectl api-versions |&grep -q "autoscaling/v2beta1" && return 0
+    return 1
+}
+
 wait_for_endpoint() {
     local func=${1:?}
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
@@ -295,6 +301,10 @@ test_kubeless_ingress() {
     kubeless route delete ing-${func}
 }
 test_kubeless_autoscale() {
+    verify_supported_autoscaling_group || {
+      echo_info "Skipping test_kubeless_autoscale as provisioned cluster does not support required version."
+      return 0
+    }
     local func=${1:?} exp_autoscale act_autoscale
     # Use some fixed values
     local val=10 num=3
