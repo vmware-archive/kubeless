@@ -29,7 +29,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 
-	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	fFake "github.com/kubeless/kubeless/pkg/client/clientset/versioned/fake"
 )
@@ -46,14 +46,14 @@ func listOutput(t *testing.T, client versioned.Interface, apiV1Client kubernetes
 
 func TestList(t *testing.T) {
 	funcMem, _ := parseMemory("128Mi")
-	listObj := api.FunctionList{
-		Items: []*api.Function{
+	listObj := kubelessApi.FunctionList{
+		Items: []*kubelessApi.Function{
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "myns",
 				},
-				Spec: api.FunctionSpec{
+				Spec: kubelessApi.FunctionSpec{
 					Handler:  "fhandler",
 					Function: "ffunction",
 					Runtime:  "fruntime",
@@ -75,7 +75,7 @@ func TestList(t *testing.T) {
 						"foo": "bar",
 					},
 				},
-				Spec: api.FunctionSpec{
+				Spec: kubelessApi.FunctionSpec{
 					Handler:  "bhandler",
 					Function: "bfunction",
 					Runtime:  "nodejs6",
@@ -115,7 +115,7 @@ func TestList(t *testing.T) {
 					Name:      "wrong",
 					Namespace: "myns",
 				},
-				Spec: api.FunctionSpec{
+				Spec: kubelessApi.FunctionSpec{
 					Handler:  "fhandler",
 					Function: "ffunction",
 					Runtime:  "fruntime",

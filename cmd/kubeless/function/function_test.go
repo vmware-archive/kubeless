@@ -25,7 +25,7 @@ import (
 	"reflect"
 	"testing"
 
-	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -101,12 +101,12 @@ func TestGetFunctionDescription(t *testing.T) {
 
 	inputHeadless := true
 	inputPort := int32(80)
-	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, api.Function{})
+	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, kubelessApi.Function{})
 	if err != nil {
 		t.Error(err)
 	}
 	parsedMem, _ := parseMemory("128Mi")
-	expectedFunction := api.Function{
+	expectedFunction := kubelessApi.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
 			APIVersion: "kubeless.io/v1beta1",
@@ -118,7 +118,7 @@ func TestGetFunctionDescription(t *testing.T) {
 				"test": "1",
 			},
 		},
-		Spec: api.FunctionSpec{
+		Spec: kubelessApi.FunctionSpec{
 			Handler:             "file.handler",
 			Runtime:             "runtime",
 			Type:                "HTTP",
@@ -200,7 +200,7 @@ func TestGetFunctionDescription(t *testing.T) {
 		t.Error(err)
 	}
 	parsedMem2, _ := parseMemory("256Mi")
-	newFunction := api.Function{
+	newFunction := kubelessApi.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
 			APIVersion: "kubeless.io/v1beta1",
@@ -212,7 +212,7 @@ func TestGetFunctionDescription(t *testing.T) {
 				"test": "2",
 			},
 		},
-		Spec: api.FunctionSpec{
+		Spec: kubelessApi.FunctionSpec{
 			Handler:             "file.handler2",
 			Runtime:             "runtime2",
 			Type:                "PubSub",

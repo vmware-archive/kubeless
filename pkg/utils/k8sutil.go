@@ -29,7 +29,7 @@ import (
 	"github.com/kubeless/kubeless-old/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/langruntime"
 
-	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/sirupsen/logrus"
 
 	"k8s.io/api/autoscaling/v2beta1"
@@ -149,10 +149,10 @@ func GetDefaultNamespace() string {
 }
 
 // GetFunction returns specification of a function
-func GetFunction(funcName, ns string) (api.Function, error) {
+func GetFunction(funcName, ns string) (kubelessApi.Function, error) {
 	kubelessClient, err := GetFunctionClientOutCluster()
 	if err != nil {
-		return api.Function{}, err
+		return kubelessApi.Function{}, err
 	}
 
 	f, err := kubelessClient.KubelessV1beta1().Functions(ns).Get(funcName, metav1.GetOptions{})
@@ -161,14 +161,14 @@ func GetFunction(funcName, ns string) (api.Function, error) {
 		if k8sErrors.IsNotFound(err) {
 			logrus.Fatalf("Function %s is not found", funcName)
 		}
-		return api.Function{}, err
+		return kubelessApi.Function{}, err
 	}
 
 	return *f, nil
 }
 
 // CreateK8sCustomResource will create a custom function object
-func CreateK8sCustomResource(kubelessClient versioned.Interface, f *api.Function) error {
+func CreateK8sCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
 	_, err := kubelessClient.KubelessV1beta1().Functions(f.Namespace).Create(f)
 	if err != nil {
 		return err
@@ -177,7 +177,7 @@ func CreateK8sCustomResource(kubelessClient versioned.Interface, f *api.Function
 }
 
 // UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(kubelessClient versioned.Interface, f *api.Function) error {
+func UpdateK8sCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
 	data, err := json.Marshal(f)
 	if err != nil {
 		return err
@@ -298,7 +298,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 }
 
 // CreateIngress creates ingress rule for a specific function
-func CreateIngress(client kubernetes.Interface, funcObj *api.Function, ingressName, hostname, ns string, enableTLSAcme bool) error {
+func CreateIngress(client kubernetes.Interface, funcObj *kubelessApi.Function, ingressName, hostname, ns string, enableTLSAcme bool) error {
 	or, err := GetOwnerReference(funcObj)
 	if err != nil {
 		return err
@@ -412,7 +412,7 @@ func getFileName(handler, funcContentType, runtime string) (string, error) {
 }
 
 // EnsureFuncConfigMap creates/updates a config map with a function specification
-func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *api.Function, or []metav1.OwnerReference) error {
+func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference) error {
 	configMapData := map[string]string{}
 	var err error
 	if funcObj.Spec.Handler != "" {
@@ -463,7 +463,7 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *api.Function, or 
 
 // this function resolves backward incompatibility in case user uses old client which doesn't include serviceSpec into funcSpec.
 // if serviceSpec is empty, we will use the default serviceSpec whose port is 8080
-func serviceSpec(funcObj *api.Function) v1.ServiceSpec {
+func serviceSpec(funcObj *kubelessApi.Function) v1.ServiceSpec {
 	if len(funcObj.Spec.ServiceSpec.Ports) != 0 && len(funcObj.Spec.ServiceSpec.Selector) != 0 {
 		return funcObj.Spec.ServiceSpec
 	}
@@ -483,7 +483,7 @@ func serviceSpec(funcObj *api.Function) v1.ServiceSpec {
 }
 
 // EnsureFuncService creates/updates a function service
-func EnsureFuncService(client kubernetes.Interface, funcObj *api.Function, or []metav1.OwnerReference) error {
+func EnsureFuncService(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference) error {
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            funcObj.ObjectMeta.Name,
@@ -515,7 +515,7 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *api.Function, or []
 	return err
 }
 
-func svcPort(funcObj *api.Function) int32 {
+func svcPort(funcObj *kubelessApi.Function) int32 {
 	if len(funcObj.Spec.ServiceSpec.Ports) != 0 {
 		return funcObj.Spec.ServiceSpec.Ports[0].Port
 	}
@@ -523,7 +523,7 @@ func svcPort(funcObj *api.Function) int32 {
 }
 
 // EnsureFuncDeployment creates/updates a function deployment
-func EnsureFuncDeployment(client kubernetes.Interface, funcObj *api.Function, or []metav1.OwnerReference) error {
+func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference) error {
 
 	var err error
 
@@ -788,7 +788,7 @@ func doRESTReq(restIface rest.Interface, groupVersion, verb, resource, elem, nam
 }
 
 // EnsureFuncCronJob creates/updates a function cron job
-func EnsureFuncCronJob(client rest.Interface, funcObj *api.Function, or []metav1.OwnerReference, groupVersion string) error {
+func EnsureFuncCronJob(client rest.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference, groupVersion string) error {
 	var maxSucccessfulHist, maxFailedHist int32
 	maxSucccessfulHist = 3
 	maxFailedHist = 1
@@ -882,7 +882,7 @@ func DeleteServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, 
 }
 
 // CreateServiceMonitor creates a Service Monitor for the given function
-func CreateServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, funcObj *api.Function, ns string, or []metav1.OwnerReference) error {
+func CreateServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, funcObj *kubelessApi.Function, ns string, or []metav1.OwnerReference) error {
 	_, err := smclient.ServiceMonitors(ns).Get(funcObj.ObjectMeta.Name, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
@@ -921,7 +921,7 @@ func CreateServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, 
 
 // GetOwnerReference returns ownerRef for appending to objects's metadata
 // created by kubeless-controller one a function is deployed.
-func GetOwnerReference(funcObj *api.Function) ([]metav1.OwnerReference, error) {
+func GetOwnerReference(funcObj *kubelessApi.Function) ([]metav1.OwnerReference, error) {
 	if funcObj.ObjectMeta.Name == "" {
 		return []metav1.OwnerReference{}, fmt.Errorf("function name can't be empty")
 	}

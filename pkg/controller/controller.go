@@ -32,7 +32,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	kv1beta1 "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/utils"
@@ -50,7 +50,7 @@ type Controller struct {
 	clientset      kubernetes.Interface
 	kubelessclient versioned.Interface
 	smclient       *monitoringv1alpha1.MonitoringV1alpha1Client
-	Functions      map[string]*api.Function
+	Functions      map[string]*kubelessApi.Function
 	queue          workqueue.RateLimitingInterface
 	informer       cache.SharedIndexInformer
 }
@@ -181,7 +181,7 @@ func (c *Controller) getResouceGroupVersion(target string) (string, error) {
 }
 
 // ensureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
-func (c *Controller) ensureK8sResources(funcObj *api.Function) error {
+func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 	if len(funcObj.ObjectMeta.Labels) == 0 {
 		funcObj.ObjectMeta.Labels = make(map[string]string)
 	}
@@ -319,7 +319,7 @@ func (c *Controller) processItem(key string) error {
 		return nil
 	}
 
-	funcObj := obj.(*api.Function)
+	funcObj := obj.(*kubelessApi.Function)
 
 	err = c.ensureK8sResources(funcObj)
 	if err != nil {

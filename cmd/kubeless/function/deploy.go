@@ -20,7 +20,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/robfig/cron"
@@ -147,7 +147,7 @@ var deployCmd = &cobra.Command{
 		}
 
 		cli := utils.GetClientOutOfCluster()
-		defaultFunctionSpec := api.Function{}
+		defaultFunctionSpec := kubelessApi.Function{}
 		defaultFunctionSpec.Spec.Type = "HTTP"
 		defaultFunctionSpec.ObjectMeta.Labels = map[string]string{
 			"created-by": "kubeless",

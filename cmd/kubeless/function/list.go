@@ -31,7 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	api "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	"github.com/kubeless/kubeless/pkg/utils"
 )
@@ -73,7 +73,7 @@ func init() {
 }
 
 func doList(w io.Writer, kubelessClient versioned.Interface, apiV1Client kubernetes.Interface, ns, output string, args []string) error {
-	var list []*api.Function
+	var list []*kubelessApi.Function
 	if len(args) == 0 {
 		funcList, err := kubelessClient.KubelessV1beta1().Functions(ns).List(metav1.ListOptions{})
 		if err != nil {
@@ -81,7 +81,7 @@ func doList(w io.Writer, kubelessClient versioned.Interface, apiV1Client kuberne
 		}
 		list = funcList.Items
 	} else {
-		list = make([]*api.Function, 0, len(args))
+		list = make([]*kubelessApi.Function, 0, len(args))
 		for _, arg := range args {
 			f, err := kubelessClient.KubelessV1beta1().Functions(ns).Get(arg, metav1.GetOptions{})
 			if err != nil {
@@ -117,7 +117,7 @@ func parseDeps(deps, runtime string) (res string, err error) {
 }
 
 // printFunctions formats the output of function list
-func printFunctions(w io.Writer, functions []*api.Function, cli kubernetes.Interface, output string) error {
+func printFunctions(w io.Writer, functions []*kubelessApi.Function, cli kubernetes.Interface, output string) error {
 	if output == "" {
 		table := uitable.New()
 		table.MaxColWidth = 50
