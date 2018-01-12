@@ -145,7 +145,6 @@ var updateCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		logrus.Info(previousFunction.Spec.HorizontalPodAutoscaler)
 
 		if port != nil && (*port <= 0 || *port > 65535) {
 			logrus.Fatalf("Invalid port number %d specified", *port)
@@ -161,7 +160,6 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		logrus.Infof("Redeploying function...")
-		logrus.Info(f.Spec.HorizontalPodAutoscaler)
 		err = utils.UpdateK8sCustomResource(crdClient, f)
 		if err != nil {
 			logrus.Fatal(err)
