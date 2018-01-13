@@ -131,31 +131,20 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-<<<<<<< HEAD
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, defaultFunction api.Function) (*api.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
 		Kind:       "Function",
-		APIVersion: "k8s.io/v1",
+		APIVersion: "kubeless.io/v1beta1",
 	}
 	if handler != "" {
 		function.Spec.Handler = handler
-=======
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
-
-	if handler == "" {
-		handler = defaultFunction.Spec.Handler
->>>>>>> rename package alias from api to kubelessApi
 	}
 
 	if file != "" {
 		functionBytes, err := ioutil.ReadFile(file)
 		if err != nil {
-<<<<<<< HEAD
 			return nil, err
-=======
-			return &kubelessApi.Function{}, err
->>>>>>> rename package alias from api to kubelessApi
 		}
 		function.Spec.FunctionContentType = getContentType(file, functionBytes)
 		if function.Spec.FunctionContentType == "text" {
@@ -165,11 +154,7 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		}
 		function.Spec.Checksum, err = getFileSha256(file)
 		if err != nil {
-<<<<<<< HEAD
 			return nil, err
-=======
-			return &kubelessApi.Function{}, err
->>>>>>> rename package alias from api to kubelessApi
 		}
 	}
 
