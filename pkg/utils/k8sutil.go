@@ -913,9 +913,9 @@ func EnsureFuncCronJob(client rest.Interface, funcObj *spec.Function, or []metav
 						Spec: v1.PodSpec{
 							Containers: []v1.Container{
 								{
-									Image: busybox,
+									Image: unzip,
 									Name:  "trigger",
-									Args:  []string{"wget", "-qO-", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.Metadata.Name, funcObj.Metadata.Namespace)},
+									Args:  []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.Metadata.Name, funcObj.Metadata.Namespace)},
 								},
 							},
 							RestartPolicy: v1.RestartPolicyNever,
