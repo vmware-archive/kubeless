@@ -94,6 +94,7 @@ script:
       make all-yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless.yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless-rbac.yaml
+      sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless-openshift.yaml
       case $TEST_TARGET in
       unit)
         make test
@@ -136,7 +137,7 @@ after_success:
 before_deploy:
   - |
     if [[ "$SHOULD_TEST" != "1" ]]; then
-      echo "Unable to release a job that has not being tested!"
+      echo "Unable to release a job that has not been tested!"
       return 1
     fi
   - |
@@ -147,9 +148,9 @@ before_deploy:
       docker tag $CONTROLLER_IMAGE ${CONTROLLER_IMAGE_NAME}:latest
       docker push $CONTROLLER_IMAGE
       NEW_DIGEST=$(./script/find_digest.sh  ${CONTROLLER_IMAGE_NAME} ${TRAVIS_TAG} | cut -d " " -f 2)
-      sed 's/'"${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless.yaml > kubeless-${TRAVIS_TAG}.yaml
-      sed 's/'"${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
-      sed 's/'"${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
+      sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless.yaml > kubeless-${TRAVIS_TAG}.yaml
+      sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
+      sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
     fi
 
 deploy:
