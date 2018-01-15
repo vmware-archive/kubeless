@@ -599,7 +599,7 @@ func TestEnsureCronJob(t *testing.T) {
 			if *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds != int64(120) {
 				t.Errorf("Unexpected ActiveDeadlineSeconds: %d", *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds)
 			}
-			expectedCommand := []string{"wget", "-qO-", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", f1Name, ns)}
+			expectedCommand := []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", f1Name, ns)}
 			if !reflect.DeepEqual(cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args, expectedCommand) {
 				t.Errorf("Unexpected command %s", strings.Join(cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args, " "))
 			}
