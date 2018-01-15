@@ -26,7 +26,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kubeless/kubeless-old/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/langruntime"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
