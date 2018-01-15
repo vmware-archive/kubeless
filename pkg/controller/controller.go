@@ -17,69 +17,55 @@ limitations under the License.
 package controller
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/sirupsen/logrus"
+	"k8s.io/api/autoscaling/v2beta1"
+	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/kubeless/kubeless/pkg/spec"
+	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
+	kv1beta1 "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/utils"
 )
 
 const (
-	crdName    = "function.k8s.io"
 	maxRetries = 5
 	funcKind   = "Function"
-	funcAPI    = "k8s.io"
-)
-
-var (
-	errVersionOutdated = errors.New("Requested version is outdated in apiserver")
-	initRetryWaitTime  = 30 * time.Second
+	funcAPI    = "kubeless.io"
 )
 
 // Controller object
 type Controller struct {
-	logger    *logrus.Entry
-	clientset kubernetes.Interface
-	crdclient rest.Interface
-	smclient  *monitoringv1alpha1.MonitoringV1alpha1Client
-	Functions map[string]*spec.Function
-	queue     workqueue.RateLimitingInterface
-	informer  cache.SharedIndexInformer
+	logger         *logrus.Entry
+	clientset      kubernetes.Interface
+	kubelessclient versioned.Interface
+	smclient       *monitoringv1alpha1.MonitoringV1alpha1Client
+	Functions      map[string]*kubelessApi.Function
+	queue          workqueue.RateLimitingInterface
+	informer       cache.SharedIndexInformer
 }
 
 // Config contains k8s client of a controller
 type Config struct {
-	KubeCli   kubernetes.Interface
-	CRDClient rest.Interface
+	KubeCli        kubernetes.Interface
+	FunctionClient versioned.Interface
 }
 
 // New initializes a controller object
 func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Controller {
-	lw := cache.NewListWatchFromClient(cfg.CRDClient, "functions", api.NamespaceAll, fields.Everything())
-
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
-	informer := cache.NewSharedIndexInformer(
-		lw,
-		&spec.Function{},
-		0,
-		cache.Indexers{},
-	)
+	informer := kv1beta1.NewFunctionInformer(cfg.FunctionClient, corev1.NamespaceAll, 0, cache.Indexers{})
 
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -103,12 +89,12 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 	})
 
 	return &Controller{
-		logger:    logrus.WithField("pkg", "controller"),
-		clientset: cfg.KubeCli,
-		smclient:  smclient,
-		crdclient: cfg.CRDClient,
-		informer:  informer,
-		queue:     queue,
+		logger:         logrus.WithField("pkg", "controller"),
+		clientset:      cfg.KubeCli,
+		smclient:       smclient,
+		kubelessclient: cfg.FunctionClient,
+		informer:       informer,
+		queue:          queue,
 	}
 }
 
@@ -195,11 +181,11 @@ func (c *Controller) getResouceGroupVersion(target string) (string, error) {
 }
 
 // ensureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
-func (c *Controller) ensureK8sResources(funcObj *spec.Function) error {
-	if len(funcObj.Metadata.Labels) == 0 {
-		funcObj.Metadata.Labels = make(map[string]string)
+func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
+	if len(funcObj.ObjectMeta.Labels) == 0 {
+		funcObj.ObjectMeta.Labels = make(map[string]string)
 	}
-	funcObj.Metadata.Labels["function"] = funcObj.Metadata.Name
+	funcObj.ObjectMeta.Labels["function"] = funcObj.ObjectMeta.Name
 
 	or, err := utils.GetOwnerReference(funcObj)
 	if err != nil {
@@ -235,9 +221,9 @@ func (c *Controller) ensureK8sResources(funcObj *spec.Function) error {
 
 	if funcObj.Spec.HorizontalPodAutoscaler.Name != "" && funcObj.Spec.HorizontalPodAutoscaler.Spec.ScaleTargetRef.Name != "" {
 		funcObj.Spec.HorizontalPodAutoscaler.OwnerReferences = or
-		if funcObj.Spec.HorizontalPodAutoscaler.Spec.Metrics[0].Type == v2alpha1.ObjectMetricSourceType {
+		if funcObj.Spec.HorizontalPodAutoscaler.Spec.Metrics[0].Type == v2beta1.ObjectMetricSourceType {
 			// A service monitor is needed when the metric is an object
-			err = utils.CreateServiceMonitor(*c.smclient, funcObj, funcObj.Metadata.Namespace, or)
+			err = utils.CreateServiceMonitor(*c.smclient, funcObj, funcObj.ObjectMeta.Namespace, or)
 			if err != nil {
 				return err
 			}
@@ -248,7 +234,7 @@ func (c *Controller) ensureK8sResources(funcObj *spec.Function) error {
 		}
 	} else {
 		// HorizontalPodAutoscaler doesn't exists, try to delete if it already existed
-		err = c.deleteAutoscale(funcObj.Metadata.Namespace, funcObj.Metadata.Name)
+		err = c.deleteAutoscale(funcObj.ObjectMeta.Namespace, funcObj.ObjectMeta.Name)
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return err
 		}
@@ -333,7 +319,7 @@ func (c *Controller) processItem(key string) error {
 		return nil
 	}
 
-	funcObj := obj.(*spec.Function)
+	funcObj := obj.(*kubelessApi.Function)
 
 	err = c.ensureK8sResources(funcObj)
 	if err != nil {
@@ -362,7 +348,7 @@ func (c *Controller) garbageCollect() error {
 }
 
 func (c *Controller) collectServices() error {
-	srvs, err := c.clientset.CoreV1().Services(api.NamespaceAll).List(metav1.ListOptions{})
+	srvs, err := c.clientset.CoreV1().Services(corev1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -387,7 +373,7 @@ func (c *Controller) collectServices() error {
 }
 
 func (c *Controller) collectDeployment() error {
-	ds, err := c.clientset.AppsV1beta1().Deployments(api.NamespaceAll).List(metav1.ListOptions{})
+	ds, err := c.clientset.AppsV1beta1().Deployments(corev1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -408,7 +394,7 @@ func (c *Controller) collectDeployment() error {
 }
 
 func (c *Controller) collectConfigMap() error {
-	cm, err := c.clientset.CoreV1().ConfigMaps(api.NamespaceAll).List(metav1.ListOptions{})
+	cm, err := c.clientset.CoreV1().ConfigMaps(corev1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}

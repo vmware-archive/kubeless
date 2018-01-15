@@ -12,7 +12,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kubeless/kubeless/pkg/spec"
+	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
+	"k8s.io/api/core/v1"
+	xv1beta1 "k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apimachinery"
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
@@ -21,12 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
-	av2alpha1 "k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
-	batchv2alpha1 "k8s.io/client-go/pkg/apis/batch/v2alpha1"
-	xv1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	restFake "k8s.io/client-go/rest/fake"
 	ktesting "k8s.io/client-go/testing"
@@ -56,13 +55,13 @@ func TestEnsureConfigMap(t *testing.T) {
 		"foo": "bar",
 	}
 	f1Name := "f1"
-	f1 := &spec.Function{
-		Metadata: metav1.ObjectMeta{
+	f1 := &kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
 			Labels:    funcLabels,
 		},
-		Spec: spec.FunctionSpec{
+		Spec: kubelessApi.FunctionSpec{
 			Function: "function",
 			Deps:     "deps",
 			Handler:  "foo.bar",
@@ -96,12 +95,12 @@ func TestEnsureConfigMap(t *testing.T) {
 
 	// It should skip the dependencies field in case it is not supported
 	f2Name := "f2"
-	f2 := &spec.Function{
-		Metadata: metav1.ObjectMeta{
+	f2 := &kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      f2Name,
 			Namespace: ns,
 		},
-		Spec: spec.FunctionSpec{
+		Spec: kubelessApi.FunctionSpec{
 			Function: "function",
 			Handler:  "foo.bar",
 			Runtime:  "cobol",
@@ -124,12 +123,12 @@ func TestEnsureConfigMap(t *testing.T) {
 	}
 
 	// If there is already a config map it should update the previous one
-	f2 = &spec.Function{
-		Metadata: metav1.ObjectMeta{
+	f2 = &kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      f2Name,
 			Namespace: ns,
 		},
-		Spec: spec.FunctionSpec{
+		Spec: kubelessApi.FunctionSpec{
 			Function: "function2",
 			Handler:  "foo2.bar2",
 			Runtime:  "python3.4",
@@ -172,13 +171,13 @@ func TestEnsureService(t *testing.T) {
 		"foo": "bar",
 	}
 	f1Name := "f1"
-	f1 := &spec.Function{
-		Metadata: metav1.ObjectMeta{
+	f1 := &kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
 			Labels:    funcLabels,
 		},
-		Spec: spec.FunctionSpec{
+		Spec: kubelessApi.FunctionSpec{
 			Function: "function",
 			Deps:     "deps",
 			Handler:  "foo.bar",
@@ -235,7 +234,7 @@ func TestEnsureService(t *testing.T) {
 	newLabels := map[string]string{
 		"foobar": "barfoo",
 	}
-	f1.Metadata.Labels = newLabels
+	f1.ObjectMeta.Labels = newLabels
 	err = EnsureFuncService(clientset, f1, or)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
@@ -266,13 +265,13 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 	f1Name := "f1"
 	f1Port := int32(8080)
-	f1 := &spec.Function{
-		Metadata: metav1.ObjectMeta{
+	f1 := &kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
 			Labels:    funcLabels,
 		},
-		Spec: spec.FunctionSpec{
+		Spec: kubelessApi.FunctionSpec{
 			Function: "function",
 			Deps:     "deps",
 			Handler:  "foo.bar",
@@ -405,9 +404,9 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If no handler and function is given it should not fail
-	f2 := spec.Function{}
+	f2 := kubelessApi.Function{}
 	f2 = *f1
-	f2.Metadata.Name = "func2"
+	f2.ObjectMeta.Name = "func2"
 	f2.Spec.Function = ""
 	f2.Spec.Handler = ""
 	err = EnsureFuncDeployment(clientset, &f2, or)
@@ -420,9 +419,9 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If the Image has been already provided it should not resolve it
-	f3 := spec.Function{}
+	f3 := kubelessApi.Function{}
 	f3 = *f1
-	f3.Metadata.Name = "func3"
+	f3.ObjectMeta.Name = "func3"
 	f3.Spec.Template.Spec.Containers[0].Image = "test-image"
 	err = EnsureFuncDeployment(clientset, &f3, or)
 	if err != nil {
@@ -437,9 +436,9 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If no function is given it should not use an init container
-	f4 := spec.Function{}
+	f4 := kubelessApi.Function{}
 	f4 = *f1
-	f4.Metadata.Name = "func4"
+	f4.ObjectMeta.Name = "func4"
 	f4.Spec.Function = ""
 	f4.Spec.Deps = ""
 	err = EnsureFuncDeployment(clientset, &f4, or)
@@ -455,9 +454,9 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If the function is the type PubSub it should not contain a livenessProbe
-	f5 := spec.Function{}
+	f5 := kubelessApi.Function{}
 	f5 = *f1
-	f5.Metadata.Name = "func5"
+	f5.ObjectMeta.Name = "func5"
 	f5.Spec.Type = "PubSub"
 	err = EnsureFuncDeployment(clientset, &f5, or)
 	if err != nil {
@@ -472,7 +471,7 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// It should update a deployment if it is already present
-	f6 := spec.Function{}
+	f6 := kubelessApi.Function{}
 	f6 = *f1
 	f6.Spec.Handler = "foo.bar2"
 	err = EnsureFuncDeployment(clientset, &f6, or)
@@ -488,9 +487,9 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// It should return an error if some dependencies are given but the runtime is not supported
-	f7 := spec.Function{}
+	f7 := kubelessApi.Function{}
 	f7 = *f1
-	f7.Metadata.Name = "func7"
+	f7.ObjectMeta.Name = "func7"
 	f7.Spec.Deps = "deps"
 	f7.Spec.Runtime = "cobol"
 	err = EnsureFuncDeployment(clientset, &f7, or)
@@ -499,9 +498,9 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If a timeout is specified it should set an environment variable FUNC_TIMEOUT
-	f8 := spec.Function{}
+	f8 := kubelessApi.Function{}
 	f8 = *f1
-	f8.Metadata.Name = "func8"
+	f8.ObjectMeta.Name = "func8"
 	f8.Spec.Timeout = "10"
 	err = EnsureFuncDeployment(clientset, &f8, or)
 	if err != nil {
@@ -534,7 +533,7 @@ func fakeRESTClient(f func(req *http.Request) (*http.Response, error)) *restFake
 	})
 	return &restFake.RESTClient{
 		APIRegistry:          reg,
-		NegotiatedSerializer: api.Codecs,
+		NegotiatedSerializer: scheme.Codecs,
 		Client:               restFake.CreateHTTPClient(f),
 	}
 }
@@ -556,12 +555,12 @@ func TestEnsureCronJob(t *testing.T) {
 	}
 	ns := "default"
 	f1Name := "func1"
-	f1 := &spec.Function{
-		Metadata: metav1.ObjectMeta{
+	f1 := &kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
 		},
-		Spec: spec.FunctionSpec{
+		Spec: kubelessApi.FunctionSpec{
 			Timeout:  "120",
 			Schedule: "*/10 * * * *",
 		},
@@ -706,13 +705,13 @@ func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
 
 func TestCreateIngressResource(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
-	f1 := &spec.Function{
-		Metadata: metav1.ObjectMeta{
+	f1 := &kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "myns",
 			UID:       "1234",
 		},
-		Spec: spec.FunctionSpec{
+		Spec: kubelessApi.FunctionSpec{
 			ServiceSpec: v1.ServiceSpec{
 				Ports: []v1.ServicePort{
 					{
@@ -738,13 +737,13 @@ func TestCreateIngressResource(t *testing.T) {
 
 func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
-	f1 := &spec.Function{
-		Metadata: metav1.ObjectMeta{
+	f1 := &kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "myns",
 			UID:       "1234",
 		},
-		Spec: spec.FunctionSpec{
+		Spec: kubelessApi.FunctionSpec{
 			ServiceSpec: v1.ServiceSpec{
 				Ports: []v1.ServicePort{
 					{
@@ -810,7 +809,7 @@ func fakeConfig() *rest.Config {
 				Group:   "",
 				Version: "v1",
 			},
-			NegotiatedSerializer: api.Codecs,
+			NegotiatedSerializer: scheme.Codecs,
 		},
 	}
 }
@@ -832,7 +831,7 @@ func TestCreateAutoscaleResource(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	name := "foo"
 	ns := "myns"
-	hpaDef := v2alpha1.HorizontalPodAutoscaler{
+	hpaDef := v2beta1.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
@@ -842,7 +841,7 @@ func TestCreateAutoscaleResource(t *testing.T) {
 		t.Fatalf("Creating autoscale returned err: %v", err)
 	}
 
-	hpa, err := clientset.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).Get(name, metav1.GetOptions{})
+	hpa, err := clientset.AutoscalingV2beta1().HorizontalPodAutoscalers(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Creating autoscale returned err: %v", err)
 	}
@@ -857,7 +856,7 @@ func TestDeleteAutoscaleResource(t *testing.T) {
 		Name:      "foo",
 	}
 
-	as := av2alpha1.HorizontalPodAutoscaler{
+	as := v2beta1.HorizontalPodAutoscaler{
 		ObjectMeta: myNsFoo,
 	}
 
@@ -920,15 +919,15 @@ func TestGetProvisionContainer(t *testing.T) {
 }
 
 func TestServiceSpec(t *testing.T) {
-	f1 := &spec.Function{
-		Metadata: metav1.ObjectMeta{
+	f1 := &kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "myns",
 			Labels: map[string]string{
 				"function": "foo",
 			},
 		},
-		Spec: spec.FunctionSpec{
+		Spec: kubelessApi.FunctionSpec{
 			ServiceSpec: v1.ServiceSpec{
 				Ports: []v1.ServicePort{
 					{

@@ -17,7 +17,7 @@ import (
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
+	"k8s.io/api/autoscaling/v2beta1"
 )
 
 var autoscaleDeleteCmd = &cobra.Command{
@@ -44,13 +44,13 @@ var autoscaleDeleteCmd = &cobra.Command{
 		}
 
 		if function.Spec.HorizontalPodAutoscaler.Name != "" {
-			function.Spec.HorizontalPodAutoscaler = v2alpha1.HorizontalPodAutoscaler{}
-			crdClient, err := utils.GetCRDClientOutOfCluster()
+			function.Spec.HorizontalPodAutoscaler = v2beta1.HorizontalPodAutoscaler{}
+			kubelessClient, err := utils.GetFunctionClientOutCluster()
 			if err != nil {
 				logrus.Fatal(err)
 			}
 			logrus.Infof("Removing autoscaling rule to the function...")
-			err = utils.UpdateK8sCustomResource(crdClient, &function)
+			err = utils.UpdateK8sCustomResource(kubelessClient, &function)
 			if err != nil {
 				logrus.Fatal(err)
 			}

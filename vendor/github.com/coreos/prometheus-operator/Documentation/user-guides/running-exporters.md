@@ -1,3 +1,8 @@
+<br>
+<div class="alert alert-info" role="alert">
+    <i class="fa fa-exclamation-triangle"></i><b> Note:</b> Starting with v0.12.0, Prometheus Operator requires use of Kubernetes v1.7.x and up.
+</div>
+
 # Running Exporters
 Running exporters and scraping them with Prometheus configured by the prometheus-operator.
 
@@ -55,14 +60,14 @@ spec:
   - port: http-metrics
     interval: 15s
 ```
-(A better example for monitoring Kubernetes cluster components can be found [User Guide "Cluster Monitoring"](user-guides/cluster-monitoring.md))
+(A better example for monitoring Kubernetes cluster components can be found [User Guide "Cluster Monitoring"](cluster-monitoring.md))
 This ServiceMonitor targets **all** Services with the label `k8s-app` (`spec.selector`) any value, in the namespaces `kube-system` and `monitoring` (`spec.namespaceSelector`).
 
 ## Troubleshooting
 ### Namespace "limits"/things to keep in mind
 See the ServiceMonitor Documentation:
 > While `ServiceMonitor`s must live in the same namespace as the `Prometheus`
-TPR, discovered targets may come from any namespace. This is important to allow
+resource, discovered targets may come from any namespace. This is important to allow
 cross-namespace monitoring use cases, e.g. for meta-monitoring. Using the
 `namespaceSelector` of the `ServiceMonitorSpec`, one can restrict the
 namespaces the `Endpoints` objects are allowed to be discovered from.

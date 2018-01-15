@@ -5,7 +5,8 @@
 ## TL;DR;
 
 ```console
-$ helm install opsgoodness/grafana
+$ helm repo add coreos https://s3-eu-west-1.amazonaws.com/coreos-charts/stable/
+$ helm install coreos/grafana
 ```
 ## Introduction
 
@@ -16,7 +17,7 @@ This chart bootstraps an [Grafana](http://grafana.org) deployment on a [Kubernet
 To install the chart with the release name `my-release`:
 
 ```console
-$ helm install --name my-release opsgoodness/grafana
+$ helm install --name my-release coreos/grafana
 ```
 
 ## Uninstalling the Chart
@@ -38,6 +39,8 @@ Parameter | Description | Default
 `adminPassword` | Grafana admin user password | `admin`
 `image.repository` | Image | `grafana/grafana`
 `image.tag` | Image tag | `4.4.1`
+`grafanaWatcher.repository` | Image | `quay.io/coreos/grafana-watcher`
+`grafanaWatcher.tag` | Image tag | `v0.0.8`
 `ingress.enabled` | If true, Grafana Ingress will be created | `false`
 `ingress.annotations` | Annotations for Grafana Ingress | `{}`
 `ingress.fqdn` | Grafana Ingress fully-qualified domain name | `""`
@@ -49,18 +52,18 @@ Parameter | Description | Default
 `service.externalIPs` | List of external IP addresses at which the Grafana Service will be available | `[]`
 `service.loadBalancerIP` | External IP address to assign to Grafana Service | `""`
 `service.loadBalancerSourceRanges` | List of client IPs allowed to access Grafana Service | `[]`
-`service.nodePort` | Port to expose Grafana Service on each node | `39093`
+`service.nodePort` | Port to expose Grafana Service on each node | `30902`
 `service.type` | Grafana Service type | `ClusterIP`
 `storageSpec` | Grafana StorageSpec for persistent data | `{}`
 
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`. For example,
-$ helm install opsgoodness/grafana --name my-release --set adminUser=bob
+$ helm install coreos/grafana --name my-release --set adminUser=bob
 ```
 
 Alternatively, a YAML file that specifies the values for the above parameters can be provided while installing the chart. For example,
 
 ```console
-$ helm install opsgoodness/grafana --name my-release -f values.yaml
+$ helm install coreos/grafana --name my-release -f values.yaml
 ```
 
 > **Tip**: You can use the default [values.yaml](values.yaml)

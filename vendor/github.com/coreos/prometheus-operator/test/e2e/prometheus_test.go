@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -24,11 +25,11 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/pkg/api/v1"
 
 	"github.com/coreos/prometheus-operator/pkg/alertmanager"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1"
@@ -147,18 +148,31 @@ func TestPrometheusResourceUpdate(t *testing.T) {
 			v1.ResourceMemory: resource.MustParse("200Mi"),
 		},
 	}
-	if err := framework.UpdatePrometheusAndWaitUntilReady(ns, p); err != nil {
-		t.Fatal(err)
-	}
-
-	pods, err = framework.KubeClient.Core().Pods(ns).List(prometheus.ListOptions(name))
+	_, err = framework.MonClient.Prometheuses(ns).Update(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	res = pods.Items[0].Spec.Containers[0].Resources
 
-	if !reflect.DeepEqual(res, p.Spec.Resources) {
-		t.Fatalf("resources don't match. Has %q, want %q", res, p.Spec.Resources)
+	err = wait.Poll(5*time.Second, 2*time.Minute, func() (bool, error) {
+		pods, err := framework.KubeClient.Core().Pods(ns).List(prometheus.ListOptions(name))
+		if err != nil {
+			return false, err
+		}
+
+		if len(pods.Items) != 1 {
+			return false, nil
+		}
+
+		res = pods.Items[0].Spec.Containers[0].Resources
+		if !reflect.DeepEqual(res, p.Spec.Resources) {
+			return false, nil
+		}
+
+		return true, nil
+	})
+
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -235,8 +249,13 @@ scrape_configs:
     static_configs:
       - targets:
         - 111.111.111.111:9090
-        - 111.111.111.112:9090 
+        - 111.111.111.112:9090
 `
+
+	cfg, err := framework.KubeClient.CoreV1().Secrets(ns).Get(cfg.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "could not retrieve previous secret"))
+	}
 
 	cfg.Data["prometheus.yaml"] = []byte(secondConfig)
 	if _, err := framework.KubeClient.CoreV1().Secrets(ns).Update(cfg); err != nil {
@@ -531,7 +550,7 @@ func basicQueryWorking(ns, svcName string) (bool, error) {
 	}
 
 	rq := prometheusQueryAPIResponse{}
-	if err := json.NewDecoder(response).Decode(&rq); err != nil {
+	if err := json.NewDecoder(bytes.NewBuffer(response)).Decode(&rq); err != nil {
 		return false, err
 	}
 
@@ -563,7 +582,7 @@ func isAlertmanagerDiscoveryWorking(ns, promSVCName, alertmanagerName string) fu
 		}
 
 		ra := prometheusAlertmanagerAPIResponse{}
-		if err := json.NewDecoder(response).Decode(&ra); err != nil {
+		if err := json.NewDecoder(bytes.NewBuffer(response)).Decode(&ra); err != nil {
 			return false, err
 		}
 

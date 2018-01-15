@@ -20,8 +20,8 @@ import (
 	"io/ioutil"
 	"strings"
 
+	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/langruntime"
-	"github.com/kubeless/kubeless/pkg/spec"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
@@ -147,9 +147,9 @@ var deployCmd = &cobra.Command{
 		}
 
 		cli := utils.GetClientOutOfCluster()
-		defaultFunctionSpec := spec.Function{}
+		defaultFunctionSpec := kubelessApi.Function{}
 		defaultFunctionSpec.Spec.Type = "HTTP"
-		defaultFunctionSpec.Metadata.Labels = map[string]string{
+		defaultFunctionSpec.ObjectMeta.Labels = map[string]string{
 			"created-by": "kubeless",
 		}
 		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, &headless, &port, envs, labels, defaultFunctionSpec)
@@ -157,13 +157,13 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		crdClient, err := utils.GetCRDClientOutOfCluster()
+		kubelessClient, err := utils.GetFunctionClientOutCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
 		logrus.Infof("Deploying function...")
-		err = utils.CreateK8sCustomResource(crdClient, f)
+		err = utils.CreateK8sCustomResource(kubelessClient, f)
 		if err != nil {
 			logrus.Fatalf("Failed to deploy %s. Received:\n%s", funcName, err)
 		}

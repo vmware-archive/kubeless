@@ -55,18 +55,18 @@ var autoscaleCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		hpa, err := getHorizontalAutoscaleDefinition(funcName, ns, metric, min, max, value, function.Metadata.Labels)
+		hpa, err := getHorizontalAutoscaleDefinition(funcName, ns, metric, min, max, value, function.ObjectMeta.Labels)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 		function.Spec.HorizontalPodAutoscaler = hpa
 
-		crdClient, err := utils.GetCRDClientOutOfCluster()
+		kubelessClient, err := utils.GetFunctionClientOutCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
 		logrus.Infof("Adding autoscaling rule to the function...")
-		err = utils.UpdateK8sCustomResource(crdClient, &function)
+		err = utils.UpdateK8sCustomResource(kubelessClient, &function)
 		if err != nil {
 			logrus.Fatal(err)
 		}

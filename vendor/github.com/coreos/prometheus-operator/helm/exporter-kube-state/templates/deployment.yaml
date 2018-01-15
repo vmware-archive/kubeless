@@ -1,0 +1,74 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}
+  labels:
+    app: {{ template "name" . }}
+    component: kube-state
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    version: "{{ .Values.kube_state_metrics.image.tag }}"
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 10
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: {{ template "fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}
+        component: kube-state
+        release: {{ .Release.Name }}
+        version: "{{ .Values.kube_state_metrics.image.tag }}"
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.kube_state_metrics.image.repository }}:{{ .Values.kube_state_metrics.image.tag }}"
+        imagePullPolicy: {{ .Values.kube_state_metrics.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.kube_state_metrics.service.internalPort }}
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.kube_state_metrics.service.internalPort }}
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.kube_state_metrics.service.internalPort }}
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+      - name: {{ .Chart.Name }}-addon-resizer
+        image: "{{ .Values.addon_resizer.image.repository }}:{{ .Values.addon_resizer.image.tag }}"
+        env:
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: MY_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        command:
+          - /pod_nanny
+          - --container={{ .Chart.Name }}
+          - --cpu=100m
+          - --extra-cpu=1m
+          - --memory=100Mi
+          - --extra-memory=2Mi
+          - --threshold=5
+          - --deployment={{ template "fullname" . }}
+        resources:
+{{ toYaml .Values.addon_resizer.resources | indent 12 }}
+    {{- if .Values.rbacEnable }}
+      serviceAccountName: {{ template "fullname" . }}
+    {{- end }}

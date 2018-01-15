@@ -42,14 +42,16 @@ var rootCmd = &cobra.Command{
 	Short: "Kubeless controller",
 	Long:  globalUsage,
 	Run: func(cmd *cobra.Command, args []string) {
-		crdClient, err := utils.GetCRDClient()
+		kubelessClient, err := utils.GetFunctionClientInCluster()
 		if err != nil {
-			logrus.Fatalf("Cannot get CRD client: %v", err)
+			logrus.Fatalf("Cannot get kubeless client: %v", err)
 		}
+
 		cfg := controller.Config{
-			KubeCli:   utils.GetClient(),
-			CRDClient: crdClient,
+			KubeCli:        utils.GetClient(),
+			FunctionClient: kubelessClient,
 		}
+
 		restCfg, err := rest.InClusterConfig()
 		if err != nil {
 			logrus.Fatalf("Cannot get REST client: %v", err)

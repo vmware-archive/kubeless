@@ -50,22 +50,24 @@ type PrometheusInterface interface {
 
 type prometheuses struct {
 	restClient rest.Interface
-	client     *dynamic.ResourceClient
+	client     dynamic.ResourceInterface
+	crdKind    CrdKind
 	ns         string
 }
 
-func newPrometheuses(r rest.Interface, c *dynamic.Client, namespace string) *prometheuses {
+func newPrometheuses(r rest.Interface, c *dynamic.Client, crdKind CrdKind, namespace string) *prometheuses {
 	return &prometheuses{
-		r,
-		c.Resource(
+		restClient: r,
+		client: c.Resource(
 			&metav1.APIResource{
-				Kind:       PrometheusesKind,
-				Name:       PrometheusName,
+				Kind:       crdKind.Kind,
+				Name:       crdKind.Plural,
 				Namespaced: true,
 			},
 			namespace,
 		),
-		namespace,
+		crdKind: crdKind,
+		ns:      namespace,
 	}
 }
 
@@ -118,9 +120,7 @@ func (p *prometheuses) Delete(name string, options *metav1.DeleteOptions) error 
 func (p *prometheuses) List(opts metav1.ListOptions) (runtime.Object, error) {
 	req := p.restClient.Get().
 		Namespace(p.ns).
-		Resource("prometheuses").
-		// VersionedParams(&options, v1.ParameterCodec)
-		FieldsSelectorParam(nil)
+		Resource(p.crdKind.Plural)
 
 	b, err := req.DoRaw()
 	if err != nil {
@@ -134,9 +134,7 @@ func (p *prometheuses) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	r, err := p.restClient.Get().
 		Prefix("watch").
 		Namespace(p.ns).
-		Resource("prometheuses").
-		// VersionedParams(&options, v1.ParameterCodec).
-		FieldsSelectorParam(nil).
+		Resource(p.crdKind.Plural).
 		Stream()
 	if err != nil {
 		return nil, err

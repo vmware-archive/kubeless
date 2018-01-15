@@ -18,10 +18,10 @@ import (
 	"bytes"
 	"testing"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/pkg/api/v1"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1"
 )
@@ -63,6 +63,10 @@ func generateTestConfig(version string) ([]byte, error) {
 							Port:      intstr.FromString("web"),
 						},
 					},
+				},
+				ExternalLabels: map[string]string{
+					"label1": "value1",
+					"label2": "value2",
 				},
 				Version:  version,
 				Replicas: &replicas,
@@ -134,6 +138,32 @@ func makeServiceMonitors() map[string]*monitoringv1.ServiceMonitor {
 				monitoringv1.Endpoint{
 					Port:     "web",
 					Interval: "30s",
+				},
+			},
+		},
+	}
+
+	res["servicemonitor3"] = &monitoringv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testservicemonitor3",
+			Namespace: "default",
+			Labels: map[string]string{
+				"group": "group4",
+			},
+		},
+		Spec: monitoringv1.ServiceMonitorSpec{
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"group":  "group4",
+					"group3": "group5",
+				},
+			},
+			Endpoints: []monitoringv1.Endpoint{
+				monitoringv1.Endpoint{
+					Port:     "web",
+					Interval: "30s",
+					Path:     "/federate",
+					Params:   map[string][]string{"metrics[]": []string{"{__name__=~\"job:.*\"}"}},
 				},
 			},
 		},

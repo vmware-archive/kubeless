@@ -23,9 +23,9 @@ import (
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"k8s.io/api/autoscaling/v2beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 )
 
 var autoscaleListCmd = &cobra.Command{
@@ -59,7 +59,7 @@ func init() {
 }
 
 func doAutoscaleList(w io.Writer, client kubernetes.Interface, ns, output string) error {
-	asList, err := client.AutoscalingV2alpha1().HorizontalPodAutoscalers(ns).List(metav1.ListOptions{
+	asList, err := client.AutoscalingV2beta1().HorizontalPodAutoscalers(ns).List(metav1.ListOptions{
 		LabelSelector: "created-by=kubeless",
 	})
 	if err != nil {
@@ -70,7 +70,7 @@ func doAutoscaleList(w io.Writer, client kubernetes.Interface, ns, output string
 }
 
 // printAutoscale formats the output of autoscale list
-func printAutoscale(w io.Writer, ass []v2alpha1.HorizontalPodAutoscaler, output string) error {
+func printAutoscale(w io.Writer, ass []v2beta1.HorizontalPodAutoscaler, output string) error {
 	if output == "" {
 		table := uitable.New()
 		table.MaxColWidth = 50

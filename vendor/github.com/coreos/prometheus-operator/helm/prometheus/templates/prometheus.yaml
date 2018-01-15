@@ -1,4 +1,4 @@
-apiVersion: monitoring.coreos.com/v1alpha1
+apiVersion: monitoring.coreos.com/v1
 kind: Prometheus
 metadata:
   labels:
@@ -7,6 +7,9 @@ metadata:
     heritage: {{ .Release.Service }}
     prometheus: {{ .Release.Name }}
     release: {{ .Release.Name }}
+{{- if .Values.labels }}
+{{ toYaml .Values.labels | indent 4 }}
+{{- end }}
   name: {{ .Release.Name }}
 spec:
 {{- if .Values.alertingEndpoints }}
@@ -53,12 +56,10 @@ spec:
 {{- end }}
 {{- if .Values.serviceMonitorsSelector }}
   serviceMonitorSelector:
-    matchLabels:
-{{ toYaml .Values.serviceMonitorsSelector | indent 6 }}
+{{ toYaml .Values.serviceMonitorsSelector | indent 4 }}
 {{- else }}
   serviceMonitorSelector:
     matchLabels:
-      app: {{ template "name" . }}
       prometheus: {{ .Release.Name }}
 {{- end }}
 {{- if .Values.rulesSelector }}

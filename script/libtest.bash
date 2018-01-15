@@ -206,6 +206,7 @@ verify_rbac_mode() {
     echo "ERROR: Please run w/RBAC, eg minikube as: minikube start --extra-config=apiserver.Authorization.Mode=RBAC"
     return 1
 }
+
 wait_for_endpoint() {
     local func=${1:?}
     local -i cnt=${TEST_MAX_WAIT_SEC:?}

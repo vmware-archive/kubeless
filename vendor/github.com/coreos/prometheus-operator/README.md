@@ -1,10 +1,8 @@
 # Prometheus Operator
-[![Build Status](https://jenkins-monitoring-public.prod.coreos.systems/buildStatus/icon?job=po-tests-master&build=1)](https://jenkins-monitoring-public.prod.coreos.systems/job/po-tests-master/1/)
+[![Build Status](https://travis-ci.org/coreos/prometheus-operator.svg?branch=master)](https://travis-ci.org/coreos/prometheus-operator)
 [![Go Report Card](https://goreportcard.com/badge/coreos/prometheus-operator "Go Report Card")](https://goreportcard.com/report/coreos/prometheus-operator)
 
-**Project status: *alpha*** Not all planned features are completed. The API, spec, status 
-and other user facing objects are subject to change. We do not support backward-compatibility
-for the alpha releases.
+**Project status: *beta*** Not all planned features are completed. The API, spec, status and other user facing objects may change, but in a backward compatible way.
 
 The Prometheus Operator for Kubernetes provides easy monitoring definitions for Kubernetes
 services and deployment and management of Prometheus instances.
@@ -135,8 +133,6 @@ kubectl delete --ignore-not-found customresourcedefinitions \
   alertmanager.monitoring.coreos.com
 ```
 
-**The Prometheus Operator collects anonymous usage statistics to help us learning how the software is being used and how we can improve it. To disable collection, run the Operator with the flag `-analytics=false`**
-
 ## Development
 
 ### Prerequisites
@@ -153,4 +149,4 @@ kubectl delete --ignore-not-found customresourcedefinitions \
 2. You can execute the *e2e tests* on a local minikube by compiling the static binary (which is what is used for the container images) with `make crossbuild`.
   1. build the container image with the docker host from within minikube by running `eval $(minikube docker-env)`.
   2. You can build the container using `make container`.
-  3. Finally run the e2e tests using `make e2e-tests`.
+  3. Finally run the e2e tests using `make e2e-test`.

@@ -1,3 +1,8 @@
+<br>
+<div class="alert alert-info" role="alert">
+    <i class="fa fa-exclamation-triangle"></i><b> Note:</b> Starting with v0.12.0, Prometheus Operator requires use of Kubernetes v1.7.x and up.
+</div>
+
 # Storage
 
 To keep data cross deployments and version upgrades the data must be persisted to some volume other than `emptyDir`, to be able to reuse it by `Pod`s after an upgrade.
@@ -53,7 +58,7 @@ When now creating the `Prometheus` object a `PersistentVolumeClaim` is used for 
 
 ## Manual storage provisioning
 
-The Prometheus TPR specification allows you to support arbitrary storage, via a PersistentVolumeClaim.
+The Prometheus CRD specification allows you to support arbitrary storage, via a PersistentVolumeClaim.
 
 The easiest way to use a volume that cannot be automatically provisioned (for whatever reason) is to use a label selector alongside a manually created PersistentVolume.
 

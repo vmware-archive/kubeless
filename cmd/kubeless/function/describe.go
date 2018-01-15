@@ -22,7 +22,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
-	"github.com/kubeless/kubeless/pkg/spec"
+	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -69,13 +69,13 @@ func init() {
 	describeCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 }
 
-func print(f spec.Function, name, output string) error {
+func print(f kubelessApi.Function, name, output string) error {
 	switch output {
 	case "":
 		table := uitable.New()
 		table.MaxColWidth = 80
 		table.Wrap = true
-		label, err := json.Marshal(f.Metadata.Labels)
+		label, err := json.Marshal(f.ObjectMeta.Labels)
 		if err != nil {
 			return err
 		}
@@ -84,7 +84,7 @@ func print(f spec.Function, name, output string) error {
 			return err
 		}
 		table.AddRow("Name:", name)
-		table.AddRow("Namespace:", fmt.Sprintf(f.Metadata.Namespace))
+		table.AddRow("Namespace:", fmt.Sprintf(f.ObjectMeta.Namespace))
 		table.AddRow("Handler:", fmt.Sprintf(f.Spec.Handler))
 		table.AddRow("Runtime:", fmt.Sprintf(f.Spec.Runtime))
 		table.AddRow("Type:", fmt.Sprintf(f.Spec.Type))

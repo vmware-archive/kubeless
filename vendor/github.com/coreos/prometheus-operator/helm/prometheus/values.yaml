@@ -23,11 +23,19 @@ externalLabels: {}
 ##
 externalUrl: ""
 
+## If true, create a serviceMonitor for prometheus
+##
+selfServiceMonitor: true
+
 ## Prometheus container image
 ##
 image:
   repository: quay.io/prometheus/prometheus
   tag: v1.7.1
+
+## Labels to be added to the Prometheus
+##
+labels: {}
 
 ingress:
   ## If true, Prometheus Ingress will be created
@@ -39,6 +47,10 @@ ingress:
   annotations: {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
+
+  ## Labels to be added to the Ingress
+  ##
+  labels: {}
 
   fqdn: ""
 
@@ -115,6 +127,10 @@ service:
   ##
   externalIPs: []
 
+  ## Labels to be added to the Service
+  ##
+  labels: {}
+
   ## External IP address to assign to Prometheus Service
   ## Only used if service.type is 'LoadBalancer' and supported by cloud provider
   ##
@@ -139,13 +155,17 @@ service:
 ##
 serviceMonitorsSelector: {}
 
-## ServiceMonitor TPRs to create & be scraped by the Prometheus instance.
+## ServiceMonitor CRDs to create & be scraped by the Prometheus instance.
 ## Ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/service-monitor.md
 ##
 serviceMonitors: []
   ## Name of the ServiceMonitor to create
   ##
   # - name: ""
+
+    ## Labels to set used for the ServiceMonitorSelector.
+    ##
+    # serviceMonitorSelectorLabels: {}
 
     ## Service label for use in assembling a job name of the form <label value>-<port>
     ## If no label is specified, the service name is used.
@@ -222,8 +242,9 @@ serviceMonitors: []
 ## Ref: https://github.com/coreos/prometheus-operator/blob/master/Documentation/user-guides/storage.md
 ##
 storageSpec: {}
-#   class: default
-#   resources:
-#     requests:
-#       storage: 16Gi
+#   volumeClaimTemplate:
+#     spec:
+#       resources:
+#         requests:
+#           storage: 50Gi
 #   selector: {}

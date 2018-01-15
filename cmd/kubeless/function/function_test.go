@@ -20,17 +20,17 @@ import (
 	"archive/zip"
 	"io"
 	"io/ioutil"
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/api/core/v1"
 	"os"
 	"reflect"
 	"testing"
 
-	"github.com/kubeless/kubeless/pkg/spec"
+	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	"k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/pkg/apis/autoscaling/v2alpha1"
 )
 
 func TestParseLabel(t *testing.T) {
@@ -101,24 +101,24 @@ func TestGetFunctionDescription(t *testing.T) {
 
 	inputHeadless := true
 	inputPort := int32(80)
-	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, spec.Function{})
+	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, kubelessApi.Function{})
 	if err != nil {
 		t.Error(err)
 	}
 	parsedMem, _ := parseMemory("128Mi")
-	expectedFunction := spec.Function{
+	expectedFunction := kubelessApi.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
-			APIVersion: "k8s.io/v1",
+			APIVersion: "kubeless.io/v1beta1",
 		},
-		Metadata: metav1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: "default",
 			Labels: map[string]string{
 				"test": "1",
 			},
 		},
-		Spec: spec.FunctionSpec{
+		Spec: kubelessApi.FunctionSpec{
 			Handler:             "file.handler",
 			Runtime:             "runtime",
 			Type:                "HTTP",
@@ -200,19 +200,19 @@ func TestGetFunctionDescription(t *testing.T) {
 		t.Error(err)
 	}
 	parsedMem2, _ := parseMemory("256Mi")
-	newFunction := spec.Function{
+	newFunction := kubelessApi.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
-			APIVersion: "k8s.io/v1",
+			APIVersion: "kubeless.io/v1beta1",
 		},
-		Metadata: metav1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: "default",
 			Labels: map[string]string{
 				"test": "2",
 			},
 		},
-		Spec: spec.FunctionSpec{
+		Spec: kubelessApi.FunctionSpec{
 			Handler:             "file.handler2",
 			Runtime:             "runtime2",
 			Type:                "PubSub",
@@ -304,9 +304,9 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should maintain previous HPA definition
-	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, spec.Function{
-		Spec: spec.FunctionSpec{
-			HorizontalPodAutoscaler: v2alpha1.HorizontalPodAutoscaler{
+	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, kubelessApi.Function{
+		Spec: kubelessApi.FunctionSpec{
+			HorizontalPodAutoscaler: v2beta1.HorizontalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "previous-hpa",
 				},

@@ -1,3 +1,8 @@
+<br>
+<div class="alert alert-info" role="alert">
+    <i class="fa fa-exclamation-triangle"></i><b> Note:</b> Starting with v0.12.0, Prometheus Operator requires use of Kubernetes v1.7.x and up.
+</div>
+
 # Cluster Monitoring
 
 This guide is intended to give an introduction to all the parts required to start monitoring a Kubernetes cluster with Prometheus using the Prometheus Operator.
@@ -44,7 +49,7 @@ spec:
       - args:
         - --kubelet-service=kube-system/kubelet
         - --config-reloader-image=quay.io/coreos/configmap-reload:v0.0.1
-        image: quay.io/coreos/prometheus-operator:v0.12.0
+        image: quay.io/coreos/prometheus-operator:v0.15.0
         name: prometheus-operator
         ports:
         - containerPort: 8080
@@ -133,10 +138,10 @@ spec:
       hostNetwork: true
       hostPID: true
       containers:
-      - image:  quay.io/prometheus/node-exporter:v0.14.0
+      - image: quay.io/prometheus/node-exporter:v0.15.0
         args:
-        - "-collector.procfs=/host/proc"
-        - "-collector.sysfs=/host/sys"
+        - "--path.procfs=/host/proc"
+        - "--path.sysfs=/host/sys"
         name: node-exporter
         ports:
         - containerPort: 9100
@@ -156,6 +161,9 @@ spec:
         - name: sys
           readOnly: true
           mountPath: /host/sys
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
       volumes:
       - name: proc
         hostPath:
@@ -207,18 +215,43 @@ spec:
       serviceAccountName: kube-state-metrics
       containers:
       - name: kube-state-metrics
-        image: quay.io/coreos/kube-state-metrics:v1.0.0
+        image: quay.io/coreos/kube-state-metrics:v1.0.1
         ports:
         - name: metrics
           containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+      - name: addon-resizer
+        image: gcr.io/google_containers/addon-resizer:1.0
         resources:
-          requests:
-            memory: 100Mi
-            cpu: 100m
           limits:
-            memory: 200Mi
-            cpu: 200m
-
+            cpu: 100m
+            memory: 30Mi
+          requests:
+            cpu: 100m
+            memory: 30Mi
+        env:
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: MY_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        command:
+          - /pod_nanny
+          - --container=kube-state-metrics
+          - --cpu=100m
+          - --extra-cpu=1m
+          - --memory=100Mi
+          - --extra-memory=2Mi
+          - --threshold=5
+          - --deployment=kube-state-metrics
 ```
 
 > Make sure that the `ServiceAccount` called `kube-state-metrics` exists and if using RBAC, is bound to the correct role. See the kube-state-metrics [repository for RBAC requirements](https://github.com/kubernetes/kube-state-metrics/tree/master/kubernetes).
@@ -259,7 +292,7 @@ metadata:
     prometheus: k8s
 spec:
   replicas: 2
-  version: v1.7.0
+  version: v2.0.0
   serviceAccountName: prometheus-k8s
   serviceMonitorSelector:
     matchExpressions:
@@ -284,7 +317,7 @@ spec:
 
 > Make sure that the `ServiceAccount` called `prometheus-k8s` exists and if using RBAC, is bound to the correct role. Read more on [RBAC when using the Prometheus Operator](../rbac.md).
 
-The expression to match for selecting `ServiceMonitor`s here is that they must have a label which has a key called `k8s-apps`. If you look closely at all the `Service` objects described above they all have a label called `k8s-app` and their component name this allows to conveniently select them with `ServiceMonitor`s.
+The expression to match for selecting `ServiceMonitor`s here is that they must have a label which has a key called `k8s-app`. If you look closely at all the `Service` objects described above they all have a label called `k8s-app` and their component name this allows to conveniently select them with `ServiceMonitor`s.
 
 [embedmd]:# (../../contrib/kube-prometheus/manifests/prometheus/prometheus-k8s-service-monitor-apiserver.yaml)
 ```yaml
@@ -434,7 +467,7 @@ metadata:
     alertmanager: main
 spec:
   replicas: 3
-  version: v0.7.1
+  version: v0.9.1
 ```
 
 Read more in the [alerting guide](alerting.md) on how to configure the Alertmanager as it will not spin up unless it has a valid configuration mounted through a `Secret`. Note that the `Secret` has to be in the same namespace as the `Alertmanager` resource as well as have the name `alertmanager-<name-of-alertmanager-object` and the key of the configuration is `alertmanager.yaml`.

@@ -8,7 +8,7 @@ ROOTDIR=`cd $(dirname $SCRIPT)/.. && pwd`
 
 COMMAND="${@:-bash}"
 
-if ! minikube version | grep -q "v0.22.3"; then
+if ! minikube version | grep -q "v0.24.1"; then
   # Until #399 is fixed
   echo "Only minikube v0.22.3 is supported"
   exit 1

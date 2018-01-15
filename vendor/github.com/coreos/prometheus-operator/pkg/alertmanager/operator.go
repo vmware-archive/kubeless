@@ -20,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/prometheus-operator/pkg/analytics"
 	"github.com/coreos/prometheus-operator/pkg/client/monitoring"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
@@ -29,6 +28,8 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/api/apps/v1beta1"
+	"k8s.io/api/core/v1"
 	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,10 +39,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/apps/v1beta1"
-	extensionsobjold "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -70,7 +67,10 @@ type Config struct {
 	Host                         string
 	ConfigReloaderImage          string
 	AlertmanagerDefaultBaseImage string
-	StatefulSetUpdatesAvailable  bool
+	Namespace                    string
+	Labels                       prometheusoperator.Labels
+	CrdKinds                     monitoringv1.CrdKinds
+	CrdGroup                     string
 }
 
 // New creates a new controller.
@@ -85,7 +85,7 @@ func New(c prometheusoperator.Config, logger log.Logger) (*Operator, error) {
 		return nil, errors.Wrap(err, "instantiating kubernetes client failed")
 	}
 
-	mclient, err := monitoring.NewForConfig(cfg)
+	mclient, err := monitoring.NewForConfig(&c.CrdKinds, c.CrdGroup, cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "instantiating monitoring client failed")
 	}
@@ -101,18 +101,26 @@ func New(c prometheusoperator.Config, logger log.Logger) (*Operator, error) {
 		crdclient: crdclient,
 		logger:    logger,
 		queue:     workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "alertmanager"),
-		config:    Config{Host: c.Host, ConfigReloaderImage: c.ConfigReloaderImage, AlertmanagerDefaultBaseImage: c.AlertmanagerDefaultBaseImage},
+		config: Config{
+			Host:                         c.Host,
+			ConfigReloaderImage:          c.ConfigReloaderImage,
+			AlertmanagerDefaultBaseImage: c.AlertmanagerDefaultBaseImage,
+			Namespace:                    c.Namespace,
+			CrdGroup:                     c.CrdGroup,
+			CrdKinds:                     c.CrdKinds,
+			Labels:                       c.Labels,
+		},
 	}
 
 	o.alrtInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
-			ListFunc:  o.mclient.MonitoringV1().Alertmanagers(api.NamespaceAll).List,
-			WatchFunc: o.mclient.MonitoringV1().Alertmanagers(api.NamespaceAll).Watch,
+			ListFunc:  o.mclient.MonitoringV1().Alertmanagers(o.config.Namespace).List,
+			WatchFunc: o.mclient.MonitoringV1().Alertmanagers(o.config.Namespace).Watch,
 		},
 		&monitoringv1.Alertmanager{}, resyncPeriod, cache.Indexers{},
 	)
 	o.ssetInf = cache.NewSharedIndexInformer(
-		cache.NewListWatchFromClient(o.kclient.AppsV1beta1().RESTClient(), "statefulsets", api.NamespaceAll, nil),
+		cache.NewListWatchFromClient(o.kclient.AppsV1beta1().RESTClient(), "statefulsets", o.config.Namespace, fields.Everything()),
 		&v1beta1.StatefulSet{}, resyncPeriod, cache.Indexers{},
 	)
 
@@ -147,19 +155,6 @@ func (c *Operator) Run(stopc <-chan struct{}) error {
 		}
 		c.logger.Log("msg", "connection established", "cluster-version", v)
 
-		mv, err := k8sutil.GetMinorVersion(c.kclient.Discovery())
-		if mv < 7 {
-			c.config.StatefulSetUpdatesAvailable = false
-			if err := c.createTPRs(); err != nil {
-				errChan <- errors.Wrap(err, "creating TPRs failed")
-				return
-			}
-
-			errChan <- nil
-			return
-		}
-
-		c.config.StatefulSetUpdatesAvailable = true
 		if err := c.createCRDs(); err != nil {
 			errChan <- err
 			return
@@ -305,7 +300,6 @@ func (c *Operator) handleAlertmanagerAdd(obj interface{}) {
 		return
 	}
 
-	analytics.AlertmanagerCreated()
 	c.logger.Log("msg", "Alertmanager added", "key", key)
 	c.enqueue(key)
 }
@@ -316,7 +310,6 @@ func (c *Operator) handleAlertmanagerDelete(obj interface{}) {
 		return
 	}
 
-	analytics.AlertmanagerDeleted()
 	c.logger.Log("msg", "Alertmanager deleted", "key", key)
 	c.enqueue(key)
 }
@@ -387,7 +380,7 @@ func (c *Operator) sync(key string) error {
 
 	// Create governing service if it doesn't exist.
 	svcClient := c.kclient.Core().Services(am.Namespace)
-	if err = k8sutil.CreateOrUpdateService(svcClient, makeStatefulSetService(am)); err != nil {
+	if err = k8sutil.CreateOrUpdateService(svcClient, makeStatefulSetService(am, c.config)); err != nil {
 		return errors.Wrap(err, "synchronizing governing service failed")
 	}
 
@@ -417,7 +410,7 @@ func (c *Operator) sync(key string) error {
 		return errors.Wrap(err, "updating statefulset failed")
 	}
 
-	return c.syncVersion(am)
+	return nil
 }
 
 func ListOptions(name string) metav1.ListOptions {
@@ -427,51 +420,6 @@ func ListOptions(name string) metav1.ListOptions {
 			"alertmanager": name,
 		})).String(),
 	}
-}
-
-// syncVersion ensures that all running pods for a Alertmanager have the required version.
-// It kills pods with the wrong version one-after-one and lets the StatefulSet controller
-// create new pods.
-//
-// TODO(brancz): remove this once the 1.6 support is removed.
-func (c *Operator) syncVersion(a *monitoringv1.Alertmanager) error {
-	if c.config.StatefulSetUpdatesAvailable {
-		return nil
-	}
-
-	status, oldPods, err := AlertmanagerStatus(c.kclient, a)
-	if err != nil {
-		return errors.Wrap(err, "retrieving Alertmanager status failed")
-	}
-
-	// If the StatefulSet is still busy scaling, don't interfere by killing pods.
-	// We enqueue ourselves again to until the StatefulSet is ready.
-	expectedReplicas := int32(1)
-	if a.Spec.Replicas != nil {
-		expectedReplicas = *a.Spec.Replicas
-	}
-	if status.Replicas != expectedReplicas {
-		return fmt.Errorf("scaling in progress, %d expected replicas, %d found replicas", expectedReplicas, status.Replicas)
-	}
-	if status.Replicas == 0 {
-		return nil
-	}
-	if len(oldPods) == 0 {
-		return nil
-	}
-	if status.UnavailableReplicas > 0 {
-		return fmt.Errorf("waiting for %d unavailable pods to become ready", status.UnavailableReplicas)
-	}
-
-	// TODO(fabxc): delete oldest pod first.
-	if err := c.kclient.Core().Pods(a.Namespace).Delete(oldPods[0].Name, nil); err != nil {
-		return err
-	}
-	// If there are further pods that need updating, we enqueue ourselves again.
-	if len(oldPods) > 1 {
-		return fmt.Errorf("%d out-of-date pods remaining", len(oldPods)-1)
-	}
-	return nil
 }
 
 func AlertmanagerStatus(kclient kubernetes.Interface, a *monitoringv1.Alertmanager) (*monitoringv1.AlertmanagerStatus, []v1.Pod, error) {
@@ -525,6 +473,8 @@ func needsUpdate(pod *v1.Pod, tmpl v1.PodTemplateSpec) bool {
 	return false
 }
 
+// TODO(brancz): Remove this function once Kubernetes 1.7 compatibility is dropped.
+// Starting with Kubernetes 1.8 OwnerReferences are properly handled for CRDs.
 func (c *Operator) destroyAlertmanager(key string) error {
 	ssetKey := alertmanagerKeyToStatefulSetKey(key)
 	obj, exists, err := c.ssetInf.GetStore().GetByKey(ssetKey)
@@ -568,8 +518,15 @@ func (c *Operator) destroyAlertmanager(key string) error {
 }
 
 func (c *Operator) createCRDs() error {
+	_, aErr := c.mclient.MonitoringV1().Alertmanagers(c.config.Namespace).List(metav1.ListOptions{})
+	if aErr == nil {
+		// If Alertmanager objects are already registered, we won't attempt to
+		// do so again.
+		return nil
+	}
+
 	crds := []*extensionsobj.CustomResourceDefinition{
-		k8sutil.NewAlertmanagerCustomResourceDefinition(),
+		k8sutil.NewAlertmanagerCustomResourceDefinition(c.config.CrdKinds.Alertmanager, c.config.CrdGroup, c.config.Labels.LabelsMap),
 	}
 
 	crdClient := c.crdclient.ApiextensionsV1beta1().CustomResourceDefinitions()
@@ -582,22 +539,5 @@ func (c *Operator) createCRDs() error {
 	}
 
 	// We have to wait for the CRDs to be ready. Otherwise the initial watch may fail.
-	return k8sutil.WaitForCRDReady(c.mclient.MonitoringV1().Alertmanagers(api.NamespaceAll).List)
-}
-
-func (c *Operator) createTPRs() error {
-	tprs := []*extensionsobjold.ThirdPartyResource{
-		k8sutil.NewAlertmanagerTPRDefinition(),
-	}
-	tprClient := c.kclient.Extensions().ThirdPartyResources()
-
-	for _, tpr := range tprs {
-		if _, err := tprClient.Create(tpr); err != nil && !apierrors.IsAlreadyExists(err) {
-			return err
-		}
-		c.logger.Log("msg", "TPR created", "tpr", tpr.Name)
-	}
-
-	// We have to wait for the TPRs to be ready. Otherwise the initial watch may fail.
-	return k8sutil.WaitForCRDReady(c.mclient.MonitoringV1alpha1().Alertmanagers(api.NamespaceAll).List)
+	return k8sutil.WaitForCRDReady(c.mclient.MonitoringV1().Alertmanagers(c.config.Namespace).List)
 }

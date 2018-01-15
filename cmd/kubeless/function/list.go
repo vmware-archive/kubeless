@@ -28,10 +28,11 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 
-	"github.com/kubeless/kubeless/pkg/spec"
+	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	"github.com/kubeless/kubeless/pkg/utils"
 )
 
@@ -53,14 +54,14 @@ var listCmd = &cobra.Command{
 			ns = utils.GetDefaultNamespace()
 		}
 
-		crdClient, err := utils.GetCRDClientOutOfCluster()
+		kubelessClient, err := utils.GetFunctionClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not list functions: %v", err)
 		}
 
 		apiV1Client := utils.GetClientOutOfCluster()
 
-		if err := doList(cmd.OutOrStdout(), crdClient, apiV1Client, ns, output, args); err != nil {
+		if err := doList(cmd.OutOrStdout(), kubelessClient, apiV1Client, ns, output, args); err != nil {
 			logrus.Fatal(err.Error())
 		}
 	},
@@ -71,33 +72,22 @@ func init() {
 	listCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 }
 
-func doList(w io.Writer, crdClient rest.Interface, apiV1Client kubernetes.Interface, ns, output string, args []string) error {
-	var list []*spec.Function
+func doList(w io.Writer, kubelessClient versioned.Interface, apiV1Client kubernetes.Interface, ns, output string, args []string) error {
+	var list []*kubelessApi.Function
 	if len(args) == 0 {
-		funcList := spec.FunctionList{}
-		err := crdClient.Get().
-			Resource("functions").
-			Namespace(ns).
-			Do().
-			Into(&funcList)
+		funcList, err := kubelessClient.KubelessV1beta1().Functions(ns).List(metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
 		list = funcList.Items
 	} else {
-		list = make([]*spec.Function, 0, len(args))
+		list = make([]*kubelessApi.Function, 0, len(args))
 		for _, arg := range args {
-			f := spec.Function{}
-			err := crdClient.Get().
-				Resource("functions").
-				Namespace(ns).
-				Name(arg).
-				Do().
-				Into(&f)
+			f, err := kubelessClient.KubelessV1beta1().Functions(ns).Get(arg, metav1.GetOptions{})
 			if err != nil {
 				return fmt.Errorf("Error listing function %s: %v", arg, err)
 			}
-			list = append(list, &f)
+			list = append(list, f)
 		}
 	}
 
@@ -127,20 +117,20 @@ func parseDeps(deps, runtime string) (res string, err error) {
 }
 
 // printFunctions formats the output of function list
-func printFunctions(w io.Writer, functions []*spec.Function, cli kubernetes.Interface, output string) error {
+func printFunctions(w io.Writer, functions []*kubelessApi.Function, cli kubernetes.Interface, output string) error {
 	if output == "" {
 		table := uitable.New()
 		table.MaxColWidth = 50
 		table.Wrap = true
 		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "DEPENDENCIES", "STATUS")
 		for _, f := range functions {
-			n := f.Metadata.Name
+			n := f.ObjectMeta.Name
 			h := f.Spec.Handler
 			r := f.Spec.Runtime
 			t := f.Spec.Type
 			tp := f.Spec.Topic
-			ns := f.Metadata.Namespace
-			status, err := getDeploymentStatus(cli, f.Metadata.Name, f.Metadata.Namespace)
+			ns := f.ObjectMeta.Namespace
+			status, err := getDeploymentStatus(cli, f.ObjectMeta.Name, f.ObjectMeta.Namespace)
 			if err != nil && k8sErrors.IsNotFound(err) {
 				status = "MISSING: Check controller logs"
 			} else if err != nil {
@@ -159,7 +149,7 @@ func printFunctions(w io.Writer, functions []*spec.Function, cli kubernetes.Inte
 		table.Wrap = true
 		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "DEPENDENCIES", "STATUS", "MEMORY", "ENV", "LABEL", "SCHEDULE")
 		for _, f := range functions {
-			n := f.Metadata.Name
+			n := f.ObjectMeta.Name
 			h := f.Spec.Handler
 			r := f.Spec.Runtime
 			t := f.Spec.Type
@@ -169,8 +159,8 @@ func printFunctions(w io.Writer, functions []*spec.Function, cli kubernetes.Inte
 				return err
 			}
 			s := f.Spec.Schedule
-			ns := f.Metadata.Namespace
-			status, err := getDeploymentStatus(cli, f.Metadata.Name, f.Metadata.Namespace)
+			ns := f.ObjectMeta.Namespace
+			status, err := getDeploymentStatus(cli, f.ObjectMeta.Name, f.ObjectMeta.Namespace)
 			if err != nil && k8sErrors.IsNotFound(err) {
 				status = "MISSING: Check controller logs"
 			} else if err != nil {
@@ -189,9 +179,9 @@ func printFunctions(w io.Writer, functions []*spec.Function, cli kubernetes.Inte
 				env = buffer.String()
 			}
 			label := ""
-			if len(f.Metadata.Labels) > 0 {
+			if len(f.ObjectMeta.Labels) > 0 {
 				var buffer bytes.Buffer
-				for k, v := range f.Metadata.Labels {
+				for k, v := range f.ObjectMeta.Labels {
 					buffer.WriteString(k + " : " + v + "\n")
 				}
 				label = buffer.String()

@@ -50,22 +50,24 @@ type AlertmanagerInterface interface {
 
 type alertmanagers struct {
 	restClient rest.Interface
-	client     *dynamic.ResourceClient
+	client     dynamic.ResourceInterface
+	crdKind    CrdKind
 	ns         string
 }
 
-func newAlertmanagers(r rest.Interface, c *dynamic.Client, namespace string) *alertmanagers {
+func newAlertmanagers(r rest.Interface, c *dynamic.Client, crdKind CrdKind, namespace string) *alertmanagers {
 	return &alertmanagers{
-		r,
-		c.Resource(
+		restClient: r,
+		client: c.Resource(
 			&metav1.APIResource{
-				Kind:       AlertmanagersKind,
-				Name:       AlertmanagerName,
+				Kind:       crdKind.Kind,
+				Name:       crdKind.Plural,
 				Namespaced: true,
 			},
 			namespace,
 		),
-		namespace,
+		crdKind: crdKind,
+		ns:      namespace,
 	}
 }
 
@@ -118,9 +120,7 @@ func (a *alertmanagers) Delete(name string, options *metav1.DeleteOptions) error
 func (a *alertmanagers) List(opts metav1.ListOptions) (runtime.Object, error) {
 	req := a.restClient.Get().
 		Namespace(a.ns).
-		Resource("alertmanagers").
-		// VersionedParams(&options, api.ParameterCodec)
-		FieldsSelectorParam(nil)
+		Resource(a.crdKind.Plural)
 
 	b, err := req.DoRaw()
 	if err != nil {
@@ -134,9 +134,7 @@ func (a *alertmanagers) Watch(opts metav1.ListOptions) (watch.Interface, error) 
 	r, err := a.restClient.Get().
 		Prefix("watch").
 		Namespace(a.ns).
-		Resource("alertmanagers").
-		// VersionedParams(&options, api.ParameterCodec).
-		FieldsSelectorParam(nil).
+		Resource(a.crdKind.Plural).
 		Stream()
 	if err != nil {
 		return nil, err

@@ -1,3 +1,38 @@
+## 0.15.0 / 2017-11-22
+
+* [CHANGE] Default Prometheus version v2.0.0
+* [BUGFIX] Generate ExternalLabels deterministically
+* [BUGFIX] Fix incorrect mount path of Alertmanager data volume
+* [EXPERIMENTAL] Add ability to specify CRD Kind name
+
+## 0.14.1 / 2017-11-01
+
+* [BUGFIX] Ignore illegal change of PodManagementPolicy to StatefulSet.
+
+## 0.14.0 / 2017-10-19
+
+* [CHANGE] Default Prometheus version v2.0.0-rc.1.
+* [CHANGE] Default Alertmanager version v0.9.1.
+* [BUGFIX] Set StatefulSet replicas to 0 if 0 is specified in Alertmanager/Prometheus object.
+* [BUGFIX] Glob for all files in a ConfigMap as rule files.
+* [FEATURE] Add ability to run Prometheus Operator for a single namespace.
+* [FEATURE] Add ability to specify CRD api group.
+* [FEATURE] Use readiness and health endpoints of Prometheus 1.8+.
+* [ENHANCEMENT] Add OwnerReferences to managed objects.
+* [ENHANCEMENT] Use parallel pod creation strategy for Prometheus StatefulSets.
+
+## 0.13.0 / 2017-09-21
+
+After a long period of not having broken any functionality in the Prometheus Operator, we have decided to promote the status of this project to beta.
+
+Compatibility guarantees and migration strategies continue to be the same as for the `v0.12.0` release.
+
+* [CHANGE] Remove analytics collection.
+* [BUGFIX] Fix memory leak in kubelet endpoints sync.
+* [FEATURE] Allow setting global default `scrape_interval`.
+* [FEATURE] Allow setting Pod objectmeta to Prometheus and Alertmanger objects.
+* [FEATURE] Allow setting tolerations and affinity for Prometheus and Alertmanager objects.
+
 ## 0.12.0 / 2017-08-24
 
 Starting with this release only Kubernetes `v1.7.x` and up is supported as CustomResourceDefinitions are a requirement for the Prometheus Operator and are only available from those versions and up.
@@ -10,6 +45,10 @@ Additionally all objects have been promoted from `v1alpha1` to `v1`. On start up
 * [ENHANCEMENT] Use `StatefulSet` rolling deployments.
 * [ENHANCEMENT] Properly set `SecurityContext` for Prometheus 2.0 deployments.
 * [ENHANCEMENT] Enable web lifecycle APIs for Prometheus 2.0 deployments.
+
+## 0.11.2 / 2017-09-21
+
+* [BUGFIX] Fix memory leak in kubelet endpoints sync.
 
 ## 0.11.1 / 2017-07-28
 
@@ -175,4 +214,3 @@ with the operator.
 
 * [CHANGE] Use StatefulSet instead of PetSet
 * [BUGFIX] Fix Prometheus config generation for labels containing "-"
-

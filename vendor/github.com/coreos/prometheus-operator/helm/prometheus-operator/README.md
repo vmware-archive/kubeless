@@ -5,8 +5,8 @@ Installs [prometheus-operator](https://github.com/coreos/prometheus-operator) to
 ## TL;DR;
 
 ```console
-$ helm repo add opsgoodness http://charts.opsgoodness.com
-$ helm install opsgoodness/prometheus-operator
+$ helm repo add coreos https://s3-eu-west-1.amazonaws.com/coreos-charts/stable/
+$ helm install coreos/prometheus-operator
 ```
 
 ## Introduction
@@ -56,7 +56,7 @@ $ helm init --service-account tiller
 To install the chart with the release name `my-release`:
 
 ```console
-$ helm install --name my-release opsgoodness/prometheus-operator
+$ helm install --name my-release coreos/prometheus-operator
 ```
 
 The command deploys prometheus-operator on the Kubernetes cluster in the default configuration. The [configuration](#configuration) section lists the parameters that can be configured during installation.
@@ -80,10 +80,10 @@ Parameter | Description | Default
 `configmapReload.repository` | configmap-reload image | `quay.io/coreos/configmap-reload`
 `configmapReload.tag` | configmap-reload tag | `v0.0.1`
 `global.hyperkube.repository` | Hyperkube image | `quay.io/coreos/hyperkube`
-`global.hyperkube.tag` | Hyperkube image tag | `v1.6.2_coreos.0`
+`global.hyperkube.tag` | Hyperkube image tag | `v1.7.6_coreos.0`
 `global.hyperkube.pullPolicy` | Hyperkube image pull policy | `IfNotPresent`
 `image.repository` | Image | `quay.io/coreos/prometheus-operator`
-`image.tag` | Image tag | `v0.9.0`
+`image.tag` | Image tag | `v0.13.0`
 `image.pullPolicy` | Image pull policy | `IfNotPresent`
 `kubeletService.enable` | If true, the operator will create a service for scraping kubelets | `true`
 `kubeletService.namespace` | The namespace in which the kubelet service should be created | `kube-system`
@@ -93,18 +93,17 @@ Parameter | Description | Default
 `prometheusConfigReloader.tag` | prometheus-config-reloader tag | `v0.0.2`
 `rbacEnable` | If true, create & use RBAC resources | `true`
 `resources` | Pod resource requests & limits | `{}`
-`sendAnalytics` | Collect & send anonymous usage statistics | `true`
 
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`. For example,
 
 ```console
-$ helm install --name my-release opsgoodness/prometheus-operator --set sendAnalytics=true
+$ helm install --name my-release coreos/prometheus-operator --set sendAnalytics=true
 ```
 
 Alternatively, a YAML file that specifies the values for the above parameters can be provided while installing the chart. For example,
 
 ```console
-$ helm install --name my-release opsgoodness/prometheus-operator -f values.yaml
+$ helm install --name my-release coreos/prometheus-operator -f values.yaml
 ```
 
 > **Tip**: You can use the default [values.yaml](values.yaml)

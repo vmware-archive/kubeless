@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/api/core/v1"
 )
 
 func check(runtime, fname string, values []string, t *testing.T) {
