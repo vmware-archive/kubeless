@@ -287,12 +287,12 @@ test_kubeless_function_update() {
 test_kubeless_ingress() {
     local func=${1:?} domain=example.com act_ingress exp_ingress
     echo_info "TEST: ingress ${func}"
-    kubeless route create ing-${func} --function ${func} --hostname ${func}.${domain}
-    kubeless route list | fgrep -w ing-${func}
-    act_ingress=$(kubectl get ingress ing-${func} -ojsonpath='{range .spec.rules[*]}{@.host}:{@.http.paths[*].backend.serviceName}')
+    kubeless route create ${func} --hostname ${func}.${domain}
+    kubeless route list | fgrep -w ${func}
+    act_ingress=$(kubectl get ingress ${func} -ojsonpath='{range .spec.rules[*]}{@.host}:{@.http.paths[*].backend.serviceName}')
     exp_ingress="${func}.${domain}:${func}"
     [[ ${act_ingress} == ${exp_ingress} ]]
-    kubeless route delete ing-${func}
+    kubeless route delete ${func}
 }
 test_kubeless_autoscale() {
     local func=${1:?} exp_autoscale act_autoscale

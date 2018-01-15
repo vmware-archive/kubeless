@@ -51,8 +51,12 @@ var describeCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatalf("Can not describe function: %v", err)
 		}
+		crdClient, err := utils.GetCRDClientOutOfCluster()
+		if err != nil {
+			logrus.Fatal(err)
+		}
 
-		f, err := utils.GetFunction(funcName, ns)
+		f, err := utils.GetFunction(crdClient, funcName, ns)
 		if err != nil {
 			logrus.Fatalf("Can not describe function: %v", err)
 		}

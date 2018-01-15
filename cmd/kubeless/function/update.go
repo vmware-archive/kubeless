@@ -140,8 +140,11 @@ var updateCmd = &cobra.Command{
 				}
 			}
 		})
-
-		previousFunction, err := utils.GetFunction(funcName, ns)
+		crdClient, err := utils.GetCRDClientOutOfCluster()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		previousFunction, err := utils.GetFunction(crdClient, funcName, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -155,10 +158,6 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		crdClient, err := utils.GetCRDClientOutOfCluster()
-		if err != nil {
-			logrus.Fatal(err)
-		}
 		logrus.Infof("Redeploying function...")
 		err = utils.UpdateK8sCustomResource(crdClient, f)
 		if err != nil {

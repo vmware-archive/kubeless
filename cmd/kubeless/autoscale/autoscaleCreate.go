@@ -24,11 +24,6 @@ var autoscaleCreateCmd = &cobra.Command{
 			ns = utils.GetDefaultNamespace()
 		}
 
-		function, err := utils.GetFunction(funcName, ns)
-		if err != nil {
-			logrus.Fatalf("Unable to find the function %s. Received %s: ", funcName, err)
-		}
-
 		min, err := cmd.Flags().GetInt32("min")
 		if err != nil {
 			logrus.Fatal(err)
@@ -55,16 +50,22 @@ var autoscaleCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		crdClient, err := utils.GetCRDClientOutOfCluster()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		function, err := utils.GetFunction(crdClient, funcName, ns)
+		if err != nil {
+			logrus.Fatalf("Unable to find the function %s. Received %s: ", funcName, err)
+		}
+
 		hpa, err := getHorizontalAutoscaleDefinition(funcName, ns, metric, min, max, value, function.Metadata.Labels)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 		function.Spec.HorizontalPodAutoscaler = hpa
 
-		crdClient, err := utils.GetCRDClientOutOfCluster()
-		if err != nil {
-			logrus.Fatal(err)
-		}
 		logrus.Infof("Adding autoscaling rule to the function...")
 		err = utils.UpdateK8sCustomResource(crdClient, &function)
 		if err != nil {

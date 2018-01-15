@@ -17,6 +17,7 @@ import (
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 var routeDeleteCmd = &cobra.Command{
@@ -25,9 +26,9 @@ var routeDeleteCmd = &cobra.Command{
 	Long:  `delete a route from Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 1 {
-			logrus.Fatal("Need exactly one argument - route name")
+			logrus.Fatal("Need exactly one argument - function name")
 		}
-		ingName := args[0]
+		funcName := args[0]
 
 		ns, err := cmd.Flags().GetString("namespace")
 		if err != nil {
@@ -37,11 +38,22 @@ var routeDeleteCmd = &cobra.Command{
 			ns = utils.GetDefaultNamespace()
 		}
 
-		client := utils.GetClientOutOfCluster()
-
-		err = utils.DeleteIngress(client, ingName, ns)
+		crdClient, err := utils.GetCRDClientOutOfCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
+
+		function, err := utils.GetFunction(crdClient, funcName, ns)
+		if err != nil {
+			logrus.Fatalf("Unable to find the function %s. Received %s: ", funcName, err)
+		}
+
+		function.Spec.Route = v1beta1.Ingress{}
+		logrus.Infof("Removing routing rule to the function...")
+		err = utils.UpdateK8sCustomResource(crdClient, &function)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		logrus.Infof("Removed routing rule for %s", funcName)
 	},
 }

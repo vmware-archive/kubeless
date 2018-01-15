@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/kubeless/kubeless/pkg/spec"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apimachinery"
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -706,72 +705,66 @@ func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
 
 func TestCreateIngressResource(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
-	f1 := &spec.Function{
-		Metadata: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "myns",
-			UID:       "1234",
-		},
-		Spec: spec.FunctionSpec{
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						TargetPort: intstr.FromInt(8080),
-					},
-				},
-			},
+	name := "foo"
+	ns := "myns"
+	routeDef := xv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
 		},
 	}
-	if err := CreateIngress(clientset, f1, "bar", "foo.bar", "myns", false); err != nil {
-		t.Fatalf("Creating ingress returned err: %v", err)
+	if err := CreateIngress(clientset, routeDef); err != nil {
+		t.Fatalf("Creating routing returned err: %v", err)
 	}
-	if err := CreateIngress(clientset, f1, "bar", "foo.bar", "myns", false); err != nil {
-		if !k8sErrors.IsAlreadyExists(err) {
-			t.Fatalf("Expect object is already exists, got %v", err)
-		}
+
+	route, err := clientset.ExtensionsV1beta1().Ingresses(ns).Get(name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Creating routing returned err: %v", err)
 	}
-	f1.Spec.ServiceSpec.Ports = []v1.ServicePort{}
-	if err := CreateIngress(clientset, f1, "bar", "foo.bar", "myns", false); err == nil {
-		t.Fatal("Expect create ingress fails, got success")
+	if route.ObjectMeta.Name != "foo" {
+		t.Fatalf("Creating wrong routing name")
 	}
 }
 
 func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
-	f1 := &spec.Function{
-		Metadata: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "myns",
-			UID:       "1234",
+	name := "foo"
+	ns := "myns"
+	routeDef := xv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+			Annotations: map[string]string{
+				"kubernetes.io/tls-acme":             "true",
+				"ingress.kubernetes.io/ssl-redirect": "true",
+			},
 		},
-		Spec: spec.FunctionSpec{
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						TargetPort: intstr.FromInt(8080),
-					},
+		Spec: xv1beta1.IngressSpec{
+			TLS: []xv1beta1.IngressTLS{
+				{
+					Hosts:      []string{name},
+					SecretName: name + "-tls",
 				},
 			},
 		},
 	}
 
-	if err := CreateIngress(clientset, f1, "foo", "foo.bar", "myns", true); err != nil {
-		t.Fatalf("Creating ingress returned err: %v", err)
+	if err := CreateIngress(clientset, routeDef); err != nil {
+		t.Fatalf("Creating routing returned err: %v", err)
 	}
 
-	ingress, err := clientset.ExtensionsV1beta1().Ingresses("myns").Get("foo", metav1.GetOptions{})
+	route, err := clientset.ExtensionsV1beta1().Ingresses(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
-		t.Fatalf("Getting Ingress returned err: %v", err)
+		t.Fatalf("Creating routing returned err: %v", err)
 	}
-
-	annotations := ingress.ObjectMeta.Annotations
+	annotations := route.ObjectMeta.Annotations
 	if annotations == nil || len(annotations) == 0 ||
 		annotations["kubernetes.io/tls-acme"] != "true" ||
 		annotations["ingress.kubernetes.io/ssl-redirect"] != "true" {
 		t.Fatal("Missing or wrong annotations!")
 	}
 
-	tls := ingress.Spec.TLS
+	tls := route.Spec.TLS
 	if tls == nil || len(tls) != 1 ||
 		tls[0].SecretName == "" ||
 		tls[0].Hosts == nil || len(tls[0].Hosts) != 1 || tls[0].Hosts[0] == "" {
@@ -790,7 +783,7 @@ func TestDeleteIngressResource(t *testing.T) {
 	}
 
 	clientset := fake.NewSimpleClientset(&ing)
-	if err := DeleteIngress(clientset, "foo", "myns"); err != nil {
+	if err := DeleteIngress(clientset, "myns", "foo"); err != nil {
 		t.Fatalf("Deleting ingress returned err: %v", err)
 	}
 	a := clientset.Actions()
