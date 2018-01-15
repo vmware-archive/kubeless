@@ -28,7 +28,7 @@ Click on this next picture to see a screencast demonstrating our [serverless](ht
 
 Installation is made of three steps:
 
-* Download the `kubeless` CLI from the [release page](https://github.com/kubeless/kubeless/releases). (OSX users can also use [brew](https://brew.sh/): `brew install kubeless/tap/kubeless`).
+* Download the `kubeless` CLI from the [release page](https://github.com/kubeless/kubeless/releases). (OSX users can also use [brew](https://brew.sh/): `brew install kubeless`).
 * Create a `kubeless` namespace (used by default)
 * Then use one of the YAML manifests found in the release page to deploy kubeless. It will create a _functions_ Custom Resource Definition and launch a controller. You will see a _kubeless_ controller, a _kafka_ and a _zookeeper_ statefulset appear and shortly get in running state.
 
