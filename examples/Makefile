@@ -60,7 +60,7 @@ scheduled-get-python-verify:
 	found=false; \
 	while [ $$number -le $$timeout ] ; do \
 		pod=`kubectl get po -oname -l function=scheduled-get-python`; \
-		logs=`kubectl logs $$pod | grep "GET / HTTP/1.1\" 200 11 \"\" \"Wget\""`; \
+		logs=`kubectl logs $$pod | grep "GET / HTTP/1.1\" 200 11 \"\""`; \
     	if [ "$$logs" != "" ]; then \
 			found=true; \
 			break; \
