@@ -239,11 +239,12 @@ pubsub-python-verify:
 	$$found
 
 pubsub-python34:
-	kubeless function deploy pubsub-python34 --trigger-topic s3-python --runtime python3.4 --handler pubsub-python.handler --from-file python/pubsub.py
+	kubeless topic create s3-python34 || true
+	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/pubsub.py
 
 pubsub-python34-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
-	kubeless topic publish --topic s3-python --data "$(DATA)"
+	kubeless topic publish --topic s3-python34 --data "$(DATA)"
 	number="1"; \
 	timeout="60"; \
 	found=false; \
@@ -260,11 +261,12 @@ pubsub-python34-verify:
 	$$found
 
 pubsub-python36:
-	kubeless function deploy pubsub-python36 --trigger-topic s3-python --runtime python3.6 --handler pubsub-python.handler --from-file python/pubsub.py
+	kubeless topic create s3-python36 || true
+	kubeless function deploy pubsub-python36 --trigger-topic s3-python36 --runtime python3.6 --handler pubsub-python.handler --from-file python/pubsub.py
 
 pubsub-python36-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
-	kubeless topic publish --topic s3-python --data "$(DATA)"
+	kubeless topic publish --topic s3-python36 --data "$(DATA)"
 	number="1"; \
 	timeout="60"; \
 	found=false; \
