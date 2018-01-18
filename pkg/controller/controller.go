@@ -35,6 +35,7 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	kv1beta1 "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
+	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/utils"
 )
 
@@ -87,6 +88,10 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 			}
 		},
 	})
+
+	var l langruntime.Langruntimes
+
+	l.ReadConfigMap(cfg.KubeCli)
 
 	return &Controller{
 		logger:         logrus.WithField("pkg", "controller"),

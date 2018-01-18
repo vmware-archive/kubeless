@@ -7,9 +7,61 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+	yaml "gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/client-go/kubernetes"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
+
+// Langruntime struct
+type Langruntimes struct {
+}
+
+var availableRuntimes []RuntimeInfo
+
+// ReadConfigMap reads the configmap
+func (l Langruntimes) ReadConfigMap(c kubernetes.Interface) {
+
+	cfgm, err := c.CoreV1().ConfigMaps("kubeless").Get("kubeless-config", metav1.GetOptions{})
+
+	if err != nil {
+		logrus.Info("ERROR!!!! ------ ")
+		return
+	}
+
+	// logrus.Info("ConfigMap Data", cfgm.Data)
+	// logrus.Info("ConfigMap Data runtime images", cfgm.Data["runtime-images"])
+
+	err = yaml.Unmarshal([]byte(cfgm.Data["runtime-images"]), &availableRuntimes)
+
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	logrus.Info("configmap ri is Versions: ", availableRuntimes[0])
+	logrus.Info("configmap ri is Versions with ID: ", availableRuntimes[0].ID)
+	logrus.Info("configmap ri is Versions with depname: ", availableRuntimes[0].DepName)
+}
+
+// // Runtimes struct
+// type runtimes struct {
+// 	ID             string            `json:"ID"`
+// 	Versions       []runtimeVersions `json:"versions"`
+// 	DepName        string            `json:"depname,omitempty"`
+// 	FileNameSuffix string            `json:"filenamesuffix,omitempty"`
+// }
+
+// type runtimeVersions struct {
+// 	Name        string `json:"name"`
+// 	Version     string `json:"version"`
+// 	HTTPImage   string `json:"httpImage"`
+// 	PubSubImage string `json:"pubsubImage"`
+// 	InitImage   string `json:"initImage"`
+// }
 
 const (
 	python27Http    = "kubeless/python@sha256:0f3b64b654df5326198e481cd26e73ecccd905aae60810fc9baea4dcbb61f697"
@@ -36,54 +88,55 @@ const (
 )
 
 type runtimeVersion struct {
-	version     string
-	httpImage   string
-	pubsubImage string
-	initImage   string
+	Name        string `yaml:"name"`
+	Version     string `yaml:"version"`
+	HTTPImage   string `yaml:"httpImage"`
+	PubSubImage string `yaml:"pubsubImage"`
+	InitImage   string `yaml:"initImage"`
+	ImageSecret string `yaml:"imageSecret,omitempty"`
 }
 
 // RuntimeInfo describe the runtime specifics (typical file suffix and dependency file name)
 // and the supported versions
 type RuntimeInfo struct {
-	ID             string
-	versions       []runtimeVersion
-	DepName        string
-	FileNameSuffix string
+	ID             string           `yaml:"ID"`
+	Versions       []runtimeVersion `yaml:"versions"`
+	DepName        string           `yaml:"depName"`
+	FileNameSuffix string           `yaml:"fileNameSuffix"`
 }
 
-var pythonVersions, nodeVersions, rubyVersions, dotnetcoreVersions []runtimeVersion
-var availableRuntimes []RuntimeInfo
+// var pythonVersions, nodeVersions, rubyVersions, dotnetcoreVersions []runtimeVersion
 
-func init() {
-	python27 := runtimeVersion{version: "2.7", httpImage: python27Http, pubsubImage: python27Pubsub, initImage: python27Init}
-	python34 := runtimeVersion{version: "3.4", httpImage: python34Http, pubsubImage: python34Pubsub, initImage: python34Init}
-	python36 := runtimeVersion{version: "3.6", httpImage: python36Http, pubsubImage: python36Pubsub, initImage: python36Init}
-	pythonVersions = []runtimeVersion{python27, python34, python36}
+// func init() {
+// 	python27 := runtimeVersion{version: "2.7", httpImage: python27Http, pubsubImage: python27Pubsub, initImage: python27Init}
+// 	python34 := runtimeVersion{version: "3.4", httpImage: python34Http, pubsubImage: python34Pubsub, initImage: python34Init}
+// 	python36 := runtimeVersion{version: "3.6", httpImage: python36Http, pubsubImage: python36Pubsub, initImage: python36Init}
+// 	pythonVersions = []runtimeVersion{python27, python34, python36}
 
-	node6 := runtimeVersion{version: "6", httpImage: node6Http, pubsubImage: node6Pubsub, initImage: node6Init}
-	node8 := runtimeVersion{version: "8", httpImage: node8Http, pubsubImage: node8Pubsub, initImage: node8Init}
-	nodeVersions = []runtimeVersion{node6, node8}
+// 	node6 := runtimeVersion{version: "6", httpImage: node6Http, pubsubImage: node6Pubsub, initImage: node6Init}
+// 	node8 := runtimeVersion{version: "8", httpImage: node8Http, pubsubImage: node8Pubsub, initImage: node8Init}
+// 	nodeVersions = []runtimeVersion{node6, node8}
 
-	ruby24 := runtimeVersion{version: "2.4", httpImage: ruby24Http, pubsubImage: ruby24Pubsub, initImage: ruby24Init}
-	rubyVersions = []runtimeVersion{ruby24}
+// 	ruby24 := runtimeVersion{version: "2.4", httpImage: ruby24Http, pubsubImage: ruby24Pubsub, initImage: ruby24Init}
+// 	rubyVersions = []runtimeVersion{ruby24}
 
-	dotnetcore2 := runtimeVersion{version: "2.0", httpImage: dotnetcore2Http, pubsubImage: "", initImage: dotnetcore2Init}
-	dotnetcoreVersions = []runtimeVersion{dotnetcore2}
+// 	dotnetcore2 := runtimeVersion{version: "2.0", httpImage: dotnetcore2Http, pubsubImage: "", initImage: dotnetcore2Init}
+// 	dotnetcoreVersions = []runtimeVersion{dotnetcore2}
 
-	availableRuntimes = []RuntimeInfo{
-		{ID: "python", versions: pythonVersions, DepName: "requirements.txt", FileNameSuffix: ".py"},
-		{ID: "nodejs", versions: nodeVersions, DepName: "package.json", FileNameSuffix: ".js"},
-		{ID: "ruby", versions: rubyVersions, DepName: "Gemfile", FileNameSuffix: ".rb"},
-		{ID: "dotnetcore", versions: dotnetcoreVersions, DepName: "requirements.xml", FileNameSuffix: ".cs"},
-	}
-}
+// 	availableRuntimes = []RuntimeInfo{
+// 		{ID: "python", versions: pythonVersions, DepName: "requirements.txt", FileNameSuffix: ".py"},
+// 		{ID: "nodejs", versions: nodeVersions, DepName: "package.json", FileNameSuffix: ".js"},
+// 		{ID: "ruby", versions: rubyVersions, DepName: "Gemfile", FileNameSuffix: ".rb"},
+// 		{ID: "dotnetcore", versions: dotnetcoreVersions, DepName: "requirements.xml", FileNameSuffix: ".cs"},
+// 	}
+// }
 
 // GetRuntimes returns the list of available runtimes as strings
 func GetRuntimes() []string {
 	result := []string{}
 	for _, runtimeInf := range availableRuntimes {
-		for _, runtime := range runtimeInf.versions {
-			result = append(result, runtimeInf.ID+runtime.version)
+		for _, runtime := range runtimeInf.Versions {
+			result = append(result, runtimeInf.ID+runtime.Version)
 		}
 	}
 	return result
@@ -102,9 +155,9 @@ func IsValidRuntime(runtime string) bool {
 func getAvailableRuntimesPerTrigger(imageType string) []string {
 	var runtimeList []string
 	for i := range availableRuntimes {
-		for j := range availableRuntimes[i].versions {
-			if (imageType == "PubSub" && availableRuntimes[i].versions[j].pubsubImage != "") || (imageType == "HTTP" && availableRuntimes[i].versions[j].httpImage != "") {
-				runtimeList = append(runtimeList, availableRuntimes[i].ID+availableRuntimes[i].versions[j].version)
+		for j := range availableRuntimes[i].Versions {
+			if (imageType == "PubSub" && availableRuntimes[i].Versions[j].PubSubImage != "") || (imageType == "HTTP" && availableRuntimes[i].Versions[j].HTTPImage != "") {
+				runtimeList = append(runtimeList, availableRuntimes[i].ID+availableRuntimes[i].Versions[j].Version)
 			}
 		}
 	}
@@ -120,7 +173,9 @@ func getVersionFromRuntime(runtime string) string {
 // GetRuntimeInfo returns all the info regarding a runtime
 func GetRuntimeInfo(runtime string) (RuntimeInfo, error) {
 	runtimeID := regexp.MustCompile("^[a-zA-Z]+").FindString(runtime)
+	logrus.Info("availableruntim GetRuntimeInfo: ", availableRuntimes)
 	for _, runtimeInf := range availableRuntimes {
+		logrus.Info("Runtim ID is %v and expected is %v", runtimeInf, runtimeID)
 		if runtimeInf.ID == runtimeID {
 			return runtimeInf, nil
 		}
@@ -134,8 +189,8 @@ func findRuntimeVersion(runtimeWithVersion string) (runtimeVersion, error) {
 	if err != nil {
 		return runtimeVersion{}, err
 	}
-	for _, versionInf := range runtimeInf.versions {
-		if versionInf.version == version {
+	for _, versionInf := range runtimeInf.Versions {
+		if versionInf.Version == version {
 			return versionInf, nil
 		}
 	}
@@ -162,16 +217,16 @@ func GetFunctionImage(runtime, ftype string) (string, error) {
 			return "", err
 		}
 		if ftype == pubsubFunc {
-			if versionInf.pubsubImage == "" {
+			if versionInf.PubSubImage == "" {
 				err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for event based functions. Available runtimes are: %s", runtime, strings.Join(getAvailableRuntimesPerTrigger("PubSub")[:], ", "))
 			} else {
-				imageName = versionInf.pubsubImage
+				imageName = versionInf.PubSubImage
 			}
 		} else {
-			if versionInf.httpImage == "" {
+			if versionInf.HTTPImage == "" {
 				err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for HTTP based functions. Available runtimes are: %s", runtime, strings.Join(getAvailableRuntimesPerTrigger("HTTP")[:], ", "))
 			} else {
-				imageName = versionInf.httpImage
+				imageName = versionInf.HTTPImage
 			}
 		}
 	}
@@ -213,7 +268,7 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, installVolume v1.VolumeM
 
 	return v1.Container{
 		Name:            "install",
-		Image:           versionInf.initImage,
+		Image:           versionInf.InitImage,
 		Command:         []string{"sh", "-c"},
 		Args:            []string{command},
 		VolumeMounts:    []v1.VolumeMount{installVolume},
