@@ -47,12 +47,12 @@ func {{.HandlerName}}(w http.ResponseWriter, r *http.Request) {
 	//-{{if hasFormParameters .}}
 	r.ParseForm()
 	//-{{end}}
-	//-{{range .ParametersType.Fields}}
+	//-{{range .ParametersType.Fields}}	
 	//-{{if eq .Position "path"}}
 	if value, ok := vars["{{.JSONName}}"]; ok {
 		parameters.{{.Name}} = intValue(value)
 	}
-	//-{{end}}
+	//-{{end}}	
 	//-{{if eq .Position "formdata"}}
 	if len(r.Form["{{.JSONName}}"]) > 0 {
 		parameters.{{.Name}} = intValue(r.Form["{{.JSONName}}"][0])
@@ -60,11 +60,11 @@ func {{.HandlerName}}(w http.ResponseWriter, r *http.Request) {
 	//-{{end}}
 	//-{{end}}
 	//-{{end}}
-	//-{{if hasResponses .}}
+	//-{{if hasResponses .}}	
 	// instantiate the responses structure
 	var responses {{.ResponsesTypeName}}
 	//-{{end}}
-	// call the service provider
+	// call the service provider	
 	//-{{if hasParameters .}}
 	//-{{if hasResponses .}}
 	err = provider.{{.ProcessorName}}(&parameters, &responses)
@@ -77,18 +77,18 @@ func {{.HandlerName}}(w http.ResponseWriter, r *http.Request) {
 	//-{{else}}
 	err = provider.{{.ProcessorName}}()
 	//-{{end}}
-	//-{{end}}
+	//-{{end}}	
 	if err == nil {
 	//-{{ if hasResponses .}}
-		//-{{ if .ResponsesType | hasFieldNamedOK }}
+		//-{{ if .ResponsesType | hasFieldNamedOK }}		
 		if responses.OK != nil {
 			// write the normal response
 			encoder := json.NewEncoder(w)
 			encoder.Encode(responses.OK)
 			return
-		}
+		} 
 		//-{{end}}
-		//-{{ if .ResponsesType | hasFieldNamedDefault }}
+		//-{{ if .ResponsesType | hasFieldNamedDefault }}		
 		if responses.Default != nil {
 			w.WriteHeader(int(responses.Default.Code))
 			w.Write([]byte(responses.Default.Message + "\n"))

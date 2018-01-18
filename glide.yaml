@@ -21,4 +21,6 @@ import:
   - pkg/client/monitoring/v1alpha1
 - package: github.com/robfig/cron
 - package: golang.org/x/sys
-  version: 7ddbeae9ae08c6a06a59597f0c9edbc5ff2444ce
+  version: 82aafbf43bf885069dc71b7e7c2f9d7a614d47da
+- package: github.com/imdario/mergo
+  version: 0.3.0

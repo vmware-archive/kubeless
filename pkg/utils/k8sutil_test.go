@@ -262,6 +262,7 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 	funcAnno := map[string]string{
 		"bar": "foo",
+		"xyz": "valuefromfunc",
 	}
 	f1Name := "f1"
 	f1Port := int32(8080)
@@ -308,8 +309,19 @@ func TestEnsureDeployment(t *testing.T) {
 			},
 		},
 	}
+
+	functionPodTemplateSpecConfigMap := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "function-pod-template-spec",
+		},
+		Data: map[string]string{"podTemplateSpec": `{"metadata": {"annotations": {"foo-from-cm-function-pod-template": "bar-function-pod-template", "xyz": "valuefromcm"}},"spec": {"restartPolicy": "Always"}}`},
+	}
+	_, err := clientset.Core().ConfigMaps(ns).Create(functionPodTemplateSpecConfigMap)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
 	// Testing happy path
-	err := EnsureFuncDeployment(clientset, f1, or)
+	err = EnsureFuncDeployment(clientset, f1, or)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -331,11 +343,17 @@ func TestEnsureDeployment(t *testing.T) {
 		"prometheus.io/path":   "/metrics",
 		"prometheus.io/port":   strconv.Itoa(int(f1Port)),
 		"bar":                  "foo",
+		"foo-from-cm-function-pod-template": "bar-function-pod-template",
+		"xyz": "valuefromfunc",
 	}
 	for i := range expectedAnnotations {
 		if dpm.Spec.Template.Annotations[i] != expectedAnnotations[i] {
 			t.Errorf("Expecting annotation %s but received %s", expectedAnnotations[i], dpm.Spec.Template.Annotations[i])
 		}
+	}
+
+	if dpm.Spec.Template.Spec.RestartPolicy != "Always" {
+		t.Error("Unable to set pod template from ConfigMap")
 	}
 	if dpm.Spec.Template.Annotations["bar"] != "foo" {
 		t.Error("Unable to set annotations")

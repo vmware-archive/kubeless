@@ -50,6 +50,8 @@ import (
 	// Adding explicitely the GCP auth plugin
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
+	"github.com/ghodss/yaml"
+	"github.com/imdario/mergo"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 )
 
@@ -521,6 +523,26 @@ func svcPort(funcObj *kubelessApi.Function) int32 {
 	return int32(8080)
 }
 
+func getPodTemplateFromConfigMap(client kubernetes.Interface) (*v1.PodTemplateSpec, error) {
+	controllerNamespace := os.Getenv("KUBELESS_INSTALLED_NAMESPACE")
+	cm, err := client.CoreV1().ConfigMaps(controllerNamespace).Get("function-pod-template-spec", metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	podTemplateSpec := &v1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{},
+		Spec:       v1.PodSpec{},
+	}
+	if podTemplateData, ok := cm.Data["podTemplateSpec"]; ok {
+		err := yaml.Unmarshal([]byte(podTemplateData), &podTemplateSpec)
+		if err != nil {
+			logrus.Errorf(" Error parsing podTemplateSpec in config map function-pod-template :: %v", err)
+			return nil, err
+		}
+	}
+	return podTemplateSpec, nil
+}
+
 // EnsureFuncDeployment creates/updates a function deployment
 func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference) error {
 
@@ -558,6 +580,12 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 
 	//copy all func's Spec.Template to the deployment
 	dpm.Spec.Template = *funcObj.Spec.Template.DeepCopy()
+
+	if podTemplateSpecFromConfigMap, err := getPodTemplateFromConfigMap(client); err == nil {
+		if err := mergo.Merge(&dpm.Spec.Template, podTemplateSpecFromConfigMap); err != nil {
+			return err
+		}
+	}
 
 	//append data to dpm spec
 	if len(dpm.Spec.Template.ObjectMeta.Labels) == 0 {

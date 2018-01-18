@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Client code
+// Client code 
 
 import Foundation
 import Dispatch
@@ -23,15 +23,15 @@ enum ClientError: Swift.Error {
 
 public class Client {
   var service : String
-
+  
   public init(service: String) {
     self.service = service
-  }
+  } 
 //-{% for serviceMethod in renderer.methods %}
 
   // {{ serviceMethod.description }} Asynchronous.
   public func {{ serviceMethod.name }}({{ serviceMethod|asyncClientParametersDeclaration }}) throws {
-      var path = self.service
+      var path = self.service 
       path = path + "{{ serviceMethod.path }}"
       //-{% for serviceTypeField in serviceMethod|parametersTypeFields %}
       //-{% if serviceTypeField.position == "path" %}
@@ -53,7 +53,7 @@ public class Client {
       fetch(request) {(data, response, error) in
         if error != nil {
           callback(nil, ClientError.errorWithCode(0))
-		  return
+	  	  return
         }
         guard let httpResponse = response else {
           callback(nil, ClientError.errorWithCode(0))
@@ -62,7 +62,7 @@ public class Client {
         if httpResponse.statusCode == 200 {
           if let data = data {
             let jsonObject = try! JSONSerialization.jsonObject(with:data)
-            if let value = {{ serviceMethod.resultTypeName  }}(jsonObject:jsonObject) {
+            if let value = {{ serviceMethod.resultTypeName  }}(jsonObject:jsonObject) {          
               callback(value, nil)
 			  return
             }
@@ -76,7 +76,7 @@ public class Client {
       fetch(request) {(data, response, error) in
         if error != nil {
           callback(ClientError.errorWithCode(0))
-		  return
+	  	  return
         }
         guard let httpResponse = response else {
           callback(ClientError.errorWithCode(0))
@@ -87,10 +87,10 @@ public class Client {
 	    } else {
           callback(ClientError.errorWithCode(httpResponse.statusCode))
         }
-	  }
-	  //-{% endif %}
+	  }	  	  
+	  //-{% endif %}	  
   }
-
+  
   // {{ serviceMethod.description }} Synchronous.
   public func {{ serviceMethod.name }}({{ serviceMethod|syncClientParametersDeclaration }}) throws {{ serviceMethod|syncClientReturnDeclaration }} {
 	  let sem = DispatchSemaphore(value: 0)
@@ -98,20 +98,20 @@ public class Client {
 	  var response : {{ serviceMethod.resultTypeName }}?
 	  //-{% endif %}
 	  var error : Swift.Error?
-	  //-{% if serviceMethod|hasResponses %}
+	  //-{% if serviceMethod|hasResponses %}	  
 	  try {{ serviceMethod.name }}({{ serviceMethod|parameterFieldNames }}) {r, e in
-		  response = r
+	  	  response = r 
 	  //-{% else %}
-	  try {{ serviceMethod.name }}({{ serviceMethod|parameterFieldNames }}) {e in
-	  //-{% endif %}
-		  error = e
+	  try {{ serviceMethod.name }}({{ serviceMethod|parameterFieldNames }}) {e in	  
+	  //-{% endif %}	  	  
+		  error = e 
 		  sem.signal()
 	  }
 	  sem.wait()
 	  if let actualError = error {
 		  throw actualError
 	  }
-	  //-{% if serviceMethod|hasResponses %}
+	  //-{% if serviceMethod|hasResponses %}	  
 	  if let actualResponse = response {
 		  return actualResponse
 	  } else {
