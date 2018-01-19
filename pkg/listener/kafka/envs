@@ -1,0 +1,2 @@
+export BROKER_LIST=kafka.kubeless:9092
+export TOPIC=s3
