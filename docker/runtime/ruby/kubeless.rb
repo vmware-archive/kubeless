@@ -25,6 +25,13 @@ MOD_PATH = "#{File.join(MOD_ROOT_PATH, MOD_NAME)}.rb"
 FUNC_TIMEOUT = ENV.fetch('FUNC_TIMEOUT', '180')
 ftimeout = FUNC_TIMEOUT.to_i # We need the timeout as a number
 
+function_context = {
+    'function-name': FUNC_HANDLER,
+    'timeout': FUNC_TIMEOUT,
+    'runtime': ENV['RUNTIME'],
+    'memory-limit': ENV['MEMORY_LIMIT'],
+}
+
 begin
   puts "Loading #{MOD_PATH}"
   mod = Module.new
@@ -41,8 +48,29 @@ set :port, ENV['FUNC_PORT'] || 8080
 
 def funcWrapper(mod, t)
     status = Timeout::timeout(t) {
-      res = mod.send(FUNC_HANDLER.to_sym, request)
+      res = mod.send(FUNC_HANDLER.to_sym, @event, @context)
     }
+end
+
+before do
+  contentType = request.env["CONTENT_TYPE"]
+  @event = ''
+  @context = {
+      'event-id': request.env["HTTP_EVENT_ID"],
+      'event-type': request.env["HTTP_EVENT_TYPE"],
+      'event-time': request.env["HTTP_EVENT_TIME"],
+      'event-namespace': request.env["HTTP_EVENT_NAMESPACE"],
+      extensions: {
+        request: request,
+      }
+    }
+  if request.env["CONTENT_LENGTH"] != nil && request.env["CONTENT_LENGTH"] > "0"
+    if contentType == "application/json"
+      @event =  JSON.parse(request.body.read)
+    else
+      @event = request.body.read
+    end
+  end
 end
 
 get '/' do

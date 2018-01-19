@@ -1,5 +1,6 @@
 'use strict';
 
+const _ = require('lodash');
 const bodyParser = require('body-parser');
 const client = require('prom-client');
 const express = require('express');
@@ -8,8 +9,10 @@ const morgan = require('morgan');
 
 const app = express();
 app.use(morgan('combined'));
-app.use(bodyParser.json()); // support json encoded bodies
-app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
+const bodParserOptions = {
+  type: '*/*'
+};
+app.use(bodyParser.raw(bodParserOptions));
 
 const modName = process.env.MOD_NAME;
 const funcHandler = process.env.FUNC_HANDLER;
@@ -21,15 +24,16 @@ helper.routeLivenessProbe(app);
 helper.routeMetrics(app, client);
 const functionCallingCode = `
 try {
-  Promise.resolve(module.exports.${funcHandler}(req, res)).then(() => {
-    end();
+  Promise.resolve(module.exports.${funcHandler}(event, context)).then((result) => {
+    _res.end(JSON.stringify(result));
+    _end();
   }).catch((err) => {
     // Catch asynchronous errors
-    handleError(err);
+    _handleError(err);
   });
 } catch (err) {
   // Catch synchronous errors
-  handleError(err);
+  _handleError(err);
 }`;
 const { vmscript, sandbox } = helper.loadFunc(modName, functionCallingCode);
 
@@ -49,11 +53,28 @@ app.all('*', (req, res) => {
       res.status(500).send('Internal Server Error');
       console.error(`Function failed to execute: ${err.stack}`);
     };
+    let data = req.body.toString('utf-8');
+    if (req.get('content-type') === 'application/json') {
+      data = JSON.parse(data)
+    }
     const reqSandbox = Object.assign({
-      req,
-      res,
-      end,
-      handleError,
+      event: data,
+      context: {
+        'event-type': req.get('event-type'),
+        'event-id': req.get('event-id'),
+        'event-time': req.get('event-time'),
+        'event-namespace': req.get('event-namespace'),
+        extensions: {
+          request: req,
+          'function-name': funcHandler,
+          timeout,
+          runtime: process.env.FUNC_RUNTIME,
+          'memory-limit': process.env.FUNC_MEMORY_LIMIT,
+        }
+      },
+      _handleError: handleError,
+      _res: res,
+      _end: end,
       process: Object.assign({}, process),
     }, sandbox);
     try {

@@ -1,11 +1,10 @@
 FROM node:8
 
-ARG TARGET=http-trigger
 RUN apt-get update &&  apt-get install git
 
 ADD lib/helper.js /lib/
-ADD ${TARGET}/kubeless.js /
-ADD ${TARGET}/package.json /
+ADD kubeless.js /
+ADD package.json /
 
 RUN npm install
 

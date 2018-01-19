@@ -1,7 +1,7 @@
 {
-  "name": "nodejs-event-trigger",
+  "name": "nodejs-http-trigger",
   "version": "0.0.1",
-  "description": "Express server for serving event-based functions for Kubeless",
+  "description": "Express server for serving http-based functions for Kubeless",
   "author": "containers@bitnami.com",
   "license": "Apache-2.0",
   "bugs": {
@@ -9,8 +9,10 @@
   },
   "homepage": "https://github.com/serverless/serverless-kubeless#readme",
   "dependencies": {
+    "body-parser": "^1.17.2",
+    "eslint-config-airbnb": "^16.1.0",
     "express": "^4.15.3",
-    "kafka-node": "^2.0.1",
+    "lodash": "^4.17.4",
     "morgan": "^1.8.2",
     "prom-client": "^10.0.2"
   }

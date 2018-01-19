@@ -7,7 +7,7 @@ get-python-verify:
 
 get-python-update:
 	$(eval TMPDIR := $(shell mktemp -d))
-	printf 'def foo():\n%4sreturn "hello world updated"\n' > $(TMPDIR)/hello-updated.py
+	printf 'def foo(event, context):\n%4sreturn "hello world updated"\n' > $(TMPDIR)/hello-updated.py
 	kubeless function update get-python --from-file $(TMPDIR)/hello-updated.py
 	rm -rf $(TMPDIR)
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python/"
@@ -72,7 +72,7 @@ scheduled-get-python-verify:
 
 timeout-python:
 	$(eval TMPDIR := $(shell mktemp -d))
-	printf 'def foo():\n%4swhile 1: pass\n%4sreturn "hello world"\n' > $(TMPDIR)/hello-loop.py
+	printf 'def foo(event, context):\n%4swhile 1: pass\n%4sreturn "hello world"\n' > $(TMPDIR)/hello-loop.py
 	kubeless function deploy timeout-python --trigger-http --runtime python2.7 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.py --timeout 3
 	rm -rf $(TMPDIR)
 
@@ -96,7 +96,7 @@ get-nodejs-custom-port-verify:
 
 timeout-nodejs:
 	$(eval TMPDIR := $(shell mktemp -d))
-	printf 'module.exports = { foo: function (req, res) { while(true) {} } }\n' > $(TMPDIR)/hello-loop.js
+	printf 'module.exports = { foo: function (event, context) { while(true) {} } }\n' > $(TMPDIR)/hello-loop.js
 	kubeless function deploy timeout-nodejs --trigger-http --runtime nodejs6 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.js --timeout 4
 	rm -rf $(TMPDIR)
 
@@ -108,7 +108,7 @@ get-nodejs-deps:
 	kubeless function deploy get-nodejs-deps --trigger-http --runtime nodejs6 --handler helloget.handler --from-file nodejs/hellowithdeps.js --dependencies nodejs/package.json
 
 get-nodejs-deps-verify:
-	kubeless function call get-nodejs-deps --data '{"hello": "world"}' | grep -q '"hello":"world","date"'
+	kubeless function call get-nodejs-deps --data '{"hello": "world"}' | grep -q 'hello.*world.*date.*UTC'
 
 get-nodejs-multi:
 	cd nodejs; zip helloFunctions.zip *js
@@ -152,7 +152,7 @@ get-php:
 
 get-php-update:
 	$(eval TMPDIR := $(shell mktemp -d))
-	printf '<?php\n function foo() { echo "hello world updated"; } \n' > $(TMPDIR)/hello-updated.php
+	printf '<?php\n function foo() { return "hello world updated"; } \n' > $(TMPDIR)/hello-updated.php
 	kubeless function update get-php --from-file $(TMPDIR)/hello-updated.php
 	rm -rf $(TMPDIR)
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-php/"
@@ -199,7 +199,7 @@ timeout-php-verify:
 
 timeout-ruby:
 	$(eval TMPDIR := $(shell mktemp -d))
-	printf 'def foo(c)\n%4swhile true do;sleep(1);end\n%4s"hello world"\nend' > $(TMPDIR)/hello-loop.rb
+	printf 'def foo(event, context)\n%4swhile true do;sleep(1);end\n%4s"hello world"\nend' > $(TMPDIR)/hello-loop.rb
 	kubeless function deploy timeout-ruby --trigger-http --runtime ruby2.4 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.rb --timeout 4
 	rm -rf $(TMPDIR)
 

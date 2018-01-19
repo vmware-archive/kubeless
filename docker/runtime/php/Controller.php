@@ -27,6 +27,12 @@ class Controller
     $this->file = sprintf("/kubeless/%s.php", getenv('MOD_NAME'));
     $this->function = getenv('FUNC_HANDLER');
     $this->currentDir = getcwd();
+    $this->functionContext = (object) array(
+      'function-name' => $this->function,
+      'timeout' => $this->timeout,
+      'runtime' => getenv('FUNC_RUNTIME'),
+      'memory-limit' => getenv('FUNC_MEMORY_LIMIT'),
+    );
   }
 
   /**
@@ -45,12 +51,24 @@ class Controller
       }
       $pid = pcntl_fork();
       if ($pid == 0) {
-        call_user_func_array($this->function, [$request]);
-        $response = ob_get_contents();
+        $data = $request->getBody()->getContents();
+        if ($_SERVER['HTTP_CONTENT_TYPE'] == 'application/json') {
+          $data = json_decode($data);
+        }
+        $context = (object) array(
+          'event-type' => $_SERVER['HTTP_EVENT_TYPE'],
+          'event-id' => $_SERVER['HTTP_EVENT_ID'],
+          'event-time' => $_SERVER['HTTP_EVENT_TIME'],
+          'event-namespace' => $_SERVER['HTTP_EVENT_NAMESPACE'],
+          'extensions' => (object) array(
+            'request' => $request,
+            $this->functionContext
+          )
+        );
+        $res = call_user_func($this->function, $data, $context);
         ob_end_clean();
         chdir($this->currentDir);
-
-        return $response;
+        return $res;
       } else {
           sleep($this->timeout);
           posix_kill($pid, SIGKILL);
