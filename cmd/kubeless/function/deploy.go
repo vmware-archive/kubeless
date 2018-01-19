@@ -33,6 +33,10 @@ var deployCmd = &cobra.Command{
 	Short: "deploy a function to Kubeless",
 	Long:  `deploy a function to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
+		cli := utils.GetClientOutOfCluster()
+		var l langruntime.Langruntimes
+		l.ReadConfigMap(cli)
+
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - function name")
 		}
@@ -146,7 +150,6 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal("You must specify handler for the runtime.")
 		}
 
-		cli := utils.GetClientOutOfCluster()
 		defaultFunctionSpec := kubelessApi.Function{}
 		defaultFunctionSpec.Spec.Type = "HTTP"
 		defaultFunctionSpec.ObjectMeta.Labels = map[string]string{

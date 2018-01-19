@@ -14,8 +14,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 // Langruntimes struct for getting configmap
@@ -34,14 +32,14 @@ func (l Langruntimes) ReadConfigMap(c kubernetes.Interface) {
 	cfgm, err := c.CoreV1().ConfigMaps("kubeless").Get("kubeless-config", metav1.GetOptions{})
 
 	if err != nil {
-		logrus.Fatal("Unable to get the configmap. ", err)
+		logrus.Fatalf("Unable to get the configmap. %v", err)
 		return
 	}
 
 	err = yaml.Unmarshal([]byte(cfgm.Data["runtime-images"]), &availableRuntimes)
 
 	if err != nil {
-		logrus.Fatal(err)
+		logrus.Fatalf("Unable to get the runtime images. %v", err)
 	}
 }
 
@@ -110,9 +108,7 @@ func getVersionFromRuntime(runtime string) string {
 // GetRuntimeInfo returns all the info regarding a runtime
 func GetRuntimeInfo(runtime string) (RuntimeInfo, error) {
 	runtimeID := regexp.MustCompile("^[a-zA-Z]+").FindString(runtime)
-	logrus.Info("availableruntim GetRuntimeInfo: ", availableRuntimes)
 	for _, runtimeInf := range availableRuntimes {
-		logrus.Info("Runtim ID is %v and expected is %v", runtimeInf, runtimeID)
 		if runtimeInf.ID == runtimeID {
 			return runtimeInf, nil
 		}
@@ -179,7 +175,6 @@ func GetImageSecrets(runtime string) ([]string, error) {
 		return secrets, err
 	}
 
-	logrus.Info("Runtime is", runtimeInf.ImagePullSecrets)
 	if len(runtimeInf.ImagePullSecrets) == 0 {
 		return secrets, nil
 	}
