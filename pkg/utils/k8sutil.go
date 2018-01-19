@@ -684,6 +684,19 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		}
 		dpm.Spec.Template.Spec.InitContainers = []v1.Container{provisionContainer}
 	}
+
+	// Add the imagesecrets if present to pull images from private docker registry
+	imageSecrets, err := langruntime.GetImageSecrets(funcObj.Spec.Runtime)
+
+	if len(imageSecrets) > 0 {
+		var lors []v1.LocalObjectReference
+		for _, s := range imageSecrets {
+			lor := v1.LocalObjectReference{Name: s}
+			lors = append(lors, lor)
+		}
+		dpm.Spec.Template.Spec.ImagePullSecrets = lors
+	}
+
 	// ensure that the runtime is supported for installing dependencies
 	_, err = langruntime.GetRuntimeInfo(funcObj.Spec.Runtime)
 	if funcObj.Spec.Deps != "" && err != nil {

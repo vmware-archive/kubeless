@@ -8,7 +8,39 @@ import (
 	"testing"
 
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
+
+	// "k8s.io/client-go/kubernetes/typed/core/v1/fake"
+	"k8s.io/client-go/pkg/api/v1"
 )
+
+func (l *Langruntimes) methodName() {
+
+}
+
+var runtimeImages = "- ID: \"python\"
+      versions:
+      - name: \"python27\"
+        httpImage: \"http/blah\"
+        pubsubImage: \"pubsub/balh\"
+        initImage: \"init/blah\"
+        imageSecret: \"secret\""
+
+func initializeConfigmap() {
+	clientset := fake.NewSimpleClientset()
+	cm := v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "kubeless-config",
+			Namespace: "kubeless",
+		},
+		Data: map[string]string{
+			"runtime-images": runtimeImages,
+		},
+	}
+
+	// c := fake.FakeConfigMaps
+}
 
 func check(runtime, fname string, values []string, t *testing.T) {
 	info, err := GetRuntimeInfo(runtime)

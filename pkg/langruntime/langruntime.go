@@ -46,11 +46,16 @@ func (l Langruntimes) ReadConfigMap(c kubernetes.Interface) {
 }
 
 type runtimeVersion struct {
-	Name        string `yaml:"name"`
-	Version     string `yaml:"version"`
-	HTTPImage   string `yaml:"httpImage"`
-	PubSubImage string `yaml:"pubsubImage"`
-	InitImage   string `yaml:"initImage"`
+	Name             string         `yaml:"name"`
+	Version          string         `yaml:"version"`
+	HTTPImage        string         `yaml:"httpImage"`
+	PubSubImage      string         `yaml:"pubsubImage"`
+	InitImage        string         `yaml:"initImage"`
+	ImagePullSecrets []ImageSecrets `yaml:"imagePullSecrets,omitempty"`
+}
+
+// ImageSecrets for pulling the image
+type ImageSecrets struct {
 	ImageSecret string `yaml:"imageSecret,omitempty"`
 }
 
@@ -163,6 +168,27 @@ func GetFunctionImage(runtime, ftype string) (string, error) {
 		}
 	}
 	return imageName, nil
+}
+
+// GetImageSecrets gets the secrets linked to the runtime image
+func GetImageSecrets(runtime string) ([]string, error) {
+	runtimeInf, err := findRuntimeVersion(runtime)
+	var secrets []string
+
+	if err != nil {
+		return secrets, err
+	}
+
+	logrus.Info("Runtime is", runtimeInf.ImagePullSecrets)
+	if len(runtimeInf.ImagePullSecrets) == 0 {
+		return secrets, nil
+	}
+
+	for _, s := range runtimeInf.ImagePullSecrets {
+		secrets = append(secrets, s.ImageSecret)
+
+	}
+	return secrets, nil
 }
 
 // GetBuildContainer returns a Container definition based on a runtime

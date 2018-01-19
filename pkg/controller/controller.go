@@ -90,7 +90,6 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 	})
 
 	var l langruntime.Langruntimes
-
 	l.ReadConfigMap(cfg.KubeCli)
 
 	return &Controller{
