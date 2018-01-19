@@ -81,7 +81,7 @@ func TestBuilder(t *testing.T) {
                 package common
 
                 type Object struct {
-	            ID int64
+    	            ID int64
                 }
                 `,
 		}, {
@@ -93,12 +93,12 @@ func TestBuilder(t *testing.T) {
                 )
 
                 type Blah struct {
-	            common.Object
-	            Count int64
-	            Frobbers map[string]*Frobber
-	            Baz []Object
-	            Nickname *string
-	            NumberIsAFavorite map[int]bool
+    	            common.Object
+    	            Count int64
+    	            Frobbers map[string]*Frobber
+    	            Baz []Object
+    	            Nickname *string
+    	            NumberIsAFavorite map[int]bool
                 }
 
                 type Frobber struct {
@@ -114,7 +114,7 @@ func TestBuilder(t *testing.T) {
                 }
 
                 var AVar Frobber
-
+    
                 var (
 	                AnotherVar = Frobber{}
                 )
@@ -145,12 +145,12 @@ package o
 
 
 
-type CommonObject interface {
+type CommonObject interface { 
 	ID() Int64
 	SetID(Int64)
 }
 
-type FooBlah interface {
+type FooBlah interface { 
 	CommonObject
 	Count() Int64
 	SetCount(Int64)
@@ -160,14 +160,14 @@ type FooBlah interface {
 	NumberIsAFavorite() MapIntToBool
 }
 
-type FooFrobber interface {
+type FooFrobber interface { 
 	Name() String
 	SetName(String)
 	Amount() Int64
 	SetAmount(Int64)
 }
 
-type FooObject interface {
+type FooObject interface { 
 	CommonObject
 }
 
@@ -214,7 +214,7 @@ func TestStructParse(t *testing.T) {
             type Blah struct {
 	            // A is the first field.
 	            A int64 ` + "`" + `json:"a"` + "`" + `
-
+            
 	            // B is the second field.
 	            // Multiline comments work.
 	            B string ` + "`" + `json:"b"` + "`" + `
@@ -273,7 +273,7 @@ func TestParseSecondClosestCommentLines(t *testing.T) {
 				    package foo
                     // Blah's SecondClosestCommentLines.
                     // Another line.
-
+                    
                     type Blah struct {
 	                    a int
                     }

@@ -22,3 +22,5 @@ import:
 - package: github.com/robfig/cron
 - package: golang.org/x/sys
   version: 7ddbeae9ae08c6a06a59597f0c9edbc5ff2444ce
+- package: github.com/Shopify/sarama
+  version: ^1.12.0

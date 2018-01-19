@@ -5,7 +5,7 @@ if [ -z "${KUBECONFIG}" ]; then
 fi
 
 # CAUTION - NAMESPACE must match its value when deploy script was run.
-# Some resources are always deployed to the monitoring namespace.
+# Some resources are always deployed to the monitoring namespace. 
 
 if [ -z "${NAMESPACE}" ]; then
     NAMESPACE=monitoring

@@ -27,24 +27,16 @@ import (
 	pb "google.golang.org/appengine/internal/remote_api"
 )
 
-// Client is a connection to the production APIs for an application.
-type Client struct {
-	hc    *http.Client
-	url   string
-	appID string
-}
-
-// NewClient returns a client for the given host. All communication will
-// be performed over SSL unless the host is localhost.
-func NewClient(host string, client *http.Client) (*Client, error) {
+// NewRemoteContext returns a context that gives access to the production
+// APIs for the application at the given host. All communication will be
+// performed over SSL unless the host is localhost.
+func NewRemoteContext(host string, client *http.Client) (context.Context, error) {
 	// Add an appcfg header to outgoing requests.
-	wrapClient := new(http.Client)
-	*wrapClient = *client
 	t := client.Transport
 	if t == nil {
 		t = http.DefaultTransport
 	}
-	wrapClient.Transport = &headerAddingRoundTripper{t}
+	client.Transport = &headerAddingRoundTripper{t}
 
 	url := url.URL{
 		Scheme: "https",
@@ -55,35 +47,23 @@ func NewClient(host string, client *http.Client) (*Client, error) {
 		url.Scheme = "http"
 	}
 	u := url.String()
-	appID, err := getAppID(wrapClient, u)
+	appID, err := getAppID(client, u)
 	if err != nil {
 		return nil, fmt.Errorf("unable to contact server: %v", err)
 	}
-	return &Client{
-		hc:    wrapClient,
-		url:   u,
-		appID: appID,
-	}, nil
-}
-
-// NewContext returns a copy of parent that will cause App Engine API
-// calls to be sent to the client's remote host.
-func (c *Client) NewContext(parent context.Context) context.Context {
-	ctx := internal.WithCallOverride(parent, c.call)
-	ctx = internal.WithLogOverride(ctx, c.logf)
-	ctx = internal.WithAppIDOverride(ctx, c.appID)
-	return ctx
-}
-
-// NewRemoteContext returns a context that gives access to the production
-// APIs for the application at the given host. All communication will be
-// performed over SSL unless the host is localhost.
-func NewRemoteContext(host string, client *http.Client) (context.Context, error) {
-	c, err := NewClient(host, client)
-	if err != nil {
-		return nil, err
+	rc := &remoteContext{
+		client: client,
+		url:    u,
 	}
-	return c.NewContext(context.Background()), nil
+	ctx := internal.WithCallOverride(context.Background(), rc.call)
+	ctx = internal.WithLogOverride(ctx, rc.logf)
+	ctx = internal.WithAppIDOverride(ctx, appID)
+	return ctx, nil
+}
+
+type remoteContext struct {
+	client *http.Client
+	url    string
 }
 
 var logLevels = map[int64]string{
@@ -94,11 +74,11 @@ var logLevels = map[int64]string{
 	4: "CRITICAL",
 }
 
-func (c *Client) logf(level int64, format string, args ...interface{}) {
+func (c *remoteContext) logf(level int64, format string, args ...interface{}) {
 	log.Printf(logLevels[level]+": "+format, args...)
 }
 
-func (c *Client) call(ctx context.Context, service, method string, in, out proto.Message) error {
+func (c *remoteContext) call(ctx context.Context, service, method string, in, out proto.Message) error {
 	req, err := proto.Marshal(in)
 	if err != nil {
 		return fmt.Errorf("error marshalling request: %v", err)
@@ -117,7 +97,7 @@ func (c *Client) call(ctx context.Context, service, method string, in, out proto
 	}
 
 	// TODO(djd): Respect ctx.Deadline()?
-	resp, err := c.hc.Post(c.url, "application/octet-stream", bytes.NewReader(req))
+	resp, err := c.client.Post(c.url, "application/octet-stream", bytes.NewReader(req))
 	if err != nil {
 		return fmt.Errorf("error sending request: %v", err)
 	}

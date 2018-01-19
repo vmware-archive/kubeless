@@ -55,7 +55,7 @@ func main() throws {
   var response = Openapi_Plugin_V1_Response()
   let rawRequest = try Stdin.readall()
   let request = try Openapi_Plugin_V1_Request(serializedData: rawRequest)
-  let wrapper = request.wrapper
+  let wrapper = request.wrapper 
   let document = try Openapi_V2_Document(serializedData:wrapper.value)
   let report = printDocument(document:document, name:wrapper.name, version:wrapper.version)
   if let reportData = report.data(using:.utf8) {

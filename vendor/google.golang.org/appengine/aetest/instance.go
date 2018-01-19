@@ -3,7 +3,6 @@ package aetest
 import (
 	"io"
 	"net/http"
-	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
@@ -25,9 +24,6 @@ type Options struct {
 	// StronglyConsistentDatastore is whether the local datastore should be
 	// strongly consistent. This will diverge from production behaviour.
 	StronglyConsistentDatastore bool
-	// StartupTimeout is a duration to wait for instance startup.
-	// By default, 15 seconds.
-	StartupTimeout time.Duration
 }
 
 // NewContext starts an instance of the development API server, and returns
