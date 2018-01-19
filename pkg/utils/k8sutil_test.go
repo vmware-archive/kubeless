@@ -185,7 +185,7 @@ func TestEnsureService(t *testing.T) {
 			ServiceSpec: v1.ServiceSpec{
 				Ports: []v1.ServicePort{
 					{
-						Name:       "function-port",
+						Name:       "http-function-port",
 						Port:       8080,
 						TargetPort: intstr.FromInt(8080),
 						NodePort:   0,
@@ -215,7 +215,7 @@ func TestEnsureService(t *testing.T) {
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
 				{
-					Name:       "function-port",
+					Name:       "http-function-port",
 					Port:       8080,
 					TargetPort: intstr.FromInt(8080),
 					NodePort:   0,
@@ -279,7 +279,7 @@ func TestEnsureDeployment(t *testing.T) {
 			ServiceSpec: v1.ServiceSpec{
 				Ports: []v1.ServicePort{
 					{
-						Name:       "function-port",
+						Name:       "http-function-port",
 						Port:       f1Port,
 						TargetPort: intstr.FromInt(int(f1Port)),
 						NodePort:   0,
@@ -944,7 +944,7 @@ func TestServiceSpec(t *testing.T) {
 	eSvc := v1.ServiceSpec{
 		Ports: []v1.ServicePort{
 			{
-				Name:       "function-port",
+				Name:       "http-function-port",
 				Protocol:   v1.ProtocolTCP,
 				Port:       8080,
 				TargetPort: intstr.FromInt(8080),

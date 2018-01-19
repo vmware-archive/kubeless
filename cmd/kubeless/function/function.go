@@ -258,7 +258,7 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 	svcSpec := v1.ServiceSpec{
 		Ports: []v1.ServicePort{
 			{
-				Name:     "function-port",
+				Name:     "http-function-port",
 				NodePort: 0,
 				Protocol: v1.ProtocolTCP,
 			},
