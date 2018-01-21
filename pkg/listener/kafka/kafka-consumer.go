@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 
 	"github.com/Shopify/sarama"
@@ -35,7 +36,11 @@ func main() {
 			logrus.Fatal(err)
 		}
 	}()
-	consumer, err := master.ConsumePartition(topic, 0, sarama.OffsetOldest)
+	p, err := strconv.Atoi(partition)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	consumer, err := master.ConsumePartition(topic, int32(p), sarama.OffsetOldest)
 	if err != nil {
 		logrus.Fatal(err)
 	}
@@ -48,7 +53,7 @@ func main() {
 			case err := <-consumer.Errors():
 				logrus.Fatal(err)
 			case msg := <-consumer.Messages():
-				logrus.Fatalf("Received messages", string(msg.Key), string(msg.Value))
+				logrus.Infof("Received messages %s %s", string(msg.Key), string(msg.Value))
 			case <-signals:
 				logrus.Fatalf("Interrupt is detected")
 				doneCh <- struct{}{}
