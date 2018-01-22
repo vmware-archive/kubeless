@@ -61,4 +61,12 @@ load ../script/libtest
     sts_restart
     kubeless topic list | grep $topic
 }
+@test "Test kafka consumer" {
+  wait_for_kubeless_kafka_server_ready
+  kubeless topic create s3
+  _wait_for_kubeless_kafka_topic_ready s3
+  deploy_kafka_listener
+  kubeless topic publish --topic s3 --data "hello world"
+  _wait_for_kafka_consumer_ready "hello world"
+}
 # vim: ts=2 sw=2 si et syntax=sh
