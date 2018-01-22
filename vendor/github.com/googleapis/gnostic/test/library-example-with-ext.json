@@ -6,7 +6,7 @@
       "version": "v1"
     },
     "host": "library-example.googleapis.com",
-
+    
     "x-sampleone-book" : {"code": 123, "message": 999},
     "x-sampleone-shelf" : {"foo1": 123, "bar": 999},
 
@@ -14,7 +14,7 @@
     "x-sampleone-mysimpleint64" : 12345,
     "x-sampleone-mysimplenumber" : 111.222,
     "x-sampleone-mysimpleboolean" : true,
-
+    
     "x-sampletwo-book" : {"code": 123, "message": 999},
     "x-sampletwo-shelf" : {"foo1": 123, "bar": 999},
 

@@ -168,12 +168,12 @@ func printFunctions(w io.Writer, functions []*kubelessApi.Function, cli kubernet
 			}
 			mem := ""
 			env := ""
-			if len(f.Spec.Template.Spec.Containers[0].Resources.Requests) != 0 {
-				mem = f.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()
+			if len(f.Spec.Deployment.Spec.Template.Spec.Containers[0].Resources.Requests) != 0 {
+				mem = f.Spec.Deployment.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()
 			}
-			if len(f.Spec.Template.Spec.Containers[0].Env) != 0 {
+			if len(f.Spec.Deployment.Spec.Template.Spec.Containers[0].Env) != 0 {
 				var buffer bytes.Buffer
-				for _, e := range f.Spec.Template.Spec.Containers[0].Env {
+				for _, e := range f.Spec.Deployment.Spec.Template.Spec.Containers[0].Env {
 					buffer.WriteString(e.Name + " = " + e.Value + "\n")
 				}
 				env = buffer.String()

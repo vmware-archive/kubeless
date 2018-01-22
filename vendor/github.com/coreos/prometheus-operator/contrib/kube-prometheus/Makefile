@@ -1,5 +1,5 @@
 .PHONY: image
-
+	
 IMAGE := coreos/generate-prometheus-operator-manifests
 
 image: Dockerfile

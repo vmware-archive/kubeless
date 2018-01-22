@@ -123,12 +123,12 @@ definitions:
 
   NewPet:
     required:
-      - name
+      - name  
     properties:
       name:
         type: string
       tag:
-        type: string
+        type: string    
 
   Error:
     required:

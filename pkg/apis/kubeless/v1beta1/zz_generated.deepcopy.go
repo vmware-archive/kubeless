@@ -95,7 +95,7 @@ func (in *FunctionList) DeepCopyObject() runtime.Object {
 func (in *FunctionSpec) DeepCopyInto(out *FunctionSpec) {
 	*out = *in
 	in.ServiceSpec.DeepCopyInto(&out.ServiceSpec)
-	in.Template.DeepCopyInto(&out.Template)
+	in.Deployment.DeepCopyInto(&out.Deployment)
 	in.HorizontalPodAutoscaler.DeepCopyInto(&out.HorizontalPodAutoscaler)
 	return
 }

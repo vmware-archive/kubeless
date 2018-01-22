@@ -40,7 +40,7 @@ import "encoding/json"
 json.Marshal(&data)
 ```
 
-with
+with 
 
 ```go
 import "github.com/json-iterator/go"
@@ -73,7 +73,7 @@ go get github.com/json-iterator/go
 
 Contributors
 
-* [thockin](https://github.com/thockin)
+* [thockin](https://github.com/thockin) 
 * [mattn](https://github.com/mattn)
 * [cch123](https://github.com/cch123)
 

@@ -200,8 +200,8 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 	}
 
 	funcEnv := parseEnv(envs)
-	if len(funcEnv) == 0 && len(defaultFunction.Spec.Template.Spec.Containers) != 0 {
-		funcEnv = defaultFunction.Spec.Template.Spec.Containers[0].Env
+	if len(funcEnv) == 0 && len(defaultFunction.Spec.Deployment.Spec.Template.Spec.Containers) != 0 {
+		funcEnv = defaultFunction.Spec.Deployment.Spec.Template.Spec.Containers[0].Env
 	}
 
 	funcLabels := defaultFunction.ObjectMeta.Labels
@@ -233,15 +233,15 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 			Requests: resource,
 		}
 	} else {
-		if len(defaultFunction.Spec.Template.Spec.Containers) != 0 {
-			resources = defaultFunction.Spec.Template.Spec.Containers[0].Resources
+		if len(defaultFunction.Spec.Deployment.Spec.Template.Spec.Containers) != 0 {
+			resources = defaultFunction.Spec.Deployment.Spec.Template.Spec.Containers[0].Resources
 		}
 	}
 
-	if len(runtimeImage) == 0 && len(defaultFunction.Spec.Template.Spec.Containers) != 0 {
-		runtimeImage = defaultFunction.Spec.Template.Spec.Containers[0].Image
+	if len(runtimeImage) == 0 && len(defaultFunction.Spec.Deployment.Spec.Template.Spec.Containers) != 0 {
+		runtimeImage = defaultFunction.Spec.Deployment.Spec.Template.Spec.Containers[0].Image
 	}
-	function.Spec.Template.Spec.Containers = []v1.Container{
+	function.Spec.Deployment.Spec.Template.Spec.Containers = []v1.Container{
 		{
 			Env:       funcEnv,
 			Resources: resources,
