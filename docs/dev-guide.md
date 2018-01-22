@@ -28,8 +28,8 @@ export PATH=$GOPATH:$PATH
 ### Create a working directory for the project
 
 ````
-working_dir=$GOROOT/src/github.com/kubeless/
-mkdir -p $working_dir
+export KUBELESS_WORKING_DIR=$GOROOT/src/github.com/kubeless/
+mkdir -p $KUBELESS_WORKING_DIR
 ````
 
 ### Fork the repository
@@ -40,10 +40,9 @@ mkdir -p $working_dir
 ### Clone from your fork
 
 ```
-working_dir = $GOROOT/src/github.com/kubeless/
-cd $working_dir
+cd $KUBELESS_WORKING_DIR
 git clone https://github.com/<YOUR FORK>
-cd $working_dir/kubeless
+cd $KUBELESS_WORKING_DIR/kubeless
 git remote add upstream https://github.com/kubeless/kubeless.git
 
 # Never push to upstream master
@@ -57,7 +56,7 @@ git remote -v
 To get all the needed tools to build and test, run:
 
 ```
-cd $working_dir/kubeless
+cd $KUBELESS_WORKING_DIR/kubeless
 make bootstrap
 ```
 
@@ -65,7 +64,7 @@ Or if you want to use a containerized environment you can use [minikube](https:/
 use the following script to set it up:
 
 ```
-cd $working_dir/kubeless
+cd $KUBELESS_WORKING_DIR/kubeless
 ./script/start-test-environment.sh
 ```
 
@@ -79,7 +78,7 @@ text editor.
 To make the binaries for your platform, run:
 
 ```
-cd $working_dir/kubeless
+cd $KUBELESS_WORKING_DIR/kubeless
 make binary
 make controller-image
 ```
@@ -94,6 +93,31 @@ $ make binary-cross
 ```
 
 The binaries accordingly located at `bundles/kubeless_$OS_$arch` folder.
+
+### Building k8s manifests file
+
+To regenerate the most updated k8s manifests file, run:
+
+```
+cd $KUBELESS_WORKING_DIR
+make all-yaml
+```
+
+If everything is ok, you'll have generated manifests file under the $KUBELESS_WORKING_DIR root directory:
+
+```
+kubeless-openshift.yaml
+kubeless-rbac.yaml
+kubeless.yaml
+``
+
+You can also generate them separated using the following commands:
+
+```
+make kubeless-openshift.yaml
+make kubeless-rbac.yaml
+make kubeless.yaml
+```
 
 ### Uploading your kubeless image to Docker Hub
 
@@ -179,9 +203,9 @@ If you make any changes to API specification, you will need to run `make update`
 The simplest way to try kubeless is deploying it with
 [minikube](https://github.com/kubernetes/minikube)
 
-You can start working with the local minikube VM and test your changes 
-building the controller image and running your tests. Once you are happy 
-with the result and you are ready to send a pull request you should run 
+You can start working with the local minikube VM and test your changes
+building the controller image and running your tests. Once you are happy
+with the result and you are ready to send a pull request you should run
 the unit and end-to-end tests (to spot possible issues with your changes):
 
 ```
@@ -190,8 +214,8 @@ $ make test
 $ make build_and_test
 ```
 
-Note that for running the end-to-end tests you need to provide a clean 
-profile of minikube (you can create a specific profile for the tests with 
+Note that for running the end-to-end tests you need to provide a clean
+profile of minikube (you can create a specific profile for the tests with
 `minikube profile tests`).
 
 Any new feature/bug fix made to the code should be accompanied by a unit or
@@ -220,11 +244,11 @@ binaries and make it available on kubernetes.
 #export GOPATH=
 #export PATH=$GOPATH:$PATH
 
-#working_dir=$GOPATH/src/github.com/kubeless/
-#mkdir -p $working_dir
-#cd $working_dir
+#KUBELESS_WORKING_DIR=$GOPATH/src/github.com/kubeless/
+#mkdir -p $KUBELESS_WORKING_DIR
+#cd $KUBELESS_WORKING_DIR
 #git clone https://github.com/<INCLUDE HERE YOUR FORK AND UNCOMMENT>
-#cd $working_dir/kubeless
+#cd $KUBELESS_WORKING_DIR/kubeless
 #git remote add upstream https://github.com/DXBrazil/kubeless
 #git remote set-url --push upstream no_push
 #git remote -v
