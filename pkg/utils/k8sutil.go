@@ -470,7 +470,8 @@ func serviceSpec(funcObj *kubelessApi.Function) v1.ServiceSpec {
 	return v1.ServiceSpec{
 		Ports: []v1.ServicePort{
 			{
-				Name:       "function-port",
+				// Note: Prefix: "http-" is added to adapt to Istio so that it can discover the function services
+				Name:       "http-function-port",
 				Protocol:   v1.ProtocolTCP,
 				Port:       8080,
 				TargetPort: intstr.FromInt(8080),
@@ -902,7 +903,7 @@ func CreateServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, 
 					},
 					Endpoints: []monitoringv1alpha1.Endpoint{
 						{
-							Port: "function-port",
+							Port: "http-function-port",
 						},
 					},
 				},

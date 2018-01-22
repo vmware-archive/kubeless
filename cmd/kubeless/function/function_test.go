@@ -20,10 +20,11 @@ import (
 	"archive/zip"
 	"io"
 	"io/ioutil"
-	"k8s.io/api/core/v1"
 	"os"
 	"reflect"
 	"testing"
+
+	"k8s.io/api/core/v1"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"k8s.io/api/autoscaling/v2beta1"
@@ -132,7 +133,7 @@ func TestGetFunctionDescription(t *testing.T) {
 			ServiceSpec: v1.ServiceSpec{
 				Ports: []v1.ServicePort{
 					{
-						Name:       "function-port",
+						Name:       "http-function-port",
 						Port:       int32(80),
 						TargetPort: intstr.FromInt(80),
 						NodePort:   0,
@@ -226,7 +227,7 @@ func TestGetFunctionDescription(t *testing.T) {
 			ServiceSpec: v1.ServiceSpec{
 				Ports: []v1.ServicePort{
 					{
-						Name:       "function-port",
+						Name:       "http-function-port",
 						Port:       int32(8080),
 						TargetPort: intstr.FromInt(8080),
 						NodePort:   0,

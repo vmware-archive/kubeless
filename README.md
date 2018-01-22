@@ -146,7 +146,7 @@ For example:
 ```console
 $ kubectl proxy -p 8080 &
 
-$ curl -L --data '{"Another": "Echo"}' localhost:8080/api/v1/proxy/namespaces/default/services/get-python:function-port/ --header "Content-Type:application/json"
+$ curl -L --data '{"Another": "Echo"}' localhost:8080/api/v1/proxy/namespaces/default/services/get-python:http-function-port/ --header "Content-Type:application/json"
 {"Another": "Echo"}
 ```
 
