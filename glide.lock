@@ -1,38 +1,11 @@
-hash: 6246b3a38f1cc25cd5876238e6ab2f9349ec8629c68747073df315984c23cb42
-updated: 2018-01-19T16:15:33.967847073+01:00
+hash: 595ed7f56ebc4dfcc762f9094ed1d0540c57e2468a3f73b26565dd88d524b0d2
+updated: 2018-01-22T21:58:27.512819438+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
   subpackages:
   - compute/metadata
   - internal
-- name: github.com/aws/aws-sdk-go
-  version: 42f4ce615286af6026c8aac43a7af02457358ef6
-  subpackages:
-  - aws
-  - aws/awserr
-  - aws/awsutil
-  - aws/client
-  - aws/client/metadata
-  - aws/corehandlers
-  - aws/credentials
-  - aws/credentials/ec2rolecreds
-  - aws/credentials/endpointcreds
-  - aws/credentials/stscreds
-  - aws/defaults
-  - aws/ec2metadata
-  - aws/endpoints
-  - aws/request
-  - aws/session
-  - aws/signer/v4
-  - internal/shareddefaults
-  - private/protocol
-  - private/protocol/query
-  - private/protocol/query/queryutil
-  - private/protocol/rest
-  - private/protocol/xml/xmlutil
-  - service/sqs
-  - service/sts
 - name: github.com/coreos/prometheus-operator
   version: 197eb012d973f5aaf4d0446fd8f638f1b9067128
   subpackages:
@@ -57,8 +30,6 @@ imports:
   version: dcef7f55730566d41eae5db10e7d6981829720f6
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
-- name: github.com/go-ini/ini
-  version: 32e4c1e6bc4e7d0d8451aa6b75200d19e37a536a
 - name: github.com/go-openapi/jsonpointer
   version: 46af16f9f7b149af66e5d1bd010e3574dc06de98
 - name: github.com/go-openapi/jsonreference
@@ -113,8 +84,6 @@ imports:
   version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
-- name: github.com/jmespath/go-jmespath
-  version: dd801d4f4ce7ac746e7e7b4489d2fa600b3b096b
 - name: github.com/json-iterator/go
   version: 36b14963da70d11297d313183d7e6388c8510e1e
 - name: github.com/juju/ratelimit
@@ -159,7 +128,7 @@ imports:
 - name: github.com/spf13/cobra
   version: b95ab734e27d33e0d8fbabf71ca990568d4e2020
 - name: github.com/spf13/pflag
-  version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
+  version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
 - name: golang.org/x/crypto
   version: d172538b2cfce0c13cee31e647d0367aa8cd2486
   subpackages:
@@ -340,9 +309,9 @@ imports:
   - util/jsonpath
   - util/workqueue
 - name: k8s.io/code-generator
-  version: bfddfc848855622780eb9cf0910747b485415484
+  version: f4fbdd37ed9c2292ea0abaabd8581008984dffc4
 - name: k8s.io/gengo
-  version: 1ef560bbde5195c01629039ad3b337ce63e7b321
+  version: 93fa717586400daaf96f9c88d0e708c80272627f
 - name: k8s.io/kube-openapi
   version: 868f2f29720b192240e18284659231b440f9cda5
   subpackages:
