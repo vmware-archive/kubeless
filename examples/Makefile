@@ -239,6 +239,7 @@ pubsub-python-verify:
 	$$found
 
 pubsub-python34:
+	kubeless topic create s3-python34 || true
 	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/pubsub.py
 
 pubsub-python34-verify:
@@ -260,6 +261,7 @@ pubsub-python34-verify:
 	$$found
 
 pubsub-python36:
+	kubeless topic create s3-python36 || true
 	kubeless function deploy pubsub-python36 --trigger-topic s3-python36 --runtime python3.6 --handler pubsub-python.handler --from-file python/pubsub.py
 
 pubsub-python36-verify:
@@ -281,6 +283,7 @@ pubsub-python36-verify:
 	$$found
 
 pubsub-nodejs:
+	kubeless topic create s3-nodejs || true
 	kubeless function deploy pubsub-nodejs --trigger-topic s3-nodejs --runtime nodejs6 --handler pubsub-nodejs.handler --from-file nodejs/helloevent.js
 
 pubsub-nodejs-verify:
@@ -309,6 +312,7 @@ pubsub-nodejs-update-verify:
 	kubectl describe $$(kubectl get po -oname|grep pubsub-nodejs) | grep -e "TOPIC_NAME:\s*s3-nodejs-2"
 
 pubsub-ruby:
+	kubeless topic create s3-ruby || true
 	kubeless function deploy pubsub-ruby --trigger-topic s3-ruby --runtime ruby2.4 --handler pubsub-ruby.handler --from-file ruby/helloevent.rb
 
 pubsub-ruby-verify:
