@@ -1,2 +1,3 @@
 #!/bin/sh
-docker build -t bitnami/php:7.1 .
+docker build -t paolomainardi/kubeless-php:latest .
+docker push paolomainardi/kubeless-php:latest

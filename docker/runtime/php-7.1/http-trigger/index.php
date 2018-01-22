@@ -1,8 +1,11 @@
 <?php
 
+namespace Kubeless;
+
 use \Psr\Http\Message\ServerRequestInterface as Request;
 use \Psr\Http\Message\ResponseInterface as Response;
 use Symfony\Component\Process\PhpProcess;
+use Symfony\Component\Process\Exception\RuntimeException as RuntimeException;
 
 require 'vendor/autoload.php';
 
@@ -16,7 +19,8 @@ class Server {
     $this->app = new \Slim\App();
     $this->timeout = (!empty(getenv('FUNC_TIMEOUT')) ? getenv('FUNC_TIMEOUT') : 180);
     $this->root = (!empty(getenv('MOD_ROOT_PATH')) ? getenv('MOD_ROOT_PATH') : '/kubeless/');
-    $this->function = sprintf("/kubeless/%s.php", getenv('MOD_NAME'));
+    $this->file = sprintf("/kubeless/%s.php", getenv('MOD_NAME'));
+    $this->function = getenv('FUNC_HANDLER');
   }
 
   /**
@@ -25,7 +29,12 @@ class Server {
    * @return void
    */
   private function runFunction() {
-      $php = file_get_contents($this->function);
+      include($this->file);
+      if (!function_exists($this->function)) {
+        throw new \Exception(sprintf("Function %s not exist", $this->function));
+      }
+      $php = file_get_contents($this->file);
+      $php .= "\n{$this->function}();";
       $process = new PhpProcess($php);
       $process->setTimeout($this->timeout);
       $process->run();
@@ -38,11 +47,14 @@ class Server {
    * @return void
    */
   private function validate() {
+    if (empty(getenv('FUNC_HANDLER'))) {
+      throw new \Exception("FUNC_HANDLER is empty");
+    }
     if (empty(getenv('MOD_NAME'))) {
       throw new \Exception("MOD_NAME is empty");
     }
-    if (!file_exists($this->function)) {
-      throw new \Exception(sprintf("%s cannot be found", $this->function));
+    if (!file_exists($this->file)) {
+      throw new \Exception(sprintf("%s cannot be found", $this->file));
     }
   }
 
@@ -59,6 +71,11 @@ class Server {
       $this->validate();
       $ret = $this->runFunction();
       $response->getBody()->write($ret);
+      return $response;
+    }
+    catch (RuntimeException $e) {
+      $response->getBody()->write($e->getMessage());
+      $response->withStatus(408);
       return $response;
     }
     catch (\Exception $e) {
