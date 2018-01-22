@@ -48,3 +48,4 @@ $ bin/grafana_dashboards_generate.sh -s 1000000 --apply-configmap --apply-type r
 
 * Put the json files you want to pack in the templates/grafana-dashboards/ directory
 * Size limit default is 240000 bytes due to the annotations size limit in kubernetes of 256KB.
+

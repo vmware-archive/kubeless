@@ -3,10 +3,10 @@
 #
 # Install dependencies that aren't available as Ubuntu packages.
 #
-# Everything goes into $HOME/local.
+# Everything goes into $HOME/local. 
 #
-# Scripts should add
-# - $HOME/local/bin to PATH
+# Scripts should add 
+# - $HOME/local/bin to PATH 
 # - $HOME/local/lib to LD_LIBRARY_PATH
 #
 
@@ -21,7 +21,7 @@ SWIFT_URL=https://swift.org/builds/$SWIFT_BRANCH/$(echo "$SWIFT_PLATFORM" | tr -
 
 echo $SWIFT_URL
 
-curl -fSsL $SWIFT_URL -o swift.tar.gz
+curl -fSsL $SWIFT_URL -o swift.tar.gz 
 tar -xzf swift.tar.gz --strip-components=2 --directory=local
 
 # Install protoc

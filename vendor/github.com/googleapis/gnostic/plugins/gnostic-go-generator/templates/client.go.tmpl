@@ -10,11 +10,11 @@ import (
   "net/http"
   "strings"
 )
-
+  
 // API client representation.
 type Client struct {
 	service string
-}
+} 
 
 // Create an API client.
 func NewClient(service string) *Client {
@@ -32,7 +32,7 @@ func (client *Client) {{.ClientName}}({{parameterList .}}) (result *{{.ResultTyp
 //-{{end}}
 	path := client.service + "{{.Path}}"
 	//-{{if hasParameters .}}
-	//-{{range .ParametersType.Fields}}
+	//-{{range .ParametersType.Fields}}	
 	//-{{if eq .Position "path"}}
 	path = strings.Replace(path, "{" + "{{.JSONName}}" + "}", fmt.Sprintf("%v", {{.JSONName}}), 1)
 	//-{{end}}

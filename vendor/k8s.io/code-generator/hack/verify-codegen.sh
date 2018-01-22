@@ -47,7 +47,3 @@ else
   echo "${DIFFROOT} is out of date. Please run hack/update-codegen.sh"
   exit 1
 fi
-
-# smoke test
-echo "Smoke testing _example by compiling..."
-go build ${SCRIPT_ROOT}/_example/...

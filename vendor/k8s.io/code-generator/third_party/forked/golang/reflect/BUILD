@@ -8,7 +8,6 @@ load(
 go_library(
     name = "go_default_library",
     srcs = ["type.go"],
-    importpath = "k8s.io/code-generator/third_party/forked/golang/reflect",
 )
 
 filegroup(

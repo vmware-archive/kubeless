@@ -31,6 +31,7 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/sirupsen/logrus"
 
+	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/autoscaling/v2beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
@@ -539,28 +540,33 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		"prometheus.io/path":   "/metrics",
 		"prometheus.io/port":   strconv.Itoa(int(svcPort(funcObj))),
 	}
-
-	//add deployment
 	maxUnavailable := intstr.FromInt(0)
-	dpm := &v1beta1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            funcObj.ObjectMeta.Name,
-			Labels:          funcObj.ObjectMeta.Labels,
-			OwnerReferences: or,
-		},
-		Spec: v1beta1.DeploymentSpec{
-			Strategy: v1beta1.DeploymentStrategy{
-				RollingUpdate: &v1beta1.RollingUpdateDeployment{
-					MaxUnavailable: &maxUnavailable,
-				},
-			},
+
+	//add deployment and copy all func's Spec.Deployment to the deployment
+	dpm := funcObj.Spec.Deployment.DeepCopy()
+	dpm.OwnerReferences = or
+	dpm.ObjectMeta.Name = funcObj.ObjectMeta.Name
+	dpm.Spec.Selector = &metav1.LabelSelector{
+		MatchLabels: funcObj.ObjectMeta.Labels,
+	}
+
+	dpm.Spec.Strategy = v1beta2.DeploymentStrategy{
+		RollingUpdate: &v1beta2.RollingUpdateDeployment{
+			MaxUnavailable: &maxUnavailable,
 		},
 	}
 
-	//copy all func's Spec.Template to the deployment
-	dpm.Spec.Template = *funcObj.Spec.Template.DeepCopy()
+	//append data to dpm deployment
+	if len(dpm.ObjectMeta.Labels) == 0 {
+		dpm.ObjectMeta.Labels = make(map[string]string)
+	}
+	for k, v := range funcObj.ObjectMeta.Labels {
+		dpm.ObjectMeta.Labels[k] = v
+	}
+	if len(dpm.ObjectMeta.Annotations) == 0 {
+		dpm.ObjectMeta.Annotations = make(map[string]string)
+	}
 
-	//append data to dpm spec
 	if len(dpm.Spec.Template.ObjectMeta.Labels) == 0 {
 		dpm.Spec.Template.ObjectMeta.Labels = make(map[string]string)
 	}
@@ -717,16 +723,17 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
 	}
 
-	_, err = client.Extensions().Deployments(funcObj.ObjectMeta.Namespace).Create(dpm)
+	_, err = client.Apps().Deployments(funcObj.ObjectMeta.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		// In case the Deployment already exists we should update
 		// just certain fields (to avoid race conditions)
-		var newDpm *v1beta1.Deployment
-		newDpm, err = client.Extensions().Deployments(funcObj.ObjectMeta.Namespace).Get(funcObj.ObjectMeta.Name, metav1.GetOptions{})
+		var newDpm *v1beta2.Deployment
+		newDpm, err = client.Apps().Deployments(funcObj.ObjectMeta.Namespace).Get(funcObj.ObjectMeta.Name, metav1.GetOptions{})
 		newDpm.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
+		newDpm.ObjectMeta.Annotations = funcObj.Spec.Deployment.ObjectMeta.Annotations
 		newDpm.ObjectMeta.OwnerReferences = or
 		newDpm.Spec = dpm.Spec
-		_, err = client.Extensions().Deployments(funcObj.ObjectMeta.Namespace).Update(newDpm)
+		_, err = client.Apps().Deployments(funcObj.ObjectMeta.Namespace).Update(newDpm)
 		if err != nil {
 			return err
 		}
@@ -938,4 +945,27 @@ func GetOwnerReference(funcObj *kubelessApi.Function) ([]metav1.OwnerReference, 
 			BlockOwnerDeletion: &t,
 		},
 	}, nil
+}
+
+// InitializeEmptyMapsInDeployment initializes all nil maps in a Deployment object
+// This is done to counteract with side-effects of github.com/imdario/mergo which panics when provided with a nil map in a struct
+func InitializeEmptyMapsInDeployment(deployment *v1beta2.Deployment) {
+	if deployment.ObjectMeta.Annotations == nil {
+		deployment.Annotations = make(map[string]string)
+	}
+	if deployment.ObjectMeta.Labels == nil {
+		deployment.ObjectMeta.Labels = make(map[string]string)
+	}
+	if deployment.Spec.Selector != nil && deployment.Spec.Selector.MatchLabels == nil {
+		deployment.ObjectMeta.Labels = make(map[string]string)
+	}
+	if deployment.Spec.Template.ObjectMeta.Annotations == nil {
+		deployment.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	}
+	if deployment.Spec.Template.ObjectMeta.Labels == nil {
+		deployment.Spec.Template.ObjectMeta.Labels = make(map[string]string)
+	}
+	if deployment.Spec.Template.Spec.NodeSelector == nil {
+		deployment.Spec.Template.Spec.NodeSelector = make(map[string]string)
+	}
 }

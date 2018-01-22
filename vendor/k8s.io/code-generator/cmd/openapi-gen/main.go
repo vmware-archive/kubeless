@@ -20,35 +20,23 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	"path/filepath"
 
-	"github.com/golang/glog"
-	"github.com/spf13/pflag"
 	"k8s.io/gengo/args"
 	"k8s.io/kube-openapi/pkg/generators"
 
-	generatorargs "k8s.io/code-generator/cmd/openapi-gen/args"
+	"github.com/golang/glog"
 )
 
 func main() {
-	genericArgs, customArgs := generatorargs.NewDefaults()
+	arguments := args.Default()
 
 	// Override defaults.
-	// TODO: move this out of openapi-gen
-	genericArgs.GoHeaderFilePath = filepath.Join(args.DefaultSourceTree(), "k8s.io/kubernetes/hack/boilerplate/boilerplate.go.txt")
-
-	genericArgs.AddFlags(pflag.CommandLine)
-	customArgs.AddFlags(pflag.CommandLine)
-	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
-	pflag.Parse()
-
-	if err := generatorargs.Validate(genericArgs); err != nil {
-		glog.Fatalf("Error: %v", err)
-	}
+	arguments.OutputFileBaseName = "openapi_generated"
+	arguments.GoHeaderFilePath = filepath.Join(args.DefaultSourceTree(), "k8s.io/kubernetes/hack/boilerplate/boilerplate.go.txt")
 
 	// Run it.
-	if err := genericArgs.Execute(
+	if err := arguments.Execute(
 		generators.NameSystems(),
 		generators.DefaultNameSystem(),
 		generators.Packages,

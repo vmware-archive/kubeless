@@ -19,7 +19,11 @@ local controllerEnv = [
   {
     name: "KUBELESS_SERVICE_TYPE",
     valueFrom: {configMapKeyRef: {"name": "kubeless-config", key: "service-type"}}
-  }
+    },
+  {
+     name: "KUBELESS_INSTALLED_NAMESPACE",
+     valueFrom: {fieldRef: {fieldPath: "metadata.namespace"}}
+   },
 ];
 
 local controllerContainer =
@@ -225,9 +229,16 @@ local crd = {
   description: "Kubernetes Native Serverless Framework",
 };
 
+local deploymentConfig = '{
+  "spec": {
+    "replicas": 1
+  }
+}';
+
 local kubelessConfig  = configMap.default("kubeless-config", namespace) +
     configMap.data({"ingress-enabled": "false"}) +
-    configMap.data({"service-type": "ClusterIP"});
+    configMap.data({"service-type": "ClusterIP"}) +
+    configMap.data({"deployment": std.toString(deploymentConfig)});
 
 {
   controllerAccount: k.util.prune(controllerAccount),

@@ -42,35 +42,32 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	"path/filepath"
 
-	"github.com/golang/glog"
-	"github.com/spf13/pflag"
 	"k8s.io/gengo/args"
 	"k8s.io/gengo/examples/defaulter-gen/generators"
 
-	generatorargs "k8s.io/code-generator/cmd/defaulter-gen/args"
+	"github.com/golang/glog"
+	"github.com/spf13/pflag"
 )
 
 func main() {
-	genericArgs, customArgs := generatorargs.NewDefaults()
+	arguments := args.Default()
 
 	// Override defaults.
-	// TODO: move this out of defaulter-gen
-	genericArgs.GoHeaderFilePath = filepath.Join(args.DefaultSourceTree(), "k8s.io/kubernetes/hack/boilerplate/boilerplate.go.txt")
+	arguments.OutputFileBaseName = "zz_generated.defaults"
+	arguments.GoHeaderFilePath = filepath.Join(args.DefaultSourceTree(), "k8s.io/kubernetes/hack/boilerplate/boilerplate.go.txt")
 
-	genericArgs.AddFlags(pflag.CommandLine)
-	customArgs.AddFlags(pflag.CommandLine)
-	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
-	pflag.Parse()
-
-	if err := generatorargs.Validate(genericArgs); err != nil {
-		glog.Fatalf("Error: %v", err)
+	// Custom args.
+	customArgs := &generators.CustomArgs{
+		ExtraPeerDirs: []string{},
 	}
+	pflag.CommandLine.StringSliceVar(&customArgs.ExtraPeerDirs, "extra-peer-dirs", customArgs.ExtraPeerDirs,
+		"Comma-separated list of import paths which are considered, after tag-specified peers, for conversions.")
+	arguments.CustomArgs = customArgs
 
 	// Run it.
-	if err := genericArgs.Execute(
+	if err := arguments.Execute(
 		generators.NameSystems(),
 		generators.DefaultNameSystem(),
 		generators.Packages,
