@@ -31,7 +31,6 @@ load ../script/libtest
   kubeless_function_delete pubsub-python34
 }
 @test "Test function: pubsub-nodejs" {
-  skip "This test is flaky until kubeless/kubeless/issues/519 is fixed"
   deploy_function pubsub-nodejs
   verify_function pubsub-nodejs
   test_kubeless_function_update pubsub-nodejs
