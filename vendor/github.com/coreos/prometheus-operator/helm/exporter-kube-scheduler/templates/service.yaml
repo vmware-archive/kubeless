@@ -19,3 +19,4 @@ spec:
   selector:
     k8s-app: kube-scheduler
   type: ClusterIP
+

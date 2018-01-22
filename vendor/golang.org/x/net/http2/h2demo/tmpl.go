@@ -85,9 +85,9 @@ func main() {
 	<div class="buttons">
 		<a class="run" title="Run this code [shift-enter]">Run</a>
 		<a class="fmt" title="Format this code">Format</a>
-
+		
 		<a class="share" title="Share this code">Share</a>
-
+		
 	</div>
 </div>
 
@@ -121,8 +121,8 @@ func main() {
 	document.CALLGRAPH = null;
 	</script>
 
-
-
+	
+		
 		<p>
 Go is a tool for managing Go source code.
 </p>
@@ -1974,7 +1974,7 @@ Except as <a href="https://developers.google.com/site-policies#restrictions">not
 the content of this page is licensed under the
 Creative Commons Attribution 3.0 License,
 and code is licensed under a <a href="/LICENSE">BSD license</a>.<br>
-<a href="/doc/tos.html">Terms of Service</a> |
+<a href="/doc/tos.html">Terms of Service</a> | 
 <a href="http://www.google.com/intl/en/policies/privacy/">Privacy Policy</a>
 </div>
 

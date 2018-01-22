@@ -19,7 +19,7 @@ func Log(_ message : String) {
 }
 
 func main() throws {
-
+  
   // read the OpenAPI document
   let rawRequest = try Stdin.readall()
   let request = try Openapi_Plugin_V1_Request(serializedData:rawRequest)

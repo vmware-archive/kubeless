@@ -19,7 +19,11 @@ local controllerEnv = [
   {
     name: "KUBELESS_SERVICE_TYPE",
     valueFrom: {configMapKeyRef: {"name": "kubeless-config", key: "service-type"}}
-  }
+  },
+  {
+    name: "KUBELESS_INSTALLED_NAMESPACE",
+    valueFrom: {fieldRef: {fieldPath: "metadata.namespace"}}
+  },
 ];
 
 local controllerContainer =
@@ -229,6 +233,9 @@ local kubelessConfig  = configMap.default("kubeless-config", namespace) +
     configMap.data({"ingress-enabled": "false"}) +
     configMap.data({"service-type": "ClusterIP"});
 
+local podTemplateSpecConfig  = configMap.default("function-pod-template-spec", namespace) +
+    configMap.data({"podTemplateSpec": "{\"metadata\": {\"annotations\": {\"key\": \"value\"}},\"spec\": {\"restartPolicy\": \"Always\"}}"});
+
 {
   controllerAccount: k.util.prune(controllerAccount),
   controller: k.util.prune(controllerDeployment),
@@ -240,4 +247,5 @@ local kubelessConfig  = configMap.default("kubeless-config", namespace) +
   zookeeperHeadlessSvc: k.util.prune(zookeeperHeadlessSvc),
   crd: k.util.prune(crd),
   cfg: k.util.prune(kubelessConfig),
+  podTemplateSpecCfg: k.util.prune(podTemplateSpecConfig),
 }

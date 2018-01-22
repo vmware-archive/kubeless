@@ -65,7 +65,7 @@ func (f *fakeAPIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Bad encoded API request: %v", err), 500)
 		return
 	}
-	if *apiReq.RequestId != "s3cr3t" && *apiReq.RequestId != DefaultTicket() {
+	if *apiReq.RequestId != "s3cr3t" {
 		writeResponse(&remotepb.Response{
 			RpcError: &remotepb.RpcError{
 				Code:   proto.Int32(int32(remotepb.RpcError_SECURITY_VIOLATION)),
@@ -163,26 +163,6 @@ func TestAPICall(t *testing.T) {
 	_, c, cleanup := setup()
 	defer cleanup()
 
-	req := &basepb.StringProto{
-		Value: proto.String("Doctor Who"),
-	}
-	res := &basepb.StringProto{}
-	err := Call(toContext(c), "actordb", "LookupActor", req, res)
-	if err != nil {
-		t.Fatalf("API call failed: %v", err)
-	}
-	if got, want := *res.Value, "David Tennant"; got != want {
-		t.Errorf("Response is %q, want %q", got, want)
-	}
-}
-
-func TestAPICallTicketUnavailable(t *testing.T) {
-	resetEnv := SetTestEnv()
-	defer resetEnv()
-	_, c, cleanup := setup()
-	defer cleanup()
-
-	c.req.Header.Set(ticketHeader, "")
 	req := &basepb.StringProto{
 		Value: proto.String("Doctor Who"),
 	}
@@ -381,7 +361,7 @@ func TestAPICallAllocations(t *testing.T) {
 
 	// Lots of room for improvement...
 	// TODO(djd): Reduce maximum to 85 once the App Engine SDK is based on 1.6.
-	const min, max float64 = 70, 100
+	const min, max float64 = 70, 90
 	if avg < min || max < avg {
 		t.Errorf("Allocations per API call = %g, want in [%g,%g]", avg, min, max)
 	}
@@ -449,8 +429,29 @@ func TestHelperProcess(*testing.T) {
 }
 
 func TestBackgroundContext(t *testing.T) {
-	resetEnv := SetTestEnv()
-	defer resetEnv()
+	environ := []struct {
+		key, value string
+	}{
+		{"GAE_LONG_APP_ID", "my-app-id"},
+		{"GAE_MINOR_VERSION", "067924799508853122"},
+		{"GAE_MODULE_INSTANCE", "0"},
+		{"GAE_MODULE_NAME", "default"},
+		{"GAE_MODULE_VERSION", "20150612t184001"},
+	}
+	for _, v := range environ {
+		old := os.Getenv(v.key)
+		os.Setenv(v.key, v.value)
+		v.value = old
+	}
+	defer func() { // Restore old environment after the test completes.
+		for _, v := range environ {
+			if v.value == "" {
+				os.Unsetenv(v.key)
+				continue
+			}
+			os.Setenv(v.key, v.value)
+		}
+	}()
 
 	ctx, key := fromContext(BackgroundContext()), "X-Magic-Ticket-Header"
 	if g, w := ctx.req.Header.Get(key), "my-app-id/default.20150612t184001.0"; g != w {
