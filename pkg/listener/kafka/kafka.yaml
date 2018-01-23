@@ -24,16 +24,22 @@ spec:
             configMapKeyRef:
               key: broker-list
               name: kafka-config
-        - name: TOPIC
+        - name: TOPICS
           valueFrom:
             configMapKeyRef:
-              key: topic
+              key: topics
+              name: kafka-config
+        - name: FUNCTION_ID
+          valueFrom:
+            configMapKeyRef:
+              key: function-id
               name: kafka-config
 ---
 apiVersion: v1
 data:
   broker-list: kafka.kubeless:9092
-  topic: s3
+  topics: s3
+  function-id: test+default
 kind: ConfigMap
 metadata:
   name: kafka-config

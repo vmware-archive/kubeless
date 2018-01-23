@@ -1,11 +1,13 @@
-hash: 595ed7f56ebc4dfcc762f9094ed1d0540c57e2468a3f73b26565dd88d524b0d2
-updated: 2018-01-22T21:58:27.512819438+01:00
+hash: 7c48f526764a37bed4dad494422736940836a56c8ec280b1f5dd15e0b1481fbd
+updated: 2018-01-23T17:17:20.709202355+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
   subpackages:
   - compute/metadata
   - internal
+- name: github.com/bsm/sarama-cluster
+  version: 24016d206c730276dfb58f802999066f2f4bfeaa
 - name: github.com/coreos/prometheus-operator
   version: 197eb012d973f5aaf4d0446fd8f638f1b9067128
   subpackages:
