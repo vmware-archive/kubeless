@@ -182,7 +182,7 @@ class BookstoreTests: XCTestCase {
     var path = service
     path = path + "/shelves"
     guard let url = URL(string:path) else {
-        XCTFail("Failed to construct URL")
+        XCTFail("Failed to construct URL")    	
 		return
     }
     var request = URLRequest(url:url)
@@ -194,7 +194,7 @@ class BookstoreTests: XCTestCase {
       XCTAssertEqual(response.statusCode, 400)
     } else {
       // Failed requests are returning nil responses on Linux. For now we'll say that is OK.
-      //XCTFail("Null response for bad request")
+      //XCTFail("Null response for bad request")    	
     }
   }
 }

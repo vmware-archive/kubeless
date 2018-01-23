@@ -20,8 +20,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// openapic (aka the OpenAPI Compiler) can be extended via plugins.
-// A plugin is just a program that reads a Request from stdin
+// openapic (aka the OpenAPI Compiler) can be extended via plugins.  
+// A plugin is just a program that reads a Request from stdin 
 // and writes a Response to stdout.
 //
 // A plugin executable needs only to be placed somewhere in the path.  The
@@ -227,14 +227,14 @@ struct Openapi_Plugin_V1_Request: SwiftProtobuf.Message {
 struct Openapi_Plugin_V1_Response: SwiftProtobuf.Message {
   static let protoMessageName: String = _protobuf_package + ".Response"
 
-  /// Error message.  If non-empty, the plugin failed.
-  /// The plugin process should exit with status code zero
+  /// Error message.  If non-empty, the plugin failed. 
+  /// The plugin process should exit with status code zero 
   /// even if it reports an error in this way.
   ///
-  /// This should be used to indicate errors which prevent the plugin from
-  /// operating as intended.  Errors which indicate a problem in openapic
-  /// itself -- such as the input Document being unparseable -- should be
-  /// reported by writing a message to stderr and exiting with a non-zero
+  /// This should be used to indicate errors which prevent the plugin from 
+  /// operating as intended.  Errors which indicate a problem in openapic 
+  /// itself -- such as the input Document being unparseable -- should be 
+  /// reported by writing a message to stderr and exiting with a non-zero 
   /// status code.
   var errors: [String] = []
 

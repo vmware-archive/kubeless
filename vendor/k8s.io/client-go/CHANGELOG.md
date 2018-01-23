@@ -13,7 +13,7 @@ also import types from there, so they are composable with client-go.
 Helper functions in pkg/api and pkg/apis are also removed. They are planned to
 be exported in other repos. The issue is tracked
 [here](https://github.com/kubernetes/kubernetes/issues/48209#issuecomment-314537745).
-During the transition, you'll have to copy the helper functions to your projects.
+During the transition, you'll have to copy the helper functions to your projects. 
 
 # v4.0.0
 
@@ -69,11 +69,11 @@ No significant changes since v4.0.0-beta.0.
 
 **Breaking changes:**
 
-* Moved client-go/util/clock to apimachinery/pkg/util/clock
+* Moved client-go/util/clock to apimachinery/pkg/util/clock 
 
     * [https://github.com/kubernetes/kubernetes/pull/45933](https://github.com/kubernetes/kubernetes/pull/45933/commits/8013212db54e95050c622675c6706cce5de42b45)
 
-* Some [API helpers](https://github.com/kubernetes/client-go/blob/release-3.0/pkg/api/helpers.go) were removed.
+* Some [API helpers](https://github.com/kubernetes/client-go/blob/release-3.0/pkg/api/helpers.go) were removed. 
 
 * Dynamic client takes GetOptions as an input parameter
 

@@ -31,6 +31,7 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/sirupsen/logrus"
 
+	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/autoscaling/v2beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
@@ -541,24 +542,26 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	}
 
 	//add deployment
-	maxUnavailable := intstr.FromInt(0)
-	dpm := &v1beta1.Deployment{
+	// maxUnavailable := intstr.FromInt(0)
+	// podTemplateSpec := &v1.PodTemplateSpec{
+	// 	ObjectMeta: metav1.ObjectMeta{
+	// 		Name:   funcObj.ObjectMeta.Name,
+	// 		Labels: funcObj.ObjectMeta.Labels,
+	// 	},
+	// }
+
+	dpm := &v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            funcObj.ObjectMeta.Name,
 			Labels:          funcObj.ObjectMeta.Labels,
 			OwnerReferences: or,
 		},
-		Spec: v1beta1.DeploymentSpec{
-			Strategy: v1beta1.DeploymentStrategy{
-				RollingUpdate: &v1beta1.RollingUpdateDeployment{
-					MaxUnavailable: &maxUnavailable,
-				},
-			},
-		},
 	}
 
-	//copy all func's Spec.Template to the deployment
-	dpm.Spec.Template = *funcObj.Spec.Template.DeepCopy()
+	//copy all func's Spec.Deployment to the deployment
+	dpm = funcObj.Spec.Deployment.DeepCopy()
+	// dpm.ObjectMeta = *funcObj.Spec.Deployment.ObjectMeta.DeepCopy()
+	// dpm = *funcObj.Spec.Deployment.DeepCopy()
 
 	//append data to dpm spec
 	if len(dpm.Spec.Template.ObjectMeta.Labels) == 0 {
@@ -717,16 +720,16 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
 	}
 
-	_, err = client.Extensions().Deployments(funcObj.ObjectMeta.Namespace).Create(dpm)
+	_, err = client.Apps().Deployments(funcObj.ObjectMeta.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		// In case the Deployment already exists we should update
 		// just certain fields (to avoid race conditions)
-		var newDpm *v1beta1.Deployment
-		newDpm, err = client.Extensions().Deployments(funcObj.ObjectMeta.Namespace).Get(funcObj.ObjectMeta.Name, metav1.GetOptions{})
+		var newDpm *v1beta2.Deployment
+		newDpm, err = client.Apps().Deployments(funcObj.ObjectMeta.Namespace).Get(funcObj.ObjectMeta.Name, metav1.GetOptions{})
 		newDpm.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
 		newDpm.ObjectMeta.OwnerReferences = or
 		newDpm.Spec = dpm.Spec
-		_, err = client.Extensions().Deployments(funcObj.ObjectMeta.Namespace).Update(newDpm)
+		_, err = client.Apps().Deployments(funcObj.ObjectMeta.Namespace).Update(newDpm)
 		if err != nil {
 			return err
 		}

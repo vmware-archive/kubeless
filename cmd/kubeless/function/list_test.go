@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -60,9 +61,13 @@ func TestList(t *testing.T) {
 					Type:     "ftype",
 					Topic:    "ftopic",
 					Deps:     "fdeps",
-					Template: v1.PodTemplateSpec{
-						Spec: v1.PodSpec{
-							Containers: []v1.Container{{}},
+					Deployment: v1beta2.Deployment{
+						Spec: v1beta2.DeploymentSpec{
+							Template: v1.PodTemplateSpec{
+								Spec: v1.PodSpec{
+									Containers: []v1.Container{{}},
+								},
+							},
 						},
 					},
 				},
@@ -82,26 +87,30 @@ func TestList(t *testing.T) {
 					Type:     "btype",
 					Topic:    "btopic",
 					Deps:     "{\"dependencies\": {\"test\": \"^1.0.0\"}}",
-					Template: v1.PodTemplateSpec{
-						Spec: v1.PodSpec{
-							Containers: []v1.Container{
-								{
-									Env: []v1.EnvVar{
+					Deployment: v1beta2.Deployment{
+						Spec: v1beta2.DeploymentSpec{
+							Template: v1.PodTemplateSpec{
+								Spec: v1.PodSpec{
+									Containers: []v1.Container{
 										{
-											Name:  "foo",
-											Value: "bar",
-										},
-										{
-											Name:  "foo2",
-											Value: "bar2",
-										},
-									},
-									Resources: v1.ResourceRequirements{
-										Limits: map[v1.ResourceName]resource.Quantity{
-											v1.ResourceMemory: funcMem,
-										},
-										Requests: map[v1.ResourceName]resource.Quantity{
-											v1.ResourceMemory: funcMem,
+											Env: []v1.EnvVar{
+												{
+													Name:  "foo",
+													Value: "bar",
+												},
+												{
+													Name:  "foo2",
+													Value: "bar2",
+												},
+											},
+											Resources: v1.ResourceRequirements{
+												Limits: map[v1.ResourceName]resource.Quantity{
+													v1.ResourceMemory: funcMem,
+												},
+												Requests: map[v1.ResourceName]resource.Quantity{
+													v1.ResourceMemory: funcMem,
+												},
+											},
 										},
 									},
 								},
@@ -122,9 +131,13 @@ func TestList(t *testing.T) {
 					Type:     "ftype",
 					Topic:    "ftopic",
 					Deps:     "fdeps",
-					Template: v1.PodTemplateSpec{
-						Spec: v1.PodSpec{
-							Containers: []v1.Container{{}},
+					Deployment: v1beta2.Deployment{
+						Spec: v1beta2.DeploymentSpec{
+							Template: v1.PodTemplateSpec{
+								Spec: v1.PodSpec{
+									Containers: []v1.Container{{}},
+								},
+							},
 						},
 					},
 				},

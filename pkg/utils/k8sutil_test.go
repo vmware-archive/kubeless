@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	v1beta2 "k8s.io/api/apps/v1beta2"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	"k8s.io/api/core/v1"
@@ -289,17 +290,24 @@ func TestEnsureDeployment(t *testing.T) {
 				Selector: funcLabels,
 				Type:     v1.ServiceTypeClusterIP,
 			},
-			Template: v1.PodTemplateSpec{
+			Deployment: v1beta2.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: funcAnno,
 				},
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						{
-							Env: []v1.EnvVar{
+				Spec: v1beta2.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Annotations: funcAnno,
+						},
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{
 								{
-									Name:  "foo",
-									Value: "bar",
+									Env: []v1.EnvVar{
+										{
+											Name:  "foo",
+											Value: "bar",
+										},
+									},
 								},
 							},
 						},
@@ -313,7 +321,7 @@ func TestEnsureDeployment(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err := clientset.ExtensionsV1beta1().Deployments(ns).Get(f1Name, metav1.GetOptions{})
+	dpm, err := clientset.Apps().Deployments(ns).Get(f1Name, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -413,7 +421,7 @@ func TestEnsureDeployment(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func2", metav1.GetOptions{})
+	dpm, err = clientset.Apps().Deployments(ns).Get("func2", metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -422,12 +430,12 @@ func TestEnsureDeployment(t *testing.T) {
 	f3 := kubelessApi.Function{}
 	f3 = *f1
 	f3.ObjectMeta.Name = "func3"
-	f3.Spec.Template.Spec.Containers[0].Image = "test-image"
+	f3.Spec.Deployment.Spec.Template.Spec.Containers[0].Image = "test-image"
 	err = EnsureFuncDeployment(clientset, &f3, or)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func3", metav1.GetOptions{})
+	dpm, err = clientset.Apps().Deployments(ns).Get("func3", metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -445,7 +453,7 @@ func TestEnsureDeployment(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func4", metav1.GetOptions{})
+	dpm, err = clientset.Apps().Deployments(ns).Get("func4", metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -462,7 +470,7 @@ func TestEnsureDeployment(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func5", metav1.GetOptions{})
+	dpm, err = clientset.Apps().Deployments(ns).Get("func5", metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -478,7 +486,7 @@ func TestEnsureDeployment(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get(f1Name, metav1.GetOptions{})
+	dpm, err = clientset.Apps().Deployments(ns).Get(f1Name, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -506,7 +514,7 @@ func TestEnsureDeployment(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func8", metav1.GetOptions{})
+	dpm, err = clientset.Apps().Deployments(ns).Get("func8", metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}

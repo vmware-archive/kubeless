@@ -10,7 +10,7 @@ descriptions to and from equivalent Protocol Buffer representations.
 provide a language-neutral, platform-neutral, extensible mechanism
 for serializing structured data.
 **gnostic**'s Protocol Buffer models for the OpenAPI Specification
-can be used to generate code that includes data structures with
+can be used to generate code that includes data structures with 
 explicit fields for the elements of an OpenAPI description.
 This makes it possible for developers to work with OpenAPI
 descriptions in type-safe ways, which is particularly useful
@@ -47,11 +47,11 @@ and the [Google Protocol Buffer Compiler](https://github.com/google/protobuf).
 1. Get this package by downloading it with `go get`.
 
         go get github.com/googleapis/gnostic
-
-2. [Optional] Build and run the compiler generator.
-This uses the OpenAPI JSON schema to generate a Protocol Buffer language file
-that describes the OpenAPI specification and a Go-language file of code that
-will read a JSON or YAML OpenAPI representation into the generated protocol
+  
+2. [Optional] Build and run the compiler generator. 
+This uses the OpenAPI JSON schema to generate a Protocol Buffer language file 
+that describes the OpenAPI specification and a Go-language file of code that 
+will read a JSON or YAML OpenAPI representation into the generated protocol 
 buffers. Pre-generated versions of these files are in the OpenAPIv2 directory.
 
         cd $GOPATH/src/github.com/googleapis/gnostic/generate-gnostic
@@ -59,7 +59,7 @@ buffers. Pre-generated versions of these files are in the OpenAPIv2 directory.
         cd ..
         generate-gnostic --v2
 
-3. [Optional] Generate Protocol Buffer support code.
+3. [Optional] Generate Protocol Buffer support code. 
 A pre-generated version of this file is checked into the OpenAPIv2 directory.
 This step requires a local installation of protoc, the Protocol Buffer Compiler.
 You can get protoc [here](https://github.com/google/protobuf).
@@ -76,7 +76,7 @@ Protocol Buffer description of a sample API.
 
         gnostic --pb-out=. examples/petstore.json
 
-6. You can also compile files that you specify with a URL. Here's another way to compile the previous
+6. You can also compile files that you specify with a URL. Here's another way to compile the previous 
 example. This time we're creating "petstore.text", which contains a textual representation of the
 Protocol Buffer description. This is mainly for use in testing and debugging.
 
@@ -88,7 +88,7 @@ Protocol Buffer description. This is mainly for use in testing and debugging.
         report petstore.pb
 
 8. **gnostic** supports plugins. This builds and runs a sample plugin
-that reports some basic information about an API. The "-" causes the plugin to
+that reports some basic information about an API. The "-" causes the plugin to 
 write its output to stdout.
 
         go install github.com/googleapis/gnostic/plugins/gnostic-go-sample

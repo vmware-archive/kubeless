@@ -79,7 +79,7 @@ func print(f kubelessApi.Function, name, output string) error {
 		if err != nil {
 			return err
 		}
-		env, err := json.Marshal(f.Spec.Template.Spec.Containers[0].Env)
+		env, err := json.Marshal(f.Spec.Deployment.Spec.Template.Spec.Containers[0].Env)
 		if err != nil {
 			return err
 		}
@@ -91,7 +91,7 @@ func print(f kubelessApi.Function, name, output string) error {
 		table.AddRow("Topic:", fmt.Sprintf(f.Spec.Topic))
 		table.AddRow("Label:", fmt.Sprintf(string(label)))
 		table.AddRow("Envvar:", fmt.Sprintf(string(env)))
-		table.AddRow("Memory:", fmt.Sprintf(f.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()))
+		table.AddRow("Memory:", fmt.Sprintf(f.Spec.Deployment.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()))
 		table.AddRow("Dependencies:", fmt.Sprintf(f.Spec.Deps))
 		fmt.Println(table)
 	case "json":
