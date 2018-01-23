@@ -1,5 +1,5 @@
-hash: bb030b4ef6383d264df75b217873196d20260fca2e693f019d5eca4b0cca4b4a
-updated: 2018-01-22T14:15:11.653225+01:00
+hash: 52460927e2584ea195113da87cf601a02f04046522d3a818a989e31d3a0dd4d2
+updated: 2018-01-23T13:22:21.592994+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -193,7 +193,7 @@ imports:
   - storage/v1
   - storage/v1beta1
 - name: k8s.io/apimachinery
-  version: 9d38e20d609d27e00d4ec18f7b9db67105a2bde0
+  version: bc110fd540ab678abbf2bc71d9ce908eb9325ef6
   subpackages:
   - pkg/api/equality
   - pkg/api/errors
@@ -320,7 +320,7 @@ imports:
 - name: k8s.io/code-generator
   version: f4fbdd37ed9c2292ea0abaabd8581008984dffc4
 - name: k8s.io/gengo
-  version: 3af213eb45b1dcc7b8c2263a8632c4078b4480db
+  version: 93fa717586400daaf96f9c88d0e708c80272627f
 - name: k8s.io/kube-openapi
   version: 868f2f29720b192240e18284659231b440f9cda5
   subpackages:

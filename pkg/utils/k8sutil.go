@@ -542,24 +542,26 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	}
 
 	//add deployment
-	maxUnavailable := intstr.FromInt(0)
+	// maxUnavailable := intstr.FromInt(0)
+	// podTemplateSpec := &v1.PodTemplateSpec{
+	// 	ObjectMeta: metav1.ObjectMeta{
+	// 		Name:   funcObj.ObjectMeta.Name,
+	// 		Labels: funcObj.ObjectMeta.Labels,
+	// 	},
+	// }
+
 	dpm := &v1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            funcObj.ObjectMeta.Name,
 			Labels:          funcObj.ObjectMeta.Labels,
 			OwnerReferences: or,
 		},
-		Spec: v1beta2.DeploymentSpec{
-			Strategy: v1beta2.DeploymentStrategy{
-				RollingUpdate: &v1beta2.RollingUpdateDeployment{
-					MaxUnavailable: &maxUnavailable,
-				},
-			},
-		},
 	}
 
-	//copy all func's Spec.Template to the deployment
-	dpm.Spec.Template = *funcObj.Spec.Deployment.Spec.Template.DeepCopy()
+	//copy all func's Spec.Deployment to the deployment
+	dpm = funcObj.Spec.Deployment.DeepCopy()
+	// dpm.ObjectMeta = *funcObj.Spec.Deployment.ObjectMeta.DeepCopy()
+	// dpm = *funcObj.Spec.Deployment.DeepCopy()
 
 	//append data to dpm spec
 	if len(dpm.Spec.Template.ObjectMeta.Labels) == 0 {
