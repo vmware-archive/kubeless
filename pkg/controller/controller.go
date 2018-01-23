@@ -57,6 +57,7 @@ type Controller struct {
 	Functions      map[string]*kubelessApi.Function
 	queue          workqueue.RateLimitingInterface
 	informer       cache.SharedIndexInformer
+	langRuntime    *langruntime.Langruntimes
 }
 
 // Config contains k8s client of a controller
@@ -92,8 +93,8 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 		},
 	})
 
-	var l langruntime.Langruntimes
-	l.ReadConfigMap(cfg.KubeCli)
+	var lr = langruntime.New(cfg.KubeCli, "kubeless", "kubeless-config")
+	lr.ReadConfigMap()
 
 	return &Controller{
 		logger:         logrus.WithField("pkg", "controller"),
@@ -102,6 +103,7 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 		kubelessclient: cfg.FunctionClient,
 		informer:       informer,
 		queue:          queue,
+		langRuntime:    lr,
 	}
 }
 
@@ -216,7 +218,7 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 		return err
 	}
 
-	err = utils.EnsureFuncConfigMap(c.clientset, funcObj, or)
+	err = utils.EnsureFuncConfigMap(c.clientset, funcObj, or, c.langRuntime)
 	if err != nil {
 		return err
 	}
@@ -226,7 +228,7 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 		return err
 	}
 
-	err = utils.EnsureFuncDeployment(c.clientset, funcObj, or)
+	err = utils.EnsureFuncDeployment(c.clientset, funcObj, or, c.langRuntime)
 	if err != nil {
 		return err
 	}

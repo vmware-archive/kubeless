@@ -7,43 +7,115 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sirupsen/logrus"
+
+	yaml "github.com/ghodss/yaml"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
-
-	// "k8s.io/client-go/kubernetes/typed/core/v1/fake"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
-func (l *Langruntimes) methodName() {
+func initializeConfigmap(clientset *fake.Clientset, lr *Langruntimes) {
 
-}
+	var runtimeImages = []RuntimeInfo{{
+		ID:             "python",
+		DepName:        "requirements.txt",
+		FileNameSuffix: ".py",
+		Versions: []RuntimeVersion{
+			{
+				Name:      "python27",
+				Version:   "2.7",
+				InitImage: "tuna/python-pillow:2.7.11-alpine",
+				ImagePullSecrets: []ImageSecrets{
+					{ImageSecret: "p1"}, {ImageSecret: "p2"},
+				},
+			}, {
+				Name:    "python34",
+				Version: "3.4",
+				ImagePullSecrets: []ImageSecrets{
+					{ImageSecret: "p1"}, {ImageSecret: "p2"},
+				},
+			}, {
+				Name:    "python36",
+				Version: "3.6",
+				ImagePullSecrets: []ImageSecrets{
+					{ImageSecret: "p1"}, {ImageSecret: "p2"},
+				},
+			},
+		},
+	}, {ID: "nodejs",
+		DepName:        "package.json",
+		FileNameSuffix: ".js",
+		Versions: []RuntimeVersion{
+			{
+				Name:      "nodejs6",
+				Version:   "6",
+				InitImage: "node:6.10",
+				ImagePullSecrets: []ImageSecrets{
+					{ImageSecret: "p1"}, {ImageSecret: "p2"},
+				},
+			}, {
+				Name:    "nodejs8",
+				Version: "8",
+				ImagePullSecrets: []ImageSecrets{
+					{ImageSecret: "p1"}, {"p2"},
+				},
+			},
+		},
+	}, {ID: "ruby",
+		DepName:        "Gemfile",
+		FileNameSuffix: ".rb",
+		Versions: []RuntimeVersion{
+			{
+				Name:      "ruby24",
+				Version:   "2.4",
+				InitImage: "bitnami/ruby:2.4",
+				ImagePullSecrets: []ImageSecrets{
+					{ImageSecret: "p1"}, {ImageSecret: "p2"},
+				},
+			},
+		},
+	}, {ID: "dotnetcore",
+		DepName:        "requirements.xml",
+		FileNameSuffix: ".cs",
+		Versions: []RuntimeVersion{
+			{
+				Name:    "dotnetcore2.0",
+				Version: "2.0",
+				ImagePullSecrets: []ImageSecrets{
+					{ImageSecret: "p1"}, {ImageSecret: "p2"},
+				},
+			},
+		},
+	}}
 
-var runtimeImages = "- ID: \"python\"
-      versions:
-      - name: \"python27\"
-        httpImage: \"http/blah\"
-        pubsubImage: \"pubsub/balh\"
-        initImage: \"init/blah\"
-        imageSecret: \"secret\""
+	out, err := yaml.Marshal(runtimeImages)
+	if err != nil {
+		logrus.Fatal("Canot Marshall runtimeimage")
+	}
 
-func initializeConfigmap() {
-	clientset := fake.NewSimpleClientset()
 	cm := v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "kubeless-config",
 			Namespace: "kubeless",
 		},
 		Data: map[string]string{
-			"runtime-images": runtimeImages,
+			"runtime-images": string(out),
 		},
 	}
 
-	// c := fake.FakeConfigMaps
+	_, err = clientset.CoreV1().ConfigMaps("kubeless").Create(&cm)
+	if err != nil {
+		logrus.Fatal("Unable to create configmap")
+	}
+
+	lr.ReadConfigMap()
+
 }
 
-func check(runtime, fname string, values []string, t *testing.T) {
-	info, err := GetRuntimeInfo(runtime)
+func check(clientset *fake.Clientset, lr *Langruntimes, runtime, fname string, values []string, t *testing.T) {
+
+	info, err := lr.GetRuntimeInfo(runtime)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,30 +128,38 @@ func check(runtime, fname string, values []string, t *testing.T) {
 }
 
 func TestGetFunctionFileNames(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	var lr = New(clientset, "kubeless", "kubeless-config")
+	initializeConfigmap(clientset, lr)
+
 	expectedValues := []string{"requirements.txt", "test.py"}
-	check("python2.7", "test", expectedValues, t)
-	check("python3.4", "test", expectedValues, t)
+	check(clientset, lr, "python2.7", "test", expectedValues, t)
+	check(clientset, lr, "python3.4", "test", expectedValues, t)
 
 	expectedValues = []string{"package.json", "test.js"}
-	check("nodejs6", "test", expectedValues, t)
-	check("nodejs8", "test", expectedValues, t)
+	check(clientset, lr, "nodejs6", "test", expectedValues, t)
+	check(clientset, lr, "nodejs8", "test", expectedValues, t)
 
 	expectedValues = []string{"Gemfile", "test.rb"}
-	check("ruby2.4", "test", expectedValues, t)
+	check(clientset, lr, "ruby2.4", "test", expectedValues, t)
 
 	expectedValues = []string{"requirements.xml", "test.cs"}
-	check("dotnetcore2.0", "test", expectedValues, t)
+	check(clientset, lr, "dotnetcore2.0", "test", expectedValues, t)
 }
 
 func TestGetFunctionImage(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	var lr = New(clientset, "kubeless", "kubeless-config")
+	initializeConfigmap(clientset, lr)
+
 	// Throws an error if the runtime doesn't exist
-	_, err := GetFunctionImage("unexistent", "HTTP")
+	_, err := lr.GetFunctionImage("unexistent", "HTTP")
 	if err == nil {
 		t.Fatalf("Retrieving data for 'unexistent' should return an error")
 	}
 
 	// Throws an error if the runtime version doesn't exist
-	_, err = GetFunctionImage("nodejs3", "HTTP")
+	_, err = lr.GetFunctionImage("nodejs3", "HTTP")
 	expectedErrMsg := regexp.MustCompile("The given runtime and version nodejs3 is not valid")
 	if expectedErrMsg.FindString(err.Error()) == "" {
 		t.Fatalf("Retrieving data for 'nodejs3' should return an error. Received: %s", err)
@@ -87,7 +167,7 @@ func TestGetFunctionImage(t *testing.T) {
 
 	expectedImageName := "ruby-test-image"
 	os.Setenv("RUBY2.4_RUNTIME", expectedImageName)
-	imageR, errR := GetFunctionImage("ruby2.4", "HTTP")
+	imageR, errR := lr.GetFunctionImage("ruby2.4", "HTTP")
 	if errR != nil {
 		t.Fatalf("Retrieving the image returned err: %v", errR)
 	}
@@ -98,7 +178,7 @@ func TestGetFunctionImage(t *testing.T) {
 
 	expectedImageName = "ruby-pubsub-test-image"
 	os.Setenv("RUBY2.4_PUBSUB_RUNTIME", "ruby-pubsub-test-image")
-	imageR, errR = GetFunctionImage("ruby2.4", "PubSub")
+	imageR, errR = lr.GetFunctionImage("ruby2.4", "PubSub")
 	if errR != nil {
 		t.Fatalf("Retrieving the image returned err: %v", errR)
 	}
@@ -109,7 +189,11 @@ func TestGetFunctionImage(t *testing.T) {
 }
 
 func TestGetRuntimes(t *testing.T) {
-	runtimes := strings.Join(GetRuntimes(), ", ")
+	clientset := fake.NewSimpleClientset()
+	var lr = New(clientset, "kubeless", "kubeless-config")
+	initializeConfigmap(clientset, lr)
+
+	runtimes := strings.Join(lr.GetRuntimes(), ", ")
 	expectedRuntimes := "python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, dotnetcore2.0"
 	if runtimes != expectedRuntimes {
 		t.Errorf("Expected %s but got %s", expectedRuntimes, runtimes)
@@ -117,8 +201,11 @@ func TestGetRuntimes(t *testing.T) {
 }
 
 func TestGetBuildContainer(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	var lr = New(clientset, "kubeless", "kubeless-config")
+	initializeConfigmap(clientset, lr)
 	// It should throw an error if there is not an image available
-	_, err := GetBuildContainer("notExists", []v1.EnvVar{}, v1.VolumeMount{})
+	_, err := lr.GetBuildContainer("notExists", []v1.EnvVar{}, v1.VolumeMount{})
 	if err == nil {
 		t.Error("Expected to throw an error")
 	}
@@ -126,7 +213,7 @@ func TestGetBuildContainer(t *testing.T) {
 	// It should return the proper build image for python
 	env := []v1.EnvVar{}
 	vol1 := v1.VolumeMount{Name: "v1", MountPath: "/v1"}
-	c, err := GetBuildContainer("python2.7", env, vol1)
+	c, err := lr.GetBuildContainer("python2.7", env, vol1)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -149,7 +236,7 @@ func TestGetBuildContainer(t *testing.T) {
 		{Name: "NPM_REGISTRY", Value: "http://reg.com"},
 		{Name: "NPM_SCOPE", Value: "myorg"},
 	}
-	c, err = GetBuildContainer("nodejs6", nodeEnv, vol1)
+	c, err = lr.GetBuildContainer("nodejs6", nodeEnv, vol1)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -161,7 +248,7 @@ func TestGetBuildContainer(t *testing.T) {
 	}
 
 	// It should return the proper build image for ruby
-	c, err = GetBuildContainer("ruby2.4", env, vol1)
+	c, err = lr.GetBuildContainer("ruby2.4", env, vol1)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}

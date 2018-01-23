@@ -9,9 +9,10 @@ data:
     - ID: "python"
       versions:
       - name: "python27"
-        httpImage: "http/blah"
-        pubsubImage: "pubsub/balh"
-        initImage: "init/blah"
+        version: "2.7"
+        httpImage: "kubeless/python@sha256:0f3b64b654df5326198e481cd26e73ecccd905aae60810fc9baea4dcbb61f697"
+        pubsubImage: "kubeless/python-event-consumer@sha256:1aeb6cef151222201abed6406694081db26fa2235d7ac128113dcebd8d73a6cb"
+        initImage: "tuna/python-pillow:2.7.11-alpine"
         imageSecret: "secret"
       - name: "python34"
         version: "3.4"
@@ -33,8 +34,7 @@ data:
         pubsubImage: "kubeless/nodejs-event-consumer@sha256:1861c32d6a46b2fdfc3e3996daf690ff2c3d5ca19a605abd2af503011d68e221"
         initImage: "node:6.10"
         imagePullSecrets:
-        - imageSecret: "TopSecret-1"
-        - imageSecret: "TopSecter-2"
+        - imageSecret: "Secret"
       - name: "node8"
         version: "8"
         httpImage: "kubeless/nodejs@sha256:f1426efe274ea8480d95270c98f6007ac64645e36291dbfa36d759b5c8b7b733"

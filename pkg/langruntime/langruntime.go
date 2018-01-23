@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	yaml "github.com/ghodss/yaml"
 	"github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 	"k8s.io/api/apps/v1beta2"
@@ -18,32 +19,18 @@ import (
 
 // Langruntimes struct for getting configmap
 type Langruntimes struct {
+	clientset         kubernetes.Interface
+	namespace         string
+	kubelessConfig    string
+	AvailableRuntimes []RuntimeInfo
 }
 
 const (
 	pubsubFunc = "PubSub"
 )
 
-var availableRuntimes []RuntimeInfo
-
-// ReadConfigMap reads the configmap
-func (l Langruntimes) ReadConfigMap(c kubernetes.Interface) {
-
-	cfgm, err := c.CoreV1().ConfigMaps("kubeless").Get("kubeless-config", metav1.GetOptions{})
-
-	if err != nil {
-		logrus.Fatalf("Unable to get the configmap. %v", err)
-		return
-	}
-
-	err = yaml.Unmarshal([]byte(cfgm.Data["runtime-images"]), &availableRuntimes)
-
-	if err != nil {
-		logrus.Fatalf("Unable to get the runtime images. %v", err)
-	}
-}
-
-type runtimeVersion struct {
+// RuntimeVersion is a struct with all the info about the images and secrets
+type RuntimeVersion struct {
 	Name             string         `yaml:"name"`
 	Version          string         `yaml:"version"`
 	HTTPImage        string         `yaml:"httpImage"`
@@ -61,15 +48,44 @@ type ImageSecrets struct {
 // and the supported versions
 type RuntimeInfo struct {
 	ID             string           `yaml:"ID"`
-	Versions       []runtimeVersion `yaml:"versions"`
+	Versions       []RuntimeVersion `yaml:"versions"`
 	DepName        string           `yaml:"depName"`
 	FileNameSuffix string           `yaml:"fileNameSuffix"`
 }
 
+// New initializes a langruntime object
+func New(clientset kubernetes.Interface, ns string, config string) *Langruntimes {
+	var ri []RuntimeInfo
+
+	return &Langruntimes{
+		clientset:         clientset,
+		namespace:         ns,
+		kubelessConfig:    config,
+		AvailableRuntimes: ri,
+	}
+}
+
+// ReadConfigMap reads the configmap
+func (l *Langruntimes) ReadConfigMap() {
+
+	cfgm, err := l.clientset.CoreV1().ConfigMaps("kubeless").Get("kubeless-config", metav1.GetOptions{})
+
+	if err != nil {
+		logrus.Fatalf("Unable to get the configmap. %v", err)
+		return
+	}
+
+	err = yaml.Unmarshal([]byte(cfgm.Data["runtime-images"]), &l.AvailableRuntimes)
+
+	if err != nil {
+		logrus.Fatalf("Unable to get the runtime images. %v", err)
+	}
+}
+
 // GetRuntimes returns the list of available runtimes as strings
-func GetRuntimes() []string {
+func (l *Langruntimes) GetRuntimes() []string {
 	result := []string{}
-	for _, runtimeInf := range availableRuntimes {
+	for _, runtimeInf := range l.AvailableRuntimes {
 		for _, runtime := range runtimeInf.Versions {
 			result = append(result, runtimeInf.ID+runtime.Version)
 		}
@@ -78,8 +94,8 @@ func GetRuntimes() []string {
 }
 
 // IsValidRuntime returns true if passed runtime name is valid runtime
-func IsValidRuntime(runtime string) bool {
-	for _, validRuntime := range GetRuntimes() {
+func (l *Langruntimes) IsValidRuntime(runtime string) bool {
+	for _, validRuntime := range l.GetRuntimes() {
 		if runtime == validRuntime {
 			return true
 		}
@@ -87,12 +103,12 @@ func IsValidRuntime(runtime string) bool {
 	return false
 }
 
-func getAvailableRuntimesPerTrigger(imageType string) []string {
+func (l *Langruntimes) getAvailableRuntimesPerTrigger(imageType string) []string {
 	var runtimeList []string
-	for i := range availableRuntimes {
-		for j := range availableRuntimes[i].Versions {
-			if (imageType == "PubSub" && availableRuntimes[i].Versions[j].PubSubImage != "") || (imageType == "HTTP" && availableRuntimes[i].Versions[j].HTTPImage != "") {
-				runtimeList = append(runtimeList, availableRuntimes[i].ID+availableRuntimes[i].Versions[j].Version)
+	for i := range l.AvailableRuntimes {
+		for j := range l.AvailableRuntimes[i].Versions {
+			if (imageType == "PubSub" && l.AvailableRuntimes[i].Versions[j].PubSubImage != "") || (imageType == "HTTP" && l.AvailableRuntimes[i].Versions[j].HTTPImage != "") {
+				runtimeList = append(runtimeList, l.AvailableRuntimes[i].ID+l.AvailableRuntimes[i].Versions[j].Version)
 			}
 		}
 	}
@@ -100,15 +116,15 @@ func getAvailableRuntimesPerTrigger(imageType string) []string {
 }
 
 // extract the branch number from the runtime string
-func getVersionFromRuntime(runtime string) string {
+func (l *Langruntimes) getVersionFromRuntime(runtime string) string {
 	re := regexp.MustCompile("[0-9.]+$")
 	return re.FindString(runtime)
 }
 
 // GetRuntimeInfo returns all the info regarding a runtime
-func GetRuntimeInfo(runtime string) (RuntimeInfo, error) {
+func (l *Langruntimes) GetRuntimeInfo(runtime string) (RuntimeInfo, error) {
 	runtimeID := regexp.MustCompile("^[a-zA-Z]+").FindString(runtime)
-	for _, runtimeInf := range availableRuntimes {
+	for _, runtimeInf := range l.AvailableRuntimes {
 		if runtimeInf.ID == runtimeID {
 			return runtimeInf, nil
 		}
@@ -116,48 +132,48 @@ func GetRuntimeInfo(runtime string) (RuntimeInfo, error) {
 	return RuntimeInfo{}, fmt.Errorf("Unable to find %s as runtime", runtime)
 }
 
-func findRuntimeVersion(runtimeWithVersion string) (runtimeVersion, error) {
-	version := getVersionFromRuntime(runtimeWithVersion)
-	runtimeInf, err := GetRuntimeInfo(runtimeWithVersion)
+func (l *Langruntimes) findRuntimeVersion(runtimeWithVersion string) (RuntimeVersion, error) {
+	version := l.getVersionFromRuntime(runtimeWithVersion)
+	runtimeInf, err := l.GetRuntimeInfo(runtimeWithVersion)
 	if err != nil {
-		return runtimeVersion{}, err
+		return RuntimeVersion{}, err
 	}
 	for _, versionInf := range runtimeInf.Versions {
 		if versionInf.Version == version {
 			return versionInf, nil
 		}
 	}
-	return runtimeVersion{}, fmt.Errorf("The given runtime and version %s is not valid", runtimeWithVersion)
+	return RuntimeVersion{}, fmt.Errorf("The given runtime and version %s is not valid", runtimeWithVersion)
 }
 
 // GetFunctionImage returns the image ID depending on the runtime, its version and function type
-func GetFunctionImage(runtime, ftype string) (string, error) {
-	runtimeInf, err := GetRuntimeInfo(runtime)
+func (l *Langruntimes) GetFunctionImage(runtime, ftype string) (string, error) {
+	runtimeInf, err := l.GetRuntimeInfo(runtime)
 	if err != nil {
 		return "", err
 	}
 
 	imageNameEnvVar := ""
 	if ftype == pubsubFunc {
-		imageNameEnvVar = strings.ToUpper(runtimeInf.ID) + getVersionFromRuntime(runtime) + "_PUBSUB_RUNTIME"
+		imageNameEnvVar = strings.ToUpper(runtimeInf.ID) + l.getVersionFromRuntime(runtime) + "_PUBSUB_RUNTIME"
 	} else {
-		imageNameEnvVar = strings.ToUpper(runtimeInf.ID) + getVersionFromRuntime(runtime) + "_RUNTIME"
+		imageNameEnvVar = strings.ToUpper(runtimeInf.ID) + l.getVersionFromRuntime(runtime) + "_RUNTIME"
 	}
 	imageName := os.Getenv(imageNameEnvVar)
 	if imageName == "" {
-		versionInf, err := findRuntimeVersion(runtime)
+		versionInf, err := l.findRuntimeVersion(runtime)
 		if err != nil {
 			return "", err
 		}
 		if ftype == pubsubFunc {
 			if versionInf.PubSubImage == "" {
-				err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for event based functions. Available runtimes are: %s", runtime, strings.Join(getAvailableRuntimesPerTrigger("PubSub")[:], ", "))
+				err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for event based functions. Available runtimes are: %s", runtime, strings.Join(l.getAvailableRuntimesPerTrigger("PubSub")[:], ", "))
 			} else {
 				imageName = versionInf.PubSubImage
 			}
 		} else {
 			if versionInf.HTTPImage == "" {
-				err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for HTTP based functions. Available runtimes are: %s", runtime, strings.Join(getAvailableRuntimesPerTrigger("HTTP")[:], ", "))
+				err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for HTTP based functions. Available runtimes are: %s", runtime, strings.Join(l.getAvailableRuntimesPerTrigger("HTTP")[:], ", "))
 			} else {
 				imageName = versionInf.HTTPImage
 			}
@@ -167,33 +183,40 @@ func GetFunctionImage(runtime, ftype string) (string, error) {
 }
 
 // GetImageSecrets gets the secrets linked to the runtime image
-func GetImageSecrets(runtime string) ([]string, error) {
-	runtimeInf, err := findRuntimeVersion(runtime)
+func (l *Langruntimes) GetImageSecrets(runtime string) ([]v1.LocalObjectReference, error) {
+	runtimeInf, err := l.findRuntimeVersion(runtime)
 	var secrets []string
 
 	if err != nil {
-		return secrets, err
+		return []v1.LocalObjectReference{}, err
 	}
 
 	if len(runtimeInf.ImagePullSecrets) == 0 {
-		return secrets, nil
+		return []v1.LocalObjectReference{}, nil
 	}
 
 	for _, s := range runtimeInf.ImagePullSecrets {
 		secrets = append(secrets, s.ImageSecret)
-
 	}
-	return secrets, nil
+	var lors []v1.LocalObjectReference
+	if len(secrets) > 0 {
+		for _, s := range secrets {
+			lor := v1.LocalObjectReference{Name: s}
+			lors = append(lors, lor)
+		}
+	}
+
+	return lors, nil
 }
 
 // GetBuildContainer returns a Container definition based on a runtime
-func GetBuildContainer(runtime string, env []v1.EnvVar, installVolume v1.VolumeMount) (v1.Container, error) {
-	runtimeInf, err := GetRuntimeInfo(runtime)
+func (l *Langruntimes) GetBuildContainer(runtime string, env []v1.EnvVar, installVolume v1.VolumeMount) (v1.Container, error) {
+	runtimeInf, err := l.GetRuntimeInfo(runtime)
 	if err != nil {
 		return v1.Container{}, err
 	}
 	depsFile := path.Join(installVolume.MountPath, runtimeInf.DepName)
-	versionInf, err := findRuntimeVersion(runtime)
+	versionInf, err := l.findRuntimeVersion(runtime)
 	if err != nil {
 		return v1.Container{}, err
 	}
@@ -232,12 +255,16 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, installVolume v1.VolumeM
 }
 
 // UpdateDeployment object in case of custom runtime
+<<<<<<< HEAD
 func UpdateDeployment(dpm *v1beta2.Deployment, depsPath, runtime string) {
+=======
+func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runtime string) {
+>>>>>>> Made changes based on comments
 	switch {
 	case strings.Contains(runtime, "python"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "PYTHONPATH",
-			Value: path.Join(depsPath, "lib/python"+getVersionFromRuntime(runtime)+"/site-packages"),
+			Value: path.Join(depsPath, "lib/python"+l.getVersionFromRuntime(runtime)+"/site-packages"),
 		})
 	case strings.Contains(runtime, "nodejs"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{

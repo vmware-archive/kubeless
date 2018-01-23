@@ -33,9 +33,10 @@ var deployCmd = &cobra.Command{
 	Short: "deploy a function to Kubeless",
 	Long:  `deploy a function to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
+
 		cli := utils.GetClientOutOfCluster()
-		var l langruntime.Langruntimes
-		l.ReadConfigMap(cli)
+		var lr = langruntime.New(cli, "kubeless", "kubeless-config")
+		lr.ReadConfigMap()
 
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - function name")
@@ -78,9 +79,9 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		if runtime != "" && !langruntime.IsValidRuntime(runtime) {
+		if runtime != "" && !lr.IsValidRuntime(runtime) {
 			logrus.Fatalf("Invalid runtime: %s. Supported runtimes are: %s",
-				runtime, strings.Join(langruntime.GetRuntimes(), ", "))
+				runtime, strings.Join(lr.GetRuntimes(), ", "))
 		}
 
 		handler, err := cmd.Flags().GetString("handler")
@@ -181,7 +182,11 @@ var deployCmd = &cobra.Command{
 }
 
 func init() {
-	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime. Available runtimes are: "+strings.Join(langruntime.GetRuntimes(), ", "))
+	cli := utils.GetClientOutOfCluster()
+	var lr = langruntime.New(cli, "kubeless", "kubeless-config")
+	lr.ReadConfigMap()
+
+	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime. Available runtimes are: "+strings.Join(lr.GetRuntimes(), ", "))
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
 	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
