@@ -7,6 +7,4 @@ kubeless + {
   controller: kubeless.controller + { apiVersion: "extensions/v1beta1" },
   controllerClusterRole: kubeless.controllerClusterRole + { apiVersion: "v1" },
   controllerClusterRoleBinding: kubeless.controllerClusterRoleBinding + { apiVersion: "v1" },
-  kafkaSts: kubeless.kafkaSts  + {spec+: {template+: {spec+: { initContainers: [] }}}},
-  zookeeperSts: kubeless.zookeeperSts  + {spec+: {template+: {spec+: { initContainers: [] }}}}
 }
