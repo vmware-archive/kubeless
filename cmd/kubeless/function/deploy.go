@@ -102,6 +102,11 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		secretNames, err := cmd.Flags().GetStringSlice("secret-names")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		runtimeImage, err := cmd.Flags().GetString("runtime-image")
 		if err != nil {
 			logrus.Fatal(err)
@@ -152,7 +157,7 @@ var deployCmd = &cobra.Command{
 		defaultFunctionSpec.Metadata.Labels = map[string]string{
 			"created-by": "kubeless",
 		}
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, &headless, &port, envs, labels, defaultFunctionSpec)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, &headless, &port, envs, labels, secretNames, defaultFunctionSpec)
 		if err != nil {
 			logrus.Fatal(err)
 		}
