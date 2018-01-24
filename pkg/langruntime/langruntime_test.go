@@ -29,19 +29,19 @@ func initializeConfigmap(clientset *fake.Clientset, lr *Langruntimes) {
 				Name:      "python27",
 				Version:   "2.7",
 				InitImage: "tuna/python-pillow:2.7.11-alpine",
-				ImagePullSecrets: []ImageSecrets{
+				ImagePullSecrets: []ImageSecret{
 					{ImageSecret: "p1"}, {ImageSecret: "p2"},
 				},
 			}, {
 				Name:    "python34",
 				Version: "3.4",
-				ImagePullSecrets: []ImageSecrets{
+				ImagePullSecrets: []ImageSecret{
 					{ImageSecret: "p1"}, {ImageSecret: "p2"},
 				},
 			}, {
 				Name:    "python36",
 				Version: "3.6",
-				ImagePullSecrets: []ImageSecrets{
+				ImagePullSecrets: []ImageSecret{
 					{ImageSecret: "p1"}, {ImageSecret: "p2"},
 				},
 			},
@@ -54,13 +54,13 @@ func initializeConfigmap(clientset *fake.Clientset, lr *Langruntimes) {
 				Name:      "nodejs6",
 				Version:   "6",
 				InitImage: "node:6.10",
-				ImagePullSecrets: []ImageSecrets{
+				ImagePullSecrets: []ImageSecret{
 					{ImageSecret: "p1"}, {ImageSecret: "p2"},
 				},
 			}, {
 				Name:    "nodejs8",
 				Version: "8",
-				ImagePullSecrets: []ImageSecrets{
+				ImagePullSecrets: []ImageSecret{
 					{ImageSecret: "p1"}, {"p2"},
 				},
 			},
@@ -73,7 +73,7 @@ func initializeConfigmap(clientset *fake.Clientset, lr *Langruntimes) {
 				Name:      "ruby24",
 				Version:   "2.4",
 				InitImage: "bitnami/ruby:2.4",
-				ImagePullSecrets: []ImageSecrets{
+				ImagePullSecrets: []ImageSecret{
 					{ImageSecret: "p1"}, {ImageSecret: "p2"},
 				},
 			},
@@ -85,7 +85,7 @@ func initializeConfigmap(clientset *fake.Clientset, lr *Langruntimes) {
 			{
 				Name:    "dotnetcore2.0",
 				Version: "2.0",
-				ImagePullSecrets: []ImageSecrets{
+				ImagePullSecrets: []ImageSecret{
 					{ImageSecret: "p1"}, {ImageSecret: "p2"},
 				},
 			},

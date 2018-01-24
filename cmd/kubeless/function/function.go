@@ -30,6 +30,9 @@ import (
 	"unicode/utf8"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	"github.com/kubeless/kubeless/pkg/langruntime"
+	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -44,11 +47,28 @@ var FunctionCmd = &cobra.Command{
 	Short: "function specific operations",
 	Long:  `function command allows user to list, deploy, edit, delete functions running on Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
+		cli := utils.GetClientOutOfCluster()
+		var lr = langruntime.New(cli, "kubeless", "kubeless-config")
+		lr.ReadConfigMap()
+
+		getServerConfig, err := cmd.Flags().GetBool("get-server-config")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		if getServerConfig == true {
+			logrus.Info("Current Server Config:")
+			logrus.Infof("Supported Runtimes are: %s",
+				strings.Join(lr.GetRuntimes(), ", "))
+			return
+		}
+
 		cmd.Help()
 	},
 }
 
 func init() {
+	FunctionCmd.Flags().Bool("get-server-config", false, "Get the current server configuration")
 	FunctionCmd.AddCommand(deployCmd)
 	FunctionCmd.AddCommand(deleteCmd)
 	FunctionCmd.AddCommand(listCmd)

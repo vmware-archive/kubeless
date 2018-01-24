@@ -272,19 +272,19 @@ func initializeConfigmap(clientset *fake.Clientset, lr *langruntime.Langruntimes
 				Version:   "2.7",
 				InitImage: "tuna/python-pillow:2.7.11-alpine",
 				HTTPImage: "kubeless/python@sha256:0f3b64b654df5326198e481cd26e73ecccd905aae60810fc9baea4dcbb61f697",
-				ImagePullSecrets: []langruntime.ImageSecrets{
+				ImagePullSecrets: []langruntime.ImageSecret{
 					{ImageSecret: "p1"}, {ImageSecret: "p2"},
 				},
 			}, {
 				Name:    "python34",
 				Version: "3.4",
-				ImagePullSecrets: []langruntime.ImageSecrets{
+				ImagePullSecrets: []langruntime.ImageSecret{
 					{ImageSecret: "p1"}, {ImageSecret: "p2"},
 				},
 			}, {
 				Name:    "python36",
 				Version: "3.6",
-				ImagePullSecrets: []langruntime.ImageSecrets{
+				ImagePullSecrets: []langruntime.ImageSecret{
 					{ImageSecret: "p1"}, {ImageSecret: "p2"},
 				},
 			},

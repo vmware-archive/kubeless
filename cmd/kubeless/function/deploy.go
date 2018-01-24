@@ -33,7 +33,6 @@ var deployCmd = &cobra.Command{
 	Short: "deploy a function to Kubeless",
 	Long:  `deploy a function to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
-
 		cli := utils.GetClientOutOfCluster()
 		var lr = langruntime.New(cli, "kubeless", "kubeless-config")
 		lr.ReadConfigMap()
@@ -182,11 +181,7 @@ var deployCmd = &cobra.Command{
 }
 
 func init() {
-	cli := utils.GetClientOutOfCluster()
-	var lr = langruntime.New(cli, "kubeless", "kubeless-config")
-	lr.ReadConfigMap()
-
-	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime. Available runtimes are: "+strings.Join(lr.GetRuntimes(), ", "))
+	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
 	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")

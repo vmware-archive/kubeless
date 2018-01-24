@@ -31,16 +31,16 @@ const (
 
 // RuntimeVersion is a struct with all the info about the images and secrets
 type RuntimeVersion struct {
-	Name             string         `yaml:"name"`
-	Version          string         `yaml:"version"`
-	HTTPImage        string         `yaml:"httpImage"`
-	PubSubImage      string         `yaml:"pubsubImage"`
-	InitImage        string         `yaml:"initImage"`
-	ImagePullSecrets []ImageSecrets `yaml:"imagePullSecrets,omitempty"`
+	Name             string        `yaml:"name"`
+	Version          string        `yaml:"version"`
+	HTTPImage        string        `yaml:"httpImage"`
+	PubSubImage      string        `yaml:"pubsubImage"`
+	InitImage        string        `yaml:"initImage"`
+	ImagePullSecrets []ImageSecret `yaml:"imagePullSecrets,omitempty"`
 }
 
-// ImageSecrets for pulling the image
-type ImageSecrets struct {
+// ImageSecret for pulling the image
+type ImageSecret struct {
 	ImageSecret string `yaml:"imageSecret,omitempty"`
 }
 
@@ -69,16 +69,14 @@ func New(clientset kubernetes.Interface, ns string, config string) *Langruntimes
 func (l *Langruntimes) ReadConfigMap() {
 
 	cfgm, err := l.clientset.CoreV1().ConfigMaps("kubeless").Get("kubeless-config", metav1.GetOptions{})
-
 	if err != nil {
-		logrus.Fatalf("Unable to get the configmap. %v", err)
+		logrus.Fatalf("Unable to get the configmap: %v", err)
 		return
 	}
 
 	err = yaml.Unmarshal([]byte(cfgm.Data["runtime-images"]), &l.AvailableRuntimes)
-
 	if err != nil {
-		logrus.Fatalf("Unable to get the runtime images. %v", err)
+		logrus.Fatalf("Unable to get the runtime images: %v", err)
 	}
 }
 
@@ -184,9 +182,9 @@ func (l *Langruntimes) GetFunctionImage(runtime, ftype string) (string, error) {
 
 // GetImageSecrets gets the secrets linked to the runtime image
 func (l *Langruntimes) GetImageSecrets(runtime string) ([]v1.LocalObjectReference, error) {
-	runtimeInf, err := l.findRuntimeVersion(runtime)
 	var secrets []string
 
+	runtimeInf, err := l.findRuntimeVersion(runtime)
 	if err != nil {
 		return []v1.LocalObjectReference{}, err
 	}

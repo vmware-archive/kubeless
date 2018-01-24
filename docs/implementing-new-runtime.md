@@ -13,13 +13,13 @@ All the structures that implement  language support are coded in the file `langr
 
 If you want to extend it and make another language available it is necessary to change the following components:
 
-## 1. Change the kubeless-config configmap
+## 1. Update the kubeless-config configmap
 
-In this configmap there is a section about runtime-images, you sould update this section by creating an entry pointing to the repository of the Docker container image for the runtime of the new language.
+In this configmap there is a set of runtime images. You need to update this set with an entry pointing to the repository of the Docker container image for the runtime of the new language.
 
 Usually there are three entries - one for HTTP triggers, another for event based functions and another one for the Init container that will be used to install dependencies in the build process. If your new runtime implementation will support only HTTP triggers, then create only two entries as follows:
 
-In the example below, an example for adding custom runtime image for `dotnetcore` is shown. One can also add `imagePullSecrets` if they are needed to be pulled from private docker registries
+In the example below, a custom image for `dotnetcore` has been added. You can optionally add `imagePullSecrets` if they are necessary to pull the image from a private Docker registry.
 
 ```patch
 runtime-images
@@ -36,7 +36,7 @@ runtime-images
 +         fileNameSuffix: ".cs"
 ``` 
 
-After making changes to the configmap re-apply the config map and restart the controller.
+Restart the controller after updating the configmap.
 
 ## 2. Add the build instructions to include dependencies in the runtime
 

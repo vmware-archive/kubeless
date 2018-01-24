@@ -33,7 +33,6 @@ var updateCmd = &cobra.Command{
 	Short: "update a function on Kubeless",
 	Long:  `update a function on Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
-
 		cli := utils.GetClientOutOfCluster()
 		var lr = langruntime.New(cli, "kubeless", "kubeless-config")
 		lr.ReadConfigMap()
@@ -179,10 +178,7 @@ var updateCmd = &cobra.Command{
 }
 
 func init() {
-	cli := utils.GetClientOutOfCluster()
-	var lr = langruntime.New(cli, "kubeless", "kubeless-config")
-	lr.ReadConfigMap()
-	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime. Available runtimes are: "+strings.Join(lr.GetRuntimes(), ", "))
+	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	updateCmd.Flags().StringP("handler", "", "", "Specify handler")
 	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")

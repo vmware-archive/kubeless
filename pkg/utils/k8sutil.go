@@ -695,13 +695,13 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	}
 
 	// Add the imagesecrets if present to pull images from private docker registry
-	imageSecrets, err := lr.GetImageSecrets(funcObj.Spec.Runtime)
-
-	if err != nil {
-		return fmt.Errorf("Unable to fetch ImagePullSecrets, %v", err)
+	if funcObj.Spec.Runtime != "" {
+		imageSecrets, err := lr.GetImageSecrets(funcObj.Spec.Runtime)
+		if err != nil {
+			return fmt.Errorf("Unable to fetch ImagePullSecrets, %v", err)
+		}
+		dpm.Spec.Template.Spec.ImagePullSecrets = imageSecrets
 	}
-
-	dpm.Spec.Template.Spec.ImagePullSecrets = imageSecrets
 
 	// ensure that the runtime is supported for installing dependencies
 	_, err = lr.GetRuntimeInfo(funcObj.Spec.Runtime)

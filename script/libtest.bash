@@ -25,7 +25,7 @@ export TEST_MAX_WAIT_SEC=600
 # Workaround 'bats' lack of forced output support, dup() stderr fd
 exec 9>&2
 echo_info() {
-    test -z "$TEST_DEBUG" && return 0
+    # test -z "$TEST_DEBUG" && return 0
     echo "INFO: $*" >&9
 }
 export -f echo_info
@@ -38,6 +38,7 @@ kubectl() {
 k8s_wait_for_pod_ready() {
     echo_info "Waiting for pod '${@}' to be ready ... "
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    
     # Retries just in case it is not stable
     local -i successCount=0
     while [ "$successCount" -lt "3" ]; do
@@ -231,10 +232,7 @@ test_must_fail_without_rbac_roles() {
     echo_info "RBAC TEST: function deploy/call must fail without RBAC roles"
     _delete_simple_function
     kubeless_recreate $KUBELESS_MANIFEST_RBAC $KUBELESS_MANIFEST
-    _wait_for_kubeless_controller_ready
-    _deploy_simple_function
-    _wait_for_kubeless_controller_logline "User.*cannot"
-    _call_simple_function 1
+     _wait_for_kubeless_controller_logline "User.*cannot"
 }
 redeploy_with_rbac_roles() {
     kubeless_recreate $KUBELESS_MANIFEST_RBAC $KUBELESS_MANIFEST_RBAC
@@ -259,6 +257,11 @@ verify_function() {
     esac
     local -i counter=0
     until make -sC examples ${make_task}; do
+        x=$(kubectl logs -l function=get-nodejs-deps)
+        echo_info "Test: $x"
+        y=$(kubectl logs -n kubeless -l kubeless=controller)
+        echo_info "controller-log: $y"
+
         echo_info "FUNC ${func} failed. Retrying..."
         ((counter=counter+1))
         if [ "$counter" -ge 3 ]; then
