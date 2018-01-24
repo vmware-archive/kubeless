@@ -56,6 +56,11 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		secretNames, err := cmd.Flags().GetStringSlice("secret-names")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		runtime, err := cmd.Flags().GetString("runtime")
 		if err != nil {
 			logrus.Fatal(err)
@@ -150,7 +155,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatalf("Invalid port number %d specified", *port)
 		}
 		cli := utils.GetClientOutOfCluster()
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, headless, port, envs, labels, previousFunction)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, headless, port, envs, labels, secretNames, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}

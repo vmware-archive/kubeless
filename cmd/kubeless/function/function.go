@@ -131,7 +131,7 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, secretNames []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
 		Kind:       "Function",
@@ -247,6 +247,22 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 			Resources: resources,
 			Image:     runtimeImage,
 		},
+	}
+
+	for _, secretName := range secretNames {
+		function.Spec.Template.Spec.Volumes = append(function.Spec.Template.Spec.Volumes, v1.Volume{
+			Name: secretName + "-sec",
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: secretName,
+				},
+			},
+		})
+		function.Spec.Template.Spec.Containers[0].VolumeMounts = append(function.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
+			Name:      secretName + "-sec",
+			MountPath: "/" + secretName,
+		})
+
 	}
 
 	selectorLabels := map[string]string{}
