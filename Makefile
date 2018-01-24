@@ -48,11 +48,20 @@ kubeless-openshift.yaml: kubeless-openshift.jsonnet kubeless-rbac.jsonnet
 docker/controller: controller-build
 	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/kubeless-controller $@
 
+docker/event-consumers/kafka: kafka-consumer-build
+	cp $(BUNDLES)/kafka-consumer $@
+
 controller-build:
 	./script/binary-controller -os=$(OS) -arch=$(ARCH)
 
+kafka-consumer-build:
+	./script/binary-kafka-consumer -os=$(OS) -arch=$(ARCH)
+
 controller-image: docker/controller
 	$(DOCKER) build -t $(CONTROLLER_IMAGE) $<
+
+kafka-consumer-image: docker/event-consumers/kafka
+	$(DOCKER) build -t $(KAFKA_CONSUMER_IMAGE) $<
 
 update:
 	./hack/update-codegen.sh

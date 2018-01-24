@@ -21,8 +21,10 @@ env:
     - TEST_TARGET=GKE
   global:
     - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller
+    - KAFKA_CONSUMER_IMAGE_NAME=kubeless/kafka-consumer
     - CONTROLLER_TAG=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}
     - CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
+    - KAFKA_CONSUMER_IMAGE=${KAFKA_CONSUMER_IMAGE_NAME}:build-$TRAVIS_BUILD_ID
     - CGO_ENABLED=0
     - TEST_DEBUG=1
     - GKE_VERSION=1.7.11-gke.1
@@ -53,10 +55,10 @@ before_install:
     # it is a Pull Request related to Kafka (discovered from the PR title)
     # or if the build is from the "master" branch
     minikube_kafka)
-      if [[ "$TRAVIS_PULL_REQUEST" != false ]]; then
-        pr_kafka_title=$(curl -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title | grep -i kafka || true)
-      fi
-      if [[ "$TRAVIS_PULL_REQUEST" == false || "$pr_kafka_title" != "" ]]; then
+      # if [[ "$TRAVIS_PULL_REQUEST" != false ]]; then
+      #  pr_kafka_title=$(curl -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title | grep -i kafka || true)
+      # fi
+      if [[ "$TRAVIS_PULL_REQUEST" != false || "$pr_kafka_title" != "" ]]; then
         export SHOULD_TEST=1
       fi
       ;;
@@ -105,6 +107,8 @@ script:
         ./script/integration-tests minikube basic
         ;;
       minikube_kafka)
+        make kafka-consumer-image KAFKA_CONSUMER_IMAGE=$KAFKA_CONSUMER_IMAGE
+        sed -i.bak 's/'":latest"'/'":build-$TRAVIS_BUILD_ID"'/g' pkg/event-consumers/kafka/kafka-consumer.yaml
         ./script/integration-tests minikube deployment
         ./script/integration-tests minikube kafka
         ;;

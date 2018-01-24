@@ -15,9 +15,9 @@ spec:
         kubeless: kafka-consumer
     spec:
       containers:
-      - image: tuna/kafka-consumer:0.0.1
+      - image: kubeless/kafka-consumer:latest
         name: kafka-consumer
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: BROKER_LIST
           valueFrom:

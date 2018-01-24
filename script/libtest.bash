@@ -16,7 +16,7 @@
 
 KUBELESS_MANIFEST=kubeless.yaml
 KUBELESS_MANIFEST_RBAC=kubeless-rbac.yaml
-KAFKA_CONSUMER_MANIFEST="pkg/listener/kafka/kafka.yaml"
+KAFKA_CONSUMER_MANIFEST="pkg/event-consumers/kafka/kafka-consumer.yaml"
 
 KUBECTL_BIN=$(which kubectl)
 : ${KUBECTL_BIN:?ERROR: missing binary: kubectl}
