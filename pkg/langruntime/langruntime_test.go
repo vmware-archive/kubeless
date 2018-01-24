@@ -15,6 +15,9 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
+var clientset = fake.NewSimpleClientset()
+var lr = New(clientset, "kubeless", "kubeless-config")
+
 func initializeConfigmap(clientset *fake.Clientset, lr *Langruntimes) {
 
 	var runtimeImages = []RuntimeInfo{{
@@ -113,6 +116,11 @@ func initializeConfigmap(clientset *fake.Clientset, lr *Langruntimes) {
 
 }
 
+func TestMain(m *testing.M) {
+	initializeConfigmap(clientset, lr)
+	os.Exit(m.Run())
+}
+
 func check(clientset *fake.Clientset, lr *Langruntimes, runtime, fname string, values []string, t *testing.T) {
 
 	info, err := lr.GetRuntimeInfo(runtime)
@@ -128,9 +136,6 @@ func check(clientset *fake.Clientset, lr *Langruntimes, runtime, fname string, v
 }
 
 func TestGetFunctionFileNames(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
-	var lr = New(clientset, "kubeless", "kubeless-config")
-	initializeConfigmap(clientset, lr)
 
 	expectedValues := []string{"requirements.txt", "test.py"}
 	check(clientset, lr, "python2.7", "test", expectedValues, t)
@@ -148,10 +153,6 @@ func TestGetFunctionFileNames(t *testing.T) {
 }
 
 func TestGetFunctionImage(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
-	var lr = New(clientset, "kubeless", "kubeless-config")
-	initializeConfigmap(clientset, lr)
-
 	// Throws an error if the runtime doesn't exist
 	_, err := lr.GetFunctionImage("unexistent", "HTTP")
 	if err == nil {
@@ -189,9 +190,6 @@ func TestGetFunctionImage(t *testing.T) {
 }
 
 func TestGetRuntimes(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
-	var lr = New(clientset, "kubeless", "kubeless-config")
-	initializeConfigmap(clientset, lr)
 
 	runtimes := strings.Join(lr.GetRuntimes(), ", ")
 	expectedRuntimes := "python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, dotnetcore2.0"
@@ -201,9 +199,6 @@ func TestGetRuntimes(t *testing.T) {
 }
 
 func TestGetBuildContainer(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
-	var lr = New(clientset, "kubeless", "kubeless-config")
-	initializeConfigmap(clientset, lr)
 	// It should throw an error if there is not an image available
 	_, err := lr.GetBuildContainer("notExists", []v1.EnvVar{}, v1.VolumeMount{})
 	if err == nil {
