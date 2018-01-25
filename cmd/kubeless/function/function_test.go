@@ -165,7 +165,7 @@ func TestGetFunctionDescription(t *testing.T) {
 							Image: "test-image",
 							VolumeMounts: []v1.VolumeMount{
 								{
-									Name:      "secretName-sec",
+									Name:      "secretName-vol",
 									MountPath: "/secretName",
 								},
 							},
@@ -173,7 +173,7 @@ func TestGetFunctionDescription(t *testing.T) {
 					},
 					Volumes: []v1.Volume{
 						{
-							Name: "secretName-sec",
+							Name: "secretName-vol",
 							VolumeSource: v1.VolumeSource{
 								Secret: &v1.SecretVolumeSource{
 									SecretName: "secretName",
@@ -211,7 +211,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	defer os.Remove(file.Name()) // clean up
 	input3Headless := false
 	input3Port := int32(8080)
-	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", "20", false, &input3Headless, &input3Port, []string{"TEST=2"}, []string{"test=2"}, []string{}, expectedFunction)
+	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", "20", false, &input3Headless, &input3Port, []string{"TEST=2"}, []string{"test=2"}, []string{"secret2"}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -274,18 +274,28 @@ func TestGetFunctionDescription(t *testing.T) {
 							Image: "test-image2",
 							VolumeMounts: []v1.VolumeMount{
 								{
-									Name:      "secretName-sec",
+									Name:      "secretName-vol",
 									MountPath: "/secretName",
+								},{
+									Name:      "secret2-vol",
+									MountPath: "/secret2",
 								},
 							},
 						},
 					},
 					Volumes: []v1.Volume{
 						{
-							Name: "secretName-sec",
+							Name: "secretName-vol",
 							VolumeSource: v1.VolumeSource{
 								Secret: &v1.SecretVolumeSource{
 									SecretName: "secretName",
+								},
+							},
+						},{
+							Name: "secret2-vol",
+							VolumeSource: v1.VolumeSource{
+								Secret: &v1.SecretVolumeSource{
+									SecretName: "secret2",
 								},
 							},
 						},
@@ -327,7 +337,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 	file.Close()
 	zipW.Close()
-	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", "", false, nil, nil, []string{}, []string{}, []string{"secretName"}, expectedFunction)
+	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", "", false, nil, nil, []string{}, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
