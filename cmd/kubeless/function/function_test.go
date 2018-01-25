@@ -336,9 +336,9 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should maintain previous HPA definition
-	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, kubelessApi.Function{
-		Spec: kubelessApi.FunctionSpec{
-			HorizontalPodAutoscaler: v2beta1.HorizontalPodAutoscaler{
+	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, []string{}, spec.Function{
+		Spec: spec.FunctionSpec{
+			HorizontalPodAutoscaler: v2alpha1.HorizontalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "previous-hpa",
 				},
