@@ -180,7 +180,7 @@ func init() {
 	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
 	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
-	deployCmd.Flags().StringSliceP("secret-names", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secret-names mySecret")
+	updateCmd.Flags().StringSliceP("secret-names", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secret-names mySecret")
 	updateCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function")
 	updateCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 	updateCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
