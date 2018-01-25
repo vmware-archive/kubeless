@@ -190,7 +190,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should take the default values
-	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", "", false, nil, nil, []string{}, []string{}, []string{"secretName"}, expectedFunction)
+	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", "", false, nil, nil, []string{}, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
