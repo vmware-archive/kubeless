@@ -249,13 +249,13 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		},
 	}
 
-	if len(secretNames) == 0 && len(defaultFunction.Spec.Template.Spec.Containers) != 0 {
+	if len(defaultFunction.Spec.Template.Spec.Containers) != 0 {
 		function.Spec.Template.Spec.Containers[0].VolumeMounts = defaultFunction.Spec.Template.Spec.Containers[0].VolumeMounts
 	}
 
 	for _, secretName := range secretNames {
 		function.Spec.Template.Spec.Volumes = append(function.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: secretName + "-sec",
+			Name: secretName + "-vol",
 			VolumeSource: v1.VolumeSource{
 				Secret: &v1.SecretVolumeSource{
 					SecretName: secretName,
@@ -263,7 +263,7 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 			},
 		})
 		function.Spec.Template.Spec.Containers[0].VolumeMounts = append(function.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      secretName + "-sec",
+			Name:      secretName + "-vol",
 			MountPath: "/" + secretName,
 		})
 
