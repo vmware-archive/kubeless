@@ -109,6 +109,7 @@ Let's dissect the command:
 * `--handler test.foobar`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `foobar` from the file `test.py`.
 * `--env` to pass env vars to the function like `--env foo=bar,bar=foo`. See the [detail](https://github.com/kubeless/kubeless/pull/316#issuecomment-332172876)
 * `--trigger-http`: This sets the function trigger.
+* `--secrets`: This sets a list of Secrets to be mounted as Volumes to the functions pod. They will be available in the path `/<secret_name>`.
 
 Other available trigger options (defaults to `--trigger-http`) are:
 
