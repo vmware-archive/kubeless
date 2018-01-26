@@ -6,7 +6,7 @@ The plugin can be invoked like this:
 
 	openapic bookstore.json --go_generator_out=package=bookstore:bookstore
 
-Where `bookstore` is the name of a directory where the generated code will be written and `package=bookstore` indicates that "bookstore" should also be the package name used for generated code.
+Where `bookstore` is the name of a directory where the generated code will be written and `package=bookstore` indicates that "bookstore" should also be the package name used for generated code. 
 
 By default, both client and server code will be generated. If the `openapi_go_generator` binary is also linked from the names `openapi_go_client` and `openapi_go_server`, then only client or only server code can be generated as follows:
 

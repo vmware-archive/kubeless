@@ -1,0 +1,47 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    kubeless: kafka-consumer
+  name: kafka-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      kubeless: kafka-consumer
+  template:
+    metadata:
+      labels:
+        kubeless: kafka-consumer
+    spec:
+      containers:
+      - image: kubeless/kafka-consumer:latest
+        name: kafka-consumer
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: BROKER_LIST
+          valueFrom:
+            configMapKeyRef:
+              key: broker-list
+              name: kafka-config
+        - name: TOPICS
+          valueFrom:
+            configMapKeyRef:
+              key: topics
+              name: kafka-config
+        - name: FUNCTION_ID
+          valueFrom:
+            configMapKeyRef:
+              key: function-id
+              name: kafka-config
+---
+apiVersion: v1
+data:
+  broker-list: kafka.kubeless:9092
+  topics: s3
+  function-id: test+default
+kind: ConfigMap
+metadata:
+  name: kafka-config
+  labels:
+    kubeless: kafka-consumer

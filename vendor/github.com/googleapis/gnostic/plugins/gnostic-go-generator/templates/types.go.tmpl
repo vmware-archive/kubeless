@@ -6,7 +6,7 @@ package {{.Renderer.Package}}
 //-{{range .Renderer.Types}}
 
 //-{{if eq .Kind "struct"}}
-type {{.Name}} struct {
+type {{.Name}} struct { 
 //-{{range .Fields}}
   {{.Name}} {{goType .Type}}{{if ne .JSONName ""}} `json:"{{.JSONName}}"`
 //-{{end}}

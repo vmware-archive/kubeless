@@ -2,12 +2,15 @@ package: github.com/kubeless/kubeless
 import:
 - package: github.com/sirupsen/logrus
 - package: github.com/spf13/cobra
+  version: b95ab734e27d33e0d8fbabf71ca990568d4e2020
+- package: github.com/spf13/pflag
+  version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
 - package: k8s.io/apimachinery
   version: 9d38e20d609d27e00d4ec18f7b9db67105a2bde0
 - package: k8s.io/client-go
-  subpackages:
-    - plugin/pkg/client/auth/gcp
   version: v5.0.0
+  subpackages:
+  - plugin/pkg/client/auth/gcp
 - package: k8s.io/api
   version: fe29995db37613b9c5b2a647544cf627bfa8d299
 - package: k8s.io/code-generator
@@ -22,3 +25,7 @@ import:
 - package: github.com/robfig/cron
 - package: golang.org/x/sys
   version: 7ddbeae9ae08c6a06a59597f0c9edbc5ff2444ce
+- package: github.com/Shopify/sarama
+  version: ^1.12.0
+- package: github.com/bsm/sarama-cluster
+  version: ^2.1.11

@@ -16,6 +16,7 @@
 
 KUBELESS_MANIFEST=kubeless.yaml
 KUBELESS_MANIFEST_RBAC=kubeless-rbac.yaml
+KAFKA_CONSUMER_MANIFEST="pkg/event-consumers/kafka/kafka-consumer.yaml"
 
 KUBECTL_BIN=$(which kubectl)
 : ${KUBECTL_BIN:?ERROR: missing binary: kubectl}
@@ -135,6 +136,26 @@ kubeless_recreate() {
     kubectl create namespace kubeless
     kubectl create -f ${manifest_upd}
 }
+kafka_consumer_recreate() {
+    local manifest_kafka=${1:?missing kafka consumer manifest}
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    echo_info "Delete existing kafka consumer deployment ... "
+    kubectl delete -f ${manifest_kafka} || true
+    while kubectl get deploy kafka-consumer >& /dev/null; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
+    echo_info "Create kafka consumer deployment ... "
+    kubectl create -f ${manifest_kafka}
+}
+deploy_kafka_listener() {
+    kafka_consumer_recreate $KAFKA_CONSUMER_MANIFEST
+    _wait_for_kafka_consumer_ready
+}
+_wait_for_kafka_consumer_ready() {
+    echo_info "Waiting for kafka consumer to be ready ... "
+    k8s_wait_for_pod_ready -l kubeless=kafka-consumer
+}
 kubeless_function_delete() {
     local func=${1:?}; shift
     echo_info "Deleting function "${func}" in case still present ... "
@@ -159,6 +180,10 @@ wait_for_kubeless_kafka_server_ready() {
     echo_info "Waiting for kafka-0 to be ready ..."
     k8s_wait_for_pod_logline "Kafka.*Server.*started" -n kubeless kafka-0
     kubectl annotate pods --overwrite -n kubeless kafka-0 ready=true
+}
+wait_for_kafka_consumer_logline() {
+    local string="${1:?}"
+    k8s_wait_for_pod_logline "${string}" -l kubeless=kafka-consumer
 }
 _wait_for_kubeless_kafka_topic_ready() {
     local topic=${1:?}

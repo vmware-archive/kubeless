@@ -24,7 +24,7 @@ public class {{ serviceType.name }} : CustomStringConvertible {
 
 //-{% if serviceType.isInterfaceType %}
   public init?(jsonObject: Any?) {
-    if let jsonDictionary = jsonObject as? [String:Any] {
+    if let jsonDictionary = jsonObject as? [String:Any] {  
       //-{% for serviceTypeField in serviceType.fields %}
       if let value : Any = jsonDictionary["{{ serviceTypeField.jsonName }}"] {
         //-{% if serviceTypeField.isArrayType %}
@@ -38,19 +38,19 @@ public class {{ serviceType.name }} : CustomStringConvertible {
         self.{{serviceTypeField.name}} = outArray
         //-{% endif %}
         //-{% if serviceTypeField.isCastableType %}
-        self.{{serviceTypeField.name}} = value as! {{serviceTypeField.typeName}}
+        self.{{serviceTypeField.name}} = value as! {{serviceTypeField.typeName}} 
         //-{% endif %}
         //-{% if serviceTypeField.isConvertableType %}
         self.{{serviceTypeField.name}} = {{serviceTypeField.typeName}}(value)
         //-{% endif %}
       }
-      //-{% endfor %}
+      //-{% endfor %}   
     } else {
       return nil
     }
   }
-
-  public func jsonObject() -> Any {
+    
+  public func jsonObject() -> Any { 
     var result : [String:Any] = [:]
     //-{% for serviceTypeField in serviceType.fields %}
     //-{% if serviceTypeField.isArrayType %}
@@ -59,23 +59,23 @@ public class {{ serviceType.name }} : CustomStringConvertible {
       outArray.append(arrayValue.jsonObject())
     }
     result["{{ serviceTypeField.jsonName }}"] = outArray
-    //-{% endif %}
+    //-{% endif %}      
     //-{% if serviceTypeField.isCastableType %}
-    result["{{ serviceTypeField.jsonName }}"] = self.{{serviceTypeField.name}}
-    //-{% endif %}
+    result["{{ serviceTypeField.jsonName }}"] = self.{{serviceTypeField.name}} 
+    //-{% endif %}      
     //-{% if serviceTypeField.isConvertableType %}
-    result["{{ serviceTypeField.jsonName }}"] = self.{{serviceTypeField.name}}.jsonObject()
+    result["{{ serviceTypeField.jsonName }}"] = self.{{serviceTypeField.name}}.jsonObject() 
     //-{% endif %}
-    //-{% endfor %}
+    //-{% endfor %} 
     return result
   }
-
+  
 //-{% endif %}
   public var description: String{
     return "[{{ serviceType.name }}" +
     //-{% for serviceTypeField in serviceType.fields %}
-      " {{ serviceTypeField.name }}: \(self.{{ serviceTypeField.name }})" +
-    //-{% endfor %}
+      " {{ serviceTypeField.name }}: \(self.{{ serviceTypeField.name }})" +   
+    //-{% endfor %}      
     "]"
   }
 }
