@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/signal"
@@ -9,7 +10,10 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/bsm/sarama-cluster"
+	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 func main() {
@@ -25,7 +29,7 @@ func main() {
 
 	functionID := os.Getenv("FUNCTION_ID")
 	if functionID == "" {
-		logrus.Fatalf("Function_ID is string concatenation of `function_name + namespace`, and it can't be empty. Please set env FUNCTION_ID")
+		logrus.Fatalf("Function_ID is string concatenation of `funcName+namespace+funcPort`, and it can't be empty. Please set env FUNCTION_ID")
 	}
 
 	// Init config
@@ -53,11 +57,20 @@ func main() {
 		select {
 		case msg, more := <-consumer.Messages():
 			if more {
+				//print to stdout
+				//TODO: should be logrus.Debugf and enable verbosity
 				fmt.Printf("Partition:\t%d\n", msg.Partition)
 				fmt.Printf("Offset:\t%d\n", msg.Offset)
 				fmt.Printf("Key:\t%s\n", string(msg.Key))
 				fmt.Printf("Value:\t%s\n", string(msg.Value))
 				fmt.Println()
+
+				//forward msg to function
+				clientset := utils.GetClient()
+				err = sendMessage(clientset, functionID, string(msg.Value))
+				if err != nil {
+					logrus.Errorf("Failed to send message to function: %v", err)
+				}
 				consumer.MarkOffset(msg, "")
 			}
 		case ntf, more := <-consumer.Notifications():
@@ -72,4 +85,27 @@ func main() {
 			return
 		}
 	}
+}
+
+func sendMessage(clientset kubernetes.Interface, funcID, msg string) error {
+	s := strings.Split(funcID, "+")
+	if len(s) != 3 {
+		return fmt.Errorf("FunctionID isn't set correctly. It should be `funcName+namespace+funcPort`")
+	}
+	svc, err := clientset.CoreV1().Services(s[1]).Get(s[0], metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("Unable to find the service for function %s", s[0])
+	}
+
+	jsonStr := []byte(msg)
+	req := clientset.CoreV1().RESTClient().Post().Body(bytes.NewBuffer(jsonStr)).SetHeader("Content-Type", "application/json")
+	req = req.AbsPath(svc.ObjectMeta.SelfLink + ":" + s[2] + "/proxy/")
+
+	_, err = req.Do().Raw()
+	if err != nil {
+		return err
+	}
+
+	logrus.Infof("Message has sent successfully")
+	return nil
 }
