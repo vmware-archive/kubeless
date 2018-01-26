@@ -131,7 +131,7 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, secretNames []string, defaultFunction spec.Function) (*spec.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, secrets []string, defaultFunction spec.Function) (*spec.Function, error) {
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
 		Kind:       "Function",
@@ -253,18 +253,18 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		function.Spec.Template.Spec.Containers[0].VolumeMounts = defaultFunction.Spec.Template.Spec.Containers[0].VolumeMounts
 	}
 
-	for _, secretName := range secretNames {
+	for _, secret := range secrets {
 		function.Spec.Template.Spec.Volumes = append(function.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: secretName + "-vol",
+			Name: secret + "-vol",
 			VolumeSource: v1.VolumeSource{
 				Secret: &v1.SecretVolumeSource{
-					SecretName: secretName,
+					SecretName: secret,
 				},
 			},
 		})
 		function.Spec.Template.Spec.Containers[0].VolumeMounts = append(function.Spec.Template.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-			Name:      secretName + "-vol",
-			MountPath: "/" + secretName,
+			Name:      secret + "-vol",
+			MountPath: "/" + secret,
 		})
 
 	}

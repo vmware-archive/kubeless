@@ -276,7 +276,7 @@ func TestGetFunctionDescription(t *testing.T) {
 								{
 									Name:      "secretName-vol",
 									MountPath: "/secretName",
-								},{
+								}, {
 									Name:      "secret2-vol",
 									MountPath: "/secret2",
 								},
@@ -291,7 +291,7 @@ func TestGetFunctionDescription(t *testing.T) {
 									SecretName: "secretName",
 								},
 							},
-						},{
+						}, {
 							Name: "secret2-vol",
 							VolumeSource: v1.VolumeSource{
 								Secret: &v1.SecretVolumeSource{

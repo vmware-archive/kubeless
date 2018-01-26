@@ -56,7 +56,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		secretNames, err := cmd.Flags().GetStringSlice("secret-names")
+		secrets, err := cmd.Flags().GetStringSlice("secrets")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -155,7 +155,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatalf("Invalid port number %d specified", *port)
 		}
 		cli := utils.GetClientOutOfCluster()
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, headless, port, envs, labels, secretNames, previousFunction)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, headless, port, envs, labels, secrets, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -180,7 +180,7 @@ func init() {
 	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
 	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
-	updateCmd.Flags().StringSliceP("secret-names", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secret-names mySecret")
+	updateCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")
 	updateCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function")
 	updateCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 	updateCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
