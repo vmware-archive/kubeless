@@ -23,8 +23,9 @@ env:
     - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller
     - KAFKA_CONSUMER_IMAGE_NAME=kubeless/kafka-consumer
     - CONTROLLER_TAG=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}
+    - KAFKA_CONSUMER_TAG=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}
     - CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
-    - KAFKA_CONSUMER_IMAGE=${KAFKA_CONSUMER_IMAGE_NAME}:build-$TRAVIS_BUILD_ID
+    - KAFKA_CONSUMER_IMAGE=${KAFKA_CONSUMER_IMAGE_NAME}:${KAFKA_CONSUMER_TAG}
     - CGO_ENABLED=0
     - TEST_DEBUG=1
     - GKE_VERSION=1.7.11-gke.1
@@ -55,10 +56,10 @@ before_install:
     # it is a Pull Request related to Kafka (discovered from the PR title)
     # or if the build is from the "master" branch
     minikube_kafka)
-      # if [[ "$TRAVIS_PULL_REQUEST" != false ]]; then
-      #  pr_kafka_title=$(curl -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title | grep -i kafka || true)
-      # fi
-      if [[ "$TRAVIS_PULL_REQUEST" != false || "$pr_kafka_title" != "" ]]; then
+      if [[ "$TRAVIS_PULL_REQUEST" != false ]]; then
+        pr_kafka_title=$(curl "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title || true)
+      fi
+      if [[ "$TRAVIS_PULL_REQUEST" == false || "$pr_title" == "" || "$pr_title" =~ ^.*(Kafka|kafka|KAFKA).*$ ]]; then
         export SHOULD_TEST=1
       fi
       ;;
@@ -108,7 +109,7 @@ script:
         ;;
       minikube_kafka)
         make kafka-consumer-image KAFKA_CONSUMER_IMAGE=$KAFKA_CONSUMER_IMAGE
-        sed -i.bak 's/'":latest"'/'":build-$TRAVIS_BUILD_ID"'/g' pkg/event-consumers/kafka/kafka-consumer.yaml
+        sed -i.bak 's/'":latest"'/'":${KAFKA_CONSUMER_TAG}"'/g' pkg/event-consumers/kafka/kafka-consumer.yaml
         ./script/integration-tests minikube deployment
         ./script/integration-tests minikube kafka
         ;;
@@ -136,6 +137,8 @@ after_success:
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
       docker tag $CONTROLLER_IMAGE ${CONTROLLER_IMAGE_NAME}:latest
       docker push ${CONTROLLER_IMAGE_NAME}:latest
+      docker tag $KAFKA_CONSUMER_IMAGE ${KAFKA_CONSUMER_IMAGE_NAME}:latest
+      docker push ${KAFKA_CONSUMER_IMAGE_NAME}:latest
     fi
 
 before_deploy:
@@ -151,6 +154,8 @@ before_deploy:
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
       docker tag $CONTROLLER_IMAGE ${CONTROLLER_IMAGE_NAME}:latest
       docker push $CONTROLLER_IMAGE
+      docker tag $KAFKA_CONSUMER_IMAGE ${KAFKA_CONSUMER_IMAGE_NAME}:latest
+      docker push $KAFKA_CONSUMER_IMAGE
       NEW_DIGEST=$(./script/find_digest.sh  ${CONTROLLER_IMAGE_NAME} ${TRAVIS_TAG} | cut -d " " -f 2)
       sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless.yaml > kubeless-${TRAVIS_TAG}.yaml
       sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
