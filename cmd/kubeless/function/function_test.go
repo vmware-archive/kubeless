@@ -277,7 +277,7 @@ func TestGetFunctionDescription(t *testing.T) {
 								{
 									Name:      "secretName-vol",
 									MountPath: "/secretName",
-								},{
+								}, {
 									Name:      "secret2-vol",
 									MountPath: "/secret2",
 								},
@@ -292,7 +292,7 @@ func TestGetFunctionDescription(t *testing.T) {
 									SecretName: "secretName",
 								},
 							},
-						},{
+						}, {
 							Name: "secret2-vol",
 							VolumeSource: v1.VolumeSource{
 								Secret: &v1.SecretVolumeSource{
@@ -347,7 +347,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should maintain previous HPA definition
-	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{
+	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, []string{}, kubelessApi.Function{
 		Spec: kubelessApi.FunctionSpec{
 			HorizontalPodAutoscaler: v2beta1.HorizontalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{

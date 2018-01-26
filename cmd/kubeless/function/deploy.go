@@ -102,7 +102,7 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		secretNames, err := cmd.Flags().GetStringSlice("secret-names")
+		secrets, err := cmd.Flags().GetStringSlice("secrets")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -157,7 +157,7 @@ var deployCmd = &cobra.Command{
 		defaultFunctionSpec.ObjectMeta.Labels = map[string]string{
 			"created-by": "kubeless",
 		}
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, &headless, &port, envs, labels, secretNames, defaultFunctionSpec)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, &headless, &port, envs, labels, secrets, defaultFunctionSpec)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -182,7 +182,7 @@ func init() {
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
 	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
-	deployCmd.Flags().StringSliceP("secret-names", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secret-names mySecret")
+	deployCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")
 	deployCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
