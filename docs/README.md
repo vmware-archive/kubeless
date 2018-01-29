@@ -5,7 +5,8 @@
 - [Runtimes](runtimes.md)
 - [Routing](routing.md)
 - [Running on azure container services](kubeless-on-azure-container-services.md)
-- [Monitoring](monitoring.md) 
+- [Monitoring](monitoring.md)
+- [Autoscaling](autoscaling.md)
 
 ## Development
 

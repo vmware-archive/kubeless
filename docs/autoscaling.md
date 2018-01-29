@@ -1,10 +1,59 @@
-# Autoscaling with custom metrics on k8s 1.7
+# Autoscaling function deployment in Kubeless
+
+This document gives you an overview of how we do autoscaling for functions in Kubeless and also give you a walkthrough how to configure it for custom metric.
+
+## Overview
+
+Kubernetes introduces [HorizontalPodAutoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) for pod autoscaling. In kubeless, each function is deployed into a separate Kubernetes deployment, so naturally we leverage HPA to automatically scale function based on defined workload metrics.
+
+If you're on Kubeless CLI, this below command gives you an idea how to setup autoscaling for deployed function:
+
+```
+$ kubeless autoscale --help
+autoscale command allows user to list, create, delete autoscale rule for function on Kubeless
+
+Usage:
+  kubeless autoscale SUBCOMMAND [flags]
+  kubeless autoscale [command]
+
+Available Commands:
+  create      automatically scale function based on monitored metrics
+  delete      delete an autoscale from Kubeless
+  list        list all autoscales in Kubeless
+
+Flags:
+  -h, --help   help for autoscale
+
+Use "kubeless autoscale [command] --help" for more information about a command.
+```
+
+Once you create an autoscaling rule for a specific function (with `kubeless autoscale create`), the corresponding HPA object will be added to the system which is going to monitor your function and auto-scale its pods based on the autoscaling rule you define in the command. The default metric is CPU, but you have option to do autoscaling with custom metrics. At this moment, Kubeless supports `qps` which stands for number of incoming requests to function per second.
+
+```
+$ kubeless autoscale create --help
+automatically scale function based on monitored metrics
+
+Usage:
+  kubeless autoscale create <name> FLAG [flags]
+
+Flags:
+  -h, --help               help for create
+      --max int32          maximum number of replicas (default 1)
+      --metric string      metric to use for calculating the autoscale. Supported metrics: cpu, qps (default "cpu")
+      --min int32          minimum number of replicas (default 1)
+  -n, --namespace string   Specify namespace for the autoscale
+      --value string       value of the average of the metric across all replicas. If metric is cpu, value is a number represented as percentage. If metric is qps, value must be in format of Quantity
+```
+
+The below part will walk you though setup need to be done in order to make function auto-scaled based on `qps` metric.
+
+## Autoscaling with custom metrics on k8s 1.7
 
 This walkthrough will go over the step-by-step of setting up the prometheus-based custom API server on your cluster and configuring autoscaler (HPA) to use application metrics sourced from prometheus instance.
 
 This walkthrough is done in [kubeadm-dind-cluster v1.7](https://github.com/Mirantis/kubeadm-dind-cluster)
 
-## Cluster configuration
+### Cluster configuration
 
 Before getting started, ensure that the main components of your cluster are configured for autoscaling on custom metrics. As of Kubernetes 1.7, this requires enabling the aggregation layer on the API server and configuring the controller manager to use the metrics APIs via their REST clients.
 
@@ -81,17 +130,17 @@ storage.k8s.io/v1beta1
 v1
 ```
 
-## Deploy Prometheus to monitor services
+### Deploy Prometheus to monitor services
 The Prometheus setup contains a Prometheus operator and a Prometheus instance
 
 ```
-$ kubectl create -f prometheus-operator.yaml
+$ kubectl create -f $KUBELESS_REPO/manifests/autoscaling/prometheus-operator.yaml
 clusterrole "prometheus-operator" created
 serviceaccount "prometheus-operator" created
 clusterrolebinding "prometheus-operator" created
 deployment "prometheus-operator" created
 
-$ kubectl create -f sample-prometheus-instance.yaml
+$ kubectl create -f $KUBELESS_REPO/manifests/autoscaling/sample-prometheus-instance.yaml
 clusterrole "prometheus" created
 serviceaccount "prometheus" created
 clusterrolebinding "prometheus" created
@@ -104,13 +153,13 @@ kubernetes            10.96.0.1       <none>        443/TCP          6d
 prometheus-operated   None            <none>        9090/TCP         1h
 ```
 
-## Deploy a custom API server
+### Deploy a custom API server
 When the aggregator enabled and configured properly, one can deploy and register a custom API server that provides the `custom-metrics.metrics.k8s.io/v1alpha1` API group/version and let the HPA controller queries custom metrics from that.
 
 The custom API server we are using here is basically [a Prometheus adapter](https://github.com/directxman12/k8s-prometheus-adapter) which can collect metrics from Prometheus and send to HPA controller via REST queries (that's why we must configure HPA controller to use REST client via the `--horizontal-pod-autoscaler-use-rest-clients` flag)
 
 ```
-$ kubectl create -f custom-metrics.yaml
+$ kubectl create -f $KUBELESS_REPO/manifests/autoscaling/custom-metrics.yaml
 namespace "custom-metrics" created
 serviceaccount "custom-metrics-apiserver" created
 clusterrolebinding "custom-metrics:system:auth-delegator" created
@@ -161,12 +210,12 @@ $ kubectl get --raw /apis/custom-metrics.metrics.k8s.io/v1alpha1
 {"kind":"APIResourceList","apiVersion":"v1","groupVersion":"custom-metrics.metrics.k8s.io/v1alpha1","resources":[]}
 ```
 
-## Deploy a sample app
+### Deploy a sample app
 
 Now we can deploy a sample app and sample HPA rule to do the autoscale with `http_requests` metric collected and exposed via Prometheus.
 
 ```
-$ cat sample-metrics-app.yaml
+$ cat $KUBELESS_REPO/manifests/autoscaling/sample-metrics-app.yaml
 ...
 ---
 kind: HorizontalPodAutoscaler
@@ -188,7 +237,7 @@ spec:
       metricName: http_requests
       targetValue: 100
 
-$ kubectl create -f sample-metrics-app.yaml
+$ kubectl create -f $KUBELESS_REPO/manifests/autoscaling/sample-metrics-app.yaml
 deployment "sample-metrics-app" created
 service "sample-metrics-app" created
 servicemonitor "sample-metrics-app" created
@@ -201,8 +250,11 @@ sample-metrics-app-hpa   Deployment/sample-metrics-app   866m / 100   2         
 
 Try to increase some loads by hitting the sample app service, then you can see the HPA scales it up.
 
+## Autoscaling on GKE
 
-## Further reading
+Let's say you are running Kubeless on GKE. At this moment you can only do autoscaling with default metric (CPU). For custom metrics, GKE team says that it will be supported from GKE 1.9+. So stay tuned.
+
+### Further reading
 
 https://github.com/kubernetes/community/blob/master/contributors/design-proposals/custom-metrics-api.md
 https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-custom-metrics
