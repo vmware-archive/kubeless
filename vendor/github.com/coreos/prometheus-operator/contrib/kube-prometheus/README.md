@@ -84,10 +84,10 @@ Grafana dashboard generator. Bear in mind that we are for now using a fork of gr
 we needed to make extensive changes to it, in order to be able to generate our dashboards. We are
 hoping to be able to consolidate our version with the original.
 
-As such, in order to make changes to the dashboard bundle, you need to change the \*.dashboard.py
+As such, in order to make changes to the dashboard bundle, you need to change the \*.dashboard.py 
 files in assets/grafana, eventually add your own, and then run `make generate` in the
 kube-prometheus root directory.
-
+ 
 To read more in depth about developing dashboards, read the
 [Developing Prometheus Rules and Grafana Dashboards](docs/developing-alerts-and-dashboards.md)
 documentation.

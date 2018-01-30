@@ -37,10 +37,11 @@ import (
 func main() {
 	arguments := args.Default()
 
-	// Override defaults.
-	arguments.GoHeaderFilePath = filepath.Join(args.DefaultSourceTree(), "k8s.io/kubernetes/hack/boilerplate/boilerplate.go.txt")
+	// Override defaults. These are Kubernetes specific input and output
+	// locations.
 	arguments.InputDirs = []string{"k8s.io/kubernetes/pkg/util/sets/types"}
 	arguments.OutputPackagePath = "k8s.io/apimachinery/pkg/util/sets"
+	arguments.GoHeaderFilePath = filepath.Join(args.DefaultSourceTree(), "k8s.io/kubernetes/hack/boilerplate/boilerplate.go.txt")
 
 	if err := arguments.Execute(
 		generators.NameSystems(),

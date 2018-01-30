@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	v1beta2 "k8s.io/api/apps/v1beta2"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	"k8s.io/api/core/v1"
@@ -289,17 +290,24 @@ func TestEnsureDeployment(t *testing.T) {
 				Selector: funcLabels,
 				Type:     v1.ServiceTypeClusterIP,
 			},
-			Template: v1.PodTemplateSpec{
+			Deployment: v1beta2.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: funcAnno,
 				},
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						{
-							Env: []v1.EnvVar{
+				Spec: v1beta2.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Annotations: funcAnno,
+						},
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{
 								{
-									Name:  "foo",
-									Value: "bar",
+									Env: []v1.EnvVar{
+										{
+											Name:  "foo",
+											Value: "bar",
+										},
+									},
 								},
 							},
 						},
@@ -313,7 +321,7 @@ func TestEnsureDeployment(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err := clientset.ExtensionsV1beta1().Deployments(ns).Get(f1Name, metav1.GetOptions{})
+	dpm, err := clientset.Apps().Deployments(ns).Get(f1Name, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -322,6 +330,7 @@ func TestEnsureDeployment(t *testing.T) {
 		Namespace:       ns,
 		Labels:          funcLabels,
 		OwnerReferences: or,
+		Annotations:     funcAnno,
 	}
 	if !reflect.DeepEqual(dpm.ObjectMeta, expectedObjectMeta) {
 		t.Errorf("Unable to set metadata. Received:\n %+v\nExpecting:\n %+v", dpm.ObjectMeta, expectedObjectMeta)
@@ -413,7 +422,7 @@ func TestEnsureDeployment(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func2", metav1.GetOptions{})
+	dpm, err = clientset.Apps().Deployments(ns).Get("func2", metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -422,12 +431,12 @@ func TestEnsureDeployment(t *testing.T) {
 	f3 := kubelessApi.Function{}
 	f3 = *f1
 	f3.ObjectMeta.Name = "func3"
-	f3.Spec.Template.Spec.Containers[0].Image = "test-image"
+	f3.Spec.Deployment.Spec.Template.Spec.Containers[0].Image = "test-image"
 	err = EnsureFuncDeployment(clientset, &f3, or)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func3", metav1.GetOptions{})
+	dpm, err = clientset.Apps().Deployments(ns).Get("func3", metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -445,7 +454,7 @@ func TestEnsureDeployment(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func4", metav1.GetOptions{})
+	dpm, err = clientset.Apps().Deployments(ns).Get("func4", metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -462,7 +471,7 @@ func TestEnsureDeployment(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func5", metav1.GetOptions{})
+	dpm, err = clientset.Apps().Deployments(ns).Get("func5", metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -474,16 +483,20 @@ func TestEnsureDeployment(t *testing.T) {
 	f6 := kubelessApi.Function{}
 	f6 = *f1
 	f6.Spec.Handler = "foo.bar2"
+	f6.Spec.Deployment.ObjectMeta.Annotations["new-key"] = "value"
 	err = EnsureFuncDeployment(clientset, &f6, or)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get(f1Name, metav1.GetOptions{})
+	dpm, err = clientset.Apps().Deployments(ns).Get(f1Name, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
 	if getEnvValueFromList("FUNC_HANDLER", dpm.Spec.Template.Spec.Containers[0].Env) != "bar2" {
 		t.Error("Unable to update deployment")
+	}
+	if dpm.Annotations["new-key"] != "value" {
+		t.Errorf("Unable to update deployment %v", dpm.Annotations)
 	}
 
 	// It should return an error if some dependencies are given but the runtime is not supported
@@ -506,7 +519,7 @@ func TestEnsureDeployment(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func8", metav1.GetOptions{})
+	dpm, err = clientset.Apps().Deployments(ns).Get("func8", metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -966,4 +979,66 @@ func TestServiceSpec(t *testing.T) {
 	if !reflect.DeepEqual(aSvc, eSvc) {
 		t.Errorf("Unexpected result:\n %+v", aSvc)
 	}
+}
+
+func TestInitializeEmptyMapsInDeployment(t *testing.T) {
+	deployment := v1beta2.Deployment{}
+	deployment.Spec.Selector = &metav1.LabelSelector{}
+	initializeEmptyMapsInDeployment(&deployment)
+	if deployment.ObjectMeta.Annotations == nil {
+		t.Fatal("ObjectMeta.Annotations map is nil")
+	}
+	if deployment.ObjectMeta.Labels == nil {
+		t.Fatal("ObjectMeta.Labels map is nil")
+	}
+	if deployment.Spec.Selector == nil && deployment.Spec.Selector.MatchLabels == nil {
+		t.Fatal("deployment.Spec.Selector.MatchLabels is nil")
+	}
+	if deployment.Spec.Template.ObjectMeta.Labels == nil {
+		t.Fatal("deployment.Spec.Template.ObjectMeta.Labels map is nil")
+	}
+	if deployment.Spec.Template.ObjectMeta.Annotations == nil {
+		t.Fatal("deployment.Spec.Template.ObjectMeta.Annotations map is nil")
+	}
+	if deployment.Spec.Template.Spec.NodeSelector == nil {
+		t.Fatal("deployment.Spec.Template.Spec.NodeSelector map is nil")
+	}
+}
+
+func TestMergeDeployments(t *testing.T) {
+	var replicas int32
+	replicas = 10
+	destinationDeployment := v1beta2.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"foo1-deploy": "bar",
+			},
+		},
+	}
+
+	sourceDeployment := v1beta2.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"foo2-deploy": "bar",
+			},
+		},
+		Spec: v1beta2.DeploymentSpec{
+			Replicas: &replicas,
+		},
+	}
+
+	MergeDeployments(&destinationDeployment, &sourceDeployment)
+	expectedAnnotations := map[string]string{
+		"foo1-deploy": "bar",
+		"foo2-deploy": "bar",
+	}
+	for i := range expectedAnnotations {
+		if destinationDeployment.ObjectMeta.Annotations[i] != expectedAnnotations[i] {
+			t.Fatalf("Expecting annotation %s but received %s", destinationDeployment.ObjectMeta.Annotations[i], expectedAnnotations[i])
+		}
+	}
+	if *destinationDeployment.Spec.Replicas != replicas {
+		t.Fatalf("Expecting replicas as 10 but received %v", *destinationDeployment.Spec.Replicas)
+	}
+
 }

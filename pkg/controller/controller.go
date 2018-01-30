@@ -18,10 +18,12 @@ package controller
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/sirupsen/logrus"
+	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/autoscaling/v2beta1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -32,6 +34,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/ghodss/yaml"
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	kv1beta1 "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
@@ -186,6 +189,23 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 		funcObj.ObjectMeta.Labels = make(map[string]string)
 	}
 	funcObj.ObjectMeta.Labels["function"] = funcObj.ObjectMeta.Name
+
+	controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
+	kubelessConfig := os.Getenv("KUBELESS_CONFIG")
+	cm, _ := c.clientset.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
+	deployment := v1beta2.Deployment{}
+	if deploymentConfigData, ok := cm.Data["deployment"]; ok {
+		err := yaml.Unmarshal([]byte(deploymentConfigData), &deployment)
+		if err != nil {
+			logrus.Errorf("Error parsing Deployment data in ConfigMap kubeless-function-deployment-config: %v", err)
+			return err
+		}
+		err = utils.MergeDeployments(&funcObj.Spec.Deployment, &deployment)
+		if err != nil {
+			logrus.Errorf(" Error while merging function.Spec.Deployment and Deployment from ConfigMap: %v", err)
+			return err
+		}
+	}
 
 	or, err := utils.GetOwnerReference(funcObj)
 	if err != nil {

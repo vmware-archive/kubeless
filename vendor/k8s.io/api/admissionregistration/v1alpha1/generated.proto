@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -152,7 +152,7 @@ message Rule {
   repeated string apiVersions = 2;
 
   // Resources is a list of resources this rule applies to.
-  //
+  // 
   // For example:
   // 'pods' means pods.
   // 'pods/log' means the log subresource of pods.
@@ -160,10 +160,10 @@ message Rule {
   // 'pods/*' means all subresources of pods.
   // '*/scale' means all scale subresources.
   // '*/*' means all resources and their subresources.
-  //
+  // 
   // If wildcard is present, the validation rule will ensure resources do not
   // overlap with each other.
-  //
+  // 
   // Depending on the enclosing object, subresources might not be allowed.
   // Required.
   repeated string resources = 3;
@@ -193,3 +193,4 @@ message ServiceReference {
   // Required
   optional string name = 2;
 }
+

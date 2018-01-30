@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
 )
 
 const (
@@ -224,7 +224,7 @@ func GetBuildContainer(runtime string, env []v1.EnvVar, installVolume v1.VolumeM
 }
 
 // UpdateDeployment object in case of custom runtime
-func UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runtime string) {
+func UpdateDeployment(dpm *v1beta2.Deployment, depsPath, runtime string) {
 	switch {
 	case strings.Contains(runtime, "python"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{

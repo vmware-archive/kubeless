@@ -42,7 +42,7 @@ public func server(service : Service) -> Router {
 
 //-{% for serviceMethod in renderer.methods %}
   // {{ serviceMethod.description }}
-  router.{{ serviceMethod.method|lowercase }}("{{ serviceMethod|kituraPath }}") { req, res, next in
+  router.{{ serviceMethod.method|lowercase }}("{{ serviceMethod|kituraPath }}") { req, res, next in      
       //-{% if serviceMethod|hasParameters %}
       // instantiate the parameters structure
       let parameters = {{ serviceMethod.parametersTypeName }}()
@@ -50,7 +50,7 @@ public func server(service : Service) -> Router {
       //-{% if serviceTypeField.position == "path" %}
       parameters.{{ serviceTypeField.name }} = intValue(req.parameters["{{ serviceTypeField.name }}"])
       //-{% endif %}
-      //-{% endfor %}
+      //-{% endfor %}     
       //-{% if serviceMethod.method == "POST" %}
       // deserialize request from post data
       let bodyString = try req.readString() ?? ""
@@ -86,22 +86,22 @@ public func server(service : Service) -> Router {
       //-{% endif %}
       //-{% endif %}
       //-{% if serviceMethod|hasResponses %}
-        //-{% if serviceMethod|responsesHasFieldNamedOK %}
+        //-{% if serviceMethod|responsesHasFieldNamedOK %}            
         if let ok = responses.ok {
           let jsonObject = ok.jsonObject()
           let responseData = try JSONSerialization.data(withJSONObject:jsonObject)
-          try res.send(data:responseData).end()
-          return
-        }
+          try res.send(data:responseData).end() 
+          return                          
+        } 
         //-{% endif %}
-        //-{% if serviceMethod|responsesHasFieldNamedError %}
+        //-{% if serviceMethod|responsesHasFieldNamedError %}               
         if let errorResponse = responses.error {
           guard let statusCode = HTTPStatusCode(rawValue:Int(errorResponse.code)) else {
             try res.send(status:.unknown).end()
             return
           }
           try res.send(status:statusCode).end()
-          return
+          return               
         }
         //-{% endif %}
         try res.send(status:.internalServerError).end()

@@ -35,7 +35,6 @@ type genFakeForType struct {
 	outputPackage string
 	group         string
 	version       string
-	groupGoName   string
 	inputPackage  string
 	typeToMatch   *types.Type
 	imports       namer.ImportTracker
@@ -69,7 +68,7 @@ func genStatus(t *types.Type) bool {
 		}
 	}
 
-	tags := util.MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+	tags := util.MustParseClientGenTags(t.SecondClosestCommentLines)
 	return hasStatus && !tags.NoStatus
 }
 
@@ -87,7 +86,7 @@ func hasObjectMeta(t *types.Type) bool {
 func (g *genFakeForType) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {
 	sw := generator.NewSnippetWriter(w, c, "$", "$")
 	pkg := filepath.Base(t.Name.Package)
-	tags, err := util.ParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+	tags, err := util.ParseClientGenTags(t.SecondClosestCommentLines)
 	if err != nil {
 		return err
 	}
@@ -103,7 +102,7 @@ func (g *genFakeForType) GenerateType(c *generator.Context, t *types.Type, w io.
 
 	// allow user to define a group name that's different from the one parsed from the directory.
 	p := c.Universe.Package(path.Vendorless(g.inputPackage))
-	if override := types.ExtractCommentTags("+", p.Comments)["groupName"]; override != nil {
+	if override := types.ExtractCommentTags("+", p.DocComments)["groupName"]; override != nil {
 		groupName = override[0]
 	}
 
@@ -117,8 +116,7 @@ func (g *genFakeForType) GenerateType(c *generator.Context, t *types.Type, w io.
 		"Package":              namer.IC(pkg),
 		"namespaced":           !tags.NonNamespaced,
 		"Group":                namer.IC(g.group),
-		"GroupGoName":          g.groupGoName,
-		"Version":              namer.IC(g.version),
+		"GroupVersion":         namer.IC(g.group) + namer.IC(g.version),
 		"group":                canonicalGroup,
 		"groupName":            groupName,
 		"version":              g.version,
@@ -288,7 +286,7 @@ func adjustTemplate(name, verbType, template string) string {
 var structNamespaced = `
 // Fake$.type|publicPlural$ implements $.type|public$Interface
 type Fake$.type|publicPlural$ struct {
-	Fake *Fake$.GroupGoName$$.Version$
+	Fake *Fake$.GroupVersion$
 	ns     string
 }
 `
@@ -297,7 +295,7 @@ type Fake$.type|publicPlural$ struct {
 var structNonNamespaced = `
 // Fake$.type|publicPlural$ implements $.type|public$Interface
 type Fake$.type|publicPlural$ struct {
-	Fake *Fake$.GroupGoName$$.Version$
+	Fake *Fake$.GroupVersion$
 }
 `
 

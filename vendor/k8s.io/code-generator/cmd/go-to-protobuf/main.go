@@ -19,17 +19,15 @@ limitations under the License.
 package main
 
 import (
-	goflag "flag"
+	"k8s.io/code-generator/cmd/go-to-protobuf/protobuf"
 
 	flag "github.com/spf13/pflag"
-	"k8s.io/code-generator/cmd/go-to-protobuf/protobuf"
 )
 
 var g = protobuf.New()
 
 func init() {
 	g.BindFlags(flag.CommandLine)
-	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 }
 
 func main() {

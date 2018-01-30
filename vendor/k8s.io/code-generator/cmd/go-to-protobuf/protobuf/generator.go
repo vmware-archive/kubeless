@@ -112,9 +112,6 @@ func isProtoable(seen map[*types.Type]bool, t *types.Type) bool {
 	case types.Map:
 		return isProtoable(seen, t.Key) && isProtoable(seen, t.Elem)
 	case types.Struct:
-		if len(t.Members) == 0 {
-			return true
-		}
 		for _, m := range t.Members {
 			if isProtoable(seen, m.Type) {
 				return true
@@ -516,13 +513,10 @@ func memberTypeToProtobufField(locator ProtobufLocator, field *protoField, t *ty
 				log.Printf("failed to alias: %s %s: err %v", t.Name, t.Underlying.Name, err)
 				return err
 			}
-			// If this is not an alias to a slice, cast to the alias
-			if !field.Repeated {
-				if field.Extras == nil {
-					field.Extras = make(map[string]string)
-				}
-				field.Extras["(gogoproto.casttype)"] = strconv.Quote(locator.CastTypeName(t.Name))
+			if field.Extras == nil {
+				field.Extras = make(map[string]string)
 			}
+			field.Extras["(gogoproto.casttype)"] = strconv.Quote(locator.CastTypeName(t.Name))
 		}
 	case types.Slice:
 		if t.Elem.Name.Name == "byte" && len(t.Elem.Name.Package) == 0 {

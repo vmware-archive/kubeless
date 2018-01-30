@@ -14,5 +14,6 @@
 - [Developer's guide](dev-guide.md)
 - [Implementing a new runtime](implementing-new-runtime.md)
 - [Debugging](debugging.md)
+- [Controller configuration for Functions](function-controller-configuration.md)
 - [Release flow](release-flow.md)
 - [Troubleshooting](troubleshooting.md)

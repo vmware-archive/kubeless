@@ -3,11 +3,16 @@ package controller
 import (
 	"testing"
 
+	"github.com/ghodss/yaml"
+	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	"github.com/sirupsen/logrus"
+	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/autoscaling/v2beta1"
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	"k8s.io/api/core/v1"
 	xv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 )
@@ -110,6 +115,133 @@ func TestDeleteK8sResources(t *testing.T) {
 			t.Errorf("failed to delete %s", kind)
 		} else if ns := a.GetNamespace(); ns != "myns" {
 			t.Errorf("deleted %s from wrong namespace (%s)", kind, ns)
+		}
+	}
+}
+
+func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
+	namespace := "default"
+	funcName := "foo"
+	var replicas int32
+	replicas = 10
+	funcLabels := map[string]string{
+		"foo": "bar",
+	}
+	funcAnno := map[string]string{
+		"bar": "foo",
+		"xyz": "valuefromfunc",
+	}
+	funcObj := kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      funcName,
+			Namespace: namespace,
+			Labels:    funcLabels,
+			UID:       "foo-uid",
+		},
+		Spec: kubelessApi.FunctionSpec{
+			Function: "function",
+			Deps:     "deps",
+			Handler:  "foo.bar",
+			Runtime:  "python2.7",
+			ServiceSpec: v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{
+						Name:       "http-function-port",
+						Port:       8080,
+						TargetPort: intstr.FromInt(int(8080)),
+						NodePort:   0,
+						Protocol:   v1.ProtocolTCP,
+					},
+				},
+				Selector: funcLabels,
+				Type:     v1.ServiceTypeClusterIP,
+			},
+			Deployment: v1beta2.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: funcAnno,
+				},
+				Spec: v1beta2.DeploymentSpec{
+					Replicas: &replicas,
+					Template: v1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Annotations: funcAnno,
+						},
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{
+								{
+									Env: []v1.EnvVar{
+										{
+											Name:  "foo",
+											Value: "bar",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	deploymentConfigData := `{
+		"metadata": {
+			"annotations": {
+				"foo-from-deploy-cm": "bar-from-deploy-cm",
+				"xyz": "valuefromcm"
+			}
+		},
+		"spec": {
+			"replicas": 2,
+			"template": {
+				"metadata": {
+					"annotations": {
+					"podannotation-from-func-crd": "value-from-container"
+					}
+				}
+			}
+		}
+	}`
+	clientset := fake.NewSimpleClientset()
+	kubelessConfigMap := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "kubeless-config",
+		},
+		Data: map[string]string{"deployment": deploymentConfigData},
+	}
+	deploymentObjFromConfigMap := v1beta2.Deployment{}
+	_ = yaml.Unmarshal([]byte(deploymentConfigData), &deploymentObjFromConfigMap)
+	clientset.Core().ConfigMaps(namespace).Create(kubelessConfigMap)
+
+	controller := Controller{
+		logger:    logrus.WithField("pkg", "controller"),
+		clientset: clientset,
+	}
+	if err := controller.ensureK8sResources(&funcObj); err != nil {
+		t.Fatalf("Creating/Updating resources returned err: %v", err)
+	}
+	dpm, _ := clientset.Apps().Deployments(namespace).Get(funcName, metav1.GetOptions{})
+	expectedAnnotations := map[string]string{
+		"bar":                "foo",
+		"foo-from-deploy-cm": "bar-from-deploy-cm",
+		"xyz":                "valuefromfunc",
+	}
+	for i := range expectedAnnotations {
+		if dpm.ObjectMeta.Annotations[i] != expectedAnnotations[i] {
+			t.Errorf("Expecting annotation %s but received %s", expectedAnnotations[i], dpm.ObjectMeta.Annotations[i])
+		}
+	}
+	if *dpm.Spec.Replicas != 10 {
+		t.Fatalf("Expecting replicas as 10 but received : %d", *dpm.Spec.Replicas)
+	}
+	expectedPodAnnotations := map[string]string{
+		"bar":                "foo",
+		"foo-from-deploy-cm": "bar-from-deploy-cm",
+		"xyz":                "valuefromfunc",
+		"podannotation-from-func-crd": "value-from-container",
+	}
+	for i := range expectedPodAnnotations {
+		if dpm.Spec.Template.Annotations[i] != expectedPodAnnotations[i] {
+			t.Fatalf("Expecting annotation %s but received %s", expectedPodAnnotations[i], dpm.ObjectMeta.Annotations[i])
 		}
 	}
 }

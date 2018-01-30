@@ -27,6 +27,7 @@ import (
 	"k8s.io/api/core/v1"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -147,37 +148,41 @@ func TestGetFunctionDescription(t *testing.T) {
 				Type:      v1.ServiceTypeClusterIP,
 				ClusterIP: v1.ClusterIPNone,
 			},
-			Template: v1.PodTemplateSpec{
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						{
-							Env: []v1.EnvVar{{
-								Name:  "TEST",
-								Value: "1",
-							}},
-							Resources: v1.ResourceRequirements{
-								Limits: map[v1.ResourceName]resource.Quantity{
-									v1.ResourceMemory: parsedMem,
-								},
-								Requests: map[v1.ResourceName]resource.Quantity{
-									v1.ResourceMemory: parsedMem,
-								},
-							},
-							Image: "test-image",
-							VolumeMounts: []v1.VolumeMount{
+			Deployment: v1beta2.Deployment{
+				Spec: v1beta2.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{
 								{
-									Name:      "secretName-vol",
-									MountPath: "/secretName",
+									Env: []v1.EnvVar{{
+										Name:  "TEST",
+										Value: "1",
+									}},
+									Resources: v1.ResourceRequirements{
+										Limits: map[v1.ResourceName]resource.Quantity{
+											v1.ResourceMemory: parsedMem,
+										},
+										Requests: map[v1.ResourceName]resource.Quantity{
+											v1.ResourceMemory: parsedMem,
+										},
+									},
+									Image: "test-image",
+									VolumeMounts: []v1.VolumeMount{
+										{
+											Name:      "secretName-vol",
+											MountPath: "/secretName",
+										},
+									},
 								},
 							},
-						},
-					},
-					Volumes: []v1.Volume{
-						{
-							Name: "secretName-vol",
-							VolumeSource: v1.VolumeSource{
-								Secret: &v1.SecretVolumeSource{
-									SecretName: "secretName",
+							Volumes: []v1.Volume{
+								{
+									Name: "secretName-vol",
+									VolumeSource: v1.VolumeSource{
+										Secret: &v1.SecretVolumeSource{
+											SecretName: "secretName",
+										},
+									},
 								},
 							},
 						},
@@ -256,47 +261,51 @@ func TestGetFunctionDescription(t *testing.T) {
 				},
 				Type: v1.ServiceTypeClusterIP,
 			},
-			Template: v1.PodTemplateSpec{
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
-						{
-							Env: []v1.EnvVar{{
-								Name:  "TEST",
-								Value: "2",
-							}},
-							Resources: v1.ResourceRequirements{
-								Limits: map[v1.ResourceName]resource.Quantity{
-									v1.ResourceMemory: parsedMem2,
-								},
-								Requests: map[v1.ResourceName]resource.Quantity{
-									v1.ResourceMemory: parsedMem2,
-								},
-							},
-							Image: "test-image2",
-							VolumeMounts: []v1.VolumeMount{
+			Deployment: v1beta2.Deployment{
+				Spec: v1beta2.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{
 								{
-									Name:      "secretName-vol",
-									MountPath: "/secretName",
+									Env: []v1.EnvVar{{
+										Name:  "TEST",
+										Value: "2",
+									}},
+									Resources: v1.ResourceRequirements{
+										Limits: map[v1.ResourceName]resource.Quantity{
+											v1.ResourceMemory: parsedMem2,
+										},
+										Requests: map[v1.ResourceName]resource.Quantity{
+											v1.ResourceMemory: parsedMem2,
+										},
+									},
+									Image: "test-image2",
+									VolumeMounts: []v1.VolumeMount{
+										{
+											Name:      "secretName-vol",
+											MountPath: "/secretName",
+										}, {
+											Name:      "secret2-vol",
+											MountPath: "/secret2",
+										},
+									},
+								},
+							},
+							Volumes: []v1.Volume{
+								{
+									Name: "secretName-vol",
+									VolumeSource: v1.VolumeSource{
+										Secret: &v1.SecretVolumeSource{
+											SecretName: "secretName",
+										},
+									},
 								}, {
-									Name:      "secret2-vol",
-									MountPath: "/secret2",
-								},
-							},
-						},
-					},
-					Volumes: []v1.Volume{
-						{
-							Name: "secretName-vol",
-							VolumeSource: v1.VolumeSource{
-								Secret: &v1.SecretVolumeSource{
-									SecretName: "secretName",
-								},
-							},
-						}, {
-							Name: "secret2-vol",
-							VolumeSource: v1.VolumeSource{
-								Secret: &v1.SecretVolumeSource{
-									SecretName: "secret2",
+									Name: "secret2-vol",
+									VolumeSource: v1.VolumeSource{
+										Secret: &v1.SecretVolumeSource{
+											SecretName: "secret2",
+										},
+									},
 								},
 							},
 						},
