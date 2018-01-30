@@ -27,7 +27,7 @@ CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${SCRIPT_ROOT}; ls -d -1 ./vendor/k8s.io/code-ge
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 
 ### Workaround for issue: https://github.com/kubernetes/code-generator/issues/6
-mkdir -p $GOPATH/src/k8s.io/kubernetes/hack/boilerplate 
+mkdir -p ${GOPATH}/src/k8s.io/kubernetes/hack/boilerplate 
 cp ${SCRIPT_ROOT}/hack/boilerplate.go.txt ${GOPATH}/src/k8s.io/kubernetes/hack/boilerplate/
 
 ${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \

@@ -21,8 +21,12 @@ local controllerEnv = [
     valueFrom: {configMapKeyRef: {"name": "kubeless-config", key: "service-type"}}
     },
   {
-     name: "KUBELESS_INSTALLED_NAMESPACE",
+     name: "KUBELESS_NAMESPACE",
      valueFrom: {fieldRef: {fieldPath: "metadata.namespace"}}
+   },
+   {
+     name: "KUBELESS_CONFIG",
+     value: "kubeless-config"
    },
 ];
 
@@ -229,11 +233,7 @@ local crd = {
   description: "Kubernetes Native Serverless Framework",
 };
 
-local deploymentConfig = '{
-  "spec": {
-    "replicas": 1
-  }
-}';
+local deploymentConfig = '{}';
 
 local kubelessConfig  = configMap.default("kubeless-config", namespace) +
     configMap.data({"ingress-enabled": "false"}) +

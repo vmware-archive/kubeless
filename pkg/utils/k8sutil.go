@@ -51,6 +51,7 @@ import (
 	// Adding explicitely the GCP auth plugin
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
+	"github.com/imdario/mergo"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 )
 
@@ -949,7 +950,7 @@ func GetOwnerReference(funcObj *kubelessApi.Function) ([]metav1.OwnerReference, 
 
 // InitializeEmptyMapsInDeployment initializes all nil maps in a Deployment object
 // This is done to counteract with side-effects of github.com/imdario/mergo which panics when provided with a nil map in a struct
-func InitializeEmptyMapsInDeployment(deployment *v1beta2.Deployment) {
+func initializeEmptyMapsInDeployment(deployment *v1beta2.Deployment) {
 	if deployment.ObjectMeta.Annotations == nil {
 		deployment.Annotations = make(map[string]string)
 	}
@@ -968,4 +969,12 @@ func InitializeEmptyMapsInDeployment(deployment *v1beta2.Deployment) {
 	if deployment.Spec.Template.Spec.NodeSelector == nil {
 		deployment.Spec.Template.Spec.NodeSelector = make(map[string]string)
 	}
+}
+
+// MergeDeployments merges two deployment objects
+func MergeDeployments(destinationDeployment *v1beta2.Deployment, sourceDeployment *v1beta2.Deployment) error {
+	// Initializing nil maps in deployment objects else github.com/imdario/mergo panics
+	initializeEmptyMapsInDeployment(destinationDeployment)
+	initializeEmptyMapsInDeployment(sourceDeployment)
+	return mergo.Merge(destinationDeployment, sourceDeployment)
 }

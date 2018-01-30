@@ -984,7 +984,7 @@ func TestServiceSpec(t *testing.T) {
 func TestInitializeEmptyMapsInDeployment(t *testing.T) {
 	deployment := v1beta2.Deployment{}
 	deployment.Spec.Selector = &metav1.LabelSelector{}
-	InitializeEmptyMapsInDeployment(&deployment)
+	initializeEmptyMapsInDeployment(&deployment)
 	if deployment.ObjectMeta.Annotations == nil {
 		t.Fatal("ObjectMeta.Annotations map is nil")
 	}
@@ -1003,4 +1003,42 @@ func TestInitializeEmptyMapsInDeployment(t *testing.T) {
 	if deployment.Spec.Template.Spec.NodeSelector == nil {
 		t.Fatal("deployment.Spec.Template.Spec.NodeSelector map is nil")
 	}
+}
+
+func TestMergeDeployments(t *testing.T) {
+	var replicas int32
+	replicas = 10
+	destinationDeployment := v1beta2.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"foo1-deploy": "bar",
+			},
+		},
+	}
+
+	sourceDeployment := v1beta2.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"foo2-deploy": "bar",
+			},
+		},
+		Spec: v1beta2.DeploymentSpec{
+			Replicas: &replicas,
+		},
+	}
+
+	MergeDeployments(&destinationDeployment, &sourceDeployment)
+	expectedAnnotations := map[string]string{
+		"foo1-deploy": "bar",
+		"foo2-deploy": "bar",
+	}
+	for i := range expectedAnnotations {
+		if destinationDeployment.ObjectMeta.Annotations[i] != expectedAnnotations[i] {
+			t.Fatalf("Expecting annotation %s but received %s", destinationDeployment.ObjectMeta.Annotations[i], expectedAnnotations[i])
+		}
+	}
+	if *destinationDeployment.Spec.Replicas != replicas {
+		t.Fatalf("Expecting replicas as 10 but received %v", *destinationDeployment.Spec.Replicas)
+	}
+
 }
