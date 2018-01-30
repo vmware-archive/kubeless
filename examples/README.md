@@ -23,3 +23,7 @@ Or a PubSub example:
 ```
 make pubsub-python
 ```
+
+# Looking for more function examples?
+
+You can find more examples at [https://github.com/kubeless/functions](https://github.com/kubeless/functions)
