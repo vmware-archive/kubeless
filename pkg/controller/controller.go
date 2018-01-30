@@ -192,21 +192,19 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 	funcObj.ObjectMeta.Labels["function"] = funcObj.ObjectMeta.Name
 
 	controllerNamespace := os.Getenv("KUBELESS_INSTALLED_NAMESPACE")
-	cm, err := c.clientset.CoreV1().ConfigMaps(controllerNamespace).Get("kubeless-config", metav1.GetOptions{})
-	if err == nil {
-		deployment := v1beta2.Deployment{}
-		if deploymentConfigData, ok := cm.Data["deployment"]; ok {
-			err := yaml.Unmarshal([]byte(deploymentConfigData), &deployment)
-			if err != nil {
-				logrus.Errorf(" Error parsing Deployment data in ConfigMap kubeless-function-deployment-config: %v", err)
-				return err
-			}
-			utils.InitializeEmptyMapsInDeployment(&deployment)
-			utils.InitializeEmptyMapsInDeployment(&funcObj.Spec.Deployment)
-			if err := mergo.Merge(&funcObj.Spec.Deployment, deployment); err != nil {
-				logrus.Errorf(" Error while merging function.Spec.Deployment and Deployment from ConfigMap: %v", err)
-				return err
-			}
+	cm, _ := c.clientset.CoreV1().ConfigMaps(controllerNamespace).Get("kubeless-config", metav1.GetOptions{})
+	deployment := v1beta2.Deployment{}
+	if deploymentConfigData, ok := cm.Data["deployment"]; ok {
+		err := yaml.Unmarshal([]byte(deploymentConfigData), &deployment)
+		if err != nil {
+			logrus.Errorf(" Error parsing Deployment data in ConfigMap kubeless-function-deployment-config: %v", err)
+			return err
+		}
+		utils.InitializeEmptyMapsInDeployment(&deployment)
+		utils.InitializeEmptyMapsInDeployment(&funcObj.Spec.Deployment)
+		if err := mergo.Merge(&funcObj.Spec.Deployment, deployment); err != nil {
+			logrus.Errorf(" Error while merging function.Spec.Deployment and Deployment from ConfigMap: %v", err)
+			return err
 		}
 	}
 

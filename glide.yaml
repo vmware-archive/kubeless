@@ -15,15 +15,15 @@ import:
 - package: k8s.io/code-generator
   version: kubernetes-1.8.7
 - package: k8s.io/gengo
-  version: master
+  version: 93fa717586400daaf96f9c88d0e708c80272627f
 - package: github.com/gosuri/uitable
 - package: github.com/coreos/prometheus-operator
   version: 197eb012d973f5aaf4d0446fd8f638f1b9067128
   subpackages:
   - pkg/client/monitoring/v1alpha1
 - package: github.com/robfig/cron
+  version: 2315d5715e36303a941d907f038da7f7c44c773b
 - package: golang.org/x/sys
   version: 7ddbeae9ae08c6a06a59597f0c9edbc5ff2444ce
 - package: github.com/imdario/mergo
   version: v0.3.2
-  

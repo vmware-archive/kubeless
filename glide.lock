@@ -1,5 +1,5 @@
-hash: f4a1074e6209d5253ef3106f1adf6fcadc8a98a9ee0c76a0f3d261f20037545e
-updated: 2018-01-26T23:08:39.236093+01:00
+hash: fb7887d71cdbcf6a4f7fe0e2ab992a5607356e0108571bedcbdf4dc0c77a8df0
+updated: 2018-01-30T10:46:26.433257+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -79,7 +79,7 @@ imports:
 - name: github.com/juju/ratelimit
   version: 5b9ff866471762aa2ab2dced63c9fb6f53921342
 - name: github.com/ksonnet/ksonnet-lib
-  version: 87471ca32d69a0a29d142a96b9bd300545865986
+  version: 660b58e9eadcf230620541d238a3a412ba0c1e1c
   subpackages:
   - ksonnet-gen/ast
   - ksonnet-gen/jsonnet
@@ -99,7 +99,7 @@ imports:
 - name: github.com/peterbourgon/diskv
   version: 5f041e8faa004a95c88a202771f4cc3e991971e6
 - name: github.com/pkg/errors
-  version: e881fd58d78e04cf6d0de1217f8707c8cc2249bc
+  version: 30136e27e2ac8d167177e8a583aa4c3fea5be833
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
@@ -107,13 +107,13 @@ imports:
 - name: github.com/robfig/cron
   version: 2315d5715e36303a941d907f038da7f7c44c773b
 - name: github.com/sirupsen/logrus
-  version: d682213848ed68c0a260ca37d6dd5ace8423f5ba
+  version: 768a92a02685ee7535069fc1581341b41bab9b72
 - name: github.com/spf13/cobra
   version: 7b2c5ac9fc04fc5efafb60700713d4fa609b777b
 - name: github.com/spf13/pflag
   version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
 - name: golang.org/x/crypto
-  version: 0efb9460aaf800c6376acf625be2853bceac2e06
+  version: 1875d0a70c90e57f11972aefd42276df65e895b9
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
