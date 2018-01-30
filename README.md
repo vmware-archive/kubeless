@@ -212,6 +212,14 @@ $ kubeless topic delete another-topic
 $ kubeless topic ls
 ```
 
+You can also see the list of supported runtimes:
+
+```console
+$ kubeless function  --get-server-config
+INFO[0000] Current Server Config:
+INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, dotnetcore2.0
+```
+
 ## Examples
 
 See the [examples](./examples) directory for a list of various examples. Minio, SLACK, Twitter etc ...

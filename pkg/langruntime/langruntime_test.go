@@ -7,117 +7,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sirupsen/logrus"
-
-	yaml "github.com/ghodss/yaml"
 	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
 var clientset = fake.NewSimpleClientset()
 var lr = New(clientset, "kubeless", "kubeless-config")
 
-func initializeConfigmap(clientset *fake.Clientset, lr *Langruntimes) {
-
-	var runtimeImages = []RuntimeInfo{{
-		ID:             "python",
-		DepName:        "requirements.txt",
-		FileNameSuffix: ".py",
-		Versions: []RuntimeVersion{
-			{
-				Name:      "python27",
-				Version:   "2.7",
-				InitImage: "tuna/python-pillow:2.7.11-alpine",
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
-				},
-			}, {
-				Name:    "python34",
-				Version: "3.4",
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
-				},
-			}, {
-				Name:    "python36",
-				Version: "3.6",
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
-				},
-			},
-		},
-	}, {ID: "nodejs",
-		DepName:        "package.json",
-		FileNameSuffix: ".js",
-		Versions: []RuntimeVersion{
-			{
-				Name:      "nodejs6",
-				Version:   "6",
-				InitImage: "node:6.10",
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
-				},
-			}, {
-				Name:    "nodejs8",
-				Version: "8",
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {"p2"},
-				},
-			},
-		},
-	}, {ID: "ruby",
-		DepName:        "Gemfile",
-		FileNameSuffix: ".rb",
-		Versions: []RuntimeVersion{
-			{
-				Name:      "ruby24",
-				Version:   "2.4",
-				InitImage: "bitnami/ruby:2.4",
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
-				},
-			},
-		},
-	}, {ID: "dotnetcore",
-		DepName:        "requirements.xml",
-		FileNameSuffix: ".cs",
-		Versions: []RuntimeVersion{
-			{
-				Name:    "dotnetcore2.0",
-				Version: "2.0",
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
-				},
-			},
-		},
-	}}
-
-	out, err := yaml.Marshal(runtimeImages)
-	if err != nil {
-		logrus.Fatal("Canot Marshall runtimeimage")
-	}
-
-	cm := v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kubeless-config",
-			Namespace: "kubeless",
-		},
-		Data: map[string]string{
-			"runtime-images": string(out),
-		},
-	}
-
-	_, err = clientset.CoreV1().ConfigMaps("kubeless").Create(&cm)
-	if err != nil {
-		logrus.Fatal("Unable to create configmap")
-	}
-
-	lr.ReadConfigMap()
-
-}
-
 func TestMain(m *testing.M) {
-	initializeConfigmap(clientset, lr)
+	InitializeConfigmap(clientset, lr)
 	os.Exit(m.Run())
 }
 
@@ -252,6 +150,15 @@ func TestGetBuildContainer(t *testing.T) {
 	}
 	if !strings.Contains(c.Args[0], "bundle install --gemfile=/v1/Gemfile --path=/v1") {
 		t.Errorf("Unexpected command %s", c.Args[0])
+	}
+
+	secrets, err := lr.GetImageSecrets("ruby2.4")
+	if err != nil {
+		t.Errorf("Unable to fetch secrets: %v", err)
+	}
+
+	if secrets[0].Name != "p1" && secrets[1].Name != "p2" {
+		t.Errorf("Expected first secret to be 'p1' but found %v and second secret to be 'p2' and found %v", secrets[0], secrets[1])
 	}
 
 }

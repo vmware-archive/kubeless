@@ -25,7 +25,7 @@ export TEST_MAX_WAIT_SEC=600
 # Workaround 'bats' lack of forced output support, dup() stderr fd
 exec 9>&2
 echo_info() {
-    # test -z "$TEST_DEBUG" && return 0
+    test -z "$TEST_DEBUG" && return 0
     echo "INFO: $*" >&9
 }
 export -f echo_info
@@ -257,11 +257,6 @@ verify_function() {
     esac
     local -i counter=0
     until make -sC examples ${make_task}; do
-        x=$(kubectl logs -l function=get-nodejs-deps)
-        echo_info "Test: $x"
-        y=$(kubectl logs -n kubeless -l kubeless=controller)
-        echo_info "controller-log: $y"
-
         echo_info "FUNC ${func} failed. Retrying..."
         ((counter=counter+1))
         if [ "$counter" -ge 3 ]; then

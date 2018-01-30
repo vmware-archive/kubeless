@@ -68,7 +68,7 @@ func New(clientset kubernetes.Interface, ns string, config string) *Langruntimes
 // ReadConfigMap reads the configmap
 func (l *Langruntimes) ReadConfigMap() {
 
-	cfgm, err := l.clientset.CoreV1().ConfigMaps("kubeless").Get("kubeless-config", metav1.GetOptions{})
+	cfgm, err := l.clientset.CoreV1().ConfigMaps(l.namespace).Get("kubeless-config", metav1.GetOptions{})
 	if err != nil {
 		logrus.Fatalf("Unable to get the configmap: %v", err)
 		return
@@ -180,7 +180,7 @@ func (l *Langruntimes) GetFunctionImage(runtime, ftype string) (string, error) {
 	return imageName, nil
 }
 
-// GetImageSecrets gets the secrets linked to the runtime image
+// GetImageSecrets gets the secrets to pull the runtime image
 func (l *Langruntimes) GetImageSecrets(runtime string) ([]v1.LocalObjectReference, error) {
 	var secrets []string
 

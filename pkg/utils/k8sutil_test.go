@@ -13,13 +13,10 @@ import (
 	"testing"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
-<<<<<<< HEAD
 	v1beta2 "k8s.io/api/apps/v1beta2"
-=======
+
 	"github.com/kubeless/kubeless/pkg/langruntime"
-	"github.com/sirupsen/logrus"
-	yaml "gopkg.in/yaml.v2"
->>>>>>> Made changes based on comments
+
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	"k8s.io/api/core/v1"
@@ -77,7 +74,7 @@ func TestEnsureConfigMap(t *testing.T) {
 	}
 
 	var lr = langruntime.New(clientset, "kubeless", "kubeless-config")
-	initializeConfigmap(clientset, lr)
+	langruntime.InitializeConfigmap(clientset, lr)
 
 	err := EnsureFuncConfigMap(clientset, f1, or, lr)
 	if err != nil {
@@ -260,59 +257,6 @@ func TestEnsureService(t *testing.T) {
 	}
 }
 
-func initializeConfigmap(clientset *fake.Clientset, lr *langruntime.Langruntimes) {
-
-	var runtimeImages = []langruntime.RuntimeInfo{{
-		ID:             "python",
-		DepName:        "requirements.txt",
-		FileNameSuffix: ".py",
-		Versions: []langruntime.RuntimeVersion{
-			{
-				Name:      "python27",
-				Version:   "2.7",
-				InitImage: "tuna/python-pillow:2.7.11-alpine",
-				HTTPImage: "kubeless/python@sha256:0f3b64b654df5326198e481cd26e73ecccd905aae60810fc9baea4dcbb61f697",
-				ImagePullSecrets: []langruntime.ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
-				},
-			}, {
-				Name:    "python34",
-				Version: "3.4",
-				ImagePullSecrets: []langruntime.ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
-				},
-			}, {
-				Name:    "python36",
-				Version: "3.6",
-				ImagePullSecrets: []langruntime.ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
-				},
-			},
-		},
-	}}
-	out, err := yaml.Marshal(runtimeImages)
-	if err != nil {
-		logrus.Fatal("Canot Marshall runtimeimage")
-	}
-
-	cm := v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kubeless-config",
-			Namespace: "kubeless",
-		},
-		Data: map[string]string{
-			"runtime-images": string(out),
-		},
-	}
-
-	_, err = clientset.CoreV1().ConfigMaps("kubeless").Create(&cm)
-	if err != nil {
-		logrus.Fatal("Unable to create configmap")
-	}
-
-	lr.ReadConfigMap()
-}
-
 func TestEnsureDeployment(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	or := []metav1.OwnerReference{
@@ -330,7 +274,7 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	var lr = langruntime.New(clientset, "kubeless", "kubeless-config")
-	initializeConfigmap(clientset, lr)
+	langruntime.InitializeConfigmap(clientset, lr)
 
 	f1Name := "f1"
 	f1Port := int32(8080)
@@ -499,13 +443,8 @@ func TestEnsureDeployment(t *testing.T) {
 	f3 := kubelessApi.Function{}
 	f3 = *f1
 	f3.ObjectMeta.Name = "func3"
-<<<<<<< HEAD
 	f3.Spec.Deployment.Spec.Template.Spec.Containers[0].Image = "test-image"
-	err = EnsureFuncDeployment(clientset, &f3, or)
-=======
-	f3.Spec.Template.Spec.Containers[0].Image = "test-image"
 	err = EnsureFuncDeployment(clientset, &f3, or, lr)
->>>>>>> Made changes based on comments
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -963,7 +902,7 @@ func TestDeleteAutoscaleResource(t *testing.T) {
 func TestGetProvisionContainer(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	var lr = langruntime.New(clientset, "kubeless", "kubeless-config")
-	initializeConfigmap(clientset, lr)
+	langruntime.InitializeConfigmap(clientset, lr)
 
 	rvol := v1.VolumeMount{Name: "runtime", MountPath: "/runtime"}
 	dvol := v1.VolumeMount{Name: "deps", MountPath: "/deps"}
@@ -990,6 +929,15 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 	if !strings.HasPrefix(c.Args[0], "base64 -d < /deps/test.func > /deps/test.func.decoded") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
+
+	secrets, err := lr.GetImageSecrets("python2.7")
+	if err != nil {
+		t.Errorf("Unable to fetch secrets: %v", err)
+	}
+
+	if secrets[0].Name != "p1" && secrets[1].Name != "p2" {
+		t.Errorf("Expected first secret to be 'p1' but found %v and second secret to be 'p2' and found %v", secrets[0], secrets[1])
 	}
 
 	// It should skip the dependencies installation if the runtime is not supported
