@@ -545,7 +545,6 @@ func fakeRESTClient(f func(req *http.Request) (*http.Response, error)) *restFake
 		GroupVersion: newSchema,
 	})
 	return &restFake.RESTClient{
-		APIRegistry:          reg,
 		NegotiatedSerializer: scheme.Codecs,
 		Client:               restFake.CreateHTTPClient(f),
 	}

@@ -9,7 +9,6 @@ import:
   version: kubernetes-1.8.7
   subpackages:
     - plugin/pkg/client/auth/gcp
-  version: v5.0.0
 - package: k8s.io/api
   version: kubernetes-1.8.7
 - package: k8s.io/code-generator
