@@ -9,7 +9,6 @@ import (
 
 	yaml "github.com/ghodss/yaml"
 	"github.com/sirupsen/logrus"
-	yaml "gopkg.in/yaml.v2"
 	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -253,11 +252,7 @@ func (l *Langruntimes) GetBuildContainer(runtime string, env []v1.EnvVar, instal
 }
 
 // UpdateDeployment object in case of custom runtime
-<<<<<<< HEAD
-func UpdateDeployment(dpm *v1beta2.Deployment, depsPath, runtime string) {
-=======
-func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runtime string) {
->>>>>>> Made changes based on comments
+func (l *Langruntimes) UpdateDeployment(dpm *v1beta2.Deployment, depsPath, runtime string) {
 	switch {
 	case strings.Contains(runtime, "python"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
