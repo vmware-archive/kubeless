@@ -74,7 +74,7 @@ func TestEnsureConfigMap(t *testing.T) {
 	}
 
 	var lr = langruntime.New(clientset, "kubeless", "kubeless-config")
-	langruntime.InitializeConfigmap(clientset, lr)
+	langruntime.AddFakeConfig(clientset, lr)
 
 	err := EnsureFuncConfigMap(clientset, f1, or, lr)
 	if err != nil {
@@ -274,7 +274,7 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	var lr = langruntime.New(clientset, "kubeless", "kubeless-config")
-	langruntime.InitializeConfigmap(clientset, lr)
+	langruntime.AddFakeConfig(clientset, lr)
 
 	f1Name := "f1"
 	f1Port := int32(8080)
@@ -419,6 +419,12 @@ func TestEnsureDeployment(t *testing.T) {
 	if !reflect.DeepEqual(dpm.Spec.Template.Spec.Containers[0], expectedContainer) {
 		t.Errorf("Unexpected container definition. Received:\n %+v\nExpecting:\n %+v", dpm.Spec.Template.Spec.Containers[0], expectedContainer)
 	}
+
+	secrets := dpm.Spec.Template.Spec.ImagePullSecrets
+	if secrets[0].Name != "p1" && secrets[1].Name != "p2" {
+		t.Errorf("Expected first secret to be 'p1' but found %v and second secret to be 'p2' and found %v", secrets[0], secrets[1])
+	}
+
 	// Init containers behavior should be tested with integration tests
 	if len(dpm.Spec.Template.Spec.InitContainers) < 1 {
 		t.Errorf("Expecting at least an init container to install deps")
@@ -902,7 +908,7 @@ func TestDeleteAutoscaleResource(t *testing.T) {
 func TestGetProvisionContainer(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	var lr = langruntime.New(clientset, "kubeless", "kubeless-config")
-	langruntime.InitializeConfigmap(clientset, lr)
+	langruntime.AddFakeConfig(clientset, lr)
 
 	rvol := v1.VolumeMount{Name: "runtime", MountPath: "/runtime"}
 	dvol := v1.VolumeMount{Name: "deps", MountPath: "/deps"}
@@ -937,7 +943,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	if secrets[0].Name != "p1" && secrets[1].Name != "p2" {
-		t.Errorf("Expected first secret to be 'p1' but found %v and second secret to be 'p2' and found %v", secrets[0], secrets[1])
+		t.Errorf("Expected first secret to be 'p1' but found %v and second secret to be 'p2' but found %v", secrets[0], secrets[1])
 	}
 
 	// It should skip the dependencies installation if the runtime is not supported

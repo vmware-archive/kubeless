@@ -15,7 +15,7 @@ var clientset = fake.NewSimpleClientset()
 var lr = New(clientset, "kubeless", "kubeless-config")
 
 func TestMain(m *testing.M) {
-	InitializeConfigmap(clientset, lr)
+	AddFakeConfig(clientset, lr)
 	os.Exit(m.Run())
 }
 

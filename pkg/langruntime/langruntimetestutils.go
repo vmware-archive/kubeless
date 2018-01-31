@@ -9,8 +9,8 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-// InitializeConfigmap initializes configmap for unit tests
-func InitializeConfigmap(clientset *fake.Clientset, lr *Langruntimes) {
+// AddFakeConfig initializes configmap for unit tests with fake configuration.
+func AddFakeConfig(clientset *fake.Clientset, lr *Langruntimes) {
 
 	var runtimeImages = []RuntimeInfo{{
 		ID:             "python",
