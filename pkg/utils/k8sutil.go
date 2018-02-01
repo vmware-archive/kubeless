@@ -936,14 +936,12 @@ func GetOwnerReference(funcObj *kubelessApi.Function) ([]metav1.OwnerReference, 
 	if funcObj.ObjectMeta.UID == "" {
 		return []metav1.OwnerReference{}, fmt.Errorf("uid of function %s can't be empty", funcObj.ObjectMeta.Name)
 	}
-	t := true
 	return []metav1.OwnerReference{
 		{
 			Kind:               "Function",
 			APIVersion:         "k8s.io",
 			Name:               funcObj.ObjectMeta.Name,
 			UID:                funcObj.ObjectMeta.UID,
-			BlockOwnerDeletion: &t,
 		},
 	}, nil
 }
