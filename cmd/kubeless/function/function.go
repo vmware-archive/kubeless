@@ -48,7 +48,22 @@ var FunctionCmd = &cobra.Command{
 	Long:  `function command allows user to list, deploy, edit, delete functions running on Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cli := utils.GetClientOutOfCluster()
-		var lr = langruntime.New(cli, "kubeless", "kubeless-config")
+		controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
+		kubelessConfig := os.Getenv("KUBELESS_CONFIG")
+
+		if len(controllerNamespace) == 0 {
+			controllerNamespace = "kubeless"
+		}
+
+		if len(kubelessConfig) == 0 {
+			kubelessConfig = "kubeless-config"
+		}
+		config, err := cli.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
+		if err != nil {
+			logrus.Fatalf("Unable to read the configmap: %v", err)
+		}
+
+		var lr = langruntime.New(config)
 		lr.ReadConfigMap()
 
 		getServerConfig, err := cmd.Flags().GetBool("get-server-config")

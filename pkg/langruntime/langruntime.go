@@ -11,16 +11,11 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Langruntimes struct for getting configmap
 type Langruntimes struct {
-	clientset         kubernetes.Interface
-	namespace         string
-	kubelessConfig    string
+	kubelessConfig    *v1.ConfigMap
 	AvailableRuntimes []RuntimeInfo
 }
 
@@ -53,12 +48,10 @@ type RuntimeInfo struct {
 }
 
 // New initializes a langruntime object
-func New(clientset kubernetes.Interface, ns string, config string) *Langruntimes {
+func New(config *v1.ConfigMap) *Langruntimes {
 	var ri []RuntimeInfo
 
 	return &Langruntimes{
-		clientset:         clientset,
-		namespace:         ns,
 		kubelessConfig:    config,
 		AvailableRuntimes: ri,
 	}
@@ -66,16 +59,11 @@ func New(clientset kubernetes.Interface, ns string, config string) *Langruntimes
 
 // ReadConfigMap reads the configmap
 func (l *Langruntimes) ReadConfigMap() {
-
-	cfgm, err := l.clientset.CoreV1().ConfigMaps(l.namespace).Get("kubeless-config", metav1.GetOptions{})
-	if err != nil {
-		logrus.Fatalf("Unable to get the configmap: %v", err)
-		return
-	}
-
-	err = yaml.Unmarshal([]byte(cfgm.Data["runtime-images"]), &l.AvailableRuntimes)
-	if err != nil {
-		logrus.Fatalf("Unable to get the runtime images: %v", err)
+	if runtimeImages, ok := l.kubelessConfig.Data["runtime-images"]; ok {
+		err := yaml.Unmarshal([]byte(runtimeImages), &l.AvailableRuntimes)
+		if err != nil {
+			logrus.Fatalf("Unable to get the runtime images: %v", err)
+		}
 	}
 }
 

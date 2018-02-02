@@ -2,15 +2,15 @@ package langruntime
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 // AddFakeConfig initializes configmap for unit tests with fake configuration.
-func AddFakeConfig(clientset *fake.Clientset, lr *Langruntimes) {
+func AddFakeConfig(clientset *fake.Clientset) {
 
 	var runtimeImages = []RuntimeInfo{{
 		ID:             "python",
@@ -105,7 +105,14 @@ func AddFakeConfig(clientset *fake.Clientset, lr *Langruntimes) {
 	if err != nil {
 		logrus.Fatal("Unable to create configmap")
 	}
+}
 
-	lr.ReadConfigMap()
-
+// SetupLangRuntime Sets up Langruntime struct
+func SetupLangRuntime(clientset *fake.Clientset) *Langruntimes {
+	config, err := clientset.CoreV1().ConfigMaps("kubeless").Get("kubeless-config", metav1.GetOptions{})
+	if err != nil {
+		logrus.Fatal("Unable to read the configmap")
+	}
+	var lr = New(config)
+	return lr
 }

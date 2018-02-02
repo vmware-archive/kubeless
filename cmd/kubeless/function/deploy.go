@@ -18,6 +18,7 @@ package function
 
 import (
 	"io/ioutil"
+	"os"
 	"strings"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
@@ -26,6 +27,7 @@ import (
 	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var deployCmd = &cobra.Command{
@@ -34,7 +36,22 @@ var deployCmd = &cobra.Command{
 	Long:  `deploy a function to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cli := utils.GetClientOutOfCluster()
-		var lr = langruntime.New(cli, "kubeless", "kubeless-config")
+		controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
+		kubelessConfig := os.Getenv("KUBELESS_CONFIG")
+
+		if len(controllerNamespace) == 0 {
+			controllerNamespace = "kubeless"
+		}
+
+		if len(kubelessConfig) == 0 {
+			kubelessConfig = "kubeless-config"
+		}
+		config, err := cli.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
+		if err != nil {
+			logrus.Fatalf("Unable to read the configmap: %v", err)
+		}
+
+		var lr = langruntime.New(config)
 		lr.ReadConfigMap()
 
 		if len(args) != 1 {

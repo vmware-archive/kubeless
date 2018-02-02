@@ -57,6 +57,7 @@ type Controller struct {
 	Functions      map[string]*kubelessApi.Function
 	queue          workqueue.RateLimitingInterface
 	informer       cache.SharedIndexInformer
+	config         *corev1.ConfigMap
 	langRuntime    *langruntime.Langruntimes
 }
 
@@ -93,7 +94,15 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 		},
 	})
 
-	var lr = langruntime.New(cfg.KubeCli, "kubeless", "kubeless-config")
+	controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
+	kubelessConfig := os.Getenv("KUBELESS_CONFIG")
+	config, err := cfg.KubeCli.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
+	if err != nil {
+		fmt.Println("Unable to read the configmap:", err)
+		os.Exit(1)
+	}
+
+	var lr = langruntime.New(config)
 	lr.ReadConfigMap()
 
 	return &Controller{
@@ -103,6 +112,7 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 		kubelessclient: cfg.FunctionClient,
 		informer:       informer,
 		queue:          queue,
+		config:         config,
 		langRuntime:    lr,
 	}
 }
@@ -196,11 +206,8 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 	}
 	funcObj.ObjectMeta.Labels["function"] = funcObj.ObjectMeta.Name
 
-	controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
-	kubelessConfig := os.Getenv("KUBELESS_CONFIG")
-	cm, _ := c.clientset.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
 	deployment := v1beta2.Deployment{}
-	if deploymentConfigData, ok := cm.Data["deployment"]; ok {
+	if deploymentConfigData, ok := c.config.Data["deployment"]; ok {
 		err := yaml.Unmarshal([]byte(deploymentConfigData), &deployment)
 		if err != nil {
 			logrus.Errorf("Error parsing Deployment data in ConfigMap kubeless-function-deployment-config: %v", err)

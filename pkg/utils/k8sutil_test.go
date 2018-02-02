@@ -73,8 +73,9 @@ func TestEnsureConfigMap(t *testing.T) {
 		},
 	}
 
-	var lr = langruntime.New(clientset, "kubeless", "kubeless-config")
-	langruntime.AddFakeConfig(clientset, lr)
+	langruntime.AddFakeConfig(clientset)
+	lr := langruntime.SetupLangRuntime(clientset)
+	lr.ReadConfigMap()
 
 	err := EnsureFuncConfigMap(clientset, f1, or, lr)
 	if err != nil {
@@ -273,8 +274,9 @@ func TestEnsureDeployment(t *testing.T) {
 		"bar": "foo",
 	}
 
-	var lr = langruntime.New(clientset, "kubeless", "kubeless-config")
-	langruntime.AddFakeConfig(clientset, lr)
+	langruntime.AddFakeConfig(clientset)
+	lr := langruntime.SetupLangRuntime(clientset)
+	lr.ReadConfigMap()
 
 	f1Name := "f1"
 	f1Port := int32(8080)
@@ -907,8 +909,9 @@ func TestDeleteAutoscaleResource(t *testing.T) {
 
 func TestGetProvisionContainer(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
-	var lr = langruntime.New(clientset, "kubeless", "kubeless-config")
-	langruntime.AddFakeConfig(clientset, lr)
+	langruntime.AddFakeConfig(clientset)
+	lr := langruntime.SetupLangRuntime(clientset)
+	lr.ReadConfigMap()
 
 	rvol := v1.VolumeMount{Name: "runtime", MountPath: "/runtime"}
 	dvol := v1.VolumeMount{Name: "deps", MountPath: "/deps"}
