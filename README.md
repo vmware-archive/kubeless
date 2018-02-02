@@ -101,6 +101,13 @@ INFO[0000] Function get-python submitted for deployment
 INFO[0000] Check the deployment status executing 'kubeless function ls get-python'
 ```
 
+If you have installed kubeless into some other namespace (which is not called kubeless) or changed the name of the config file from kubeless-config to something else, then you have to export the kubeless namespace and name of kubeless config as environment variables. This can be done as follows:
+
+```console
+$ export KUBELESS_NAMESPACE=<name of namespace>
+$ export KUBELESS_CONFIG=<name of config file>
+```
+
 Let's dissect the command:
 
 * `get-python`: This is the name of the function we want to deploy.
