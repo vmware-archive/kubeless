@@ -41,4 +41,4 @@ COPY . /app
 
 RUN composer install --prefer-dist --optimize-autoloader
 ENTRYPOINT [""]
-CMD ["sh", "-c", "exec php -S 0.0.0.0:${FUNC_PORT} index.php"]
+CMD ["sh", "-c", "exec php -S 0.0.0.0:${FUNC_PORT} kubeless.php"]
