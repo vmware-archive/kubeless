@@ -9,13 +9,15 @@ use Symfony\Component\Process\Exception\RuntimeException as RuntimeException;
 
 require 'vendor/autoload.php';
 
-class Server {
+class index
+{
   private $app;
   private $timeout;
   private $root;
   private $function;
 
-  public function __construct() {
+  public function __construct()
+  {
     $this->app = new \Slim\App();
     $this->timeout = (!empty(getenv('FUNC_TIMEOUT')) ? getenv('FUNC_TIMEOUT') : 180);
     $this->root = (!empty(getenv('MOD_ROOT_PATH')) ? getenv('MOD_ROOT_PATH') : '/kubeless/');
@@ -28,8 +30,9 @@ class Server {
    *
    * @return void
    */
-  private function runFunction() {
-      include($this->file);
+  private function runFunction()
+  {
+      include $this->file;
       if (!function_exists($this->function)) {
         throw new \Exception(sprintf("Function %s not exist", $this->function));
       }
@@ -38,6 +41,7 @@ class Server {
       $process = new PhpProcess($php);
       $process->setTimeout($this->timeout);
       $process->run();
+
       return $process->getOutput();
   }
 
@@ -46,7 +50,8 @@ class Server {
    *
    * @return void
    */
-  private function validate() {
+  private function validate()
+  {
     if (empty(getenv('FUNC_HANDLER'))) {
       throw new \Exception("FUNC_HANDLER is empty");
     }
@@ -66,21 +71,23 @@ class Server {
    * @param array $args
    * @return Response $repsonse
    */
-  public function root(Request $request, Response $response, array $args) {
+  public function root(Request $request, Response $response, array $args)
+  {
     try {
       $this->validate();
       $ret = $this->runFunction();
       $response->getBody()->write($ret);
+
       return $response;
-    }
-    catch (RuntimeException $e) {
+    } catch (RuntimeException $e) {
       $response->getBody()->write($e->getMessage());
       $response->withStatus(408);
+
       return $response;
-    }
-    catch (\Exception $e) {
+    } catch (\Exception $e) {
       $response->getBody()->write($e->getMessage());
       $response->withStatus(500);
+
       return $response;
     }
   }
@@ -93,15 +100,17 @@ class Server {
    * @param array $args
    * @return Response $response
    */
-  private function healtz(Request $request, Response $response, array $args) {
+  private function healtz(Request $request, Response $response, array $args)
+  {
     try {
       $this->validate();
       $response->getBody()->write("OK");
+
       return $response;
-    }
-    catch (\Exception $e) {
+    } catch (\Exception $e) {
       $response->getBody()->write($e->getMessage());
       $response->withStatus(500);
+
       return $response;
     }
   }
@@ -109,13 +118,13 @@ class Server {
   /**
    * Run the slim framework.
    */
-  public function run() {
+  public function run()
+  {
     try {
       $this->app->get('/', [$this, 'root']);
       $this->app->get('/healtz', [$this, 'healtz']);
       $this->app->run();
-    }
-    catch (\Exception $e) {
+    } catch (\Exception $e) {
       var_dump($e->getMessage()); die;
     }
 
