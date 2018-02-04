@@ -9,7 +9,7 @@ use Symfony\Component\Process\Exception\RuntimeException as RuntimeException;
 
 require 'vendor/autoload.php';
 
-class Controller
+class kubeless
 {
   private $app;
   private $timeout;
@@ -80,15 +80,15 @@ class Controller
 
       return $response;
     } catch (RuntimeException $e) {
-      $response->getBody()->write($e->getMessage());
-      $response->withStatus(408);
+      $response->getBody()->write($e->getMessage() . "\n");
+      $res = $response->withStatus(408);
 
-      return $response;
+      return $res;
     } catch (\Exception $e) {
-      $response->getBody()->write($e->getMessage());
-      $response->withStatus(500);
+      $response->getBody()->write($e->getMessage() . "\n");
+      $res = $response->withStatus(500);
 
-      return $response;
+      return $res;
     }
   }
 
@@ -108,10 +108,10 @@ class Controller
 
       return $response;
     } catch (\Exception $e) {
-      $response->getBody()->write($e->getMessage());
-      $response->withStatus(500);
+      $response->getBody()->write($e->getMessage() . "\n");
+      $res = $response->withStatus(500);
 
-      return $response;
+      return $res;
     }
   }
 
@@ -125,11 +125,12 @@ class Controller
       $this->app->get('/healtz', [$this, 'healtz']);
       $this->app->run();
     } catch (\Exception $e) {
-      var_dump($e->getMessage()); die;
+      var_dump($e->getMessage());
+      die;
     }
 
   }
 }
 
-$server = new Kubeless\Controller();
+$server = new \Kubeless\Controller();
 $server->run();
