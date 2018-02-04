@@ -9,7 +9,7 @@ use Symfony\Component\Process\Exception\RuntimeException as RuntimeException;
 
 require 'vendor/autoload.php';
 
-class index
+class Controller
 {
   private $app;
   private $timeout;
@@ -131,5 +131,5 @@ class index
   }
 }
 
-$server = new Server();
+$server = new Kubeless\Controller();
 $server->run();
