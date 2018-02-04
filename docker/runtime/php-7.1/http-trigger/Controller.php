@@ -9,7 +9,7 @@ use Symfony\Component\Process\Exception\RuntimeException as RuntimeException;
 
 require 'vendor/autoload.php';
 
-class kubeless
+class Controller
 {
   private $app;
   private $timeout;
@@ -125,8 +125,10 @@ class kubeless
       $this->app->get('/healtz', [$this, 'healtz']);
       $this->app->run();
     } catch (\Exception $e) {
-      var_dump($e->getMessage());
-      die;
+      ob_end_flush();
+      ob_start();
+      print $e->getMessage();
+      header($_SERVER['SERVER_PROTOCOL'] . ' 500 Internal Server Error', true, 500);
     }
 
   }

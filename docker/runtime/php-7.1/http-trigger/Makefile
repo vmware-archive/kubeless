@@ -7,4 +7,4 @@ push: build
 	docker push paolomainardi/kubeless-php:latest
 
 php-cs-fixer:
-	docker run -it --rm -v $${PWD}:/wd -w /wd shouldbee/php-cs-fixer fix kubeless.php || true
+	docker run -it --rm -v $${PWD}:/wd -w /wd shouldbee/php-cs-fixer fix Controller.php || true
