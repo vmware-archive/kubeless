@@ -94,7 +94,7 @@ $ make binary-cross
 
 The binaries accordingly located at `bundles/kubeless_$OS_$arch` folder.
 
-### Building k8s manifests file
+### Building k8s manifests file
 
 To regenerate the most updated k8s manifests file, run:
 
@@ -109,7 +109,7 @@ If everything is ok, you'll have generated manifests file under the $KUBELESS_WO
 kubeless-openshift.yaml
 kubeless-rbac.yaml
 kubeless.yaml
-``
+```
 
 You can also generate them separated using the following commands:
 
