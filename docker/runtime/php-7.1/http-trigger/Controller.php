@@ -93,7 +93,7 @@ class Controller
   }
 
   /**
-   * Heltz route.
+   * Healtz route.
    *
    * @param Request $request
    * @param Response $response
