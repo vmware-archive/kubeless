@@ -3,8 +3,6 @@ package controller
 import (
 	"testing"
 
-	"os"
-
 	"github.com/ghodss/yaml"
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/langruntime"
@@ -231,8 +229,6 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 		},
 		Data: map[string]string{"deployment": deploymentConfigData, "runtime-images": string(out)},
 	}
-	os.Setenv("KUBELESS_CONFIG", "kubeless-config")
-	os.Setenv("KUBELESS_NAMESPACE", namespace)
 
 	deploymentObjFromConfigMap := v1beta2.Deployment{}
 	_ = yaml.Unmarshal([]byte(deploymentConfigData), &deploymentObjFromConfigMap)

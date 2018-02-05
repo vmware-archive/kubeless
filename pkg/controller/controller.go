@@ -96,10 +96,15 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 
 	controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
 	kubelessConfig := os.Getenv("KUBELESS_CONFIG")
+	if len(controllerNamespace) == 0 {
+		controllerNamespace = "kubeless"
+	}
+	if len(kubelessConfig) == 0 {
+		kubelessConfig = "kubeless-config"
+	}
 	config, err := cfg.KubeCli.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
 	if err != nil {
-		fmt.Println("Unable to read the configmap:", err)
-		os.Exit(1)
+		logrus.Fatalf("Unable to read the configmap: %s", err)
 	}
 
 	var lr = langruntime.New(config)
