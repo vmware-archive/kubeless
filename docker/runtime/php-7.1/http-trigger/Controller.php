@@ -31,6 +31,8 @@ class Controller
   private function runFunction(Request $request)
   {
       ob_start();
+      $currentDir = getcwd();
+      chdir($this->root);
       include $this->file;
       if (!function_exists($this->function)) {
         throw new \Exception(sprintf("Function %s not exist", $this->function));
@@ -38,6 +40,7 @@ class Controller
       call_user_func_array($this->function, [$request]);
       $response = ob_get_contents();
       ob_end_clean();
+      chdir($currentDir);
 
       return $response;
   }
