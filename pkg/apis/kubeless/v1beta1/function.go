@@ -17,9 +17,9 @@ limitations under the License.
 package v1beta1
 
 import (
-	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -46,7 +46,7 @@ type FunctionSpec struct {
 	Timeout                 string                          `json:"timeout"`               // Maximum timeout for the function to complete its execution
 	Deps                    string                          `json:"deps"`                  // Function dependencies
 	ServiceSpec             v1.ServiceSpec                  `json:"service"`
-	Deployment              v1beta2.Deployment              `json:"deployment" protobuf:"bytes,3,opt,name=template"`
+	Deployment              v1beta1.Deployment              `json:"deployment" protobuf:"bytes,3,opt,name=template"`
 	HorizontalPodAutoscaler v2beta1.HorizontalPodAutoscaler `json:"horizontalPodAutoscaler" protobuf:"bytes,3,opt,name=horizontalPodAutoscaler"`
 }
 

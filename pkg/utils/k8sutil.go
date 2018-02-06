@@ -31,7 +31,6 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/sirupsen/logrus"
 
-	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/autoscaling/v2beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
@@ -551,8 +550,8 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		MatchLabels: funcObj.ObjectMeta.Labels,
 	}
 
-	dpm.Spec.Strategy = v1beta2.DeploymentStrategy{
-		RollingUpdate: &v1beta2.RollingUpdateDeployment{
+	dpm.Spec.Strategy = v1beta1.DeploymentStrategy{
+		RollingUpdate: &v1beta1.RollingUpdateDeployment{
 			MaxUnavailable: &maxUnavailable,
 		},
 	}
@@ -724,17 +723,17 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
 	}
 
-	_, err = client.Apps().Deployments(funcObj.ObjectMeta.Namespace).Create(dpm)
+	_, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		// In case the Deployment already exists we should update
 		// just certain fields (to avoid race conditions)
-		var newDpm *v1beta2.Deployment
-		newDpm, err = client.Apps().Deployments(funcObj.ObjectMeta.Namespace).Get(funcObj.ObjectMeta.Name, metav1.GetOptions{})
+		var newDpm *v1beta1.Deployment
+		newDpm, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Get(funcObj.ObjectMeta.Name, metav1.GetOptions{})
 		newDpm.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
 		newDpm.ObjectMeta.Annotations = funcObj.Spec.Deployment.ObjectMeta.Annotations
 		newDpm.ObjectMeta.OwnerReferences = or
 		newDpm.Spec = dpm.Spec
-		_, err = client.Apps().Deployments(funcObj.ObjectMeta.Namespace).Update(newDpm)
+		_, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Update(newDpm)
 		if err != nil {
 			return err
 		}
@@ -948,7 +947,7 @@ func GetOwnerReference(funcObj *kubelessApi.Function) ([]metav1.OwnerReference, 
 
 // InitializeEmptyMapsInDeployment initializes all nil maps in a Deployment object
 // This is done to counteract with side-effects of github.com/imdario/mergo which panics when provided with a nil map in a struct
-func initializeEmptyMapsInDeployment(deployment *v1beta2.Deployment) {
+func initializeEmptyMapsInDeployment(deployment *v1beta1.Deployment) {
 	if deployment.ObjectMeta.Annotations == nil {
 		deployment.Annotations = make(map[string]string)
 	}
@@ -970,7 +969,7 @@ func initializeEmptyMapsInDeployment(deployment *v1beta2.Deployment) {
 }
 
 // MergeDeployments merges two deployment objects
-func MergeDeployments(destinationDeployment *v1beta2.Deployment, sourceDeployment *v1beta2.Deployment) error {
+func MergeDeployments(destinationDeployment *v1beta1.Deployment, sourceDeployment *v1beta1.Deployment) error {
 	// Initializing nil maps in deployment objects else github.com/imdario/mergo panics
 	initializeEmptyMapsInDeployment(destinationDeployment)
 	initializeEmptyMapsInDeployment(sourceDeployment)

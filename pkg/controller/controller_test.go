@@ -6,10 +6,10 @@ import (
 	"github.com/ghodss/yaml"
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/sirupsen/logrus"
-	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/autoscaling/v2beta1"
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	xv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -156,11 +156,11 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 				Selector: funcLabels,
 				Type:     v1.ServiceTypeClusterIP,
 			},
-			Deployment: v1beta2.Deployment{
+			Deployment: v1beta1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: funcAnno,
 				},
-				Spec: v1beta2.DeploymentSpec{
+				Spec: v1beta1.DeploymentSpec{
 					Replicas: &replicas,
 					Template: v1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
@@ -208,7 +208,7 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 		},
 		Data: map[string]string{"deployment": deploymentConfigData},
 	}
-	deploymentObjFromConfigMap := v1beta2.Deployment{}
+	deploymentObjFromConfigMap := v1beta1.Deployment{}
 	_ = yaml.Unmarshal([]byte(deploymentConfigData), &deploymentObjFromConfigMap)
 	clientset.Core().ConfigMaps(namespace).Create(kubelessConfigMap)
 
@@ -219,7 +219,7 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 	if err := controller.ensureK8sResources(&funcObj); err != nil {
 		t.Fatalf("Creating/Updating resources returned err: %v", err)
 	}
-	dpm, _ := clientset.Apps().Deployments(namespace).Get(funcName, metav1.GetOptions{})
+	dpm, _ := clientset.ExtensionsV1beta1().Deployments(namespace).Get(funcName, metav1.GetOptions{})
 	expectedAnnotations := map[string]string{
 		"bar":                "foo",
 		"foo-from-deploy-cm": "bar-from-deploy-cm",
