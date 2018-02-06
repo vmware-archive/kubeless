@@ -312,6 +312,20 @@ local runtime_images ='[
     ],
     "depName": "requirements.xml",
     "fileNameSuffix": ".cs"
+  },
+    {
+    "ID": "php",
+    "versions": [
+      {
+        "name": "php71",
+        "version": "7.1",
+        "httpImage": "paolomainardi/kubeless-php:latest",
+        "pubsubImage": "paolomainardi/kubeless-php:latest",
+        "initImage": "composer:1.6"
+      }
+    ],
+    "depName": "composer.json",
+    "fileNameSuffix": ".php"
   }
 ]';
 
