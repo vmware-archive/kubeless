@@ -1,5 +1,5 @@
-hash: fb7887d71cdbcf6a4f7fe0e2ab992a5607356e0108571bedcbdf4dc0c77a8df0
-updated: 2018-01-30T10:46:26.433257+01:00
+hash: aa41f2fce60a3b44b68ab189672a8cb0a560eab2f8dd9279ca38ba78ba6ff4b3
+updated: 2018-01-31T10:10:29.051706+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -241,7 +241,7 @@ imports:
   - pkg/watch
   - third_party/forked/golang/reflect
 - name: k8s.io/client-go
-  version: 35874c597fed17ca62cd197e516d7d5ff9a2958c
+  version: 3a46b5de730a74e064197a157c96c2d29724a677
   subpackages:
   - discovery
   - discovery/fake
