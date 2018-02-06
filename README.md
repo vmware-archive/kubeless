@@ -67,6 +67,13 @@ functions.k8s.io   CustomResourceDefinition.v1beta1.apiextensions.k8s.io
 $ kubectl get functions
 ```
 
+If you have installed kubeless into some other namespace (which is not called kubeless) or changed the name of the config file from kubeless-config to something else, then you have to export the kubeless namespace and name of kubeless config as environment variables before using kubless cli. This can be done as follows:
+
+```console
+$ export KUBELESS_NAMESPACE=<name of namespace>
+$ export KUBELESS_CONFIG=<name of config file>
+```
+
 NOTE: Kafka statefulset uses a PVC (persistent volume claim). Depending on the configuration of your cluster you may need to provision a PV (Persistent Volume) that matches the PVC or configure dynamic storage provisioning. Otherwise Kafka pod will fail to get scheduled. Also note that Kafka is only required for PubSub functions, you can still use http triggered functions. Please refer to [PV](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) documentation on how to provision storage for PVC.
 
 You are now ready to create functions.
@@ -210,6 +217,14 @@ Created topic "another-topic".
 $ kubeless topic delete another-topic
 
 $ kubeless topic ls
+```
+
+You can also see the list of supported runtimes:
+
+```console
+$ kubeless get-server-config
+INFO[0000] Current Server Config:
+INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, dotnetcore2.0
 ```
 
 ## Examples

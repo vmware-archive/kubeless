@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	"github.com/kubeless/kubeless/pkg/langruntime"
+
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	"k8s.io/api/core/v1"
@@ -69,7 +71,12 @@ func TestEnsureConfigMap(t *testing.T) {
 			Runtime:  "python2.7",
 		},
 	}
-	err := EnsureFuncConfigMap(clientset, f1, or)
+
+	langruntime.AddFakeConfig(clientset)
+	lr := langruntime.SetupLangRuntime(clientset)
+	lr.ReadConfigMap()
+
+	err := EnsureFuncConfigMap(clientset, f1, or, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -107,7 +114,8 @@ func TestEnsureConfigMap(t *testing.T) {
 			Runtime:  "cobol",
 		},
 	}
-	err = EnsureFuncConfigMap(clientset, f2, or)
+
+	err = EnsureFuncConfigMap(clientset, f2, or, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -135,7 +143,7 @@ func TestEnsureConfigMap(t *testing.T) {
 			Runtime:  "python3.4",
 		},
 	}
-	err = EnsureFuncConfigMap(clientset, f2, or)
+	err = EnsureFuncConfigMap(clientset, f2, or, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -264,6 +272,11 @@ func TestEnsureDeployment(t *testing.T) {
 	funcAnno := map[string]string{
 		"bar": "foo",
 	}
+
+	langruntime.AddFakeConfig(clientset)
+	lr := langruntime.SetupLangRuntime(clientset)
+	lr.ReadConfigMap()
+
 	f1Name := "f1"
 	f1Port := int32(8080)
 	f1 := &kubelessApi.Function{
@@ -317,7 +330,7 @@ func TestEnsureDeployment(t *testing.T) {
 		},
 	}
 	// Testing happy path
-	err := EnsureFuncDeployment(clientset, f1, or)
+	err := EnsureFuncDeployment(clientset, f1, or, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -407,6 +420,12 @@ func TestEnsureDeployment(t *testing.T) {
 	if !reflect.DeepEqual(dpm.Spec.Template.Spec.Containers[0], expectedContainer) {
 		t.Errorf("Unexpected container definition. Received:\n %+v\nExpecting:\n %+v", dpm.Spec.Template.Spec.Containers[0], expectedContainer)
 	}
+
+	secrets := dpm.Spec.Template.Spec.ImagePullSecrets
+	if secrets[0].Name != "p1" && secrets[1].Name != "p2" {
+		t.Errorf("Expected first secret to be 'p1' but found %v and second secret to be 'p2' and found %v", secrets[0], secrets[1])
+	}
+
 	// Init containers behavior should be tested with integration tests
 	if len(dpm.Spec.Template.Spec.InitContainers) < 1 {
 		t.Errorf("Expecting at least an init container to install deps")
@@ -418,7 +437,7 @@ func TestEnsureDeployment(t *testing.T) {
 	f2.ObjectMeta.Name = "func2"
 	f2.Spec.Function = ""
 	f2.Spec.Handler = ""
-	err = EnsureFuncDeployment(clientset, &f2, or)
+	err = EnsureFuncDeployment(clientset, &f2, or, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -432,7 +451,7 @@ func TestEnsureDeployment(t *testing.T) {
 	f3 = *f1
 	f3.ObjectMeta.Name = "func3"
 	f3.Spec.Deployment.Spec.Template.Spec.Containers[0].Image = "test-image"
-	err = EnsureFuncDeployment(clientset, &f3, or)
+	err = EnsureFuncDeployment(clientset, &f3, or, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -450,7 +469,7 @@ func TestEnsureDeployment(t *testing.T) {
 	f4.ObjectMeta.Name = "func4"
 	f4.Spec.Function = ""
 	f4.Spec.Deps = ""
-	err = EnsureFuncDeployment(clientset, &f4, or)
+	err = EnsureFuncDeployment(clientset, &f4, or, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -467,7 +486,7 @@ func TestEnsureDeployment(t *testing.T) {
 	f5 = *f1
 	f5.ObjectMeta.Name = "func5"
 	f5.Spec.Type = "PubSub"
-	err = EnsureFuncDeployment(clientset, &f5, or)
+	err = EnsureFuncDeployment(clientset, &f5, or, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -484,7 +503,7 @@ func TestEnsureDeployment(t *testing.T) {
 	f6 = *f1
 	f6.Spec.Handler = "foo.bar2"
 	f6.Spec.Deployment.ObjectMeta.Annotations["new-key"] = "value"
-	err = EnsureFuncDeployment(clientset, &f6, or)
+	err = EnsureFuncDeployment(clientset, &f6, or, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -505,7 +524,8 @@ func TestEnsureDeployment(t *testing.T) {
 	f7.ObjectMeta.Name = "func7"
 	f7.Spec.Deps = "deps"
 	f7.Spec.Runtime = "cobol"
-	err = EnsureFuncDeployment(clientset, &f7, or)
+	err = EnsureFuncDeployment(clientset, &f7, or, lr)
+
 	if err == nil {
 		t.Errorf("An error should be thrown")
 	}
@@ -515,7 +535,7 @@ func TestEnsureDeployment(t *testing.T) {
 	f8 = *f1
 	f8.ObjectMeta.Name = "func8"
 	f8.Spec.Timeout = "10"
-	err = EnsureFuncDeployment(clientset, &f8, or)
+	err = EnsureFuncDeployment(clientset, &f8, or, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -887,9 +907,14 @@ func TestDeleteAutoscaleResource(t *testing.T) {
 }
 
 func TestGetProvisionContainer(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	langruntime.AddFakeConfig(clientset)
+	lr := langruntime.SetupLangRuntime(clientset)
+	lr.ReadConfigMap()
+
 	rvol := v1.VolumeMount{Name: "runtime", MountPath: "/runtime"}
 	dvol := v1.VolumeMount{Name: "deps", MountPath: "/deps"}
-	c, err := getProvisionContainer("test", "sha256:abc1234", "test.func", "test.foo", "text", "python2.7", rvol, dvol)
+	c, err := getProvisionContainer("test", "sha256:abc1234", "test.func", "test.foo", "text", "python2.7", rvol, dvol, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -906,7 +931,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// If the content type is encoded it should decode it
-	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.func", "test.foo", "base64", "python2.7", rvol, dvol)
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.func", "test.foo", "base64", "python2.7", rvol, dvol, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -914,8 +939,17 @@ func TestGetProvisionContainer(t *testing.T) {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 
+	secrets, err := lr.GetImageSecrets("python2.7")
+	if err != nil {
+		t.Errorf("Unable to fetch secrets: %v", err)
+	}
+
+	if secrets[0].Name != "p1" && secrets[1].Name != "p2" {
+		t.Errorf("Expected first secret to be 'p1' but found %v and second secret to be 'p2' but found %v", secrets[0], secrets[1])
+	}
+
 	// It should skip the dependencies installation if the runtime is not supported
-	c, err = getProvisionContainer("function", "sha256:abc1234", "test.func", "test.foo", "text", "cobol", rvol, dvol)
+	c, err = getProvisionContainer("function", "sha256:abc1234", "test.func", "test.foo", "text", "cobol", rvol, dvol, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -924,7 +958,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// It should extract the file in case it is a Zip
-	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64+zip", "python2.7", rvol, dvol)
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64+zip", "python2.7", rvol, dvol, lr)
 	if !strings.Contains(c.Args[0], "unzip -o /deps/test.zip.decoded -d /runtime") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}

@@ -22,6 +22,7 @@ import (
 
 	"github.com/kubeless/kubeless/cmd/kubeless/autoscale"
 	"github.com/kubeless/kubeless/cmd/kubeless/function"
+	"github.com/kubeless/kubeless/cmd/kubeless/getServerConfig"
 	"github.com/kubeless/kubeless/cmd/kubeless/route"
 	"github.com/kubeless/kubeless/cmd/kubeless/topic"
 	"github.com/kubeless/kubeless/cmd/kubeless/version"
@@ -37,7 +38,7 @@ func newRootCmd() *cobra.Command {
 		Long:  globalUsage,
 	}
 
-	cmd.AddCommand(function.FunctionCmd, topic.TopicCmd, version.VersionCmd, route.RouteCmd, autoscale.AutoscaleCmd)
+	cmd.AddCommand(function.FunctionCmd, topic.TopicCmd, version.VersionCmd, route.RouteCmd, autoscale.AutoscaleCmd, getServerConfig.GetServerConfigCmd)
 	return cmd
 }
 
