@@ -23,9 +23,9 @@ import (
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/sirupsen/logrus"
-	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/autoscaling/v2beta1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -211,7 +211,7 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 	}
 	funcObj.ObjectMeta.Labels["function"] = funcObj.ObjectMeta.Name
 
-	deployment := v1beta2.Deployment{}
+	deployment := v1beta1.Deployment{}
 	if deploymentConfigData, ok := c.config.Data["deployment"]; ok {
 		err := yaml.Unmarshal([]byte(deploymentConfigData), &deployment)
 		if err != nil {

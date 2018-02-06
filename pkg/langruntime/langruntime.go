@@ -9,8 +9,8 @@ import (
 
 	yaml "github.com/ghodss/yaml"
 	"github.com/sirupsen/logrus"
-	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 )
 
 // Langruntimes struct for getting configmap
@@ -240,7 +240,7 @@ func (l *Langruntimes) GetBuildContainer(runtime string, env []v1.EnvVar, instal
 }
 
 // UpdateDeployment object in case of custom runtime
-func (l *Langruntimes) UpdateDeployment(dpm *v1beta2.Deployment, depsPath, runtime string) {
+func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runtime string) {
 	switch {
 	case strings.Contains(runtime, "python"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{

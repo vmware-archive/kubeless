@@ -25,9 +25,9 @@ import (
 	"testing"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
-	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -147,8 +147,8 @@ func TestGetFunctionDescription(t *testing.T) {
 				Type:      v1.ServiceTypeClusterIP,
 				ClusterIP: v1.ClusterIPNone,
 			},
-			Deployment: v1beta2.Deployment{
-				Spec: v1beta2.DeploymentSpec{
+			Deployment: v1beta1.Deployment{
+				Spec: v1beta1.DeploymentSpec{
 					Template: v1.PodTemplateSpec{
 						Spec: v1.PodSpec{
 							Containers: []v1.Container{
@@ -260,8 +260,8 @@ func TestGetFunctionDescription(t *testing.T) {
 				},
 				Type: v1.ServiceTypeClusterIP,
 			},
-			Deployment: v1beta2.Deployment{
-				Spec: v1beta2.DeploymentSpec{
+			Deployment: v1beta1.Deployment{
+				Spec: v1beta1.DeploymentSpec{
 					Template: v1.PodTemplateSpec{
 						Spec: v1.PodSpec{
 							Containers: []v1.Container{

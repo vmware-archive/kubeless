@@ -22,7 +22,6 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -61,8 +60,8 @@ func TestList(t *testing.T) {
 					Type:     "ftype",
 					Topic:    "ftopic",
 					Deps:     "fdeps",
-					Deployment: v1beta2.Deployment{
-						Spec: v1beta2.DeploymentSpec{
+					Deployment: v1beta1.Deployment{
+						Spec: v1beta1.DeploymentSpec{
 							Template: v1.PodTemplateSpec{
 								Spec: v1.PodSpec{
 									Containers: []v1.Container{{}},
@@ -87,8 +86,8 @@ func TestList(t *testing.T) {
 					Type:     "btype",
 					Topic:    "btopic",
 					Deps:     "{\"dependencies\": {\"test\": \"^1.0.0\"}}",
-					Deployment: v1beta2.Deployment{
-						Spec: v1beta2.DeploymentSpec{
+					Deployment: v1beta1.Deployment{
+						Spec: v1beta1.DeploymentSpec{
 							Template: v1.PodTemplateSpec{
 								Spec: v1.PodSpec{
 									Containers: []v1.Container{
@@ -131,8 +130,8 @@ func TestList(t *testing.T) {
 					Type:     "ftype",
 					Topic:    "ftopic",
 					Deps:     "fdeps",
-					Deployment: v1beta2.Deployment{
-						Spec: v1beta2.DeploymentSpec{
+					Deployment: v1beta1.Deployment{
+						Spec: v1beta1.DeploymentSpec{
 							Template: v1.PodTemplateSpec{
 								Spec: v1.PodSpec{
 									Containers: []v1.Container{{}},
