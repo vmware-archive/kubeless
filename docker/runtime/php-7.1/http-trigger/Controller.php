@@ -4,8 +4,6 @@ namespace Kubeless;
 
 use \Psr\Http\Message\ServerRequestInterface as Request;
 use \Psr\Http\Message\ResponseInterface as Response;
-use Symfony\Component\Process\PhpProcess;
-use Symfony\Component\Process\Exception\RuntimeException as RuntimeException;
 
 require 'vendor/autoload.php';
 
@@ -30,19 +28,18 @@ class Controller
    *
    * @return void
    */
-  private function runFunction()
+  private function runFunction(Request $request)
   {
+      ob_start();
       include $this->file;
       if (!function_exists($this->function)) {
         throw new \Exception(sprintf("Function %s not exist", $this->function));
       }
-      $php = file_get_contents($this->file);
-      $php .= "\n{$this->function}();";
-      $process = new PhpProcess($php);
-      $process->setTimeout($this->timeout);
-      $process->run();
+      call_user_func_array($this->function, [$request]);
+      $response = ob_get_contents();
+      ob_end_clean();
 
-      return $process->getOutput();
+      return $response;
   }
 
   /**
@@ -75,15 +72,10 @@ class Controller
   {
     try {
       $this->validate();
-      $ret = $this->runFunction();
+      $ret = $this->runFunction($request);
       $response->getBody()->write($ret);
 
       return $response;
-    } catch (RuntimeException $e) {
-      $response->getBody()->write($e->getMessage() . "\n");
-      $res = $response->withStatus(408);
-
-      return $res;
     } catch (\Exception $e) {
       $response->getBody()->write($e->getMessage() . "\n");
       $res = $response->withStatus(500);

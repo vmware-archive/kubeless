@@ -5,9 +5,6 @@
         }
     },
     "require": {
-        "slim/slim": "^3.9",
-        "monolog/monolog": "^1.23",
-        "phpunit/php-invoker": "^1.1",
-        "symfony/process": "^4.0"
+        "slim/slim": "^3.9"
     }
 }
