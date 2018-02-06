@@ -11,14 +11,17 @@ data:
   deployment: |-
     {
       "metadata": {
-          "annotation":
+          "annotations":{
             "annotation-to-deployment": "value"
+          }
       },
       "spec": {
-        "replicas": 2
-        "template":
-          "annotations":
+        "replicas": 2,
+        "template": {
+          "annotations": {
             "annotations-to-pod": "value"
+          }
+        }
       }
     }
   ingress-enabled: "false"
