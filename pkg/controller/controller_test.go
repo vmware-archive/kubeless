@@ -5,6 +5,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/apps/v1beta2"
 	"k8s.io/api/autoscaling/v2beta1"
@@ -142,7 +143,7 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 			Function: "function",
 			Deps:     "deps",
 			Handler:  "foo.bar",
-			Runtime:  "python2.7",
+			Runtime:  "ruby2.4",
 			ServiceSpec: v1.ServiceSpec{
 				Ports: []v1.ServicePort{
 					{
@@ -201,21 +202,55 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 			}
 		}
 	}`
+
+	runtimeImages := []langruntime.RuntimeInfo{{
+		ID:             "ruby",
+		DepName:        "Gemfile",
+		FileNameSuffix: ".rb",
+		Versions: []langruntime.RuntimeVersion{
+			{
+				Name:             "ruby24",
+				Version:          "2.4",
+				InitImage:        "bitnami/ruby:2.4",
+				ImagePullSecrets: []langruntime.ImageSecret{},
+			},
+		},
+	}}
+
+	out, err := yaml.Marshal(runtimeImages)
+	if err != nil {
+		logrus.Fatal("Canot Marshall runtimeimage")
+	}
+
 	clientset := fake.NewSimpleClientset()
 	kubelessConfigMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "kubeless-config",
 		},
-		Data: map[string]string{"deployment": deploymentConfigData},
+		Data: map[string]string{"deployment": deploymentConfigData, "runtime-images": string(out)},
 	}
+
 	deploymentObjFromConfigMap := v1beta2.Deployment{}
 	_ = yaml.Unmarshal([]byte(deploymentConfigData), &deploymentObjFromConfigMap)
-	clientset.Core().ConfigMaps(namespace).Create(kubelessConfigMap)
+	_, err = clientset.CoreV1().ConfigMaps(namespace).Create(kubelessConfigMap)
+	if err != nil {
+		logrus.Fatal("Unable to create configmap")
+	}
+
+	config, err := clientset.CoreV1().ConfigMaps(namespace).Get("kubeless-config", metav1.GetOptions{})
+	if err != nil {
+		logrus.Fatal("Unable to read the configmap")
+	}
+	var lr = langruntime.New(config)
+	lr.ReadConfigMap()
 
 	controller := Controller{
-		logger:    logrus.WithField("pkg", "controller"),
-		clientset: clientset,
+		logger:      logrus.WithField("pkg", "controller"),
+		clientset:   clientset,
+		langRuntime: lr,
+		config:      config,
 	}
+
 	if err := controller.ensureK8sResources(&funcObj); err != nil {
 		t.Fatalf("Creating/Updating resources returned err: %v", err)
 	}

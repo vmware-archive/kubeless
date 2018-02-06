@@ -18,6 +18,7 @@ package function
 
 import (
 	"io/ioutil"
+	"os"
 	"strings"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
@@ -26,6 +27,7 @@ import (
 	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var deployCmd = &cobra.Command{
@@ -33,6 +35,25 @@ var deployCmd = &cobra.Command{
 	Short: "deploy a function to Kubeless",
 	Long:  `deploy a function to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
+		cli := utils.GetClientOutOfCluster()
+		controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
+		kubelessConfig := os.Getenv("KUBELESS_CONFIG")
+
+		if len(controllerNamespace) == 0 {
+			controllerNamespace = "kubeless"
+		}
+
+		if len(kubelessConfig) == 0 {
+			kubelessConfig = "kubeless-config"
+		}
+		config, err := cli.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
+		if err != nil {
+			logrus.Fatalf("Unable to read the configmap: %v", err)
+		}
+
+		var lr = langruntime.New(config)
+		lr.ReadConfigMap()
+
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - function name")
 		}
@@ -74,9 +95,9 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		if runtime != "" && !langruntime.IsValidRuntime(runtime) {
+		if runtime != "" && !lr.IsValidRuntime(runtime) {
 			logrus.Fatalf("Invalid runtime: %s. Supported runtimes are: %s",
-				runtime, strings.Join(langruntime.GetRuntimes(), ", "))
+				runtime, strings.Join(lr.GetRuntimes(), ", "))
 		}
 
 		handler, err := cmd.Flags().GetString("handler")
@@ -151,7 +172,6 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal("You must specify handler for the runtime.")
 		}
 
-		cli := utils.GetClientOutOfCluster()
 		defaultFunctionSpec := kubelessApi.Function{}
 		defaultFunctionSpec.Spec.Type = "HTTP"
 		defaultFunctionSpec.ObjectMeta.Labels = map[string]string{
@@ -178,7 +198,7 @@ var deployCmd = &cobra.Command{
 }
 
 func init() {
-	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime. Available runtimes are: "+strings.Join(langruntime.GetRuntimes(), ", "))
+	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
 	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")

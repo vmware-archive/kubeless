@@ -18,6 +18,7 @@ package function
 
 import (
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/kubeless/kubeless/pkg/langruntime"
@@ -26,6 +27,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var updateCmd = &cobra.Command{
@@ -33,6 +35,25 @@ var updateCmd = &cobra.Command{
 	Short: "update a function on Kubeless",
 	Long:  `update a function on Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
+		cli := utils.GetClientOutOfCluster()
+		controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
+		kubelessConfig := os.Getenv("KUBELESS_CONFIG")
+
+		if len(controllerNamespace) == 0 {
+			controllerNamespace = "kubeless"
+		}
+
+		if len(kubelessConfig) == 0 {
+			kubelessConfig = "kubeless-config"
+		}
+		config, err := cli.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
+		if err != nil {
+			logrus.Fatalf("Unable to read the configmap: %v", err)
+		}
+
+		var lr = langruntime.New(config)
+		lr.ReadConfigMap()
+
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - function name")
 		}
@@ -66,9 +87,9 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		if runtime != "" && !langruntime.IsValidRuntime(runtime) {
+		if runtime != "" && !lr.IsValidRuntime(runtime) {
 			logrus.Fatalf("Invalid runtime: %s. Supported runtimes are: %s",
-				runtime, strings.Join(langruntime.GetRuntimes(), ", "))
+				runtime, strings.Join(lr.GetRuntimes(), ", "))
 		}
 
 		triggerHTTP, err := cmd.Flags().GetBool("trigger-http")
@@ -154,7 +175,6 @@ var updateCmd = &cobra.Command{
 		if port != nil && (*port <= 0 || *port > 65535) {
 			logrus.Fatalf("Invalid port number %d specified", *port)
 		}
-		cli := utils.GetClientOutOfCluster()
 		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, headless, port, envs, labels, secrets, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
@@ -175,7 +195,7 @@ var updateCmd = &cobra.Command{
 }
 
 func init() {
-	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime. Available runtimes are: "+strings.Join(langruntime.GetRuntimes(), ", "))
+	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	updateCmd.Flags().StringP("handler", "", "", "Specify handler")
 	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
 	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")

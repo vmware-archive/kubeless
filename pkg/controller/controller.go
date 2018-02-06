@@ -38,6 +38,7 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	kv1beta1 "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
+	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/utils"
 )
 
@@ -56,6 +57,8 @@ type Controller struct {
 	Functions      map[string]*kubelessApi.Function
 	queue          workqueue.RateLimitingInterface
 	informer       cache.SharedIndexInformer
+	config         *corev1.ConfigMap
+	langRuntime    *langruntime.Langruntimes
 }
 
 // Config contains k8s client of a controller
@@ -91,6 +94,22 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 		},
 	})
 
+	controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
+	kubelessConfig := os.Getenv("KUBELESS_CONFIG")
+	if len(controllerNamespace) == 0 {
+		controllerNamespace = "kubeless"
+	}
+	if len(kubelessConfig) == 0 {
+		kubelessConfig = "kubeless-config"
+	}
+	config, err := cfg.KubeCli.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
+	if err != nil {
+		logrus.Fatalf("Unable to read the configmap: %s", err)
+	}
+
+	var lr = langruntime.New(config)
+	lr.ReadConfigMap()
+
 	return &Controller{
 		logger:         logrus.WithField("pkg", "controller"),
 		clientset:      cfg.KubeCli,
@@ -98,6 +117,8 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 		kubelessclient: cfg.FunctionClient,
 		informer:       informer,
 		queue:          queue,
+		config:         config,
+		langRuntime:    lr,
 	}
 }
 
@@ -190,11 +211,8 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 	}
 	funcObj.ObjectMeta.Labels["function"] = funcObj.ObjectMeta.Name
 
-	controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
-	kubelessConfig := os.Getenv("KUBELESS_CONFIG")
-	cm, _ := c.clientset.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
 	deployment := v1beta2.Deployment{}
-	if deploymentConfigData, ok := cm.Data["deployment"]; ok {
+	if deploymentConfigData, ok := c.config.Data["deployment"]; ok {
 		err := yaml.Unmarshal([]byte(deploymentConfigData), &deployment)
 		if err != nil {
 			logrus.Errorf("Error parsing Deployment data in ConfigMap kubeless-function-deployment-config: %v", err)
@@ -212,7 +230,7 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 		return err
 	}
 
-	err = utils.EnsureFuncConfigMap(c.clientset, funcObj, or)
+	err = utils.EnsureFuncConfigMap(c.clientset, funcObj, or, c.langRuntime)
 	if err != nil {
 		return err
 	}
@@ -222,7 +240,7 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 		return err
 	}
 
-	err = utils.EnsureFuncDeployment(c.clientset, funcObj, or)
+	err = utils.EnsureFuncDeployment(c.clientset, funcObj, or, c.langRuntime)
 	if err != nil {
 		return err
 	}

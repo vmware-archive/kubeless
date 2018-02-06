@@ -38,6 +38,7 @@ kubectl() {
 k8s_wait_for_pod_ready() {
     echo_info "Waiting for pod '${@}' to be ready ... "
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    
     # Retries just in case it is not stable
     local -i successCount=0
     while [ "$successCount" -lt "3" ]; do
@@ -231,10 +232,7 @@ test_must_fail_without_rbac_roles() {
     echo_info "RBAC TEST: function deploy/call must fail without RBAC roles"
     _delete_simple_function
     kubeless_recreate $KUBELESS_MANIFEST_RBAC $KUBELESS_MANIFEST
-    _wait_for_kubeless_controller_ready
-    _deploy_simple_function
-    _wait_for_kubeless_controller_logline "User.*cannot"
-    _call_simple_function 1
+     _wait_for_kubeless_controller_logline "User.*cannot"
 }
 redeploy_with_rbac_roles() {
     kubeless_recreate $KUBELESS_MANIFEST_RBAC $KUBELESS_MANIFEST_RBAC

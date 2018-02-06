@@ -228,7 +228,7 @@ func appendToCommand(orig string, command ...string) string {
 	return strings.Join(command, " && ")
 }
 
-func getProvisionContainer(function, checksum, fileName, handler, contentType, runtime string, runtimeVolume, depsVolume v1.VolumeMount) (v1.Container, error) {
+func getProvisionContainer(function, checksum, fileName, handler, contentType, runtime string, runtimeVolume, depsVolume v1.VolumeMount, lr *langruntime.Langruntimes) (v1.Container, error) {
 	prepareCommand := ""
 	originFile := path.Join(depsVolume.MountPath, fileName)
 
@@ -269,7 +269,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 		)
 	} else {
 		// Copy the target as a single file
-		destFileName, err := getFileName(handler, contentType, runtime)
+		destFileName, err := getFileName(handler, contentType, runtime, lr)
 		if err != nil {
 			return v1.Container{}, err
 		}
@@ -280,7 +280,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 	}
 
 	// Copy deps file to the installation path
-	runtimeInf, err := langruntime.GetRuntimeInfo(runtime)
+	runtimeInf, err := lr.GetRuntimeInfo(runtime)
 	if err == nil && runtimeInf.DepName != "" {
 		depsFile := path.Join(depsVolume.MountPath, runtimeInf.DepName)
 		prepareCommand = appendToCommand(prepareCommand,
@@ -396,7 +396,7 @@ func splitHandler(handler string) (string, string, error) {
 }
 
 // getFileName returns a file name based on a handler identifier
-func getFileName(handler, funcContentType, runtime string) (string, error) {
+func getFileName(handler, funcContentType, runtime string, lr *langruntime.Langruntimes) (string, error) {
 	modName, _, err := splitHandler(handler)
 	if err != nil {
 		return "", err
@@ -404,7 +404,7 @@ func getFileName(handler, funcContentType, runtime string) (string, error) {
 	filename := modName
 	if funcContentType == "text" || funcContentType == "" {
 		// We can only guess the extension if the function is specified as plain text
-		runtimeInf, err := langruntime.GetRuntimeInfo(runtime)
+		runtimeInf, err := lr.GetRuntimeInfo(runtime)
 		if err == nil {
 			filename = modName + runtimeInf.FileNameSuffix
 		}
@@ -413,11 +413,11 @@ func getFileName(handler, funcContentType, runtime string) (string, error) {
 }
 
 // EnsureFuncConfigMap creates/updates a config map with a function specification
-func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference) error {
+func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference, lr *langruntime.Langruntimes) error {
 	configMapData := map[string]string{}
 	var err error
 	if funcObj.Spec.Handler != "" {
-		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime)
+		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime, lr)
 		if err != nil {
 			return err
 		}
@@ -425,7 +425,7 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *kubelessApi.Funct
 			"handler": funcObj.Spec.Handler,
 			fileName:  funcObj.Spec.Function,
 		}
-		runtimeInfo, err := langruntime.GetRuntimeInfo(funcObj.Spec.Runtime)
+		runtimeInfo, err := lr.GetRuntimeInfo(funcObj.Spec.Runtime)
 		if err == nil && runtimeInfo.DepName != "" {
 			configMapData[runtimeInfo.DepName] = funcObj.Spec.Deps
 		}
@@ -525,7 +525,7 @@ func svcPort(funcObj *kubelessApi.Function) int32 {
 }
 
 // EnsureFuncDeployment creates/updates a function deployment
-func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference) error {
+func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference, lr *langruntime.Langruntimes) error {
 
 	var err error
 
@@ -613,7 +613,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		}
 		//only resolve the image name if it has not been already set
 		if dpm.Spec.Template.Spec.Containers[0].Image == "" {
-			imageName, err := langruntime.GetFunctionImage(funcObj.Spec.Runtime, funcObj.Spec.Type)
+			imageName, err := lr.GetFunctionImage(funcObj.Spec.Runtime, funcObj.Spec.Type)
 			if err != nil {
 				return err
 			}
@@ -666,7 +666,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 
 	// prepare init-containers if some function is specified
 	if funcObj.Spec.Function != "" {
-		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime)
+		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime, lr)
 		if err != nil {
 			return err
 		}
@@ -686,18 +686,29 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 			funcObj.Spec.Runtime,
 			runtimeVolumeMount,
 			srcVolumeMount,
+			lr,
 		)
 		if err != nil {
 			return err
 		}
 		dpm.Spec.Template.Spec.InitContainers = []v1.Container{provisionContainer}
 	}
+
+	// Add the imagesecrets if present to pull images from private docker registry
+	if funcObj.Spec.Runtime != "" {
+		imageSecrets, err := lr.GetImageSecrets(funcObj.Spec.Runtime)
+		if err != nil {
+			return fmt.Errorf("Unable to fetch ImagePullSecrets, %v", err)
+		}
+		dpm.Spec.Template.Spec.ImagePullSecrets = imageSecrets
+	}
+
 	// ensure that the runtime is supported for installing dependencies
-	_, err = langruntime.GetRuntimeInfo(funcObj.Spec.Runtime)
+	_, err = lr.GetRuntimeInfo(funcObj.Spec.Runtime)
 	if funcObj.Spec.Deps != "" && err != nil {
 		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
 	} else if funcObj.Spec.Deps != "" {
-		buildContainer, err := langruntime.GetBuildContainer(funcObj.Spec.Runtime, dpm.Spec.Template.Spec.Containers[0].Env, runtimeVolumeMount)
+		buildContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, dpm.Spec.Template.Spec.Containers[0].Env, runtimeVolumeMount)
 		if err != nil {
 			return err
 		}
@@ -706,7 +717,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 			buildContainer,
 		)
 		// update deployment for loading dependencies
-		langruntime.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
+		lr.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
 	}
 
 	// add liveness Probe to deployment
