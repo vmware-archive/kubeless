@@ -150,13 +150,22 @@ get-php:
 	kubeless function deploy get-php --trigger-http --runtime php7.1 --handler helloget.foo --from-file php/helloget.php
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-php/"
 
+get-php-verify:
+	kubeless function call get-php | egrep "hello world"
+
 get-php-deps:
 	kubeless function deploy get-php-deps --trigger-http --runtime php7.1 --handler hellowithdeps.foo --from-file php/hellowithdeps.php --dependencies php/composer.json
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-php-deps/"
 
+get-php-deps-verify:
+	kubeless function call get-php-deps | egrep "hello world"
+
 post-php:
 	kubeless function deploy post-php --trigger-http --runtime php7.1 --handler hellowithdata.foo --from-file php/hellowithdata.php
 	echo "curl --data '{\"hello\":\"world\"}' localhost:8080/api/v1/proxy/namespaces/default/services/post-php/ --header \"Content-Type:application/json\""
+
+post-php-verify:
+	kubeless function call post-php --data '{"it-s": "alive"}'| egrep "it.*alive"
 
 timeout-ruby:
 	$(eval TMPDIR := $(shell mktemp -d))

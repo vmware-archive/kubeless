@@ -13,4 +13,5 @@ function foo() {
   // add records to the log
   $log->info('Hello');
   $log->info('World');
+  print "hello world";
 }
