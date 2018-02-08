@@ -319,8 +319,8 @@ local runtime_images ='[
       {
         "name": "php71",
         "version": "7.1",
-        "httpImage": "paolomainardi/kubeless-php:latest",
-        "pubsubImage": "paolomainardi/kubeless-php:latest",
+        "httpImage": "paolomainardi/kubeless-php@sha256:b69dabef3a62ac52b6d1089f65519c116d34f14250139cd9d7f5ec8cfa1c7d28",
+        "pubsubImage": "",
         "initImage": "composer:1.6"
       }
     ],
