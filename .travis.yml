@@ -7,7 +7,7 @@ os:
   - linux
 
 go:
-  - 1.8.3
+  - 1.8.7
 
 go_import_path: github.com/kubeless/kubeless
 
@@ -71,9 +71,9 @@ install:
       openssl aes-256-cbc -K $encrypted_1dbafa65b3ad_key -iv $encrypted_1dbafa65b3ad_iv -in .github/gcloud.json.enc -out $GOOGLE_APPLICATION_CREDENTIALS -d
       if [ ! -d $HOME/gcloud/google-cloud-sdk ]; then
         mkdir -p $HOME/gcloud &&
-        wget -q https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz --directory-prefix=$HOME/gcloud &&
+        wget -q https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-187.0.0-linux-x86_64.tar.gz --directory-prefix=$HOME/gcloud &&
         cd $HOME/gcloud &&
-        tar xzf google-cloud-sdk.tar.gz &&
+        tar xzf google-cloud-sdk-187.0.0-linux-x86_64.tar.gz &&
         printf '\ny\n\ny\ny\n' | ./google-cloud-sdk/install.sh &&
         cd $TRAVIS_BUILD_DIR;
       fi
