@@ -39,14 +39,10 @@ class Controller
       if (!function_exists($this->function)) {
         throw new \Exception(sprintf("Function %s not exist", $this->function));
       }
-      while ($this->timeout) {
-        call_user_func_array($this->function, [$request]);
-        break;
-      }
+      call_user_func_array($this->function, [$request]);
       $response = ob_get_contents();
       ob_end_clean();
       chdir($currentDir);
-
       return $response;
   }
 
