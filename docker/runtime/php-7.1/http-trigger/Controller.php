@@ -16,6 +16,7 @@ class Controller
 
   public function __construct()
   {
+
     $this->app = new \Slim\App();
     $this->timeout = (!empty(getenv('FUNC_TIMEOUT')) ? getenv('FUNC_TIMEOUT') : 180);
     $this->root = (!empty(getenv('MOD_ROOT_PATH')) ? getenv('MOD_ROOT_PATH') : '/kubeless/');
@@ -30,14 +31,18 @@ class Controller
    */
   private function runFunction(Request $request)
   {
-      ob_start();
+      set_time_limit($this->timeout);
       $currentDir = getcwd();
+      ob_start();
       chdir($this->root);
       include $this->file;
       if (!function_exists($this->function)) {
         throw new \Exception(sprintf("Function %s not exist", $this->function));
       }
-      call_user_func_array($this->function, [$request]);
+      while ($this->timeout) {
+        call_user_func_array($this->function, [$request]);
+        break;
+      }
       $response = ob_get_contents();
       ob_end_clean();
       chdir($currentDir);
