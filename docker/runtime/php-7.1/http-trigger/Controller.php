@@ -7,12 +7,15 @@ use \Psr\Http\Message\ResponseInterface as Response;
 
 require 'vendor/autoload.php';
 
+class TimeoutFunctionException extends \RuntimeException {}
+
 class Controller
 {
   private $app;
   private $timeout;
   private $root;
   private $function;
+  private $currentDir;
 
   public function __construct()
   {
@@ -22,6 +25,7 @@ class Controller
     $this->root = (!empty(getenv('MOD_ROOT_PATH')) ? getenv('MOD_ROOT_PATH') : '/kubeless/');
     $this->file = sprintf("/kubeless/%s.php", getenv('MOD_NAME'));
     $this->function = getenv('FUNC_HANDLER');
+    $this->currentDir = getcwd();
   }
 
   /**
@@ -32,18 +36,25 @@ class Controller
   private function runFunction(Request $request)
   {
       set_time_limit($this->timeout);
-      $currentDir = getcwd();
       ob_start();
       chdir($this->root);
       include $this->file;
       if (!function_exists($this->function)) {
         throw new \Exception(sprintf("Function %s not exist", $this->function));
       }
-      call_user_func_array($this->function, [$request]);
-      $response = ob_get_contents();
-      ob_end_clean();
-      chdir($currentDir);
-      return $response;
+      $pid = pcntl_fork();
+      if ($pid == 0) {
+        call_user_func_array($this->function, [$request]);
+        $response = ob_get_contents();
+        ob_end_clean();
+        chdir($this->currentDir);
+
+        return $response;
+      } else {
+          sleep($this->timeout);
+          posix_kill($pid, SIGKILL);
+          throw new TimeoutFunctionException();
+      }
   }
 
   /**
@@ -80,6 +91,10 @@ class Controller
       $response->getBody()->write($ret);
 
       return $response;
+    } catch (\Kubeless\TimeoutFunctionException $e) {
+      $res = $response->withStatus(408);
+
+      return $res;
     } catch (\Exception $e) {
       $response->getBody()->write($e->getMessage() . "\n");
       $res = $response->withStatus(500);
