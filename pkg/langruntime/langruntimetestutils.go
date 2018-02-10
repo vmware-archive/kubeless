@@ -89,8 +89,8 @@ func AddFakeConfig(clientset *fake.Clientset) {
 		FileNameSuffix: ".php",
 		Versions: []RuntimeVersion{
 			{
-				Name:      "php7.1",
-				Version:   "7.1",
+				Name:      "php7.2",
+				Version:   "7.2",
 				InitImage: "composer:1.6",
 				ImagePullSecrets: []ImageSecret{
 					{ImageSecret: "p1"}, {ImageSecret: "p2"},

@@ -1,4 +1,4 @@
-FROM php:7.1-jessie
+FROM php:7.2-stretch
 
 # Install composer
 ENV COMPOSER_HOME /composer
@@ -7,23 +7,22 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV FUNC_PORT 8080
 
 RUN apt-get update \
-    && apt-get install -y git unzip libxml2-dev libpng12-dev libjpeg-dev libicu-dev libcurl4-openssl-dev libmcrypt-dev postgresql-server-dev-all \
+    && apt-get install -y git unzip libxml2-dev libpng-dev libjpeg-dev libssl-dev libicu-dev libcurl4-openssl-dev libmcrypt-dev postgresql-server-dev-all \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    && docker-php-ext-install \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+RUN docker-php-ext-install \
     opcache \
     bcmath \
     ctype \
     curl \
     dom \
     iconv \
-    fileinfo \
     gd \
     gettext \
     intl \
     json \
-    mcrypt \
     mysqli \
     pgsql \
     pcntl \
