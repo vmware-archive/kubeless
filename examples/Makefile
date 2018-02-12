@@ -167,6 +167,16 @@ post-php:
 post-php-verify:
 	kubeless function call post-php --data '{"it-s": "alive"}'| egrep "it.*alive"
 
+timeout-php:
+	$(eval TMPDIR := $(shell mktemp -d))
+	printf '<?php\n function foo() { while(1) {} } \n' > $(TMPDIR)/hello-loop.php
+	kubeless function deploy timeout-php --trigger-http --runtime php7.2 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.php --timeout 4
+	rm -rf $(TMPDIR)
+
+timeout-php-verify:
+	$(eval MSG := $(shell kubeless function call timeout-php 2>&1 || true))
+	echo $(MSG) | egrep Request.timeout.exceeded
+
 timeout-ruby:
 	$(eval TMPDIR := $(shell mktemp -d))
 	printf 'def foo(c)\n%4swhile true do;sleep(1);end\n%4s"hello world"\nend' > $(TMPDIR)/hello-loop.rb

@@ -32,6 +32,7 @@ load ../script/libtest
   deploy_function get-ruby-deps
   deploy_function get-php
   deploy_function get-php-deps
+  deploy_function timeout-php
   deploy_function get-python-metadata
   deploy_function post-python
   deploy_function post-python-custom-port
@@ -105,6 +106,10 @@ load ../script/libtest
 @test "Test function: get-php-deps" {
   verify_function get-php-deps
   kubeless_function_delete get-php-deps
+}
+@test "Test function: timeout-php" {
+  verify_function timeout-php
+  kubeless_function_delete timeout-php
 }
 @test "Test function: get-dotnetcore" {
   skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"
