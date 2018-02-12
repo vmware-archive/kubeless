@@ -104,14 +104,14 @@ class Controller
   }
 
   /**
-   * Healtz route.
+   * Healthz route.
    *
    * @param Request $request
    * @param Response $response
    * @param array $args
    * @return Response $response
    */
-  private function healtz(Request $request, Response $response, array $args)
+  private function healthz(Request $request, Response $response, array $args)
   {
     try {
       $this->validate();
@@ -133,7 +133,7 @@ class Controller
   {
     try {
       $this->app->any('/', [$this, 'root']);
-      $this->app->any('/healtz', [$this, 'healtz']);
+      $this->app->any('/healthz', [$this, 'healthz']);
       $this->app->run();
     } catch (\Exception $e) {
       ob_end_flush();
