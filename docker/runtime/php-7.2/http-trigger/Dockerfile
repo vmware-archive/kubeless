@@ -1,4 +1,4 @@
-FROM php:7.2-stretch
+FROM php:7.2-fpm-stretch
 
 # Install composer
 ENV COMPOSER_HOME /composer
@@ -7,7 +7,9 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV FUNC_PORT 8080
 
 RUN apt-get update \
-    && apt-get install -y git unzip libxml2-dev libpng-dev libjpeg-dev libssl-dev libicu-dev libcurl4-openssl-dev libmcrypt-dev postgresql-server-dev-all \
+    && apt-get install -y \
+       git unzip libxml2-dev libpng-dev libjpeg-dev libssl-dev libicu-dev \
+       libcurl4-openssl-dev libmcrypt-dev postgresql-server-dev-all nginx supervisor \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
@@ -39,5 +41,9 @@ WORKDIR /app
 COPY . /app
 
 RUN composer install --prefer-dist --optimize-autoloader
-ENTRYPOINT [""]
-CMD ["sh", "-c", "exec php -S 0.0.0.0:${FUNC_PORT} Controller.php"]
+COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY config/default.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 8080
+ENTRYPOINT [ "" ]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
