@@ -18,6 +18,7 @@ load ../script/libtest
 
 # 'bats' lacks loop support, unroll-them-all ->
 @test "Wait for kafka" {
+  deploy_kafka
   wait_for_kubeless_kafka_server_ready
 }
 @test "Test function: pubsub-python" {

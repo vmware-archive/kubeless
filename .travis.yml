@@ -54,9 +54,9 @@ before_install:
     # or if the build is from the "master" branch
     minikube_kafka)
       if [[ "$TRAVIS_PULL_REQUEST" != false ]]; then
-        pr_kafka_title=$(curl -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title | grep -i kafka || true)
+        pr_kafka_title=$(curl "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title || true)
       fi
-      if [[ "$TRAVIS_PULL_REQUEST" == false || "$pr_kafka_title" != "" ]]; then
+      if [[ "$TRAVIS_PULL_REQUEST" == false || "$pr_kafka_title" == "" || "$pr_kafka_title" =~ ^.*(Kafka|kafka|KAFKA).*$ ]]; then
         export SHOULD_TEST=1
       fi
       ;;
@@ -162,7 +162,7 @@ deploy:
     - kubeless-${TRAVIS_TAG}.yaml
     - kubeless-rbac-${TRAVIS_TAG}.yaml
     - kubeless-openshift-${TRAVIS_TAG}.yaml
-    - kafkazk-${TRAVIS_TAG}.yaml
+    - kafka-zookeeper-${TRAVIS_TAG}.yaml
     - bundles/kubeless_*.zip
   skip_cleanup: true
   overwrite: true

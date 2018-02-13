@@ -5,7 +5,7 @@
 
 `kubeless` is a Kubernetes-native serverless framework that lets you deploy small bits of code without having to worry about the underlying infrastructure plumbing. It leverages Kubernetes resources to provide auto-scaling, API routing, monitoring, troubleshooting and more.
 
-Kubeless stands out as we use a [Custom Resource Definition](https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/) to be able to create functions as custom kubernetes resources. We then run an in-cluster controller that watches these custom resources and launches _runtimes_ on-demand. The controller dynamically injects the functions code into the runtimes and make them available over HTTP or via a PubSub mechanism (optinal).
+Kubeless stands out as we use a [Custom Resource Definition](https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/) to be able to create functions as custom kubernetes resources. We then run an in-cluster controller that watches these custom resources and launches _runtimes_ on-demand. The controller dynamically injects the functions code into the runtimes and make them available over HTTP or via a PubSub mechanism.
 
 Kubeless is purely open-source and non-affiliated to any commercial organization. Chime in at anytime, we would love the help and feedback !
 
@@ -40,7 +40,7 @@ There are several kubeless manifests being shipped for multiple k8s environments
 
 We also provide an optional `kafka-zookeeper` statefulset manifest to give you a handy option to try out the PubSub mechanism.
 
-* [`kafkazk-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/$RELEASE/kafkazk-$RELEASE.yaml)
+* [`kafka-zookeeper-$RELEASE.yaml`](https://github.com/kubeless/kubeless/releases/download/$RELEASE/kafka-zookeeper-$RELEASE.yaml)
 
 For example, this below is a show case of deploying kubeless to a non-RBAC Kubernetes cluster.
 
@@ -159,7 +159,7 @@ Kubeless also supports [ingress](https://kubernetes.io/docs/concepts/services-ne
 
 ### PubSub function
 
-NOTE: Set of Kafka-Zookeeper are required to deploy pubsub function at this moment. Please consider to use our provided manifest to deploy kafka and zookeeper statefulsets, as Kubeless hasn't been configured to integrate with existing kafka/zookeeper system. Kafka statefulset uses a PVC (persistent volume claim). Depending on the configuration of your cluster you may need to provision a PV (Persistent Volume) that matches the PVC or configure dynamic storage provisioning. Otherwise Kafka pod will fail to get scheduled. Please refer to [PV](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) documentation on how to provision storage for PVC.
+We provide several [PubSub runtimes](https://hub.docker.com/r/kubeless/),which has suffix `event-consumer`, specified for languages that help you to quickly deploy your function with PubSub mechanism. The PubSub function will expect to consume input messages from a predefined Kafka topic which means Kafka is required. In Kubeless [release page](https://github.com/kubeless/kubeless/releases), you can find the manifest to quickly deploy a collection of Kafka and Zookeeper statefulsets.
 
 Once deployed, you can verify two statefulsets up and running:
 
@@ -169,7 +169,7 @@ NAME      DESIRED   CURRENT   AGE
 kafka     1         1         40s
 zoo       1         1         42s
 
-$ kubectl -n kubeless get svc 
+$ kubectl -n kubeless get svc
 NAME        TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)             AGE
 broker      ClusterIP   None            <none>        9092/TCP            1m
 kafka       ClusterIP   10.55.250.89    <none>        9092/TCP            1m
