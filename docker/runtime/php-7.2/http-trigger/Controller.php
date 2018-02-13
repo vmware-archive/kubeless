@@ -133,8 +133,8 @@ class Controller
   public function run()
   {
     try {
-      $this->app->get('/', [$this, 'root']);
-      $this->app->get('/healthz', [$this, 'healthz']);
+      $this->app->any('/', [$this, 'root']);
+      $this->app->any('/healthz', [$this, 'healthz']);
       $this->app->run();
     } catch (\Exception $e) {
       ob_end_flush();
