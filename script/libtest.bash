@@ -38,7 +38,7 @@ kubectl() {
 k8s_wait_for_pod_ready() {
     echo_info "Waiting for pod '${@}' to be ready ... "
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
-    
+
     # Retries just in case it is not stable
     local -i successCount=0
     while [ "$successCount" -lt "3" ]; do
@@ -259,7 +259,7 @@ verify_function() {
     until make -sC examples ${make_task}; do
         echo_info "FUNC ${func} failed. Retrying..."
         ((counter=counter+1))
-        if [ "$counter" -ge 3 ]; then
+        if [ "$counter" -ge 5 ]; then
             echo_info "FUNC ${func} failed ${counter} times. Exiting"
             return 1;
         fi
