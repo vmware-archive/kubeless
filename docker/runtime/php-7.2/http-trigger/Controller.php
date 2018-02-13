@@ -6,6 +6,7 @@ use \Psr\Http\Message\ServerRequestInterface as Request;
 use \Psr\Http\Message\ResponseInterface as Response;
 
 require 'vendor/autoload.php';
+$_SERVER['SCRIPT_NAME'] = '/';
 
 class TimeoutFunctionException extends \RuntimeException {}
 
@@ -111,7 +112,7 @@ class Controller
    * @param array $args
    * @return Response $response
    */
-  private function healthz(Request $request, Response $response, array $args)
+  public function healthz(Request $request, Response $response, array $args)
   {
     try {
       $this->validate();
@@ -132,8 +133,8 @@ class Controller
   public function run()
   {
     try {
-      $this->app->any('/', [$this, 'root']);
-      $this->app->any('/healthz', [$this, 'healthz']);
+      $this->app->get('/', [$this, 'root']);
+      $this->app->get('/healthz', [$this, 'healthz']);
       $this->app->run();
     } catch (\Exception $e) {
       ob_end_flush();
