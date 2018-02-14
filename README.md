@@ -80,7 +80,7 @@ You are now ready to create functions.
 You can use the CLI to create a function. Functions have three possible types:
 
 * http triggered (function will expose an HTTP endpoint)
-* pubsub triggered (function will consume event on a specific topic; kafka/zookeeper statefulsets are required)
+* pubsub triggered (function will consume event on a specific topic; a running kafka cluster on your k8s is required)
 * schedule triggered (function will be called on a cron schedule)
 
 ### HTTP function
@@ -159,7 +159,7 @@ Kubeless also supports [ingress](https://kubernetes.io/docs/concepts/services-ne
 
 ### PubSub function
 
-We provide several [PubSub runtimes](https://hub.docker.com/r/kubeless/),which has suffix `event-consumer`, specified for languages that help you to quickly deploy your function with PubSub mechanism. The PubSub function will expect to consume input messages from a predefined Kafka topic which means Kafka is required. In Kubeless [release page](https://github.com/kubeless/kubeless/releases), you can find the manifest to quickly deploy a collection of Kafka and Zookeeper statefulsets.
+We provide several [PubSub runtimes](https://hub.docker.com/r/kubeless/), which has suffix `event-consumer`, specified for languages that help you to quickly deploy your function with PubSub mechanism. The PubSub function will expect to consume input messages from a predefined Kafka topic which means Kafka is required. In Kubeless [release page](https://github.com/kubeless/kubeless/releases), you can find the manifest to quickly deploy a collection of Kafka and Zookeeper statefulsets. If you have a Kafka cluster already running in the same Kubernetes environment, you can also deploy PubSub function with it. Check out [this tutorial](./docs/use-existing-kafka.md) for more details how to do that.
 
 Once deployed, you can verify two statefulsets up and running:
 
