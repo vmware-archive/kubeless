@@ -158,6 +158,7 @@ get-php-deps:
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-php-deps/"
 
 get-php-deps-verify:
+	kubeless function call get-php-deps &> /dev/null
 	kubectl logs -l function=get-php-deps | egrep "Hello"
 
 post-php:

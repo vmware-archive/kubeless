@@ -258,7 +258,6 @@ verify_function() {
     local -i counter=0
     until make -sC examples ${make_task}; do
         echo_info "FUNC ${func} failed. Retrying..."
-        echo_info "$(kubectl get pod -l function=${func})"
         ((counter=counter+1))
         if [ "$counter" -ge 3 ]; then
             echo_info "FUNC ${func} failed ${counter} times. Exiting"
