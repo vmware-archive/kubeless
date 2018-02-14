@@ -73,6 +73,11 @@ export KUBELESS_VERSION=<latest version>
 kubectl create namespace kubeless
 kubectl create -f https://github.com/kubeless/kubeless/releases/download/v$KUBELESS_VERSION/kubeless-rbac-v$KUBELESS_VERSION.yaml
 ```
+Optionally, if you want to go with PubSub function, please also deploy our provided Kafka/Zookeeper system:
+
+```
+kubectl create -f https://github.com/kubeless/kubeless/releases/download/v$KUBELESS_VERSION/kafka-zookeeper-v$KUBELESS_VERSION.yaml
+```
 
 ## Kubeless on GKE 1.8.x
 

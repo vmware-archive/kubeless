@@ -16,6 +16,7 @@
 
 KUBELESS_MANIFEST=kubeless.yaml
 KUBELESS_MANIFEST_RBAC=kubeless-rbac.yaml
+KAFKA_MANIFEST=kafka-zookeeper.yaml
 
 KUBECTL_BIN=$(which kubectl)
 : ${KUBECTL_BIN:?ERROR: missing binary: kubectl}
@@ -38,7 +39,7 @@ kubectl() {
 k8s_wait_for_pod_ready() {
     echo_info "Waiting for pod '${@}' to be ready ... "
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
-    
+
     # Retries just in case it is not stable
     local -i successCount=0
     while [ "$successCount" -lt "3" ]; do
@@ -238,6 +239,11 @@ redeploy_with_rbac_roles() {
     kubeless_recreate $KUBELESS_MANIFEST_RBAC $KUBELESS_MANIFEST_RBAC
     _wait_for_kubeless_controller_ready
     _wait_for_kubeless_controller_logline "controller synced and ready"
+}
+
+deploy_kafka() {
+    echo_info "Deploy kafka ... "
+    kubectl create -f $KAFKA_MANIFEST
 }
 
 deploy_function() {
