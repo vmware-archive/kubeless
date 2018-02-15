@@ -16,22 +16,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func main() {
-	brokers := os.Getenv("BROKER_LIST")
-	if brokers == "" {
-		logrus.Fatalf("The comma separated list of brokers can't be empty. Please set it in env BROKER_LIST.")
-	}
-
-	topics := os.Getenv("TOPICS")
-	if topics == "" {
-		logrus.Fatalf("The comma separated list of topics can't be empty. Please set env TOPICS.")
-	}
-
-	functionID := os.Getenv("FUNCTION_ID")
-	if functionID == "" {
-		logrus.Fatalf("Function_ID is string concatenation of `funcName+namespace+funcPort`, and it can't be empty. Please set env FUNCTION_ID")
-	}
-
+func CreateKafkaConsumer(brokers, topics []string, funcName, ns, funcPort string) {
 	// Init config
 	config := cluster.NewConfig()
 
@@ -42,6 +27,7 @@ func main() {
 	// Init consumer, consume errors & messages
 	// consumer is grouped and labeled by functionID to receive load-balanced messages
 	// More details: https://kafka.apache.org/documentation/#intro_consumers
+	functionID := funcName + "+" + ns + "+" + funcPort
 	consumer, err := cluster.NewConsumer(strings.Split(brokers, ","), functionID, strings.Split(topics, ","), config)
 	if err != nil {
 		logrus.Fatalf("Failed to start consumer: %v", err)
@@ -106,6 +92,35 @@ func sendMessage(clientset kubernetes.Interface, funcID, msg string) error {
 		return err
 	}
 
-	logrus.Infof("Message has sent successfully")
+	logrus.Infof("Message has sent to function %s successfully", s[0])
 	return nil
+}
+
+func main() {
+	brokers := os.Getenv("BROKER_LIST")
+	if brokers == "" {
+		logrus.Fatalf("The comma separated list of brokers can't be empty. Please set it in env BROKER_LIST.")
+	}
+
+	topics := os.Getenv("TOPICS")
+	if topics == "" {
+		logrus.Fatalf("The comma separated list of topics can't be empty. Please set env TOPICS.")
+	}
+
+	funcName := os.Getenv("FUNCTION_NAME")
+	if funcName == "" {
+		logrus.Fatalf("FuncName can't be empty. Please set env FUNCTION_NAME")
+	}
+
+	ns := os.Getenv("FUNCTION_NAMESPACE")
+	if ns == "" {
+		ns = "default"
+	}
+
+	funcPort := os.Getenv("FUNCTION_PORT")
+	if funcPort == "" {
+		funcPort = "8080"
+	}
+
+	CreateKafkaConsumer(brokers, topics, funcName, ns, funcPort)
 }
