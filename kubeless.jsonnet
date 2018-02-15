@@ -46,13 +46,36 @@ local controllerDeployment =
   {spec+: {template+: {spec+: {serviceAccountName: controllerAccount.metadata.name}}}} +
   {spec+: {template+: {metadata: {labels: kubelessLabel}}}};
 
-local crd = {
-  apiVersion: "apiextensions.k8s.io/v1beta1",
-  kind: "CustomResourceDefinition",
-  metadata: objectMeta.name("functions.kubeless.io"),
-  spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "functions", singular: "function", kind: "Function"}},
-  description: "Kubernetes Native Serverless Framework",
-};
+local crd = [
+  {
+    apiVersion: "apiextensions.k8s.io/v1beta1",
+    kind: "CustomResourceDefinition",
+    metadata: objectMeta.name("functions.kubeless.io"),
+    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "functions", singular: "function", kind: "Function"}},
+    description: "Kubernetes Native Serverless Framework",
+  },
+  {
+    apiVersion: "apiextensions.k8s.io/v1beta1",
+    kind: "CustomResourceDefinition",
+    metadata: objectMeta.name("kafkatrigger.kubeless.io"),
+    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "kafkatriggers", singular: "kafkatrigger", kind: "KafkaTrigger", listKind: "KafkaTriggers"}},
+    description: "CRD object for Kafka trigger type",  
+  },
+  {
+    apiVersion: "apiextensions.k8s.io/v1beta1",
+    kind: "CustomResourceDefinition",
+    metadata: objectMeta.name("httptrigger.kubeless.io"),
+    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "httptriggers", singular: "httptrigger", kind: "HttpTrigger", listKind: "HttpTriggers"}},
+    description: "CRD object for HTTP trigger type",  
+  },
+  {
+    apiVersion: "apiextensions.k8s.io/v1beta1",
+    kind: "CustomResourceDefinition",
+    metadata: objectMeta.name("crontrigger.kubeless.io"),
+    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "crontriggers", singular: "crontrigger", kind: "CronTrigger", listKind: "CronTriggers"}},
+    description: "CRD object for HTTP trigger type",  
+  }    
+];
 
 local deploymentConfig = '{}';
 
