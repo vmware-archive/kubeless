@@ -129,7 +129,7 @@ To do so, run the commands:
 ````
 docker login -u=<dockerhubuser> -e=<e-mail>
 docker tag kubeless-controller <your-docker-hub-repo>/kubeless-test:latest
-docker push <your-docker-hub-repo>/MyKubelessController:latest
+docker push <your-docker-hub-repo>/kubeless-test:latest
 ````
 In order to upload your kubeless controller image to Kubernetes, you should
 use kubectl as follows, informing the yaml file with the required descriptions

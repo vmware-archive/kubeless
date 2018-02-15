@@ -84,6 +84,19 @@ func AddFakeConfig(clientset *fake.Clientset) {
 				},
 			},
 		},
+	}, {ID: "php",
+		DepName:        "composer.json",
+		FileNameSuffix: ".php",
+		Versions: []RuntimeVersion{
+			{
+				Name:      "php7.2",
+				Version:   "7.2",
+				InitImage: "composer:1.6",
+				ImagePullSecrets: []ImageSecret{
+					{ImageSecret: "p1"}, {ImageSecret: "p2"},
+				},
+			},
+		},
 	}}
 
 	out, err := yaml.Marshal(runtimeImages)

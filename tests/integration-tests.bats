@@ -30,11 +30,15 @@ load ../script/libtest
   deploy_function get-ruby
   deploy_function get-ruby-custom-port
   deploy_function get-ruby-deps
+  deploy_function get-php
+  deploy_function get-php-deps
+  deploy_function timeout-php
   deploy_function get-python-metadata
   deploy_function post-python
   deploy_function post-python-custom-port
   deploy_function post-nodejs
   deploy_function post-ruby
+  deploy_function post-php
   deploy_function custom-get-python
 }
 @test "Test function: get-python" {
@@ -95,6 +99,24 @@ load ../script/libtest
   verify_function get-ruby-deps
   kubeless_function_delete get-ruby-deps
 }
+@test "Test function: get-php" {
+  verify_function get-php
+}
+@test "Test function update: get-php" {
+  test_kubeless_function_update get-php
+  kubeless_function_delete get-php
+}
+@test "Test function: get-php-deps" {
+  verify_function get-php-deps
+}
+@test "Test function update: get-php-deps" {
+  test_kubeless_function_update get-php-deps
+  kubeless_function_delete get-php-deps
+}
+@test "Test function: timeout-php" {
+  verify_function timeout-php
+  kubeless_function_delete timeout-php
+}
 @test "Test function: get-dotnetcore" {
   skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"
   test_kubeless_function get-dotnetcore
@@ -120,6 +142,10 @@ load ../script/libtest
 @test "Test function: post-ruby" {
   verify_function post-ruby
   kubeless_function_delete post-ruby
+}
+@test "Test function: post-php" {
+  verify_function post-php
+  kubeless_function_delete post-php
 }
 @test "Test function: post-dotnetcore" {
   skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"

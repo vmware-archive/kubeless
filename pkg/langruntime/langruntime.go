@@ -225,6 +225,9 @@ func (l *Langruntimes) GetBuildContainer(runtime string, env []v1.EnvVar, instal
 			" && npm install --prefix=" + installVolume.MountPath
 	case strings.Contains(runtime, "ruby"):
 		command = "bundle install --gemfile=" + depsFile + " --path=" + installVolume.MountPath
+
+	case strings.Contains(runtime, "php"):
+		command = "composer install -d " + installVolume.MountPath
 	}
 
 	return v1.Container{
