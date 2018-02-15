@@ -101,17 +101,17 @@ load ../script/libtest
 }
 @test "Test function: get-php" {
   verify_function get-php
-  kubeless_function_delete get-php
 }
 @test "Test function update: get-php" {
   test_kubeless_function_update get-php
+  kubeless_function_delete get-php
 }
 @test "Test function: get-php-deps" {
   verify_function get-php-deps
-  kubeless_function_delete get-php-deps
 }
 @test "Test function update: get-php-deps" {
   test_kubeless_function_update get-php-deps
+  kubeless_function_delete get-php-deps
 }
 @test "Test function: timeout-php" {
   verify_function timeout-php
