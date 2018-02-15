@@ -150,6 +150,16 @@ get-php:
 	kubeless function deploy get-php --trigger-http --runtime php7.2 --handler helloget.foo --from-file php/helloget.php
 	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-php/"
 
+get-php-update:
+	$(eval TMPDIR := $(shell mktemp -d))
+	printf '<?php\n function foo() { echo "hello world updated"; } \n' > $(TMPDIR)/hello-updated.php
+	kubeless function update get-php --from-file $(TMPDIR)/hello-updated.php
+	rm -rf $(TMPDIR)
+	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-php/"
+
+get-php-update-verify:
+	kubeless function call get-php | egrep "hello.world.updated"
+
 get-php-verify:
 	kubeless function call get-php | egrep "hello world"
 
@@ -160,6 +170,15 @@ get-php-deps:
 get-php-deps-verify:
 	kubeless function call get-php-deps &> /dev/null
 	kubectl logs -l function=get-php-deps | egrep "Hello"
+
+get-php-deps-update:
+	$(eval TMPDIR := $(shell mktemp -d))
+	sed "s/1\.23/1\.20/" php/composer.json > $(TMPDIR)/composer.json
+	kubeless function update get-php-deps --dependencies $(TMPDIR)/composer.json
+
+get-php-deps-update-verify:
+	$(eval pod := $(shell kubectl get pod -l function=get-php-deps -o go-template -o custom-columns=:metadata.name --no-headers=true))
+	kubectl exec -it $(pod) cat /kubeless/composer.json | egrep "1.20"
 
 post-php:
 	kubeless function deploy post-php --trigger-http --runtime php7.2 --handler hellowithdata.foo --from-file php/hellowithdata.php
