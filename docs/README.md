@@ -7,6 +7,7 @@
 - [Running on azure container services](kubeless-on-azure-container-services.md)
 - [Monitoring](monitoring.md)
 - [Autoscaling](autoscaling.md)
+- [Use existing Kafka cluster](use-existing-kafka.md)
 
 ## Development
 
