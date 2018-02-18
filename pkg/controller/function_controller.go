@@ -23,7 +23,6 @@ import (
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/sirupsen/logrus"
-	"k8s.io/api/autoscaling/v2beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -48,8 +47,8 @@ const (
 	funcAPI    = "kubeless.io"
 )
 
-// Controller object
-type Controller struct {
+// FunctionController object
+type FunctionController struct {
 	logger         *logrus.Entry
 	clientset      kubernetes.Interface
 	kubelessclient versioned.Interface
@@ -67,8 +66,8 @@ type Config struct {
 	FunctionClient versioned.Interface
 }
 
-// New initializes a controller object
-func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Controller {
+// NewFunctionController initializes a controller object
+func NewFunctionController(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *FunctionController {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 	informer := kv1beta1.NewFunctionInformer(cfg.FunctionClient, corev1.NamespaceAll, 0, cache.Indexers{})
@@ -110,7 +109,7 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 	var lr = langruntime.New(config)
 	lr.ReadConfigMap()
 
-	return &Controller{
+	return &FunctionController{
 		logger:         logrus.WithField("pkg", "controller"),
 		clientset:      cfg.KubeCli,
 		smclient:       smclient,
@@ -123,11 +122,11 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 }
 
 // Run starts the kubeless controller
-func (c *Controller) Run(stopCh <-chan struct{}) {
+func (c *FunctionController) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
 
-	c.logger.Info("Starting kubeless controller")
+	c.logger.Info("Starting kubeless Functions controller")
 
 	go c.informer.Run(stopCh)
 
@@ -136,7 +135,7 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 		return
 	}
 
-	c.logger.Info("Kubeless controller synced and ready")
+	c.logger.Info("Kubeless Functions controller synced and ready")
 
 	// run one round of GC at startup to detect orphaned objects from the last time
 	c.garbageCollect()
@@ -145,22 +144,22 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 }
 
 // HasSynced is required for the cache.Controller interface.
-func (c *Controller) HasSynced() bool {
+func (c *FunctionController) HasSynced() bool {
 	return c.informer.HasSynced()
 }
 
 // LastSyncResourceVersion is required for the cache.Controller interface.
-func (c *Controller) LastSyncResourceVersion() string {
+func (c *FunctionController) LastSyncResourceVersion() string {
 	return c.informer.LastSyncResourceVersion()
 }
 
-func (c *Controller) runWorker() {
+func (c *FunctionController) runWorker() {
 	for c.processNextItem() {
 		// continue looping
 	}
 }
 
-func (c *Controller) processNextItem() bool {
+func (c *FunctionController) processNextItem() bool {
 	key, quit := c.queue.Get()
 	if quit {
 		return false
@@ -184,7 +183,7 @@ func (c *Controller) processNextItem() bool {
 	return true
 }
 
-func (c *Controller) getResouceGroupVersion(target string) (string, error) {
+func (c *FunctionController) getResouceGroupVersion(target string) (string, error) {
 	resources, err := c.clientset.Discovery().ServerResources()
 	if err != nil {
 		return "", err
@@ -205,7 +204,7 @@ func (c *Controller) getResouceGroupVersion(target string) (string, error) {
 }
 
 // ensureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
-func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
+func (c *FunctionController) ensureK8sResources(funcObj *kubelessApi.Function) error {
 	if len(funcObj.ObjectMeta.Labels) == 0 {
 		funcObj.ObjectMeta.Labels = make(map[string]string)
 	}
@@ -224,63 +223,10 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 			return err
 		}
 	}
-
-	or, err := utils.GetOwnerReference(funcObj)
-	if err != nil {
-		return err
-	}
-
-	err = utils.EnsureFuncConfigMap(c.clientset, funcObj, or, c.langRuntime)
-	if err != nil {
-		return err
-	}
-
-	err = utils.EnsureFuncService(c.clientset, funcObj, or)
-	if err != nil {
-		return err
-	}
-
-	err = utils.EnsureFuncDeployment(c.clientset, funcObj, or, c.langRuntime)
-	if err != nil {
-		return err
-	}
-
-	if funcObj.Spec.Type == "Scheduled" {
-		restIface := c.clientset.BatchV2alpha1().RESTClient()
-		groupVersion, err := c.getResouceGroupVersion("cronjobs")
-		if err != nil {
-			return err
-		}
-		err = utils.EnsureFuncCronJob(restIface, funcObj, or, groupVersion)
-		if err != nil {
-			return err
-		}
-	}
-
-	if funcObj.Spec.HorizontalPodAutoscaler.Name != "" && funcObj.Spec.HorizontalPodAutoscaler.Spec.ScaleTargetRef.Name != "" {
-		funcObj.Spec.HorizontalPodAutoscaler.OwnerReferences = or
-		if funcObj.Spec.HorizontalPodAutoscaler.Spec.Metrics[0].Type == v2beta1.ObjectMetricSourceType {
-			// A service monitor is needed when the metric is an object
-			err = utils.CreateServiceMonitor(*c.smclient, funcObj, funcObj.ObjectMeta.Namespace, or)
-			if err != nil {
-				return err
-			}
-		}
-		err = utils.CreateAutoscale(c.clientset, funcObj.Spec.HorizontalPodAutoscaler)
-		if err != nil {
-			return err
-		}
-	} else {
-		// HorizontalPodAutoscaler doesn't exists, try to delete if it already existed
-		err = c.deleteAutoscale(funcObj.ObjectMeta.Namespace, funcObj.ObjectMeta.Name)
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return err
-		}
-	}
 	return nil
 }
 
-func (c *Controller) deleteAutoscale(ns, name string) error {
+func (c *FunctionController) deleteAutoscale(ns, name string) error {
 	if c.smclient != nil {
 		// Delete Service monitor if the client is available
 		err := utils.DeleteServiceMonitor(*c.smclient, name, ns)
@@ -297,7 +243,7 @@ func (c *Controller) deleteAutoscale(ns, name string) error {
 }
 
 // deleteK8sResources removes k8s objects of the function
-func (c *Controller) deleteK8sResources(ns, name string) error {
+func (c *FunctionController) deleteK8sResources(ns, name string) error {
 	//check if func is scheduled or not
 	_, err := c.clientset.BatchV2alpha1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", name), metav1.GetOptions{})
 	if err == nil {
@@ -334,7 +280,7 @@ func (c *Controller) deleteK8sResources(ns, name string) error {
 	return nil
 }
 
-func (c *Controller) processItem(key string) error {
+func (c *FunctionController) processItem(key string) error {
 	c.logger.Infof("Processing change to Function %s", key)
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
@@ -369,7 +315,7 @@ func (c *Controller) processItem(key string) error {
 	return nil
 }
 
-func (c *Controller) garbageCollect() error {
+func (c *FunctionController) garbageCollect() error {
 	err := c.collectServices()
 	if err != nil {
 		return err
@@ -385,7 +331,7 @@ func (c *Controller) garbageCollect() error {
 	return nil
 }
 
-func (c *Controller) collectServices() error {
+func (c *FunctionController) collectServices() error {
 	srvs, err := c.clientset.CoreV1().Services(corev1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -410,7 +356,7 @@ func (c *Controller) collectServices() error {
 	return nil
 }
 
-func (c *Controller) collectDeployment() error {
+func (c *FunctionController) collectDeployment() error {
 	ds, err := c.clientset.AppsV1beta1().Deployments(corev1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -431,7 +377,7 @@ func (c *Controller) collectDeployment() error {
 	return nil
 }
 
-func (c *Controller) collectConfigMap() error {
+func (c *FunctionController) collectConfigMap() error {
 	cm, err := c.clientset.CoreV1().ConfigMaps(corev1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err

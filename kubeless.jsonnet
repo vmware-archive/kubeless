@@ -57,22 +57,22 @@ local crd = [
   {
     apiVersion: "apiextensions.k8s.io/v1beta1",
     kind: "CustomResourceDefinition",
-    metadata: objectMeta.name("kafkatrigger.kubeless.io"),
-    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "kafkatriggers", singular: "kafkatrigger", kind: "KafkaTrigger", listKind: "KafkaTriggers"}},
+    metadata: objectMeta.name("kafkatriggers.kubeless.io"),
+    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "kafkatriggers", singular: "kafkatrigger", kind: "KafkaTrigger"}},
     description: "CRD object for Kafka trigger type",  
   },
   {
     apiVersion: "apiextensions.k8s.io/v1beta1",
     kind: "CustomResourceDefinition",
-    metadata: objectMeta.name("httptrigger.kubeless.io"),
-    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "httptriggers", singular: "httptrigger", kind: "HttpTrigger", listKind: "HttpTriggers"}},
+    metadata: objectMeta.name("httptriggers.kubeless.io"),
+    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "httptriggers", singular: "httptrigger", kind: "HTTPTrigger"}},
     description: "CRD object for HTTP trigger type",  
   },
   {
     apiVersion: "apiextensions.k8s.io/v1beta1",
     kind: "CustomResourceDefinition",
-    metadata: objectMeta.name("crontrigger.kubeless.io"),
-    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "crontriggers", singular: "crontrigger", kind: "CronTrigger", listKind: "CronTriggers"}},
+    metadata: objectMeta.name("cronjobtriggers.kubeless.io"),
+    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "cronjobtriggers", singular: "cronjobtrigger", kind: "CronJobTrigger"}},
     description: "CRD object for HTTP trigger type",  
   }    
 ];

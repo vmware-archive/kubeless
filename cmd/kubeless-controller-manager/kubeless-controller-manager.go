@@ -47,9 +47,21 @@ var rootCmd = &cobra.Command{
 			logrus.Fatalf("Cannot get kubeless client: %v", err)
 		}
 
-		cfg := controller.Config{
+		functionCfg := controller.Config {
 			KubeCli:        utils.GetClient(),
 			FunctionClient: kubelessClient,
+		}
+		httpTriggerCfg := controller.HTTPTriggerConfig {
+			KubeCli:       utils.GetClient(),
+			TriggerClient: kubelessClient,
+		}
+		kafkaTriggerCfg := controller.KafkaTriggerConfig {
+			KubeCli:       utils.GetClient(),
+			TriggerClient: kubelessClient,
+		}
+		cronJobTriggerCfg := controller.CronJobTriggerConfig{
+			KubeCli:       utils.GetClient(),
+			TriggerClient: kubelessClient,
 		}
 
 		restCfg, err := rest.InClusterConfig()
@@ -62,11 +74,18 @@ var rootCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		c := controller.New(cfg, smclient)
+		functionController := controller.NewFunctionController(functionCfg, smclient)
+		httpTriggerController := controller.NewHTTPTriggerController(httpTriggerCfg, smclient)
+		kafkaTriggerController := controller.NewKafkaTriggerController(kafkaTriggerCfg, smclient)
+		cronJobTriggerController := controller.NewCronJobTriggerController(cronJobTriggerCfg, smclient)
+						
 		stopCh := make(chan struct{})
 		defer close(stopCh)
 
-		go c.Run(stopCh)
+		go functionController.Run(stopCh)
+		go httpTriggerController.Run(stopCh)
+		go kafkaTriggerController.Run(stopCh)
+		go cronJobTriggerController.Run(stopCh)
 
 		sigterm := make(chan os.Signal, 1)
 		signal.Notify(sigterm, syscall.SIGTERM)

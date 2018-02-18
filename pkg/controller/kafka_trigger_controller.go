@@ -22,7 +22,6 @@ import (
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/sirupsen/logrus"
-	"k8s.io/api/autoscaling/v2beta1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,28 +43,27 @@ const (
 	objAPI            = "kubeless.io"
 )
 
-// TriggerController object
-type TriggerController struct {
+// KafkaTriggerController object
+type KafkaTriggerController struct {
 	logger         *logrus.Entry
 	clientset      kubernetes.Interface
 	kubelessclient versioned.Interface
 	smclient       *monitoringv1alpha1.MonitoringV1alpha1Client
-	Triggers       map[string]*kubelessApi.Trigger
 	queue          workqueue.RateLimitingInterface
 	informer       cache.SharedIndexInformer
 }
 
-// TriggerConfig contains k8s client of a controller
-type TriggerConfig struct {
+// KafkaTriggerConfig contains k8s client of a controller
+type KafkaTriggerConfig struct {
 	KubeCli       kubernetes.Interface
 	TriggerClient versioned.Interface
 }
 
-// NewTriggerController initializes a controller object
-func NewTriggerController(cfg TriggerConfig, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *TriggerController {
+// NewKafkaTriggerController initializes a controller object
+func NewKafkaTriggerController(cfg KafkaTriggerConfig, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *KafkaTriggerController {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
-	informer := kv1beta1.NewTriggerInformer(cfg.TriggerClient, corev1.NamespaceAll, 0, cache.Indexers{})
+	informer := kv1beta1.NewKafkaTriggerInformer(cfg.TriggerClient, corev1.NamespaceAll, 0, cache.Indexers{})
 
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -88,7 +86,7 @@ func NewTriggerController(cfg TriggerConfig, smclient *monitoringv1alpha1.Monito
 		},
 	})
 
-	return &TriggerController{
+	return &KafkaTriggerController{
 		logger:         logrus.WithField("controller", "trigger-controller"),
 		clientset:      cfg.KubeCli,
 		smclient:       smclient,
@@ -99,11 +97,11 @@ func NewTriggerController(cfg TriggerConfig, smclient *monitoringv1alpha1.Monito
 }
 
 // Run starts the Trigger controller
-func (c *TriggerController) Run(stopCh <-chan struct{}) {
+func (c *KafkaTriggerController) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
 
-	c.logger.Info("Starting Trigger controller")
+	c.logger.Info("Starting Kafka Trigger controller")
 
 	go c.informer.Run(stopCh)
 
@@ -112,7 +110,7 @@ func (c *TriggerController) Run(stopCh <-chan struct{}) {
 		return
 	}
 
-	c.logger.Info("Trigger controller synced and ready")
+	c.logger.Info("Kafka Trigger controller synced and ready")
 
 	// run one round of GC at startup to detect orphaned objects from the last time
 	c.garbageCollect()
@@ -121,22 +119,22 @@ func (c *TriggerController) Run(stopCh <-chan struct{}) {
 }
 
 // HasSynced is required for the cache.Controller interface.
-func (c *TriggerController) HasSynced() bool {
+func (c *KafkaTriggerController) HasSynced() bool {
 	return c.informer.HasSynced()
 }
 
 // LastSyncResourceVersion is required for the cache.Controller interface.
-func (c *TriggerController) LastSyncResourceVersion() string {
+func (c *KafkaTriggerController) LastSyncResourceVersion() string {
 	return c.informer.LastSyncResourceVersion()
 }
 
-func (c *TriggerController) runWorker() {
+func (c *KafkaTriggerController) runWorker() {
 	for c.processNextItem() {
 		// continue looping
 	}
 }
 
-func (c *TriggerController) processNextItem() bool {
+func (c *KafkaTriggerController) processNextItem() bool {
 	key, quit := c.queue.Get()
 	if quit {
 		return false
@@ -160,7 +158,7 @@ func (c *TriggerController) processNextItem() bool {
 	return true
 }
 
-func (c *TriggerController) processItem(key string) error {
+func (c *KafkaTriggerController) processItem(key string) error {
 	c.logger.Infof("Processing change to Trigger %s", key)
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
@@ -185,87 +183,12 @@ func (c *TriggerController) processItem(key string) error {
 		return nil
 	}
 
-	triggerObj := obj.(*kubelessApi.Trigger)
-
-	funcObj, err := utils.GetFunction(c.kubelessclient, triggerObj.Spec.FunctionName, ns)
-	if err != nil {
-		c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", triggerObj.Spec.FunctionName, ns, err)
-		return err
-	}
-
-	err = c.ensureTriggerResources(triggerObj, &funcObj)
-	if err != nil {
-		c.logger.Errorf("Function can not be created/updated: %v", err)
-		return err
-	}
-
+	triggerObj := obj.(*kubelessApi.KafkaTrigger)
 	c.logger.Infof("Processed change to Trigger: %s Namespace: %s", triggerObj.ObjectMeta.Name, ns)
 	return nil
 }
 
-// ensureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
-func (c *TriggerController) ensureTriggerResources(triggerObj *kubelessApi.Trigger, funcObj *kubelessApi.Function) error {
-	if len(funcObj.ObjectMeta.Labels) == 0 {
-		funcObj.ObjectMeta.Labels = make(map[string]string)
-	}
-	funcObj.ObjectMeta.Labels["function"] = funcObj.ObjectMeta.Name
-
-	or, err := utils.GetOwnerReference(triggerObj)
-	if err != nil {
-		return err
-	}
-
-	err = utils.EnsureFuncConfigMap(c.clientset, funcObj, or)
-	if err != nil {
-		return err
-	}
-
-	err = utils.EnsureFuncService(c.clientset, triggerObj, or)
-	if err != nil {
-		return err
-	}
-
-	err = utils.EnsureFuncDeployment(c.clientset, triggerObj, funcObj, or)
-	if err != nil {
-		return err
-	}
-
-	if funcObj.Spec.Type == "Scheduled" {
-		restIface := c.clientset.BatchV2alpha1().RESTClient()
-		groupVersion, err := c.getResouceGroupVersion("cronjobs")
-		if err != nil {
-			return err
-		}
-		err = utils.EnsureFuncCronJob(restIface, funcObj, or, groupVersion)
-		if err != nil {
-			return err
-		}
-	}
-
-	if funcObj.Spec.HorizontalPodAutoscaler.Name != "" && funcObj.Spec.HorizontalPodAutoscaler.Spec.ScaleTargetRef.Name != "" {
-		funcObj.Spec.HorizontalPodAutoscaler.OwnerReferences = or
-		if funcObj.Spec.HorizontalPodAutoscaler.Spec.Metrics[0].Type == v2beta1.ObjectMetricSourceType {
-			// A service monitor is needed when the metric is an object
-			err = utils.CreateServiceMonitor(*c.smclient, funcObj, funcObj.ObjectMeta.Namespace, or)
-			if err != nil {
-				return err
-			}
-		}
-		err = utils.CreateAutoscale(c.clientset, funcObj.Spec.HorizontalPodAutoscaler)
-		if err != nil {
-			return err
-		}
-	} else {
-		// HorizontalPodAutoscaler doesn't exists, try to delete if it already existed
-		err = c.deleteAutoscale(funcObj.ObjectMeta.Namespace, funcObj.ObjectMeta.Name)
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c *TriggerController) getResouceGroupVersion(target string) (string, error) {
+func (c *KafkaTriggerController) getResouceGroupVersion(target string) (string, error) {
 	resources, err := c.clientset.Discovery().ServerResources()
 	if err != nil {
 		return "", err
@@ -285,7 +208,7 @@ func (c *TriggerController) getResouceGroupVersion(target string) (string, error
 	return groupVersion, nil
 }
 
-func (c *TriggerController) deleteAutoscale(ns, name string) error {
+func (c *KafkaTriggerController) deleteAutoscale(ns, name string) error {
 	if c.smclient != nil {
 		// Delete Service monitor if the client is available
 		err := utils.DeleteServiceMonitor(*c.smclient, name, ns)
@@ -302,7 +225,7 @@ func (c *TriggerController) deleteAutoscale(ns, name string) error {
 }
 
 // deleteK8sResources removes k8s objects of the function
-func (c *TriggerController) deleteK8sResources(ns, name string) error {
+func (c *KafkaTriggerController) deleteK8sResources(ns, name string) error {
 	//check if func is scheduled or not
 	_, err := c.clientset.BatchV2alpha1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", name), metav1.GetOptions{})
 	if err == nil {
@@ -339,7 +262,7 @@ func (c *TriggerController) deleteK8sResources(ns, name string) error {
 	return nil
 }
 
-func (c *TriggerController) garbageCollect() error {
+func (c *KafkaTriggerController) garbageCollect() error {
 	err := c.collectServices()
 	if err != nil {
 		return err
@@ -355,7 +278,7 @@ func (c *TriggerController) garbageCollect() error {
 	return nil
 }
 
-func (c *TriggerController) collectServices() error {
+func (c *KafkaTriggerController) collectServices() error {
 	srvs, err := c.clientset.CoreV1().Services(corev1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -380,7 +303,7 @@ func (c *TriggerController) collectServices() error {
 	return nil
 }
 
-func (c *TriggerController) collectDeployment() error {
+func (c *KafkaTriggerController) collectDeployment() error {
 	ds, err := c.clientset.AppsV1beta1().Deployments(corev1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -401,7 +324,7 @@ func (c *TriggerController) collectDeployment() error {
 	return nil
 }
 
-func (c *TriggerController) collectConfigMap() error {
+func (c *KafkaTriggerController) collectConfigMap() error {
 	cm, err := c.clientset.CoreV1().ConfigMaps(corev1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return err
