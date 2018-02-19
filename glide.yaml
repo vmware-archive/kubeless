@@ -1,6 +1,7 @@
 package: github.com/kubeless/kubeless
 import:
 - package: github.com/sirupsen/logrus
+  version: 768a92a02685ee7535069fc1581341b41bab9b72
 - package: github.com/spf13/cobra
   version: v0.0.1
 - package: k8s.io/apimachinery
@@ -27,3 +28,7 @@ import:
   version: 7ddbeae9ae08c6a06a59597f0c9edbc5ff2444ce
 - package: github.com/imdario/mergo
   version: v0.3.2
+- package: github.com/Shopify/sarama
+  version: v1.14.0
+- package: github.com/bsm/sarama-cluster
+  version: v2.1.12
