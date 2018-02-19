@@ -145,7 +145,7 @@ artifacts/
 # Kubeless specific
 bats/
 bundles/
-docker/controller/kubeless-controller
+docker/controller-manager/kubeless-controller-manager
 ksonnet-lib/
 kubeless-openshift.yaml
 kubeless-rbac.yaml

@@ -24,8 +24,6 @@ import (
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -33,7 +31,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/ghodss/yaml"
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	kv1beta1 "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
@@ -137,9 +134,6 @@ func (c *FunctionController) Run(stopCh <-chan struct{}) {
 
 	c.logger.Info("Kubeless Functions controller synced and ready")
 
-	// run one round of GC at startup to detect orphaned objects from the last time
-	c.garbageCollect()
-
 	wait.Until(c.runWorker, time.Second, stopCh)
 }
 
@@ -183,107 +177,10 @@ func (c *FunctionController) processNextItem() bool {
 	return true
 }
 
-func (c *FunctionController) getResouceGroupVersion(target string) (string, error) {
-	resources, err := c.clientset.Discovery().ServerResources()
-	if err != nil {
-		return "", err
-	}
-	groupVersion := ""
-	for _, resource := range resources {
-		for _, apiResource := range resource.APIResources {
-			if apiResource.Name == target {
-				groupVersion = resource.GroupVersion
-				break
-			}
-		}
-	}
-	if groupVersion == "" {
-		return "", fmt.Errorf("Resource %s not found in any group", target)
-	}
-	return groupVersion, nil
-}
-
-// ensureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
-func (c *FunctionController) ensureK8sResources(funcObj *kubelessApi.Function) error {
-	if len(funcObj.ObjectMeta.Labels) == 0 {
-		funcObj.ObjectMeta.Labels = make(map[string]string)
-	}
-	funcObj.ObjectMeta.Labels["function"] = funcObj.ObjectMeta.Name
-
-	deployment := v1beta1.Deployment{}
-	if deploymentConfigData, ok := c.config.Data["deployment"]; ok {
-		err := yaml.Unmarshal([]byte(deploymentConfigData), &deployment)
-		if err != nil {
-			logrus.Errorf("Error parsing Deployment data in ConfigMap kubeless-function-deployment-config: %v", err)
-			return err
-		}
-		err = utils.MergeDeployments(&funcObj.Spec.Deployment, &deployment)
-		if err != nil {
-			logrus.Errorf(" Error while merging function.Spec.Deployment and Deployment from ConfigMap: %v", err)
-			return err
-		}
-	}
-	return nil
-}
-
-func (c *FunctionController) deleteAutoscale(ns, name string) error {
-	if c.smclient != nil {
-		// Delete Service monitor if the client is available
-		err := utils.DeleteServiceMonitor(*c.smclient, name, ns)
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return err
-		}
-	}
-	// delete autoscale
-	err := utils.DeleteAutoscale(c.clientset, name, ns)
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-	return nil
-}
-
-// deleteK8sResources removes k8s objects of the function
-func (c *FunctionController) deleteK8sResources(ns, name string) error {
-	//check if func is scheduled or not
-	_, err := c.clientset.BatchV2alpha1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", name), metav1.GetOptions{})
-	if err == nil {
-		err = c.clientset.BatchV2alpha1().CronJobs(ns).Delete(fmt.Sprintf("trigger-%s", name), &metav1.DeleteOptions{})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return err
-		}
-	}
-
-	// delete deployment
-	deletePolicy := metav1.DeletePropagationBackground
-	err = c.clientset.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-	// delete svc
-	err = c.clientset.Core().Services(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-
-	// delete cm
-	err = c.clientset.Core().ConfigMaps(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-
-	// delete service monitor
-	err = c.deleteAutoscale(ns, name)
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-
-	return nil
-}
-
 func (c *FunctionController) processItem(key string) error {
 	c.logger.Infof("Processing change to Function %s", key)
 
-	ns, name, err := cache.SplitMetaNamespaceKey(key)
+	_, _, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return err
 	}
@@ -294,106 +191,15 @@ func (c *FunctionController) processItem(key string) error {
 	}
 
 	if !exists {
-		err := c.deleteK8sResources(ns, name)
-		if err != nil {
-			c.logger.Errorf("Can't delete function: %v", err)
-			return err
-		}
 		c.logger.Infof("Deleted Function %s", key)
 		return nil
 	}
 
 	funcObj := obj.(*kubelessApi.Function)
-
-	err = c.ensureK8sResources(funcObj)
+	err = utils.UpdateFunctionDeployments(funcObj)
 	if err != nil {
-		c.logger.Errorf("Function can not be created/updated: %v", err)
-		return err
+		return fmt.Errorf("Error updating deployments for the function with key %s due to %v", key, err)
 	}
-
 	c.logger.Infof("Updated Function %s", key)
-	return nil
-}
-
-func (c *FunctionController) garbageCollect() error {
-	err := c.collectServices()
-	if err != nil {
-		return err
-	}
-	err = c.collectDeployment()
-	if err != nil {
-		return err
-	}
-	err = c.collectConfigMap()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *FunctionController) collectServices() error {
-	srvs, err := c.clientset.CoreV1().Services(corev1.NamespaceAll).List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, srv := range srvs.Items {
-		if len(srv.OwnerReferences) == 0 {
-			continue
-		}
-		// Include the derived key from existing svc owner reference to the workqueue
-		// This will make sure the controller can detect the non-existing function and
-		// react to delete its belonging objects
-		// Assumption: a service has ownerref Kind = "Function" and APIVersion = "k8s.io" is assumed
-		// to be created by kubeless controller
-		if (srv.OwnerReferences[0].Kind == funcKind) && (srv.OwnerReferences[0].APIVersion == funcAPI) {
-			//service and its function are deployed in the same namespace
-			key := fmt.Sprintf("%s/%s", srv.Namespace, srv.OwnerReferences[0].Name)
-			c.queue.Add(key)
-		}
-	}
-
-	return nil
-}
-
-func (c *FunctionController) collectDeployment() error {
-	ds, err := c.clientset.AppsV1beta1().Deployments(corev1.NamespaceAll).List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, d := range ds.Items {
-		if len(d.OwnerReferences) == 0 {
-			continue
-		}
-		// Assumption: a deployment has ownerref Kind = "Function" and APIVersion = "k8s.io" is assumed
-		// to be created by kubeless controller
-		if (d.OwnerReferences[0].Kind == funcKind) && (d.OwnerReferences[0].APIVersion == funcAPI) {
-			key := fmt.Sprintf("%s/%s", d.Namespace, d.OwnerReferences[0].Name)
-			c.queue.Add(key)
-		}
-	}
-
-	return nil
-}
-
-func (c *FunctionController) collectConfigMap() error {
-	cm, err := c.clientset.CoreV1().ConfigMaps(corev1.NamespaceAll).List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, m := range cm.Items {
-		if len(m.OwnerReferences) == 0 {
-			continue
-		}
-		// Assumption: a configmap has ownerref Kind = "Function" and APIVersion = "k8s.io" is assumed
-		// to be created by kubeless controller
-		if (m.OwnerReferences[0].Kind == funcKind) && (m.OwnerReferences[0].APIVersion == funcAPI) {
-			key := fmt.Sprintf("%s/%s", m.Namespace, m.OwnerReferences[0].Name)
-			c.queue.Add(key)
-		}
-	}
-
 	return nil
 }

@@ -5,7 +5,7 @@ VERSION = dev-$(shell date +%FT%T%z)
 
 KUBECFG = kubecfg
 DOCKER = docker
-CONTROLLER_IMAGE = kubeless-controller:latest
+CONTROLLER_IMAGE = kubeless-controller-manager:latest
 OS = linux
 ARCH = amd64
 BUNDLES = bundles
@@ -47,13 +47,13 @@ kubeless-openshift.yaml: kubeless-openshift.jsonnet kubeless-rbac.jsonnet
 
 kafka-zookeeper.yaml: kafka-zookeeper.jsonnet
 
-docker/controller: controller-build
-	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/kubeless-controller $@
+docker/controller-manager: controller-build
+	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/kubeless-controller-manager $@
 
 controller-build:
 	./script/binary-controller -os=$(OS) -arch=$(ARCH)
 
-controller-image: docker/controller
+controller-image: docker/controller-manager
 	$(DOCKER) build -t $(CONTROLLER_IMAGE) $<
 
 update:
@@ -102,4 +102,4 @@ bootstrap: bats ksonnet-lib
 	fi
 
 build_and_test:
-	./script/start-test-environment.sh "make binary && make controller-image CONTROLLER_IMAGE=bitnami/kubeless-controller:latest && make integration-tests"
+	./script/start-test-environment.sh "make binary && make controller-image CONTROLLER_IMAGE=bitnami/kubeless-controller-manager:latest && make integration-tests"

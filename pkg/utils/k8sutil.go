@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/kubeless/kubeless/pkg/langruntime"
@@ -40,6 +41,7 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 
@@ -389,6 +391,298 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *kubelessApi.Funct
 	return err
 }
 
+// this function resolves backward incompatibility in case user uses old client which doesn't include serviceSpec into funcSpec.
+// if serviceSpec is empty, we will use the default serviceSpec whose port is 8080
+func serviceSpec(funcObj *kubelessApi.Function) v1.ServiceSpec {
+	return v1.ServiceSpec{
+		Ports: []v1.ServicePort{
+			{
+				// Note: Prefix: "http-" is added to adapt to Istio so that it can discover the function services
+				Name:       "http-function-port",
+				Protocol:   v1.ProtocolTCP,
+				Port:       8080,
+				TargetPort: intstr.FromInt(8080),
+			},
+		},
+		Selector: funcObj.ObjectMeta.Labels,
+		Type:     v1.ServiceTypeClusterIP,
+	}
+}
+
+// EnsureFuncService creates/updates a function service
+func EnsureFuncService(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference) error {
+	svc := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            funcObj.ObjectMeta.Name,
+			Labels:          funcObj.ObjectMeta.Labels,
+			OwnerReferences: or,
+		},
+		Spec: serviceSpec(funcObj),
+	}
+
+	_, err := client.Core().Services(funcObj.ObjectMeta.Namespace).Create(svc)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		// In case the SVC already exists we should update
+		// just certain fields (to avoid race conditions)
+		var newSvc *v1.Service
+		newSvc, err = client.Core().Services(funcObj.ObjectMeta.Namespace).Get(funcObj.ObjectMeta.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		newSvc.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
+		newSvc.ObjectMeta.OwnerReferences = or
+		newSvc.Spec.Ports = svc.Spec.Ports
+		newSvc.Spec.Selector = svc.Spec.Selector
+		_, err = client.Core().Services(funcObj.ObjectMeta.Namespace).Update(newSvc)
+		if err != nil && k8sErrors.IsAlreadyExists(err) {
+			// The service may already exist and there is nothing to update
+			return nil
+		}
+	}
+	return err
+}
+
+func svcPort(funcObj *kubelessApi.Function) int32 {
+	return int32(8080)
+}
+
+// EnsureFuncDeployment creates/updates a function deployment
+func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference, lr *langruntime.Langruntimes) error {
+
+	var err error
+
+	runtimeVolumeName := funcObj.ObjectMeta.Name
+	depsVolumeName := funcObj.ObjectMeta.Name + "-deps"
+	podAnnotations := map[string]string{
+		// Attempt to attract the attention of prometheus.
+		// For runtimes that don't support /metrics,
+		// prometheus will get a 404 and mostly silently
+		// ignore the pod (still displayed in the list of
+		// "targets")
+		"prometheus.io/scrape": "true",
+		"prometheus.io/path":   "/metrics",
+		"prometheus.io/port":   strconv.Itoa(int(svcPort(funcObj))),
+	}
+	maxUnavailable := intstr.FromInt(0)
+
+	//add deployment and copy all func's Spec.Deployment to the deployment
+	dpm := funcObj.Spec.Deployment.DeepCopy()
+	dpm.OwnerReferences = or
+	dpm.ObjectMeta.Name = funcObj.ObjectMeta.Name
+	dpm.Spec.Selector = &metav1.LabelSelector{
+		MatchLabels: funcObj.ObjectMeta.Labels,
+	}
+
+	dpm.Spec.Strategy = v1beta1.DeploymentStrategy{
+		RollingUpdate: &v1beta1.RollingUpdateDeployment{
+			MaxUnavailable: &maxUnavailable,
+		},
+	}
+
+	//append data to dpm deployment
+	if len(dpm.ObjectMeta.Labels) == 0 {
+		dpm.ObjectMeta.Labels = make(map[string]string)
+	}
+	for k, v := range funcObj.ObjectMeta.Labels {
+		dpm.ObjectMeta.Labels[k] = v
+	}
+	if len(dpm.ObjectMeta.Annotations) == 0 {
+		dpm.ObjectMeta.Annotations = make(map[string]string)
+	}
+
+	if len(dpm.Spec.Template.ObjectMeta.Labels) == 0 {
+		dpm.Spec.Template.ObjectMeta.Labels = make(map[string]string)
+	}
+	for k, v := range funcObj.ObjectMeta.Labels {
+		dpm.Spec.Template.ObjectMeta.Labels[k] = v
+	}
+	if len(dpm.Spec.Template.ObjectMeta.Annotations) == 0 {
+		dpm.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	}
+	for k, v := range podAnnotations {
+		//only append k-v from podAnnotations if it doesn't exist in deployment podTemplateSpec annotation
+		if _, ok := dpm.Spec.Template.ObjectMeta.Annotations[k]; !ok {
+			dpm.Spec.Template.ObjectMeta.Annotations[k] = v
+		}
+	}
+
+	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes,
+		v1.Volume{
+			Name: runtimeVolumeName,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		},
+		v1.Volume{
+			Name: depsVolumeName,
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: funcObj.ObjectMeta.Name,
+					},
+				},
+			},
+		})
+
+	if len(dpm.Spec.Template.Spec.Containers) == 0 {
+		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
+	}
+
+	if funcObj.Spec.Handler != "" {
+		modName, handlerName, err := splitHandler(funcObj.Spec.Handler)
+		if err != nil {
+			return err
+		}
+		//only resolve the image name if it has not been already set
+		if dpm.Spec.Template.Spec.Containers[0].Image == "" {
+			imageName, err := lr.GetFunctionImage(funcObj.Spec.Runtime, "PubSub")
+			if err != nil {
+				return err
+			}
+			dpm.Spec.Template.Spec.Containers[0].Image = imageName
+		}
+		timeout := funcObj.Spec.Timeout
+		if timeout == "" {
+			// Set default timeout to 180 seconds
+			timeout = defaultTimeout
+		}
+		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
+			v1.EnvVar{
+				Name:  "FUNC_HANDLER",
+				Value: handlerName,
+			},
+			v1.EnvVar{
+				Name:  "MOD_NAME",
+				Value: modName,
+			},
+			v1.EnvVar{
+				Name:  "FUNC_TIMEOUT",
+				Value: timeout,
+			},
+		)
+	}
+
+	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
+		v1.EnvVar{
+			Name:  "FUNC_PORT",
+			Value: strconv.Itoa(int(svcPort(funcObj))),
+		},
+	)
+
+	dpm.Spec.Template.Spec.Containers[0].Name = funcObj.ObjectMeta.Name
+	dpm.Spec.Template.Spec.Containers[0].Ports = append(dpm.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{
+		ContainerPort: svcPort(funcObj),
+	})
+	runtimeVolumeMount := v1.VolumeMount{
+		Name:      runtimeVolumeName,
+		MountPath: "/kubeless",
+	}
+
+	dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, runtimeVolumeMount)
+
+	// prepare init-containers if some function is specified
+	if funcObj.Spec.Function != "" {
+		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime, lr)
+		if err != nil {
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		srcVolumeMount := v1.VolumeMount{
+			Name:      depsVolumeName,
+			MountPath: "/src",
+		}
+		provisionContainer, err := getProvisionContainer(
+			funcObj.Spec.Function,
+			funcObj.Spec.Checksum,
+			fileName,
+			funcObj.Spec.Handler,
+			funcObj.Spec.FunctionContentType,
+			funcObj.Spec.Runtime,
+			runtimeVolumeMount,
+			srcVolumeMount,
+			lr,
+		)
+		if err != nil {
+			return err
+		}
+		dpm.Spec.Template.Spec.InitContainers = []v1.Container{provisionContainer}
+	}
+
+	// Add the imagesecrets if present to pull images from private docker registry
+	if funcObj.Spec.Runtime != "" {
+		imageSecrets, err := lr.GetImageSecrets(funcObj.Spec.Runtime)
+		if err != nil {
+			return fmt.Errorf("Unable to fetch ImagePullSecrets, %v", err)
+		}
+		dpm.Spec.Template.Spec.ImagePullSecrets = imageSecrets
+	}
+
+	// ensure that the runtime is supported for installing dependencies
+	_, err = lr.GetRuntimeInfo(funcObj.Spec.Runtime)
+	if funcObj.Spec.Deps != "" && err != nil {
+		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
+	} else if funcObj.Spec.Deps != "" {
+		buildContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, dpm.Spec.Template.Spec.Containers[0].Env, runtimeVolumeMount)
+		if err != nil {
+			return err
+		}
+		dpm.Spec.Template.Spec.InitContainers = append(
+			dpm.Spec.Template.Spec.InitContainers,
+			buildContainer,
+		)
+		// update deployment for loading dependencies
+		lr.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
+	}
+
+	livenessProbe := &v1.Probe{
+		InitialDelaySeconds: int32(3),
+		PeriodSeconds:       int32(30),
+		Handler: v1.Handler{
+			HTTPGet: &v1.HTTPGetAction{
+				Path: "/healthz",
+				Port: intstr.FromInt(int(svcPort(funcObj))),
+			},
+		},
+	}
+	dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
+
+	_, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Create(dpm)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		// In case the Deployment already exists we should update
+		// just certain fields (to avoid race conditions)
+		var newDpm *v1beta1.Deployment
+		newDpm, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Get(funcObj.ObjectMeta.Name, metav1.GetOptions{})
+		newDpm.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
+		newDpm.ObjectMeta.Annotations = funcObj.Spec.Deployment.ObjectMeta.Annotations
+		newDpm.ObjectMeta.OwnerReferences = or
+		newDpm.Spec = dpm.Spec
+		_, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Update(newDpm)
+		if err != nil {
+			return err
+		}
+
+		// kick existing function pods then it will be recreated
+		// with the new data mount from updated configmap.
+		// TODO: This is a workaround.  Do something better.
+		var pods *v1.PodList
+		pods, err = GetPodsByLabel(client, funcObj.ObjectMeta.Namespace, "function", funcObj.ObjectMeta.Name)
+		if err != nil {
+			return err
+		}
+		for _, pod := range pods.Items {
+			err = client.Core().Pods(funcObj.ObjectMeta.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				// non-fatal
+				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", funcObj.ObjectMeta.Namespace, pod.Name, err)
+			}
+		}
+	}
+
+	return err
+}
+
 func doRESTReq(restIface rest.Interface, groupVersion, verb, resource, elem, namespace string, body interface{}, result interface{}) error {
 	var req *rest.Request
 	bodyJSON := []byte{}
@@ -540,4 +834,9 @@ func MergeDeployments(destinationDeployment *v1beta1.Deployment, sourceDeploymen
 	initializeEmptyMapsInDeployment(destinationDeployment)
 	initializeEmptyMapsInDeployment(sourceDeployment)
 	return mergo.Merge(destinationDeployment, sourceDeployment)
+}
+
+// UpdateFunctionDeployments updated the deployments using the function with the updated function
+func UpdateFunctionDeployments(funcObj *kubelessApi.Function) error {
+	return nil
 }

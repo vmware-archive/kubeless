@@ -18,6 +18,7 @@ package controller
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
@@ -34,6 +35,7 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	kv1beta1 "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
+	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/utils"
 )
 
@@ -51,6 +53,8 @@ type KafkaTriggerController struct {
 	smclient       *monitoringv1alpha1.MonitoringV1alpha1Client
 	queue          workqueue.RateLimitingInterface
 	informer       cache.SharedIndexInformer
+	config         *corev1.ConfigMap
+	langRuntime    *langruntime.Langruntimes
 }
 
 // KafkaTriggerConfig contains k8s client of a controller
@@ -86,6 +90,22 @@ func NewKafkaTriggerController(cfg KafkaTriggerConfig, smclient *monitoringv1alp
 		},
 	})
 
+	controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
+	kubelessConfig := os.Getenv("KUBELESS_CONFIG")
+	if len(controllerNamespace) == 0 {
+		controllerNamespace = "kubeless"
+	}
+	if len(kubelessConfig) == 0 {
+		kubelessConfig = "kubeless-config"
+	}
+	config, err := cfg.KubeCli.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
+	if err != nil {
+		logrus.Fatalf("Unable to read the configmap: %s", err)
+	}
+
+	var lr = langruntime.New(config)
+	lr.ReadConfigMap()
+
 	return &KafkaTriggerController{
 		logger:         logrus.WithField("controller", "trigger-controller"),
 		clientset:      cfg.KubeCli,
@@ -93,6 +113,8 @@ func NewKafkaTriggerController(cfg KafkaTriggerConfig, smclient *monitoringv1alp
 		kubelessclient: cfg.TriggerClient,
 		informer:       informer,
 		queue:          queue,
+		config:         config,
+		langRuntime:    lr,
 	}
 }
 
@@ -166,7 +188,7 @@ func (c *KafkaTriggerController) processItem(key string) error {
 		return err
 	}
 
-	c.logger.Infof("Processing update to Trigger: %s Namespace: %s", name, ns)
+	c.logger.Infof("Processing update to Kafka Trigger: %s Namespace: %s", name, ns)
 
 	obj, exists, err := c.informer.GetIndexer().GetByKey(key)
 	if err != nil {
@@ -174,7 +196,7 @@ func (c *KafkaTriggerController) processItem(key string) error {
 	}
 
 	if !exists {
-		err := c.deleteK8sResources(ns, name)
+		err := c.deleteKafkaTriggerResources(ns, name)
 		if err != nil {
 			c.logger.Errorf("Can't delete function: %v", err)
 			return err
@@ -184,7 +206,50 @@ func (c *KafkaTriggerController) processItem(key string) error {
 	}
 
 	triggerObj := obj.(*kubelessApi.KafkaTrigger)
+
+	funcObj, err := utils.GetFunction(triggerObj.Spec.FunctionName, ns)
+	if err != nil {
+		c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", triggerObj.Spec.FunctionName, ns, err)
+		return err
+	}
+
+	err = c.ensureKafkaTriggerResources(triggerObj, &funcObj)
+	if err != nil {
+		c.logger.Errorf("Function can not be created/updated: %v", err)
+		return err
+	}
+
 	c.logger.Infof("Processed change to Trigger: %s Namespace: %s", triggerObj.ObjectMeta.Name, ns)
+	return nil
+}
+
+// ensureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
+func (c *KafkaTriggerController) ensureKafkaTriggerResources(triggerObj *kubelessApi.KafkaTrigger, funcObj *kubelessApi.Function) error {
+	if len(funcObj.ObjectMeta.Labels) == 0 {
+		funcObj.ObjectMeta.Labels = make(map[string]string)
+	}
+	funcObj.ObjectMeta.Labels["function"] = funcObj.ObjectMeta.Name
+
+	or, err := getKafkaTriggerOwnerReference(triggerObj)
+	if err != nil {
+		return err
+	}
+
+	err = utils.EnsureFuncConfigMap(c.clientset, funcObj, or, c.langRuntime)
+	if err != nil {
+		return err
+	}
+
+	err = utils.EnsureFuncService(c.clientset, funcObj, or)
+	if err != nil {
+		return err
+	}
+
+	err = utils.EnsureFuncDeployment(c.clientset, funcObj, or, c.langRuntime)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -225,7 +290,7 @@ func (c *KafkaTriggerController) deleteAutoscale(ns, name string) error {
 }
 
 // deleteK8sResources removes k8s objects of the function
-func (c *KafkaTriggerController) deleteK8sResources(ns, name string) error {
+func (c *KafkaTriggerController) deleteKafkaTriggerResources(ns, name string) error {
 	//check if func is scheduled or not
 	_, err := c.clientset.BatchV2alpha1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", name), metav1.GetOptions{})
 	if err == nil {
@@ -249,12 +314,6 @@ func (c *KafkaTriggerController) deleteK8sResources(ns, name string) error {
 
 	// delete cm
 	err = c.clientset.Core().ConfigMaps(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-
-	// delete service monitor
-	err = c.deleteAutoscale(ns, name)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
@@ -343,4 +402,23 @@ func (c *KafkaTriggerController) collectConfigMap() error {
 	}
 
 	return nil
+}
+
+// GetKafkaTriggerOwnerReference returns ownerRef for appending to objects's metadata for
+// objects created by kafka-controller for the trigger deployment
+func getKafkaTriggerOwnerReference(triggerObj *kubelessApi.KafkaTrigger) ([]metav1.OwnerReference, error) {
+	if triggerObj.ObjectMeta.Name == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("Kafka trigger object name can't be empty")
+	}
+	if triggerObj.ObjectMeta.UID == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("uid of Kafka trigger %s can't be empty", triggerObj.ObjectMeta.Name)
+	}
+	return []metav1.OwnerReference{
+		{
+			Kind:       "KafkaTrigger",
+			APIVersion: "kubeless.io",
+			Name:       triggerObj.ObjectMeta.Name,
+			UID:        triggerObj.ObjectMeta.UID,
+		},
+	}, nil
 }
