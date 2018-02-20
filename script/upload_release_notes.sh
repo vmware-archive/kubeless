@@ -33,6 +33,12 @@ curl -sL https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-$t
 kubectl create ns kubeless\\n\
 curl -sL https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-rbac-$tag.yaml | kubectl create -f -\\n\
 \`\`\`\\n\
+**OPENSHIFT:**\\n\
+\\n\
+\`\`\`console\\n\
+oc create ns kubeless\\n\
+curl -sL https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-openshift-$tag.yaml | oc create -f -\\n\
+\`\`\`\\n\
 ")
   echo "${notes}"
 }
