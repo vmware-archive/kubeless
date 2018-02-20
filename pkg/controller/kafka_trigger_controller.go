@@ -35,6 +35,7 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	kv1beta1 "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
+	"github.com/kubeless/kubeless/pkg/event-consumers/kafka"
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/utils"
 )
@@ -44,6 +45,16 @@ const (
 	objKind           = "Trigger"
 	objAPI            = "kubeless.io"
 )
+
+var (
+	stopM    map[string](chan struct{})
+	stoppedM map[string](chan struct{})
+)
+
+func init() {
+	stopM = make(map[string](chan struct{}))
+	stoppedM = make(map[string](chan struct{}))
+}
 
 // KafkaTriggerController object
 type KafkaTriggerController struct {
@@ -201,11 +212,24 @@ func (c *KafkaTriggerController) processItem(key string) error {
 			c.logger.Errorf("Can't delete function: %v", err)
 			return err
 		}
+		c.logger.Infof("Stopping consumer for trigger %s", name)
+		// FIXME: should be funcName
+		kafka.DeleteKafkaConsumer(stopM, stoppedM, name, ns)
+		c.logger.Infof("Stopped consumer for trigger %s", name)
 		c.logger.Infof("Deleted Function %s", key)
 		return nil
 	}
 
 	triggerObj := obj.(*kubelessApi.KafkaTrigger)
+	topics := triggerObj.Spec.Topic
+	funcName := triggerObj.Spec.FunctionName
+	// FIXME: should be taking from kubeless-controller's configmap
+	funcPort := "8080"
+	// FIXME: should be taking from kubeless-controller's configmap
+	brokers := "kafka.kubeless:9092"
+	c.logger.Infof("Creating consumer: broker %s - topic %s - function %s - namespace %s", brokers, topics, funcName, ns)
+	kafka.CreateKafkaConsumer(stopM, stoppedM, brokers, topics, funcName, ns, funcPort)
+	c.logger.Infof("Created consumer successfully")
 
 	funcObj, err := utils.GetFunction(triggerObj.Spec.FunctionName, ns)
 	if err != nil {
