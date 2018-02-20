@@ -6,7 +6,6 @@ import (
 
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/internal"
 	"google.golang.org/appengine/memcache"
 	"google.golang.org/appengine/user"
 )
@@ -16,8 +15,6 @@ func TestBasicAPICalls(t *testing.T) {
 	if os.Getenv("APPENGINE_DEV_APPSERVER") == "" {
 		t.Skip("APPENGINE_DEV_APPSERVER not set")
 	}
-	resetEnv := internal.SetTestEnv()
-	defer resetEnv()
 
 	inst, err := NewInstance(nil)
 	if err != nil {

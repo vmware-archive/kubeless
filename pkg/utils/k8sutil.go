@@ -32,8 +32,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"k8s.io/api/autoscaling/v2beta1"
-	batchv1 "k8s.io/api/batch/v1"
-	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
@@ -296,74 +294,6 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 	}, nil
 }
 
-// CreateIngress creates ingress rule for a specific function
-func CreateIngress(client kubernetes.Interface, funcObj *kubelessApi.Function, ingressName, hostname, ns string, enableTLSAcme bool) error {
-	or, err := GetOwnerReference(funcObj)
-	if err != nil {
-		return err
-	}
-
-	if len(funcObj.Spec.ServiceSpec.Ports) == 0 {
-		return fmt.Errorf("can't create route due to service port isn't defined")
-	}
-
-	port := funcObj.Spec.ServiceSpec.Ports[0].TargetPort
-	if port.IntVal <= 0 || port.IntVal > 65535 {
-		return fmt.Errorf("Invalid port number %d specified", port.IntVal)
-	}
-
-	ingress := &v1beta1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            ingressName,
-			Namespace:       ns,
-			OwnerReferences: or,
-			Labels:          funcObj.ObjectMeta.Labels,
-		},
-		Spec: v1beta1.IngressSpec{
-			Rules: []v1beta1.IngressRule{
-				{
-					Host: hostname,
-					IngressRuleValue: v1beta1.IngressRuleValue{
-						HTTP: &v1beta1.HTTPIngressRuleValue{
-							Paths: []v1beta1.HTTPIngressPath{
-								{
-									Path: "/",
-									Backend: v1beta1.IngressBackend{
-										ServiceName: funcObj.ObjectMeta.Name,
-										ServicePort: funcObj.Spec.ServiceSpec.Ports[0].TargetPort,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	if enableTLSAcme {
-		// add annotations and TLS configuration for kube-lego
-		ingressAnnotations := map[string]string{
-			"kubernetes.io/tls-acme":             "true",
-			"ingress.kubernetes.io/ssl-redirect": "true",
-		}
-		ingress.ObjectMeta.Annotations = ingressAnnotations
-
-		ingress.Spec.TLS = []v1beta1.IngressTLS{
-			{
-				Hosts:      []string{hostname},
-				SecretName: ingressName + "-tls",
-			},
-		}
-	}
-
-	_, err = client.ExtensionsV1beta1().Ingresses(ns).Create(ingress)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // GetLocalHostname returns hostname
 func GetLocalHostname(config *rest.Config, funcName string) (string, error) {
 	url, err := url.Parse(config.Host)
@@ -463,10 +393,6 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *kubelessApi.Funct
 // this function resolves backward incompatibility in case user uses old client which doesn't include serviceSpec into funcSpec.
 // if serviceSpec is empty, we will use the default serviceSpec whose port is 8080
 func serviceSpec(funcObj *kubelessApi.Function) v1.ServiceSpec {
-	if len(funcObj.Spec.ServiceSpec.Ports) != 0 && len(funcObj.Spec.ServiceSpec.Selector) != 0 {
-		return funcObj.Spec.ServiceSpec
-	}
-
 	return v1.ServiceSpec{
 		Ports: []v1.ServicePort{
 			{
@@ -516,9 +442,6 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *kubelessApi.Functio
 }
 
 func svcPort(funcObj *kubelessApi.Function) int32 {
-	if len(funcObj.Spec.ServiceSpec.Ports) != 0 {
-		return funcObj.Spec.ServiceSpec.Ports[0].Port
-	}
 	return int32(8080)
 }
 
@@ -657,12 +580,6 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	dpm.Spec.Template.Spec.Containers[0].Ports = append(dpm.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{
 		ContainerPort: svcPort(funcObj),
 	})
-	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
-		v1.EnvVar{
-			Name:  "TOPIC_NAME",
-			Value: funcObj.Spec.Topic,
-		})
-
 	runtimeVolumeMount := v1.VolumeMount{
 		Name:      runtimeVolumeName,
 		MountPath: "/kubeless",
@@ -726,7 +643,6 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		lr.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
 	}
 
-	// add liveness Probe to deployment
 	livenessProbe := &v1.Probe{
 		InitialDelaySeconds: int32(3),
 		PeriodSeconds:       int32(30),
@@ -808,71 +724,6 @@ func doRESTReq(restIface rest.Interface, groupVersion, verb, resource, elem, nam
 		}
 	}
 	return nil
-}
-
-// EnsureFuncCronJob creates/updates a function cron job
-func EnsureFuncCronJob(client rest.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference, groupVersion string) error {
-	var maxSucccessfulHist, maxFailedHist int32
-	maxSucccessfulHist = 3
-	maxFailedHist = 1
-	var timeout int
-	if funcObj.Spec.Timeout != "" {
-		var err error
-		timeout, err = strconv.Atoi(funcObj.Spec.Timeout)
-		if err != nil {
-			return fmt.Errorf("Unable convert %s to a valid timeout", funcObj.Spec.Timeout)
-		}
-	} else {
-		timeout, _ = strconv.Atoi(defaultTimeout)
-	}
-	activeDeadlineSeconds := int64(timeout)
-	jobName := fmt.Sprintf("trigger-%s", funcObj.ObjectMeta.Name)
-	job := &batchv2alpha1.CronJob{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            jobName,
-			Namespace:       funcObj.ObjectMeta.Namespace,
-			Labels:          funcObj.ObjectMeta.Labels,
-			OwnerReferences: or,
-		},
-		Spec: batchv2alpha1.CronJobSpec{
-			Schedule:                   funcObj.Spec.Schedule,
-			SuccessfulJobsHistoryLimit: &maxSucccessfulHist,
-			FailedJobsHistoryLimit:     &maxFailedHist,
-			JobTemplate: batchv2alpha1.JobTemplateSpec{
-				Spec: batchv1.JobSpec{
-					ActiveDeadlineSeconds: &activeDeadlineSeconds,
-					Template: v1.PodTemplateSpec{
-						Spec: v1.PodSpec{
-							Containers: []v1.Container{
-								{
-									Image: unzip,
-									Name:  "trigger",
-									Args:  []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.ObjectMeta.Name, funcObj.ObjectMeta.Namespace)},
-								},
-							},
-							RestartPolicy: v1.RestartPolicyNever,
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// We need to use directly the REST API since the endpoint
-	// for CronJobs changes from Kubernetes 1.8
-	err := doRESTReq(client, groupVersion, "create", "cronjobs", jobName, funcObj.ObjectMeta.Namespace, job, nil)
-	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		newCronJob := batchv2alpha1.CronJob{}
-		err = doRESTReq(client, groupVersion, "get", "cronjobs", jobName, funcObj.ObjectMeta.Namespace, nil, &newCronJob)
-		if err != nil {
-			return err
-		}
-		newCronJob.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
-		newCronJob.ObjectMeta.OwnerReferences = or
-		newCronJob.Spec = job.Spec
-		err = doRESTReq(client, groupVersion, "update", "cronjobs", jobName, funcObj.ObjectMeta.Namespace, &newCronJob, nil)
-	}
-	return err
 }
 
 // CreateAutoscale creates HPA object for function
@@ -990,4 +841,9 @@ func MergeDeployments(destinationDeployment *v1beta1.Deployment, sourceDeploymen
 	initializeEmptyMapsInDeployment(destinationDeployment)
 	initializeEmptyMapsInDeployment(sourceDeployment)
 	return mergo.Merge(destinationDeployment, sourceDeployment)
+}
+
+// UpdateFunctionDeployments updated the deployments using the function with the updated function
+func UpdateFunctionDeployments(funcObj *kubelessApi.Function) error {
+	return nil
 }

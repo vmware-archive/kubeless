@@ -57,17 +57,6 @@ type Agent interface {
 	Signers() ([]ssh.Signer, error)
 }
 
-// ConstraintExtension describes an optional constraint defined by users.
-type ConstraintExtension struct {
-	// ExtensionName consist of a UTF-8 string suffixed by the
-	// implementation domain following the naming scheme defined
-	// in Section 4.2 of [RFC4251], e.g.  "foo@example.com".
-	ExtensionName string
-	// ExtensionDetails contains the actual content of the extended
-	// constraint.
-	ExtensionDetails []byte
-}
-
 // AddedKey describes an SSH key to be added to an Agent.
 type AddedKey struct {
 	// PrivateKey must be a *rsa.PrivateKey, *dsa.PrivateKey or
@@ -84,9 +73,6 @@ type AddedKey struct {
 	// ConfirmBeforeUse, if true, requests that the agent confirm with the
 	// user before each use of this key.
 	ConfirmBeforeUse bool
-	// ConstraintExtensions are the experimental or private-use constraints
-	// defined by users.
-	ConstraintExtensions []ConstraintExtension
 }
 
 // See [PROTOCOL.agent], section 3.
@@ -98,7 +84,7 @@ const (
 	agentAddIdentity         = 17
 	agentRemoveIdentity      = 18
 	agentRemoveAllIdentities = 19
-	agentAddIDConstrained    = 25
+	agentAddIdConstrained    = 25
 
 	// 3.3 Key-type independent requests from client to agent
 	agentAddSmartcardKey            = 20
@@ -108,9 +94,8 @@ const (
 	agentAddSmartcardKeyConstrained = 26
 
 	// 3.7 Key constraint identifiers
-	agentConstrainLifetime  = 1
-	agentConstrainConfirm   = 2
-	agentConstrainExtension = 3
+	agentConstrainLifetime = 1
+	agentConstrainConfirm  = 2
 )
 
 // maxAgentResponseBytes is the maximum agent reply size that is accepted. This
@@ -164,19 +149,6 @@ type signResponseAgentMsg struct {
 type publicKey struct {
 	Format string
 	Rest   []byte `ssh:"rest"`
-}
-
-// 3.7 Key constraint identifiers
-type constrainLifetimeAgentMsg struct {
-	LifetimeSecs uint32 `sshtype:"1"`
-}
-
-type constrainExtensionAgentMsg struct {
-	ExtensionName    string `sshtype:"3"`
-	ExtensionDetails []byte
-
-	// Rest is a field used for parsing, not part of message
-	Rest []byte `ssh:"rest"`
 }
 
 // Key represents a protocol 2 public key as defined in
@@ -515,7 +487,7 @@ func (c *client) insertKey(s interface{}, comment string, constraints []byte) er
 
 	// if constraints are present then the message type needs to be changed.
 	if len(constraints) != 0 {
-		req[0] = agentAddIDConstrained
+		req[0] = agentAddIdConstrained
 	}
 
 	resp, err := c.call(req)
@@ -570,18 +542,22 @@ func (c *client) Add(key AddedKey) error {
 	var constraints []byte
 
 	if secs := key.LifetimeSecs; secs != 0 {
-		constraints = append(constraints, ssh.Marshal(constrainLifetimeAgentMsg{secs})...)
+		constraints = append(constraints, agentConstrainLifetime)
+
+		var secsBytes [4]byte
+		binary.BigEndian.PutUint32(secsBytes[:], secs)
+		constraints = append(constraints, secsBytes[:]...)
 	}
 
 	if key.ConfirmBeforeUse {
 		constraints = append(constraints, agentConstrainConfirm)
 	}
 
-	cert := key.Certificate
-	if cert == nil {
+	if cert := key.Certificate; cert == nil {
 		return c.insertKey(key.PrivateKey, key.Comment, constraints)
+	} else {
+		return c.insertCert(key.PrivateKey, cert, key.Comment, constraints)
 	}
-	return c.insertCert(key.PrivateKey, cert, key.Comment, constraints)
 }
 
 func (c *client) insertCert(s interface{}, cert *ssh.Certificate, comment string, constraints []byte) error {
@@ -633,7 +609,7 @@ func (c *client) insertCert(s interface{}, cert *ssh.Certificate, comment string
 
 	// if constraints are present then the message type needs to be changed.
 	if len(constraints) != 0 {
-		req[0] = agentAddIDConstrained
+		req[0] = agentAddIdConstrained
 	}
 
 	signer, err := ssh.NewSignerFromKey(s)

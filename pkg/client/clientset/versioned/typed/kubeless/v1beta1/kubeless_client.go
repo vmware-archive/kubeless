@@ -24,7 +24,10 @@ import (
 
 type KubelessV1beta1Interface interface {
 	RESTClient() rest.Interface
+	CronJobTriggersGetter
 	FunctionsGetter
+	HTTPTriggersGetter
+	KafkaTriggersGetter
 }
 
 // KubelessV1beta1Client is used to interact with features provided by the kubeless.io group.
@@ -32,8 +35,20 @@ type KubelessV1beta1Client struct {
 	restClient rest.Interface
 }
 
+func (c *KubelessV1beta1Client) CronJobTriggers(namespace string) CronJobTriggerInterface {
+	return newCronJobTriggers(c, namespace)
+}
+
 func (c *KubelessV1beta1Client) Functions(namespace string) FunctionInterface {
 	return newFunctions(c, namespace)
+}
+
+func (c *KubelessV1beta1Client) HTTPTriggers(namespace string) HTTPTriggerInterface {
+	return newHTTPTriggers(c, namespace)
+}
+
+func (c *KubelessV1beta1Client) KafkaTriggers(namespace string) KafkaTriggerInterface {
+	return newKafkaTriggers(c, namespace)
 }
 
 // NewForConfig creates a new KubelessV1beta1Client for the given config.

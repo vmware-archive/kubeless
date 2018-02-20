@@ -24,8 +24,14 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// CronJobTriggers returns a CronJobTriggerInformer.
+	CronJobTriggers() CronJobTriggerInformer
 	// Functions returns a FunctionInformer.
 	Functions() FunctionInformer
+	// HTTPTriggers returns a HTTPTriggerInformer.
+	HTTPTriggers() HTTPTriggerInformer
+	// KafkaTriggers returns a KafkaTriggerInformer.
+	KafkaTriggers() KafkaTriggerInformer
 }
 
 type version struct {
@@ -39,7 +45,22 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
+// CronJobTriggers returns a CronJobTriggerInformer.
+func (v *version) CronJobTriggers() CronJobTriggerInformer {
+	return &cronJobTriggerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
 // Functions returns a FunctionInformer.
 func (v *version) Functions() FunctionInformer {
 	return &functionInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// HTTPTriggers returns a HTTPTriggerInformer.
+func (v *version) HTTPTriggers() HTTPTriggerInformer {
+	return &hTTPTriggerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// KafkaTriggers returns a KafkaTriggerInformer.
+func (v *version) KafkaTriggers() KafkaTriggerInformer {
+	return &kafkaTriggerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

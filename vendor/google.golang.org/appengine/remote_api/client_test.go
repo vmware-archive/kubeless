@@ -5,12 +5,7 @@
 package remote_api
 
 import (
-	"log"
-	"net/http"
 	"testing"
-
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/datastore"
 )
 
 func TestAppIDRE(t *testing.T) {
@@ -25,19 +20,5 @@ func TestAppIDRE(t *testing.T) {
 		if g := appIDRE.FindStringSubmatch(v); g == nil || g[1] != appID {
 			t.Errorf("appIDRE.FindStringSubmatch(%s) got %q, want %q", v, g, appID)
 		}
-	}
-}
-
-func ExampleClient() {
-	c, err := NewClient("example.appspot.com", http.DefaultClient)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	ctx := context.Background() // or from a request
-	ctx = c.NewContext(ctx)
-	_, err = datastore.Put(ctx, datastore.NewIncompleteKey(ctx, "Foo", nil), struct{ Bar int }{42})
-	if err != nil {
-		log.Fatal(err)
 	}
 }

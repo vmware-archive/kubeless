@@ -36,7 +36,6 @@ type Property struct {
 	//	- appengine.BlobKey
 	//	- appengine.GeoPoint
 	//	- []byte (up to 1 megabyte in length)
-	//	- *Entity (representing a nested struct)
 	// This set is smaller than the set of valid struct field types that the
 	// datastore can load and save. A Property Value cannot be a slice (apart
 	// from []byte); use multiple Properties instead. Also, a Value's type
@@ -62,13 +61,6 @@ type Property struct {
 	// a certain name, Multiple should be true if a struct would best represent
 	// it as a field of type []T instead of type T.
 	Multiple bool
-}
-
-// An Entity is the value type for a nested struct.
-// This type is only used for a Property's Value.
-type Entity struct {
-	Key        *Key
-	Properties []Property
 }
 
 // ByteString is a short byte slice (up to 1500 bytes) that can be indexed.
@@ -127,18 +119,25 @@ func validPropertyName(name string) bool {
 	return true
 }
 
+// structTag is the parsed `datastore:"name,options"` tag of a struct field.
+// If a field has no tag, or the tag has an empty name, then the structTag's
+// name is just the field name. A "-" name means that the datastore ignores
+// that field.
+type structTag struct {
+	name    string
+	noIndex bool
+}
+
 // structCodec describes how to convert a struct to and from a sequence of
 // properties.
 type structCodec struct {
-	// fields gives the field codec for the structTag with the given name.
-	fields map[string]fieldCodec
+	// byIndex gives the structTag for the i'th field.
+	byIndex []structTag
+	// byName gives the field codec for the structTag with the given name.
+	byName map[string]fieldCodec
 	// hasSlice is whether a struct or any of its nested or embedded structs
 	// has a slice-typed field (other than []byte).
 	hasSlice bool
-	// keyField is the index of a *Key field with structTag __key__.
-	// This field is not relevant for the top level struct, only for
-	// nested structs.
-	keyField int
 	// complete is whether the structCodec is complete. An incomplete
 	// structCodec may be encountered when walking a recursive struct.
 	complete bool
@@ -147,15 +146,8 @@ type structCodec struct {
 // fieldCodec is a struct field's index and, if that struct field's type is
 // itself a struct, that substruct's structCodec.
 type fieldCodec struct {
-	// path is the index path to the field
-	path    []int
-	noIndex bool
-	// omitEmpty indicates that the field should be omitted on save
-	// if empty.
-	omitEmpty bool
-	// structCodec is the codec fot the struct field at index 'path',
-	// or nil if the field is not a struct.
-	structCodec *structCodec
+	index          int
+	substructCodec *structCodec
 }
 
 // structCodecs collects the structCodecs that have already been calculated.
@@ -179,10 +171,8 @@ func getStructCodecLocked(t reflect.Type) (ret *structCodec, retErr error) {
 		return c, nil
 	}
 	c = &structCodec{
-		fields: make(map[string]fieldCodec),
-		// We initialize keyField to -1 so that the zero-value is not
-		// misinterpreted as index 0.
-		keyField: -1,
+		byIndex: make([]structTag, t.NumField()),
+		byName:  make(map[string]fieldCodec),
 	}
 
 	// Add c to the structCodecs map before we are sure it is good. If t is
@@ -195,34 +185,20 @@ func getStructCodecLocked(t reflect.Type) (ret *structCodec, retErr error) {
 		}
 	}()
 
-	for i := 0; i < t.NumField(); i++ {
+	for i := range c.byIndex {
 		f := t.Field(i)
-		// Skip unexported fields.
-		// Note that if f is an anonymous, unexported struct field,
-		// we will promote its fields.
-		if f.PkgPath != "" && !f.Anonymous {
-			continue
+		name, opts := f.Tag.Get("datastore"), ""
+		if i := strings.Index(name, ","); i != -1 {
+			name, opts = name[:i], name[i+1:]
 		}
-
-		tags := strings.Split(f.Tag.Get("datastore"), ",")
-		name := tags[0]
-		opts := make(map[string]bool)
-		for _, t := range tags[1:] {
-			opts[t] = true
-		}
-		switch {
-		case name == "":
+		if name == "" {
 			if !f.Anonymous {
 				name = f.Name
 			}
-		case name == "-":
+		} else if name == "-" {
+			c.byIndex[i] = structTag{name: name}
 			continue
-		case name == "__key__":
-			if f.Type != typeOfKeyPtr {
-				return nil, fmt.Errorf("datastore: __key__ field on struct %v is not a *datastore.Key", t)
-			}
-			c.keyField = i
-		case !validPropertyName(name):
+		} else if !validPropertyName(name) {
 			return nil, fmt.Errorf("datastore: struct tag has invalid property name: %q", name)
 		}
 
@@ -238,10 +214,11 @@ func getStructCodecLocked(t reflect.Type) (ret *structCodec, retErr error) {
 			c.hasSlice = c.hasSlice || fIsSlice
 		}
 
-		var sub *structCodec
 		if substructType != nil && substructType != typeOfTime && substructType != typeOfGeoPoint {
-			var err error
-			sub, err = getStructCodecLocked(substructType)
+			if name != "" {
+				name = name + "."
+			}
+			sub, err := getStructCodecLocked(substructType)
 			if err != nil {
 				return nil, err
 			}
@@ -253,35 +230,23 @@ func getStructCodecLocked(t reflect.Type) (ret *structCodec, retErr error) {
 					"datastore: flattening nested structs leads to a slice of slices: field %q", f.Name)
 			}
 			c.hasSlice = c.hasSlice || sub.hasSlice
-			// If f is an anonymous struct field, we promote the substruct's fields up to this level
-			// in the linked list of struct codecs.
-			if f.Anonymous {
-				for subname, subfield := range sub.fields {
-					if name != "" {
-						subname = name + "." + subname
-					}
-					if _, ok := c.fields[subname]; ok {
-						return nil, fmt.Errorf("datastore: struct tag has repeated property name: %q", subname)
-					}
-					c.fields[subname] = fieldCodec{
-						path:        append([]int{i}, subfield.path...),
-						noIndex:     subfield.noIndex || opts["noindex"],
-						omitEmpty:   subfield.omitEmpty,
-						structCodec: subfield.structCodec,
-					}
+			for relName := range sub.byName {
+				absName := name + relName
+				if _, ok := c.byName[absName]; ok {
+					return nil, fmt.Errorf("datastore: struct tag has repeated property name: %q", absName)
 				}
-				continue
+				c.byName[absName] = fieldCodec{index: i, substructCodec: sub}
 			}
+		} else {
+			if _, ok := c.byName[name]; ok {
+				return nil, fmt.Errorf("datastore: struct tag has repeated property name: %q", name)
+			}
+			c.byName[name] = fieldCodec{index: i}
 		}
 
-		if _, ok := c.fields[name]; ok {
-			return nil, fmt.Errorf("datastore: struct tag has repeated property name: %q", name)
-		}
-		c.fields[name] = fieldCodec{
-			path:        []int{i},
-			noIndex:     opts["noindex"],
-			omitEmpty:   opts["omitempty"],
-			structCodec: sub,
+		c.byIndex[i] = structTag{
+			name:    name,
+			noIndex: opts == "noindex",
 		}
 	}
 	c.complete = true
@@ -294,9 +259,8 @@ type structPLS struct {
 	codec *structCodec
 }
 
-// newStructPLS returns a structPLS, which implements the
-// PropertyLoadSaver interface, for the struct pointer p.
-func newStructPLS(p interface{}) (*structPLS, error) {
+// newStructPLS returns a PropertyLoadSaver for the struct pointer p.
+func newStructPLS(p interface{}) (PropertyLoadSaver, error) {
 	v := reflect.ValueOf(p)
 	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
 		return nil, ErrInvalidEntityType
@@ -306,7 +270,7 @@ func newStructPLS(p interface{}) (*structPLS, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &structPLS{v, codec}, nil
+	return structPLS{v, codec}, nil
 }
 
 // LoadStruct loads the properties from p to dst.
