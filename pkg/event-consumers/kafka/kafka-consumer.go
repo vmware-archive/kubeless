@@ -87,22 +87,17 @@ func sendMessage(clientset kubernetes.Interface, funcName, ns, funcPort, msg str
 }
 
 func CreateKafkaConsumer(stopM map[string](chan struct{}), stoppedM map[string](chan struct{}), brokers, topics, funcName, ns, funcPort string) {
-	logrus.Infof("Creating consumer: broker %s - topic %s - function %s - namespace %s", brokers, topics, funcName, ns)
 	funcID := funcName + "+" + ns
 	stopM[funcID] = make(chan struct{})
 	stoppedM[funcID] = make(chan struct{})
 
 	// create consumer process
 	go createConsumerProcess(brokers, topics, funcName, ns, funcPort, stopM[funcID], stoppedM[funcID])
-	logrus.Infof("Created successfully.")
 }
 
-func DeleteKafkaConsumer(stopM map[string](chan struct{}), stoppedM map[string](chan struct{}), brokers, topics, funcName, ns string) {
-	logrus.Infof("Stopping consumer: broker %s - topic %s - function %s - namespace %s", brokers, topics, funcName, ns)
-	funcID := funcName + "+" + ns + "+"
-
+func DeleteKafkaConsumer(stopM map[string](chan struct{}), stoppedM map[string](chan struct{}), funcName, ns string) {
+	funcID := funcName + "+" + ns
 	// delete consumer process
 	close(stopM[funcID])
 	<-stoppedM[funcID]
-	logrus.Infof("Stopped successfully.")
 }

@@ -47,15 +47,15 @@ var rootCmd = &cobra.Command{
 			logrus.Fatalf("Cannot get kubeless client: %v", err)
 		}
 
-		functionCfg := controller.Config {
+		functionCfg := controller.Config{
 			KubeCli:        utils.GetClient(),
 			FunctionClient: kubelessClient,
 		}
-		httpTriggerCfg := controller.HTTPTriggerConfig {
+		httpTriggerCfg := controller.HTTPTriggerConfig{
 			KubeCli:       utils.GetClient(),
 			TriggerClient: kubelessClient,
 		}
-		kafkaTriggerCfg := controller.KafkaTriggerConfig {
+		kafkaTriggerCfg := controller.KafkaTriggerConfig{
 			KubeCli:       utils.GetClient(),
 			TriggerClient: kubelessClient,
 		}
@@ -78,7 +78,7 @@ var rootCmd = &cobra.Command{
 		httpTriggerController := controller.NewHTTPTriggerController(httpTriggerCfg, smclient)
 		kafkaTriggerController := controller.NewKafkaTriggerController(kafkaTriggerCfg, smclient)
 		cronJobTriggerController := controller.NewCronJobTriggerController(cronJobTriggerCfg, smclient)
-						
+
 		stopCh := make(chan struct{})
 		defer close(stopCh)
 

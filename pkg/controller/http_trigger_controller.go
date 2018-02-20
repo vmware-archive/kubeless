@@ -39,8 +39,8 @@ import (
 
 const (
 	httpTriggerMaxRetries = 5
-	httpTriggerObjKind           = "HttpTrigger"
-	httpTriggerObjAPI            = "kubeless.io"
+	httpTriggerObjKind    = "HttpTrigger"
+	httpTriggerObjAPI     = "kubeless.io"
 )
 
 // HTTPTriggerController object
