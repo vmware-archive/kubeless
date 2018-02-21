@@ -58,8 +58,8 @@ NAME                  DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
 kubeless-controller   1         1         1            1           1m
 
 $ kubectl get customresourcedefinition
-NAME               KIND
-functions.k8s.io   CustomResourceDefinition.v1beta1.apiextensions.k8s.io
+NAME                    AGE
+functions.kubeless.io   1h
 
 $ kubectl get functions
 ```
@@ -128,8 +128,8 @@ You will see the function custom resource created:
 
 ```console
 $ kubectl get functions
-NAME          KIND
-get-python    Function.v1.k8s.io
+NAME         AGE
+get-python   1h
 
 $ kubeless function ls
 NAME           	NAMESPACE	HANDLER              	RUNTIME  	TYPE  	TOPIC      	DEPENDENCIES	STATUS
