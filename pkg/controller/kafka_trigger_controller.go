@@ -223,10 +223,19 @@ func (c *KafkaTriggerController) processItem(key string) error {
 	triggerObj := obj.(*kubelessApi.KafkaTrigger)
 	topics := triggerObj.Spec.Topic
 	funcName := triggerObj.Spec.FunctionName
-	// FIXME: should be taking from kubeless-controller's configmap
-	funcPort := "8080"
-	// FIXME: should be taking from kubeless-controller's configmap
-	brokers := "kafka.kubeless:9092"
+
+	// taking funcPort info from env var
+	funcPort := os.Getenv("FUNCTION_PORT")
+	if funcPort == "" {
+		funcPort = "8080"
+	}
+
+	// taking brokers from env var
+	brokers := os.Getenv("KAFKA_BROKERS")
+	if brokers == "" {
+		brokers = "kafka.kubeless:9092"
+	}
+	
 	c.logger.Infof("Creating consumer: broker %s - topic %s - function %s - namespace %s", brokers, topics, funcName, ns)
 	kafka.CreateKafkaConsumer(stopM, stoppedM, brokers, topics, funcName, ns, funcPort)
 	c.logger.Infof("Created consumer successfully")
