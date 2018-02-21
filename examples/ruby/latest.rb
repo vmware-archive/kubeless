@@ -1,5 +1,5 @@
 # Obtains the latest Kubeless release published 
-def handler(request)
+def handler(event, context)
   require "net/https"
   require "uri"
   require "json"

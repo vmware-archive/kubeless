@@ -148,5 +148,6 @@ bundles/
 docker/controller-manager/kubeless-controller-manager
 ksonnet-lib/
 kubeless-openshift.yaml
+kafka-zookeeper.yaml
 kubeless-rbac.yaml
 kubeless.yaml

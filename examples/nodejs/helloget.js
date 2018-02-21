@@ -1,5 +1,5 @@
 module.exports = {
-  foo: function (req, res) {
-    res.end('hello world')
+  foo: function (event, context) {
+    return 'hello world!';
   }
 }

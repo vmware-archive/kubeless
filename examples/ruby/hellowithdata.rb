@@ -1,5 +1,3 @@
-def handler(request)
-  payload = request.body.read
-  puts JSON.parse(payload)
-  payload
+def handler(event, context)
+  JSON.generate(event)
 end

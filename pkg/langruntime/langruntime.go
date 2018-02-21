@@ -19,16 +19,11 @@ type Langruntimes struct {
 	AvailableRuntimes []RuntimeInfo
 }
 
-const (
-	pubsubFunc = "PubSub"
-)
-
 // RuntimeVersion is a struct with all the info about the images and secrets
 type RuntimeVersion struct {
 	Name             string        `yaml:"name"`
 	Version          string        `yaml:"version"`
-	HTTPImage        string        `yaml:"httpImage"`
-	PubSubImage      string        `yaml:"pubsubImage"`
+	RuntimeImage     string        `yaml:"runtimeImage"`
 	InitImage        string        `yaml:"initImage"`
 	ImagePullSecrets []ImageSecret `yaml:"imagePullSecrets,omitempty"`
 }
@@ -92,7 +87,7 @@ func (l *Langruntimes) getAvailableRuntimesPerTrigger(imageType string) []string
 	var runtimeList []string
 	for i := range l.AvailableRuntimes {
 		for j := range l.AvailableRuntimes[i].Versions {
-			if (imageType == "PubSub" && l.AvailableRuntimes[i].Versions[j].PubSubImage != "") || (imageType == "HTTP" && l.AvailableRuntimes[i].Versions[j].HTTPImage != "") {
+			if l.AvailableRuntimes[i].Versions[j].RuntimeImage != "" {
 				runtimeList = append(runtimeList, l.AvailableRuntimes[i].ID+l.AvailableRuntimes[i].Versions[j].Version)
 			}
 		}
@@ -132,36 +127,23 @@ func (l *Langruntimes) findRuntimeVersion(runtimeWithVersion string) (RuntimeVer
 }
 
 // GetFunctionImage returns the image ID depending on the runtime, its version and function type
-func (l *Langruntimes) GetFunctionImage(runtime, ftype string) (string, error) {
+func (l *Langruntimes) GetFunctionImage(runtime string) (string, error) {
 	runtimeInf, err := l.GetRuntimeInfo(runtime)
 	if err != nil {
 		return "", err
 	}
 
-	imageNameEnvVar := ""
-	if ftype == pubsubFunc {
-		imageNameEnvVar = strings.ToUpper(runtimeInf.ID) + l.getVersionFromRuntime(runtime) + "_PUBSUB_RUNTIME"
-	} else {
-		imageNameEnvVar = strings.ToUpper(runtimeInf.ID) + l.getVersionFromRuntime(runtime) + "_RUNTIME"
-	}
+	imageNameEnvVar := strings.ToUpper(runtimeInf.ID) + l.getVersionFromRuntime(runtime) + "_RUNTIME"
 	imageName := os.Getenv(imageNameEnvVar)
 	if imageName == "" {
 		versionInf, err := l.findRuntimeVersion(runtime)
 		if err != nil {
 			return "", err
 		}
-		if ftype == pubsubFunc {
-			if versionInf.PubSubImage == "" {
-				err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for event based functions. Available runtimes are: %s", runtime, strings.Join(l.getAvailableRuntimesPerTrigger("PubSub")[:], ", "))
-			} else {
-				imageName = versionInf.PubSubImage
-			}
+		if versionInf.RuntimeImage == "" {
+			err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for HTTP based functions. Available runtimes are: %s", runtime, strings.Join(l.getAvailableRuntimesPerTrigger("HTTP")[:], ", "))
 		} else {
-			if versionInf.HTTPImage == "" {
-				err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for HTTP based functions. Available runtimes are: %s", runtime, strings.Join(l.getAvailableRuntimesPerTrigger("HTTP")[:], ", "))
-			} else {
-				imageName = versionInf.HTTPImage
-			}
+			imageName = versionInf.RuntimeImage
 		}
 	}
 	return imageName, nil

@@ -53,7 +53,6 @@ import (
 )
 
 const (
-	pubsubFunc     = "PubSub"
 	busybox        = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
 	unzip          = "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697"
 	defaultTimeout = "180"
@@ -535,7 +534,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		}
 		//only resolve the image name if it has not been already set
 		if dpm.Spec.Template.Spec.Containers[0].Image == "" {
-			imageName, err := lr.GetFunctionImage(funcObj.Spec.Runtime, "PubSub")
+			imageName, err := lr.GetFunctionImage(funcObj.Spec.Runtime)
 			if err != nil {
 				return err
 			}
@@ -558,6 +557,14 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 			v1.EnvVar{
 				Name:  "FUNC_TIMEOUT",
 				Value: timeout,
+			},
+			v1.EnvVar{
+				Name:  "FUNC_RUNTIME",
+				Value: funcObj.Spec.Runtime,
+			},
+			v1.EnvVar{
+				Name:  "FUNC_MEMORY_LIMIT",
+				Value: funcObj.Spec.Deployment.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String(),
 			},
 		)
 	}

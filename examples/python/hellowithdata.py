@@ -1,3 +1,2 @@
-def handler(context):
-    print context.json
-    return context.json
+def handler(data, context):
+    return data

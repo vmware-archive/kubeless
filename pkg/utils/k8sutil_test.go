@@ -388,6 +388,14 @@ func TestEnsureDeployment(t *testing.T) {
 				Value: "180",
 			},
 			{
+				Name:  "FUNC_RUNTIME",
+				Value: "python2.7",
+			},
+			{
+				Name:  "FUNC_MEMORY_LIMIT",
+				Value: "0",
+			},
+			{
 				Name:  "FUNC_PORT",
 				Value: strconv.Itoa(int(f1Port)),
 			},
@@ -479,23 +487,6 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 	if len(dpm.Spec.Template.Spec.InitContainers) > 0 {
 		t.Error("It should not setup an init container")
-	}
-
-	// If the function is the type PubSub it should not contain a livenessProbe
-	f5 := kubelessApi.Function{}
-	f5 = *f1
-	f5.ObjectMeta.Name = "func5"
-	f5.Spec.Type = "PubSub"
-	err = EnsureFuncDeployment(clientset, &f5, or, lr)
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func5", metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	if dpm.Spec.Template.Spec.Containers[0].LivenessProbe != nil {
-		t.Error("It should not setup a liveness probe")
 	}
 
 	// It should update a deployment if it is already present
