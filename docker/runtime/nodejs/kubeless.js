@@ -25,7 +25,7 @@ helper.routeMetrics(app, client);
 const functionCallingCode = `
 try {
   Promise.resolve(module.exports.${funcHandler}(event, context)).then((result) => {
-    _res.end(JSON.stringify(result));
+    _res.end(result);
     _end();
   }).catch((err) => {
     // Catch asynchronous errors
