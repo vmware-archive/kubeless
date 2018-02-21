@@ -251,7 +251,7 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 		if err != nil {
 			return err
 		}
-		err = utils.EnsureFuncCronJob(restIface, funcObj, or, groupVersion)
+		err = utils.EnsureFuncCronJob(restIface, funcObj, or, groupVersion, c.langRuntime)
 		if err != nil {
 			return err
 		}

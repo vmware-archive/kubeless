@@ -15,8 +15,9 @@ import (
 
 // Langruntimes struct for getting configmap
 type Langruntimes struct {
-	kubelessConfig    *v1.ConfigMap
-	AvailableRuntimes []RuntimeInfo
+	kubelessConfig     *v1.ConfigMap
+	AvailableRuntimes  []RuntimeInfo
+	ProvisionContainer ProvisionContainerInfo
 }
 
 const (
@@ -47,13 +48,21 @@ type RuntimeInfo struct {
 	FileNameSuffix string           `yaml:"fileNameSuffix"`
 }
 
+// ProvisionContainerInfo describes the images used by Pods during provisioining
+type ProvisionContainerInfo struct {
+	Image       string `yaml:"Image"`
+	ImageSecret string `yaml:"ImageSecret,omitempty"`
+}
+
 // New initializes a langruntime object
 func New(config *v1.ConfigMap) *Langruntimes {
 	var ri []RuntimeInfo
+	var pi ProvisionContainerInfo
 
 	return &Langruntimes{
-		kubelessConfig:    config,
-		AvailableRuntimes: ri,
+		kubelessConfig:     config,
+		AvailableRuntimes:  ri,
+		ProvisionContainer: pi,
 	}
 }
 
@@ -63,6 +72,13 @@ func (l *Langruntimes) ReadConfigMap() {
 		err := yaml.Unmarshal([]byte(runtimeImages), &l.AvailableRuntimes)
 		if err != nil {
 			logrus.Fatalf("Unable to get the runtime images: %v", err)
+		}
+	}
+
+	if provisionImages, ok := l.kubelessConfig.Data["provision-container-image"]; ok {
+		err := yaml.Unmarshal([]byte(provisionImages), &l.ProvisionContainer)
+		if err != nil {
+			logrus.Fatalf("Unable to get the provsion container images: %v", err)
 		}
 	}
 }
@@ -167,8 +183,40 @@ func (l *Langruntimes) GetFunctionImage(runtime, ftype string) (string, error) {
 	return imageName, nil
 }
 
-// GetImageSecrets gets the secrets to pull the runtime image
-func (l *Langruntimes) GetImageSecrets(runtime string) ([]v1.LocalObjectReference, error) {
+// GetAllSecrets returns all the secrets used for provision image and also for runtime
+func (l *Langruntimes) GetAllSecrets(runtime string) ([]v1.LocalObjectReference, error) {
+	var lors []v1.LocalObjectReference
+	lorRuntimes, err := l.getImageSecrets(runtime)
+	if err != nil {
+		return []v1.LocalObjectReference{}, err
+
+	}
+	for _, lor := range lorRuntimes {
+		lors = append(lors, lor)
+	}
+
+	lorProvisionContainer := l.GetProvisionContainerSecrets()
+	for _, lor := range lorProvisionContainer {
+		lors = append(lors, lor)
+	}
+
+	return lors, nil
+}
+
+// GetProvisionContainerSecrets gets the secret to pull the image needed for init-container
+func (l *Langruntimes) GetProvisionContainerSecrets() []v1.LocalObjectReference {
+	var lors []v1.LocalObjectReference
+
+	if l.ProvisionContainer.ImageSecret != "" {
+		lor := v1.LocalObjectReference{Name: l.ProvisionContainer.ImageSecret}
+		lors = append(lors, lor)
+
+	}
+	return lors
+}
+
+// getImageSecrets gets the secrets to pull the runtime image
+func (l *Langruntimes) getImageSecrets(runtime string) ([]v1.LocalObjectReference, error) {
 	var secrets []string
 
 	runtimeInf, err := l.findRuntimeVersion(runtime)

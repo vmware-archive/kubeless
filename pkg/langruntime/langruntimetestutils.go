@@ -99,9 +99,19 @@ func AddFakeConfig(clientset *fake.Clientset) {
 		},
 	}}
 
-	out, err := yaml.Marshal(runtimeImages)
+	var provisionContainerImage = ProvisionContainerInfo{
+		Image:       "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697",
+		ImageSecret: "p3",
+	}
+
+	runtimeImagesOut, err := yaml.Marshal(runtimeImages)
 	if err != nil {
 		logrus.Fatal("Canot Marshall runtimeimage")
+	}
+
+	provisionContainerImageOut, err := yaml.Marshal(provisionContainerImage)
+	if err != nil {
+		logrus.Fatal("Canot Marshall provision Container Image")
 	}
 
 	cm := v1.ConfigMap{
@@ -110,7 +120,8 @@ func AddFakeConfig(clientset *fake.Clientset) {
 			Namespace: "kubeless",
 		},
 		Data: map[string]string{
-			"runtime-images": string(out),
+			"runtime-images":            string(runtimeImagesOut),
+			"provision-container-image": string(provisionContainerImageOut),
 		},
 	}
 

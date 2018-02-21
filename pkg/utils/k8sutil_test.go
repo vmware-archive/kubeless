@@ -580,6 +580,11 @@ func objBody(object interface{}) io.ReadCloser {
 }
 
 func TestEnsureCronJob(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	langruntime.AddFakeConfig(clientset)
+	lr := langruntime.SetupLangRuntime(clientset)
+	lr.ReadConfigMap()
+
 	or := []metav1.OwnerReference{
 		{
 			Kind:       "Function",
@@ -650,7 +655,7 @@ func TestEnsureCronJob(t *testing.T) {
 			return nil, nil
 		}
 	})
-	err := EnsureFuncCronJob(client, f1, or, "batch/v2alpha1")
+	err := EnsureFuncCronJob(client, f1, or, "batch/v2alpha1", lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -703,7 +708,7 @@ func TestEnsureCronJob(t *testing.T) {
 			return nil, nil
 		}
 	})
-	err = EnsureFuncCronJob(client, f1, or, "batch/v2alpha1")
+	err = EnsureFuncCronJob(client, f1, or, "batch/v2alpha1", lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -724,7 +729,7 @@ func TestEnsureCronJob(t *testing.T) {
 			Body:       objBody(nil),
 		}, nil
 	})
-	err = EnsureFuncCronJob(client, f1, or, "batch/v1beta1")
+	err = EnsureFuncCronJob(client, f1, or, "batch/v1beta1", lr)
 }
 
 func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
@@ -939,13 +944,13 @@ func TestGetProvisionContainer(t *testing.T) {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 
-	secrets, err := lr.GetImageSecrets("python2.7")
+	secrets, err := lr.GetAllSecrets("python2.7")
 	if err != nil {
 		t.Errorf("Unable to fetch secrets: %v", err)
 	}
 
-	if secrets[0].Name != "p1" && secrets[1].Name != "p2" {
-		t.Errorf("Expected first secret to be 'p1' but found %v and second secret to be 'p2' but found %v", secrets[0], secrets[1])
+	if secrets[0].Name != "p1" || secrets[1].Name != "p2" || secrets[2].Name != "p3" {
+		t.Errorf("Expected first secret to be 'p1' but found %v and second secret to be 'p2' but found %v and third secret to be 'p3' but found %v", secrets[0], secrets[1], secrets[2])
 	}
 
 	// It should skip the dependencies installation if the runtime is not supported
