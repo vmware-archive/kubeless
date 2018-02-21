@@ -173,7 +173,6 @@ var deployCmd = &cobra.Command{
 		}
 
 		defaultFunctionSpec := kubelessApi.Function{}
-		defaultFunctionSpec.Spec.Type = "HTTP"
 		defaultFunctionSpec.ObjectMeta.Labels = map[string]string{
 			"created-by": "kubeless",
 		}

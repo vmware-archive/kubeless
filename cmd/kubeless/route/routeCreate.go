@@ -38,7 +38,7 @@ var routeCreateCmd = &cobra.Command{
 			ns = utils.GetDefaultNamespace()
 		}
 
-		funcName, err := cmd.Flags().GetString("function")
+		httpTriggerName, err := cmd.Flags().GetString("http-trigger")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -52,7 +52,7 @@ var routeCreateCmd = &cobra.Command{
 			if err != nil {
 				logrus.Fatal(err)
 			}
-			hostName, err = utils.GetLocalHostname(config, funcName)
+			hostName, err = utils.GetLocalHostname(config, httpTriggerName)
 			if err != nil {
 				logrus.Fatal(err)
 			}
@@ -63,15 +63,15 @@ var routeCreateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		kubelessClient, err := utils.GetFunctionClientOutCluster()
+		kubelessClient, err := utils.GetHTTPTriggerClientOutCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		f, err := kubelessClient.KubelessV1beta1().Functions(ns).Get(funcName, metav1.GetOptions{})
+		httpTrigger, err := kubelessClient.KubelessV1beta1().HTTPTriggers(ns).Get(httpTriggerName, metav1.GetOptions{})
 		if err != nil {
 			if k8sErrors.IsNotFound(err) {
-				logrus.Fatalf("function %s doesn't exist in namespace %s", funcName, ns)
+				logrus.Fatalf("http trigger %s doesn't exist in namespace %s", httpTriggerName, ns)
 			} else {
 				logrus.Fatalf("error validate input %v", err)
 			}
@@ -79,7 +79,7 @@ var routeCreateCmd = &cobra.Command{
 
 		client := utils.GetClientOutOfCluster()
 
-		err = utils.CreateIngress(client, f, ingressName, hostName, ns, enableTLSAcme)
+		err = utils.CreateIngress(client, httpTrigger, ingressName, hostName, ns, enableTLSAcme)
 		if err != nil {
 			logrus.Fatalf("Can't create route: %v", err)
 		}
@@ -88,6 +88,6 @@ var routeCreateCmd = &cobra.Command{
 
 func init() {
 	routeCreateCmd.Flags().StringP("hostname", "", "", "Specify a valid hostname for the function")
-	routeCreateCmd.Flags().StringP("function", "", "", "Name of the function")
+	routeCreateCmd.Flags().StringP("http-trigger", "", "", "Name of the http-trigger")
 	routeCreateCmd.Flags().BoolP("enableTLSAcme", "", false, "If true, routing rule will be configured for use with kube-lego")
 }

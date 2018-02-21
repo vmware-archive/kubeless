@@ -122,13 +122,11 @@ func printFunctions(w io.Writer, functions []*kubelessApi.Function, cli kubernet
 		table := uitable.New()
 		table.MaxColWidth = 50
 		table.Wrap = true
-		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "TYPE", "TOPIC", "DEPENDENCIES", "STATUS")
+		table.AddRow("NAME", "NAMESPACE", "HANDLER", "RUNTIME", "DEPENDENCIES", "STATUS")
 		for _, f := range functions {
 			n := f.ObjectMeta.Name
 			h := f.Spec.Handler
 			r := f.Spec.Runtime
-			t := f.Spec.Type
-			tp := f.Spec.Topic
 			ns := f.ObjectMeta.Namespace
 			status, err := getDeploymentStatus(cli, f.ObjectMeta.Name, f.ObjectMeta.Namespace)
 			if err != nil && k8sErrors.IsNotFound(err) {
@@ -140,7 +138,7 @@ func printFunctions(w io.Writer, functions []*kubelessApi.Function, cli kubernet
 			if err != nil {
 				return err
 			}
-			table.AddRow(n, ns, h, r, t, tp, deps, status)
+			table.AddRow(n, ns, h, r, deps, status)
 		}
 		fmt.Fprintln(w, table)
 	} else if output == "wide" {
@@ -152,13 +150,10 @@ func printFunctions(w io.Writer, functions []*kubelessApi.Function, cli kubernet
 			n := f.ObjectMeta.Name
 			h := f.Spec.Handler
 			r := f.Spec.Runtime
-			t := f.Spec.Type
-			tp := f.Spec.Topic
 			deps, err := parseDeps(f.Spec.Deps, r)
 			if err != nil {
 				return err
 			}
-			s := f.Spec.Schedule
 			ns := f.ObjectMeta.Namespace
 			status, err := getDeploymentStatus(cli, f.ObjectMeta.Name, f.ObjectMeta.Namespace)
 			if err != nil && k8sErrors.IsNotFound(err) {
@@ -186,7 +181,7 @@ func printFunctions(w io.Writer, functions []*kubelessApi.Function, cli kubernet
 				}
 				label = buffer.String()
 			}
-			table.AddRow(n, ns, h, r, t, tp, deps, status, mem, env, label, s)
+			table.AddRow(n, ns, h, r, deps, status, mem, env, label)
 		}
 		fmt.Fprintln(w, table)
 	} else {

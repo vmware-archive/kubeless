@@ -133,6 +133,20 @@ func GetFunctionClientOutCluster() (versioned.Interface, error) {
 	return kubelessClient, nil
 }
 
+// GetHTTPTriggerClientOutCluster returns HTTPTrigger clientset to the request from outside of cluster
+func GetHTTPTriggerClientOutCluster() (versioned.Interface, error) {
+	config, err := BuildOutOfClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	kubelessClient, err := versioned.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return kubelessClient, nil
+}
+
 //GetDefaultNamespace returns the namespace set in current cluster context
 func GetDefaultNamespace() string {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
@@ -292,6 +306,74 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 		VolumeMounts:    []v1.VolumeMount{runtimeVolume, depsVolume},
 		ImagePullPolicy: v1.PullIfNotPresent,
 	}, nil
+}
+
+// CreateIngress creates ingress rule for a specific function
+func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTPTrigger, ingressName, hostname, ns string, enableTLSAcme bool) error {
+	or, err := GetHTTPTriggerOwnerReference(httpTriggerObj)
+	if err != nil {
+		return err
+	}
+
+	if len(httpTriggerObj.Spec.ServiceSpec.Ports) == 0 {
+		return fmt.Errorf("can't create route due to service port isn't defined")
+	}
+
+	port := httpTriggerObj.Spec.ServiceSpec.Ports[0].TargetPort
+	if port.IntVal <= 0 || port.IntVal > 65535 {
+		return fmt.Errorf("Invalid port number %d specified", port.IntVal)
+	}
+
+	ingress := &v1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            ingressName,
+			Namespace:       ns,
+			OwnerReferences: or,
+			Labels:          httpTriggerObj.ObjectMeta.Labels,
+		},
+		Spec: v1beta1.IngressSpec{
+			Rules: []v1beta1.IngressRule{
+				{
+					Host: hostname,
+					IngressRuleValue: v1beta1.IngressRuleValue{
+						HTTP: &v1beta1.HTTPIngressRuleValue{
+							Paths: []v1beta1.HTTPIngressPath{
+								{
+									Path: "/",
+									Backend: v1beta1.IngressBackend{
+										ServiceName: httpTriggerObj.ObjectMeta.Name,
+										ServicePort: httpTriggerObj.Spec.ServiceSpec.Ports[0].TargetPort,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if enableTLSAcme {
+		// add annotations and TLS configuration for kube-lego
+		ingressAnnotations := map[string]string{
+			"kubernetes.io/tls-acme":             "true",
+			"ingress.kubernetes.io/ssl-redirect": "true",
+		}
+		ingress.ObjectMeta.Annotations = ingressAnnotations
+
+		ingress.Spec.TLS = []v1beta1.IngressTLS{
+			{
+				Hosts:      []string{hostname},
+				SecretName: ingressName + "-tls",
+			},
+		}
+	}
+
+	_, err = client.ExtensionsV1beta1().Ingresses(ns).Create(ingress)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // GetLocalHostname returns hostname
@@ -808,6 +890,25 @@ func GetOwnerReference(funcObj *kubelessApi.Function) ([]metav1.OwnerReference, 
 			APIVersion: "k8s.io",
 			Name:       funcObj.ObjectMeta.Name,
 			UID:        funcObj.ObjectMeta.UID,
+		},
+	}, nil
+}
+
+// GetHTTPTriggerOwnerReference returns ownerRef for appending to objects's metadata
+// created by kubeless-controller one a function is deployed.
+func GetHTTPTriggerOwnerReference(httpTriggerObj *kubelessApi.HTTPTrigger) ([]metav1.OwnerReference, error) {
+	if httpTriggerObj.ObjectMeta.Name == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("function name can't be empty")
+	}
+	if httpTriggerObj.ObjectMeta.UID == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("uid of http trigger %s can't be empty", httpTriggerObj.ObjectMeta.Name)
+	}
+	return []metav1.OwnerReference{
+		{
+			Kind:       "HTTPTrigger",
+			APIVersion: "kubeless.io",
+			Name:       httpTriggerObj.ObjectMeta.Name,
+			UID:        httpTriggerObj.ObjectMeta.UID,
 		},
 	}, nil
 }

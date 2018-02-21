@@ -34,7 +34,6 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -183,19 +182,10 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 
 	switch {
 	case triggerHTTP:
-		function.Spec.Type = "HTTP"
-		function.Spec.Topic = ""
-		function.Spec.Schedule = ""
 		break
 	case schedule != "":
-		function.Spec.Type = "Scheduled"
-		function.Spec.Schedule = schedule
-		function.Spec.Topic = ""
 		break
 	case topic != "":
-		function.Spec.Type = "PubSub"
-		function.Spec.Topic = topic
-		function.Spec.Schedule = ""
 		break
 	}
 
@@ -274,36 +264,6 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		selectorLabels[k] = v
 	}
 	selectorLabels["function"] = funcName
-
-	svcSpec := v1.ServiceSpec{
-		Ports: []v1.ServicePort{
-			{
-				Name:     "http-function-port",
-				NodePort: 0,
-				Protocol: v1.ProtocolTCP,
-			},
-		},
-		Selector: selectorLabels,
-		Type:     v1.ServiceTypeClusterIP,
-	}
-
-	if headlessFlag != nil {
-		if *headlessFlag == true {
-			svcSpec.ClusterIP = v1.ClusterIPNone
-		}
-	} else {
-		svcSpec.ClusterIP = defaultFunction.Spec.ServiceSpec.ClusterIP
-	}
-
-	if portFlag != nil {
-		svcSpec.Ports[0].Port = *portFlag
-		svcSpec.Ports[0].TargetPort = intstr.FromInt(int(*portFlag))
-	} else {
-		svcSpec.Ports[0].Port = defaultFunction.Spec.ServiceSpec.Ports[0].Port
-		svcSpec.Ports[0].TargetPort = defaultFunction.Spec.ServiceSpec.Ports[0].TargetPort
-	}
-	function.Spec.ServiceSpec = svcSpec
-
 	return &function, nil
 }
 
