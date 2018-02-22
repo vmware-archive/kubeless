@@ -2,8 +2,11 @@ package kafka
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Shopify/sarama"
 	"github.com/bsm/sarama-cluster"
@@ -13,7 +16,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func createConsumerProcess(brokers, topics, funcName, ns, funcPort string, stopchan, stoppedchan chan struct{}) {
+func createConsumerProcess(brokers, topics, funcName, ns string, stopchan, stoppedchan chan struct{}) {
 	// Init config
 	config := cluster.NewConfig()
 
@@ -47,7 +50,7 @@ func createConsumerProcess(brokers, topics, funcName, ns, funcPort string, stopc
 
 				//forward msg to function
 				clientset := utils.GetClient()
-				err = sendMessage(clientset, funcName, ns, funcPort, string(msg.Value))
+				err = sendMessage(clientset, funcName, ns, string(msg.Value))
 				if err != nil {
 					logrus.Errorf("Failed to send message to function: %v", err)
 				}
@@ -67,18 +70,33 @@ func createConsumerProcess(brokers, topics, funcName, ns, funcPort string, stopc
 	}
 }
 
-func sendMessage(clientset kubernetes.Interface, funcName, ns, funcPort, msg string) error {
+func sendMessage(clientset kubernetes.Interface, funcName, ns, msg string) error {
 	svc, err := clientset.CoreV1().Services(ns).Get(funcName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("Unable to find the service for function %s", funcName)
+	}
+	logrus.Infof("Sending message %s to function %s", msg, funcName)
+	funcPort := strconv.Itoa(int(svc.Spec.Ports[0].Port))
+	if svc.Spec.Ports[0].Name != "" {
+		funcPort = svc.Spec.Ports[0].Name
 	}
 
 	jsonStr := []byte(msg)
 	req := clientset.CoreV1().RESTClient().Post().Body(bytes.NewBuffer(jsonStr)).SetHeader("Content-Type", "application/json")
 	req = req.AbsPath(svc.ObjectMeta.SelfLink + ":" + funcPort + "/proxy/")
 
+	timestamp := time.Now().UTC()
+	req.SetHeader("event-id", fmt.Sprintf("kafka-consumer-%s-%s-%s", funcName, ns, timestamp.Format(time.RFC3339Nano)))
+	req.SetHeader("event-type", "application/json")
+	req.SetHeader("event-time", timestamp.String())
+	req.SetHeader("event-namespace", "kafkatriggers.kubeless.io")
+
 	_, err = req.Do().Raw()
 	if err != nil {
+		//detect the request timeout case
+		if strings.Contains(err.Error(), "status code 408") {
+			return errors.New("Request timeout exceeded")
+		}
 		return err
 	}
 
@@ -86,13 +104,13 @@ func sendMessage(clientset kubernetes.Interface, funcName, ns, funcPort, msg str
 	return nil
 }
 
-func CreateKafkaConsumer(stopM map[string](chan struct{}), stoppedM map[string](chan struct{}), brokers, topics, funcName, ns, funcPort string) {
+func CreateKafkaConsumer(stopM map[string](chan struct{}), stoppedM map[string](chan struct{}), brokers, topics, funcName, ns string) {
 	funcID := funcName + "+" + ns
 	stopM[funcID] = make(chan struct{})
 	stoppedM[funcID] = make(chan struct{})
 
 	// create consumer process
-	go createConsumerProcess(brokers, topics, funcName, ns, funcPort, stopM[funcID], stoppedM[funcID])
+	go createConsumerProcess(brokers, topics, funcName, ns, stopM[funcID], stoppedM[funcID])
 }
 
 func DeleteKafkaConsumer(stopM map[string](chan struct{}), stoppedM map[string](chan struct{}), funcName, ns string) {
