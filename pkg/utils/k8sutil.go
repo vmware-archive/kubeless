@@ -181,8 +181,8 @@ func GetFunction(funcName, ns string) (kubelessApi.Function, error) {
 	return *f, nil
 }
 
-// CreateK8sCustomResource will create a custom function object
-func CreateK8sCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
+// CreateFunctionCustomResource will create a custom function object
+func CreateFunctionCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
 	_, err := kubelessClient.KubelessV1beta1().Functions(f.Namespace).Create(f)
 	if err != nil {
 		return err
@@ -190,8 +190,8 @@ func CreateK8sCustomResource(kubelessClient versioned.Interface, f *kubelessApi.
 	return nil
 }
 
-// UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
+// UpdateFunctionCustomResource applies changes to the function custom object
+func UpdateFunctionCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
 	data, err := json.Marshal(f)
 	if err != nil {
 		return err
@@ -201,14 +201,104 @@ func UpdateK8sCustomResource(kubelessClient versioned.Interface, f *kubelessApi.
 	return err
 }
 
-// DeleteK8sCustomResource will delete custom function object
-func DeleteK8sCustomResource(kubelessClient versioned.Interface, funcName, ns string) error {
+// DeleteFunctionCustomResource will delete custom function object
+func DeleteFunctionCustomResource(kubelessClient versioned.Interface, funcName, ns string) error {
 	err := kubelessClient.KubelessV1beta1().Functions(ns).Delete(funcName, &metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// GetFunctionCustomResource will delete custom function object
+func GetFunctionCustomResource(kubelessClient versioned.Interface, funcName, ns string) (*kubelessApi.Function, error) {
+	functionObj, err := kubelessClient.KubelessV1beta1().Functions(ns).Get(funcName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return functionObj, nil
+}
+
+// CreateCronJobCustomResource will create a custom function object
+func CreateCronJobCustomResource(kubelessClient versioned.Interface, cronJob *kubelessApi.CronJobTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().CronJobTriggers(cronJob.Namespace).Create(cronJob)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateCronJobCustomResource applies changes to the function custom object
+func UpdateCronJobCustomResource(kubelessClient versioned.Interface, cronJob *kubelessApi.CronJobTrigger) error {
+	data, err := json.Marshal(cronJob)
+	if err != nil {
+		return err
+	}
+
+	_, err = kubelessClient.KubelessV1beta1().CronJobTriggers(cronJob.Namespace).Patch(cronJob.Name, types.MergePatchType, data)
+	return err
+}
+
+// DeleteCronJobCustomResource will delete custom function object
+func DeleteCronJobCustomResource(kubelessClient versioned.Interface, cronJobName, ns string) error {
+	err := kubelessClient.KubelessV1beta1().CronJobTriggers(ns).Delete(cronJobName, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetCronJobCustomResource will get CronJobTrigger custom resource object
+func GetCronJobCustomResource(kubelessClient versioned.Interface, cronJobName, ns string) (*kubelessApi.CronJobTrigger, error) {
+	cronJobCRD, err := kubelessClient.KubelessV1beta1().CronJobTriggers(ns).Get(cronJobName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return cronJobCRD, nil
+}
+
+// CreateKafkaTriggerCustomResource will create a custom function object
+func CreateKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTrigger *kubelessApi.KafkaTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().KafkaTriggers(kafkaTrigger.Namespace).Create(kafkaTrigger)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateKafkaTriggerCustomResource applies changes to the function custom object
+func UpdateKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTrigger *kubelessApi.KafkaTrigger) error {
+	data, err := json.Marshal(kafkaTrigger)
+	if err != nil {
+		return err
+	}
+
+	_, err = kubelessClient.KubelessV1beta1().KafkaTriggers(kafkaTrigger.Namespace).Patch(kafkaTrigger.Name, types.MergePatchType, data)
+	return err
+}
+
+// DeleteKafkaTriggerCustomResource will delete custom function object
+func DeleteKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTriggerName, ns string) error {
+	err := kubelessClient.KubelessV1beta1().KafkaTriggers(ns).Delete(kafkaTriggerName, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetKafkaTriggerCustomResource will get CronJobTrigger custom resource object
+func GetKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTriggerName, ns string) (*kubelessApi.KafkaTrigger, error) {
+	kafkaCRD, err := kubelessClient.KubelessV1beta1().KafkaTriggers(ns).Get(kafkaTriggerName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return kafkaCRD, nil
 }
 
 // GetPodsByLabel returns list of pods which match the label

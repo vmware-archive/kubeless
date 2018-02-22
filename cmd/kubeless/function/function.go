@@ -180,15 +180,6 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		return nil, errors.New("exactly one of --trigger-http, --trigger-topic, --schedule must be specified")
 	}
 
-	switch {
-	case triggerHTTP:
-		break
-	case schedule != "":
-		break
-	case topic != "":
-		break
-	}
-
 	funcEnv := parseEnv(envs)
 	if len(funcEnv) == 0 && len(defaultFunction.Spec.Deployment.Spec.Template.Spec.Containers) != 0 {
 		funcEnv = defaultFunction.Spec.Deployment.Spec.Template.Spec.Containers[0].Env

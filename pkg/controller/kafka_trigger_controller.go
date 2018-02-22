@@ -115,7 +115,7 @@ func NewKafkaTriggerController(cfg KafkaTriggerConfig) *KafkaTriggerController {
 	lr.ReadConfigMap()
 
 	return &KafkaTriggerController{
-		logger:         logrus.WithField("controller", "trigger-controller"),
+		logger:         logrus.WithField("controller", "kafka-trigger-controller"),
 		clientset:      cfg.KubeCli,
 		kubelessclient: cfg.TriggerClient,
 		informer:       informer,

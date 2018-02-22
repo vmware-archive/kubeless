@@ -111,7 +111,7 @@ func NewFunctionController(cfg Config, smclient *monitoringv1alpha1.MonitoringV1
 	lr.ReadConfigMap()
 
 	return &FunctionController{
-		logger:         logrus.WithField("pkg", "controller"),
+		logger:         logrus.WithField("pkg", "function-controller"),
 		clientset:      cfg.KubeCli,
 		smclient:       smclient,
 		kubelessclient: cfg.FunctionClient,

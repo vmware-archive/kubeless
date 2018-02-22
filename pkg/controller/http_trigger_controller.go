@@ -20,11 +20,8 @@ import (
 	"fmt"
 	"time"
 
-	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -34,7 +31,6 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	kv1beta1 "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
-	"github.com/kubeless/kubeless/pkg/utils"
 )
 
 const (
@@ -48,7 +44,6 @@ type HTTPTriggerController struct {
 	logger         *logrus.Entry
 	clientset      kubernetes.Interface
 	kubelessclient versioned.Interface
-	smclient       *monitoringv1alpha1.MonitoringV1alpha1Client
 	queue          workqueue.RateLimitingInterface
 	informer       cache.SharedIndexInformer
 }
@@ -60,7 +55,7 @@ type HTTPTriggerConfig struct {
 }
 
 // NewHTTPTriggerController initializes a controller object
-func NewHTTPTriggerController(cfg HTTPTriggerConfig, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *HTTPTriggerController {
+func NewHTTPTriggerController(cfg HTTPTriggerConfig) *HTTPTriggerController {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 	informer := kv1beta1.NewHTTPTriggerInformer(cfg.TriggerClient, corev1.NamespaceAll, 0, cache.Indexers{})
@@ -87,9 +82,8 @@ func NewHTTPTriggerController(cfg HTTPTriggerConfig, smclient *monitoringv1alpha
 	})
 
 	return &HTTPTriggerController{
-		logger:         logrus.WithField("controller", "trigger-controller"),
+		logger:         logrus.WithField("controller", "http-trigger-controller"),
 		clientset:      cfg.KubeCli,
-		smclient:       smclient,
 		kubelessclient: cfg.TriggerClient,
 		informer:       informer,
 		queue:          queue,
@@ -111,9 +105,6 @@ func (c *HTTPTriggerController) Run(stopCh <-chan struct{}) {
 	}
 
 	c.logger.Info("HTTP Trigger controller synced and ready")
-
-	// run one round of GC at startup to detect orphaned objects from the last time
-	c.garbageCollect()
 
 	wait.Until(c.runWorker, time.Second, stopCh)
 }
@@ -174,7 +165,6 @@ func (c *HTTPTriggerController) processItem(key string) error {
 	}
 
 	if !exists {
-		err := c.deleteK8sResources(ns, name)
 		if err != nil {
 			c.logger.Errorf("Can't delete function: %v", err)
 			return err
@@ -185,142 +175,5 @@ func (c *HTTPTriggerController) processItem(key string) error {
 
 	triggerObj := obj.(*kubelessApi.HTTPTrigger)
 	c.logger.Infof("Processed change to Trigger: %s Namespace: %s", triggerObj.ObjectMeta.Name, ns)
-	return nil
-}
-
-func (c *HTTPTriggerController) deleteAutoscale(ns, name string) error {
-	if c.smclient != nil {
-		// Delete Service monitor if the client is available
-		err := utils.DeleteServiceMonitor(*c.smclient, name, ns)
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return err
-		}
-	}
-	// delete autoscale
-	err := utils.DeleteAutoscale(c.clientset, name, ns)
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-	return nil
-}
-
-// deleteK8sResources removes k8s objects of the function
-func (c *HTTPTriggerController) deleteK8sResources(ns, name string) error {
-	//check if func is scheduled or not
-	_, err := c.clientset.BatchV2alpha1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", name), metav1.GetOptions{})
-	if err == nil {
-		err = c.clientset.BatchV2alpha1().CronJobs(ns).Delete(fmt.Sprintf("trigger-%s", name), &metav1.DeleteOptions{})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return err
-		}
-	}
-
-	// delete deployment
-	deletePolicy := metav1.DeletePropagationBackground
-	err = c.clientset.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-	// delete svc
-	err = c.clientset.Core().Services(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-
-	// delete cm
-	err = c.clientset.Core().ConfigMaps(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-
-	// delete service monitor
-	err = c.deleteAutoscale(ns, name)
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-
-	return nil
-}
-
-func (c *HTTPTriggerController) garbageCollect() error {
-	err := c.collectServices()
-	if err != nil {
-		return err
-	}
-	err = c.collectDeployment()
-	if err != nil {
-		return err
-	}
-	err = c.collectConfigMap()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *HTTPTriggerController) collectServices() error {
-	srvs, err := c.clientset.CoreV1().Services(corev1.NamespaceAll).List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, srv := range srvs.Items {
-		if len(srv.OwnerReferences) == 0 {
-			continue
-		}
-		// Include the derived key from existing svc owner reference to the workqueue
-		// This will make sure the controller can detect the non-existing function and
-		// react to delete its belonging objects
-		// Assumption: a service has ownerref Kind = "Function" and APIVersion = "k8s.io" is assumed
-		// to be created by kubeless controller
-		if (srv.OwnerReferences[0].Kind == objKind) && (srv.OwnerReferences[0].APIVersion == objAPI) {
-			//service and its function are deployed in the same namespace
-			key := fmt.Sprintf("%s/%s", srv.Namespace, srv.OwnerReferences[0].Name)
-			c.queue.Add(key)
-		}
-	}
-
-	return nil
-}
-
-func (c *HTTPTriggerController) collectDeployment() error {
-	ds, err := c.clientset.AppsV1beta1().Deployments(corev1.NamespaceAll).List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, d := range ds.Items {
-		if len(d.OwnerReferences) == 0 {
-			continue
-		}
-		// Assumption: a deployment has ownerref Kind = "Function" and APIVersion = "k8s.io" is assumed
-		// to be created by kubeless controller
-		if (d.OwnerReferences[0].Kind == objKind) && (d.OwnerReferences[0].APIVersion == objAPI) {
-			key := fmt.Sprintf("%s/%s", d.Namespace, d.OwnerReferences[0].Name)
-			c.queue.Add(key)
-		}
-	}
-
-	return nil
-}
-
-func (c *HTTPTriggerController) collectConfigMap() error {
-	cm, err := c.clientset.CoreV1().ConfigMaps(corev1.NamespaceAll).List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, m := range cm.Items {
-		if len(m.OwnerReferences) == 0 {
-			continue
-		}
-		// Assumption: a configmap has ownerref Kind = "Function" and APIVersion = "k8s.io" is assumed
-		// to be created by kubeless controller
-		if (m.OwnerReferences[0].Kind == objKind) && (m.OwnerReferences[0].APIVersion == objAPI) {
-			key := fmt.Sprintf("%s/%s", m.Namespace, m.OwnerReferences[0].Name)
-			c.queue.Add(key)
-		}
-	}
-
 	return nil
 }

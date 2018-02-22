@@ -187,12 +187,57 @@ var deployCmd = &cobra.Command{
 		}
 
 		logrus.Infof("Deploying function...")
-		err = utils.CreateK8sCustomResource(kubelessClient, f)
+		err = utils.CreateFunctionCustomResource(kubelessClient, f)
 		if err != nil {
 			logrus.Fatalf("Failed to deploy %s. Received:\n%s", funcName, err)
 		}
 		logrus.Infof("Function %s submitted for deployment", funcName)
 		logrus.Infof("Check the deployment status executing 'kubeless function ls %s'", funcName)
+
+		switch {
+		case triggerHTTP:
+			break
+		case schedule != "":
+			cronJobTrigger := kubelessApi.CronJobTrigger{}
+			cronJobTrigger.TypeMeta = metav1.TypeMeta{
+				Kind:       "CronJobTrigger",
+				APIVersion: "kubeless.io/v1beta1",
+			}
+			cronJobTrigger.ObjectMeta = metav1.ObjectMeta{
+				Name:      funcName,
+				Namespace: ns,
+			}
+			cronJobTrigger.ObjectMeta.Labels = map[string]string{
+				"created-by": "kubeless",
+			}
+			cronJobTrigger.Spec.FunctionName = funcName
+			cronJobTrigger.Spec.Schedule = schedule
+			err = utils.CreateCronJobCustomResource(kubelessClient, &cronJobTrigger)
+			if err != nil {
+				logrus.Fatalf("Failed to deploy cron job trigger %s. Received:\n%s", funcName, err)
+			}
+			break
+		case topic != "":
+			kafkaTrigger := kubelessApi.KafkaTrigger{}
+			kafkaTrigger.TypeMeta = metav1.TypeMeta{
+				Kind:       "KafkaTrigger",
+				APIVersion: "kubeless.io/v1beta1",
+			}
+			kafkaTrigger.ObjectMeta = metav1.ObjectMeta{
+				Name:      funcName,
+				Namespace: ns,
+			}
+			kafkaTrigger.ObjectMeta.Labels = map[string]string{
+				"created-by": "kubeless",
+			}
+			kafkaTrigger.Spec.FunctionName = funcName
+			kafkaTrigger.Spec.Topic = topic
+			err = utils.CreateKafkaTriggerCustomResource(kubelessClient, &kafkaTrigger)
+			if err != nil {
+				logrus.Fatalf("Failed to deploy cron job trigger %s. Received:\n%s", funcName, err)
+			}
+			break
+		}
 	},
 }
 

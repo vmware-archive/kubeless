@@ -75,9 +75,9 @@ var rootCmd = &cobra.Command{
 		}
 
 		functionController := controller.NewFunctionController(functionCfg, smclient)
-		httpTriggerController := controller.NewHTTPTriggerController(httpTriggerCfg, smclient)
+		httpTriggerController := controller.NewHTTPTriggerController(httpTriggerCfg)
 		kafkaTriggerController := controller.NewKafkaTriggerController(kafkaTriggerCfg)
-		cronJobTriggerController := controller.NewCronJobTriggerController(cronJobTriggerCfg, smclient)
+		cronJobTriggerController := controller.NewCronJobTriggerController(cronJobTriggerCfg)
 
 		stopCh := make(chan struct{})
 		defer close(stopCh)
