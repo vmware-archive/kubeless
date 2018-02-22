@@ -32,6 +32,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"k8s.io/api/autoscaling/v2beta1"
+	batchv1 "k8s.io/api/batch/v1"
+	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
@@ -53,6 +55,7 @@ import (
 )
 
 const (
+	pubsubFunc     = "PubSub"
 	busybox        = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
 	unzip          = "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697"
 	defaultTimeout = "180"
@@ -808,6 +811,72 @@ func doRESTReq(restIface rest.Interface, groupVersion, verb, resource, elem, nam
 	return nil
 }
 
+// EnsureCronJob creates/updates a function cron job
+func EnsureCronJob(client rest.Interface, funcObj *kubelessApi.Function, cronJobObj *kubelessApi.CronJobTrigger,  or []metav1.OwnerReference, groupVersion string) error {
+	var maxSucccessfulHist, maxFailedHist int32
+	maxSucccessfulHist = 3
+	maxFailedHist = 1
+	var timeout int
+	if funcObj.Spec.Timeout != "" {
+		var err error
+		timeout, err = strconv.Atoi(funcObj.Spec.Timeout)
+		if err != nil {
+			return fmt.Errorf("Unable convert %s to a valid timeout", funcObj.Spec.Timeout)
+		}
+	} else {
+		timeout, _ = strconv.Atoi(defaultTimeout)
+	}
+	activeDeadlineSeconds := int64(timeout)
+	jobName := fmt.Sprintf("trigger-%s", funcObj.ObjectMeta.Name)
+	job := &batchv2alpha1.CronJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            jobName,
+			Namespace:       funcObj.ObjectMeta.Namespace,
+			Labels:          funcObj.ObjectMeta.Labels,
+			OwnerReferences: or,
+		},
+		Spec: batchv2alpha1.CronJobSpec{
+			Schedule:                   cronJobObj.Spec.Schedule,
+			SuccessfulJobsHistoryLimit: &maxSucccessfulHist,
+			FailedJobsHistoryLimit:     &maxFailedHist,
+			JobTemplate: batchv2alpha1.JobTemplateSpec{
+				Spec: batchv1.JobSpec{
+					ActiveDeadlineSeconds: &activeDeadlineSeconds,
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{
+								{
+									Image: unzip,
+									Name:  "trigger",
+									Args:  []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.ObjectMeta.Name, funcObj.ObjectMeta.Namespace)},
+								},
+							},
+							RestartPolicy: v1.RestartPolicyNever,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// We need to use directly the REST API since the endpoint
+	// for CronJobs changes from Kubernetes 1.8
+	err := doRESTReq(client, groupVersion, "create", "cronjobs", jobName, funcObj.ObjectMeta.Namespace, job, nil)
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		newCronJob := batchv2alpha1.CronJob{}
+		err = doRESTReq(client, groupVersion, "get", "cronjobs", jobName, funcObj.ObjectMeta.Namespace, nil, &newCronJob)
+		if err != nil {
+			return err
+		}
+		newCronJob.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
+		newCronJob.ObjectMeta.OwnerReferences = or
+		newCronJob.Spec = job.Spec
+		err = doRESTReq(client, groupVersion, "update", "cronjobs", jobName, funcObj.ObjectMeta.Namespace, &newCronJob, nil)
+	}
+	return err
+}
+
+
 // CreateAutoscale creates HPA object for function
 func CreateAutoscale(client kubernetes.Interface, hpa v2beta1.HorizontalPodAutoscaler) error {
 	_, err := client.AutoscalingV2beta1().HorizontalPodAutoscalers(hpa.ObjectMeta.Namespace).Create(&hpa)
@@ -909,6 +978,25 @@ func GetHTTPTriggerOwnerReference(httpTriggerObj *kubelessApi.HTTPTrigger) ([]me
 			APIVersion: "kubeless.io",
 			Name:       httpTriggerObj.ObjectMeta.Name,
 			UID:        httpTriggerObj.ObjectMeta.UID,
+		},
+	}, nil
+}
+
+// GetCronJobTriggerOwnerReference returns ownerRef for appending to objects's metadata
+// created by kubeless-controller one a function is deployed.
+func GetCronJobTriggerOwnerReference(cronJobTriggerObj *kubelessApi.CronJobTrigger) ([]metav1.OwnerReference, error) {
+	if cronJobTriggerObj.ObjectMeta.Name == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("function name can't be empty")
+	}
+	if cronJobTriggerObj.ObjectMeta.UID == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("uid of http trigger %s can't be empty", cronJobTriggerObj.ObjectMeta.Name)
+	}
+	return []metav1.OwnerReference{
+		{
+			Kind:       "CronJobTrigger",
+			APIVersion: "kubeless.io",
+			Name:       cronJobTriggerObj.ObjectMeta.Name,
+			UID:        cronJobTriggerObj.ObjectMeta.UID,
 		},
 	}, nil
 }

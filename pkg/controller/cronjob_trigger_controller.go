@@ -166,7 +166,7 @@ func (c *CronJobTriggerController) processItem(key string) error {
 		return err
 	}
 
-	c.logger.Infof("Processing update to Trigger: %s Namespace: %s", name, ns)
+	c.logger.Infof("Processing update to Cron Job Trigger: %s Namespace: %s", name, ns)
 
 	obj, exists, err := c.informer.GetIndexer().GetByKey(key)
 	if err != nil {
@@ -183,9 +183,29 @@ func (c *CronJobTriggerController) processItem(key string) error {
 		return nil
 	}
 
-	triggerObj := obj.(*kubelessApi.CronJobTrigger)
+	cronJobtriggerObj := obj.(*kubelessApi.CronJobTrigger)
 
-	c.logger.Infof("Processed change to Trigger: %s Namespace: %s", triggerObj.ObjectMeta.Name, ns)
+	or, err := utils.GetCronJobTriggerOwnerReference(cronJobtriggerObj)
+	if err != nil {
+		return err
+	}
+
+	funcObj, err := utils.GetFunction(cronJobtriggerObj.Spec.FunctionName, ns)
+	if err != nil {
+		c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", cronJobtriggerObj.Spec.FunctionName, ns, err)
+		return err
+	}
+
+	restIface := c.clientset.BatchV2alpha1().RESTClient()
+	groupVersion, err := c.getResouceGroupVersion("cronjobs")
+	if err != nil {
+		return err
+	}
+	err = utils.EnsureCronJob(restIface, &funcObj, cronJobtriggerObj, or, groupVersion)
+	if err != nil {
+		return err
+	}
+	c.logger.Infof("Processed change cron job to Trigger: %s Namespace: %s", cronJobtriggerObj.ObjectMeta.Name, ns)
 	return nil
 }
 

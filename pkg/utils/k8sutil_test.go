@@ -191,19 +191,6 @@ func TestEnsureService(t *testing.T) {
 			Deps:     "deps",
 			Handler:  "foo.bar",
 			Runtime:  "python2.7",
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						Name:       "http-function-port",
-						Port:       8080,
-						TargetPort: intstr.FromInt(8080),
-						NodePort:   0,
-						Protocol:   v1.ProtocolTCP,
-					},
-				},
-				Selector: funcLabels,
-				Type:     v1.ServiceTypeClusterIP,
-			},
 		},
 	}
 	err := EnsureFuncService(clientset, f1, or)
@@ -290,19 +277,6 @@ func TestEnsureDeployment(t *testing.T) {
 			Deps:     "deps",
 			Handler:  "foo.bar",
 			Runtime:  "python2.7",
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						Name:       "http-function-port",
-						Port:       f1Port,
-						TargetPort: intstr.FromInt(int(f1Port)),
-						NodePort:   0,
-						Protocol:   v1.ProtocolTCP,
-					},
-				},
-				Selector: funcLabels,
-				Type:     v1.ServiceTypeClusterIP,
-			},
 			Deployment: v1beta1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: funcAnno,
