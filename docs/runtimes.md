@@ -120,6 +120,6 @@ Handling connection for 30000
 hello world
 ```
 
-Note that it is possible to specify `--dependencies` as well when using custom images and install them using an Init container but that is only possible for the supported runtimes. You can get the list of supported runtimes executing `kubeless function deploy --help`.
+Note that it is possible to specify `--dependencies` as well when using custom images and install them using an Init container but that is only possible for the supported runtimes. You can get the list of supported runtimes executing `kubeless get-server-config`.
 
 When using a runtime not supported your function will be stored as `/kubeless/function` without extension. For example, injecting a file `my-function.jar` would result in the file being mounted as `/kubeless/my-fuction`).
