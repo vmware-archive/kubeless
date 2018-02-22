@@ -13,7 +13,6 @@ import (
 	"k8s.io/api/extensions/v1beta1"
 	xv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 )
@@ -55,7 +54,7 @@ func TestDeleteK8sResources(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset(&deploy, &svc, &cm, &hpa)
 
-	controller := Controller{
+	controller := FunctionController{
 		clientset: clientset,
 	}
 	if err := controller.deleteK8sResources("myns", "foo"); err != nil {
@@ -77,7 +76,7 @@ func TestDeleteK8sResources(t *testing.T) {
 
 	// Similar with only svc remaining
 	clientset = fake.NewSimpleClientset(&svc)
-	controller = Controller{
+	controller = FunctionController{
 		clientset: clientset,
 	}
 
@@ -100,7 +99,7 @@ func TestDeleteK8sResources(t *testing.T) {
 	}
 
 	clientset = fake.NewSimpleClientset(&job, &deploy, &svc, &cm)
-	controller = Controller{
+	controller = FunctionController{
 		clientset: clientset,
 	}
 
@@ -144,19 +143,6 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 			Deps:     "deps",
 			Handler:  "foo.bar",
 			Runtime:  "ruby2.4",
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						Name:       "http-function-port",
-						Port:       8080,
-						TargetPort: intstr.FromInt(int(8080)),
-						NodePort:   0,
-						Protocol:   v1.ProtocolTCP,
-					},
-				},
-				Selector: funcLabels,
-				Type:     v1.ServiceTypeClusterIP,
-			},
 			Deployment: v1beta1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: funcAnno,
@@ -243,7 +229,7 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 	var lr = langruntime.New(config)
 	lr.ReadConfigMap()
 
-	controller := Controller{
+	controller := FunctionController{
 		logger:      logrus.WithField("pkg", "controller"),
 		clientset:   clientset,
 		langRuntime: lr,
