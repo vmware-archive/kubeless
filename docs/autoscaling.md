@@ -10,7 +10,8 @@ If you're on Kubeless CLI, this below command gives you an idea how to setup aut
 
 ```
 $ kubeless autoscale --help
-autoscale command allows user to list, create, delete autoscale rule for function on Kubeless
+autoscale command allows user to list, create, delete autoscale rule
+for function on Kubeless
 
 Usage:
   kubeless autoscale SUBCOMMAND [flags]
@@ -39,10 +40,13 @@ Usage:
 Flags:
   -h, --help               help for create
       --max int32          maximum number of replicas (default 1)
-      --metric string      metric to use for calculating the autoscale. Supported metrics: cpu, qps (default "cpu")
+      --metric string      metric to use for calculating the autoscale. Supported
+      metrics: cpu, qps (default "cpu")
       --min int32          minimum number of replicas (default 1)
   -n, --namespace string   Specify namespace for the autoscale
-      --value string       value of the average of the metric across all replicas. If metric is cpu, value is a number represented as percentage. If metric is qps, value must be in format of Quantity
+      --value string       value of the average of the metric across all replicas.
+      If metric is cpu, value is a number represented as percentage. If metric
+      is qps, value must be in format of Quantity
 ```
 
 The below part will walk you though setup need to be done in order to make function auto-scaled based on `qps` metric.
@@ -58,28 +62,32 @@ This walkthrough is done in [kubeadm-dind-cluster v1.7](https://github.com/Miran
 Before getting started, ensure that the main components of your cluster are configured for autoscaling on custom metrics. As of Kubernetes 1.7, this requires enabling the aggregation layer on the API server and configuring the controller manager to use the metrics APIs via their REST clients.
 
 Read more about the aggregation and autoscaling in the Kubernetes documentations:
-- aggregation layer in v1.7: https://kubernetes.io/docs/concepts/api-extension/apiserver-aggregation/
 
-**Start the cluster**
-```
-$ wget https://cdn.rawgit.com/Mirantis/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.7.sh
-$ chmod +x dind-cluster-v1.7.sh
-$ ./dind-cluster-v1.7.sh up
+- [Aggregation layer in v1.7](https://kubernetes.io/docs/concepts/api-extension/apiserver-aggregation/)
+
+#### Start the cluster
+
+```bash
+wget https://cdn.rawgit.com/Mirantis/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.7.sh
+chmod +x dind-cluster-v1.7.sh
+./dind-cluster-v1.7.sh up
 ```
 
 Checking the state of the cluster:
-```
-$ docker ps
-$ kubectl cluster-info
+
+```bash
+docker ps
+kubectl cluster-info
 ```
 
-**Configuration**
+#### Configuration
 
 The manifests of kubernetes components in `kubeadm-dind-cluster` locate at `/etc/kubernetes/manifests`, you can just jump in the master "container" and edit them directly; and kubeadm manages to recreate the components immediately.
 
 These below configurations must be set:
 
-1) enable and configure aggregation layer in v1.7 in `kube-apiserver`: https://kubernetes.io/docs/tasks/access-kubernetes-api/configure-aggregation-layer/
+- Enable and configure [aggregation layer](https://kubernetes.io/docs/tasks/access-kubernetes-api/configure-aggregation-layer/) in v1.7 in `kube-apiserver`:
+
 ```
 --requestheader-client-ca-file=<path to aggregator CA cert>
 --requestheader-allowed-names=aggregator
@@ -90,7 +98,8 @@ These below configurations must be set:
 --proxy-client-key-file=<path to aggregator proxy key>
 ```
 
-2) configure controller manager to use the metrics APIs via their REST clients by these settings in `kube-controller-manager`:
+- Configure controller manager to use the metrics APIs via their REST clients by these settings in `kube-controller-manager`:
+
 ```
 --horizontal-pod-autoscaler-use-rest-clients=true
 --horizontal-pod-autoscaler-sync-period=10s
@@ -99,11 +108,14 @@ These below configurations must be set:
 
 The `horizontal-pod-autoscaler-sync-period` parameter set the interval time (in second) that the HPA controller synchronizes the number of pods. By default it's 30s. Sometimes we might want to optimize this parameter to make the HPA controller reacts faster.
 
-3) the autoscaling for custom metrics is supported in HPA since v1.7 via `autoscaling/v2alpha1` API. It needs to be enabled by setting the `runtime-config` in `kube-apiserver`:
+- The autoscaling for custom metrics is supported in HPA since v1.7 via `autoscaling/v2alpha1` API. It needs to be enabled by setting the `runtime-config` in `kube-apiserver`:
+
 ```
 --runtime-config=api/all=true
 ```
+
 Once the kube-apiserver is configured and up and running, `kubectl` will auto-discover all API groups. Check it using this below command and you will see the `autoscaling/v2alpha1` is enabled:
+
 ```
 $ kubectl api-versions
 admissionregistration.k8s.io/v1alpha1
@@ -131,6 +143,7 @@ v1
 ```
 
 ### Deploy Prometheus to monitor services
+
 The Prometheus setup contains a Prometheus operator and a Prometheus instance
 
 ```
@@ -154,6 +167,7 @@ prometheus-operated   None            <none>        9090/TCP         1h
 ```
 
 ### Deploy a custom API server
+
 When the aggregator enabled and configured properly, one can deploy and register a custom API server that provides the `custom-metrics.metrics.k8s.io/v1alpha1` API group/version and let the HPA controller queries custom metrics from that.
 
 The custom API server we are using here is basically [a Prometheus adapter](https://github.com/directxman12/k8s-prometheus-adapter) which can collect metrics from Prometheus and send to HPA controller via REST queries (that's why we must configure HPA controller to use REST client via the `--horizontal-pod-autoscaler-use-rest-clients` flag)
@@ -207,14 +221,15 @@ NAME                                        READY     STATUS    RESTARTS   AGE
 custom-metrics-apiserver-2956926076-wcgmw   1/1       Running   0          1h
 
 $ kubectl get --raw /apis/custom-metrics.metrics.k8s.io/v1alpha1
-{"kind":"APIResourceList","apiVersion":"v1","groupVersion":"custom-metrics.metrics.k8s.io/v1alpha1","resources":[]}
+{"kind":"APIResourceList","apiVersion":"v1",
+"groupVersion":"custom-metrics.metrics.k8s.io/v1alpha1","resources":[]}
 ```
 
 ### Deploy a sample app
 
 Now we can deploy a sample app and sample HPA rule to do the autoscale with `http_requests` metric collected and exposed via Prometheus.
 
-```
+```console
 $ cat $KUBELESS_REPO/manifests/autoscaling/sample-metrics-app.yaml
 ...
 ---
@@ -244,8 +259,6 @@ servicemonitor "sample-metrics-app" created
 horizontalpodautoscaler "sample-metrics-app-hpa" created
 
 $ kubectl get hpa
-NAME                     REFERENCE                       TARGETS      MINPODS   MAXPODS   REPLICAS   AGE
-sample-metrics-app-hpa   Deployment/sample-metrics-app   866m / 100   2         10        2          1h
 ```
 
 Try to increase some loads by hitting the sample app service, then you can see the HPA scales it up.
@@ -256,5 +269,6 @@ Let's say you are running Kubeless on GKE. At this moment you can only do autosc
 
 ### Further reading
 
-https://github.com/kubernetes/community/blob/master/contributors/design-proposals/custom-metrics-api.md
-https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-custom-metrics
+[Custom Metrics API](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/custom-metrics-api.md)
+
+[Support for custom metrics](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-custom-metrics)

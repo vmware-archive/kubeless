@@ -22,76 +22,14 @@ In order to get Kubeless up and running on top of ACS of course you'll need an A
 
 ## 3. Installing "Kubeless-Controller"
 
-Assuming that the Kubernetes cluster is up and running on top of ACS, its time to install kubeless-controller on master VM. To accomplish, please, follow the steps described on Kubeless documentation, available [here](https://github.com/kubeless/kubeless#installation).
+Assuming that the Kubernetes cluster is up and running on top of ACS, its time to install kubeless-controller on master VM. To accomplish, please, follow the steps described on Kubeless documentation, available [here](./quick-start#installation).
 
 ## 4. Installing "Kubeless Client CLI"
 
 Kubeless-Controller is the agent in charge to manage the requests from Kubernetes cluster side. The same way, there's an agent in charge to manage the occurrences from the client side (for instance: register a new function to be executed, call an existing function, etc.). This way, you'll need to install de Kubeless CLI.
 
-Currently there's two different ways to accomplish that: manually (generating binaries manually) or in a automatized way (using a pre-compiled package provided by Bitnami).
-
-### Option 1 - Automated by Bitnami
-
-The is pretty simple. Please, do consider the snippets below.
-
-For Linux environments:
-
-``` 
-# Step 1 - Download the package
-curl -L https://github.com/kubeless/kubeless/releases/download/0.0.20/kubeless_linux-amd64.zip > kubeless.zip
-
-# Step 2 - Unzip the package
-unzip kubeless.zip
-
-# Step 3 - Moving files to local path
-sudo cp bundles/kubeless_linux-amd64/kubeless /usr/local/bin/
-``` 
-
-For OSX environments:
-
-```
-# Step 1 - Download the package
-curl -L https://github.com/kubeless/kubeless/releases/download/0.0.20/kubeless_darwin-amd64.zip > kubeless.zip
-
-# Step 2 - Unzip the package
-unzip kubeless.zip
-
-# Step 3 - Moving files to local path
-sudo cp bundles/kubeless_darwin-amd64/kubeless /usr/local/bin/
-TIP: For detailed installation instructions, visit the Kubeless releases page.
-```
-
-To verify if the installation was successful, please type `kubeless` in your terminal. The result should seems like the showed below.
-
-```
-Serverless framework for Kubernetes
-
-Usage:
-  kubeless [command]
-
-Available Commands:
-  function    function specific operations
-  ingress     manage route to function on Kubeless
-  topic       manage message topics in Kubeless
-  version     Print the version of Kubeless
-
-Flags:
-  -h, --help   help for kubeless
-
-Use "kubeless [command] --help" for more information about a command.
-```
-### Option 2 - Manually (do it yourself)
-
-Anothe possibility is compiling and building kubeless CLI manually. If you would like to follow this path, please, follow the steps below.
-
-**Step 1 - Install and configure Go**
-
-Kubeless was written in Go lang. It means that if you would like make your own binaries, you'll need to have your environment appropriately settled. You can found an [step-by-step tutorial](https://golang.org/doc/install) that can drive you towards that. 
-
-**Step 2 - Follow Dev Guide**
-
-The next steps to build the kubeless CLI client were very well described on Kubeless official documentation under "dev-guide.md" file. It's available [here](https://github.com/kubeless/kubeless/blob/master/docs/dev-guide.md).
+Currently there's two different ways to accomplish that: manually (generating binaries manually) or in a automatized way (using a pre-compiled package provided by Bitnami). Follow the [installation instructions](./quick-start#installation) in order to set it up as well.
 
 ## 5. Usage and initial tests
 
-Please follow Kubeless oficial documentation, available here: https://github.com/kubeless/kubeless#usage.
+Please follow Kubeless oficial documentation, available [here](./quick-start#usage).

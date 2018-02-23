@@ -1,20 +1,5 @@
-# Kubeless
+# Kubeless Docs
 
-## Usage
+This folder holds the documentation that is served in [https://kubeless.io/docs](https://kubeless.io/docs).
 
-- [Runtimes](runtimes.md)
-- [Routing](routing.md)
-- [Running on azure container services](kubeless-on-azure-container-services.md)
-- [Monitoring](monitoring.md)
-- [Autoscaling](autoscaling.md)
-- [Use existing Kafka cluster](use-existing-kafka.md)
-
-## Development
-
-- [Architecture](architecture.md)
-- [Developer's guide](dev-guide.md)
-- [Implementing a new runtime](implementing-new-runtime.md)
-- [Debugging](debugging.md)
-- [Controller configuration for Functions](function-controller-configuration.md)
-- [Release flow](release-flow.md)
-- [Troubleshooting](troubleshooting.md)
+> Note:This folder may contain changes that has not been released yet. To get the latest features available click in the link above.
