@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/kubeless/kubeless/pkg/langruntime"
 
@@ -918,6 +919,12 @@ func EnsureCronJob(client rest.Interface, funcObj *kubelessApi.Function, cronJob
 	}
 	activeDeadlineSeconds := int64(timeout)
 	jobName := fmt.Sprintf("trigger-%s", funcObj.ObjectMeta.Name)
+	var headersString = ""
+	timestamp := time.Now().UTC()
+	headersString = headersString + " -H \"event-id: " + fmt.Sprintf("cronjob-controller-%s", timestamp.Format(time.RFC3339Nano)) + "\""
+	headersString = headersString + " -H \"event-time: " + timestamp.String() + "\""
+	headersString = headersString + " -H \"event-type: application/json\""
+	headersString = headersString + " -H \"event-namespace: kubeless.io\""
 	job := &batchv2alpha1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            jobName,
@@ -938,7 +945,7 @@ func EnsureCronJob(client rest.Interface, funcObj *kubelessApi.Function, cronJob
 								{
 									Image: unzip,
 									Name:  "trigger",
-									Args:  []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.ObjectMeta.Name, funcObj.ObjectMeta.Namespace)},
+									Args:  []string{"curl", "-Lv", headersString, fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.ObjectMeta.Name, funcObj.ObjectMeta.Namespace)},
 								},
 							},
 							RestartPolicy: v1.RestartPolicyNever,
