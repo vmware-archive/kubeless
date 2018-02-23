@@ -51,7 +51,7 @@ The below part will walk you though setup need to be done in order to make funct
 
 To autoscale based on CPU usage, it is *required* that your function has been deployed with CPU request limits.
 
-Do do this, use the `--cpu` parameter when deploying your function. Please see the [Meaning of CPU](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-cpu) for the format of the value that should be passed. 
+To do this, use the `--cpu` parameter when deploying your function. Please see the [Meaning of CPU](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-cpu) for the format of the value that should be passed. 
 
 ## Autoscaling with custom metrics on k8s 1.7
 
