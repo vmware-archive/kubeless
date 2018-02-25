@@ -32,8 +32,8 @@ type KafkaTrigger struct {
 
 // KafkaTriggerSpec contains func specification
 type KafkaTriggerSpec struct {
-	Topic        string `json:"topic"`         // Trigger topic (for PubSub type)
-	FunctionName string `json:"function-name"` // Name of the associated function
+	Topic            string               `json:"topic"` // Trigger topic (for PubSub type)
+	FunctionSelector metav1.LabelSelector `json:"functionSelector"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

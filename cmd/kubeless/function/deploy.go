@@ -230,7 +230,7 @@ var deployCmd = &cobra.Command{
 			kafkaTrigger.ObjectMeta.Labels = map[string]string{
 				"created-by": "kubeless",
 			}
-			kafkaTrigger.Spec.FunctionName = funcName
+			kafkaTrigger.Spec.FunctionSelector.MatchLabels = f.ObjectMeta.Labels
 			kafkaTrigger.Spec.Topic = topic
 			err = utils.CreateKafkaTriggerCustomResource(kubelessClient, &kafkaTrigger)
 			if err != nil {
