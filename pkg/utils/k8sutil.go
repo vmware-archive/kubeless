@@ -193,12 +193,7 @@ func CreateFunctionCustomResource(kubelessClient versioned.Interface, f *kubeles
 
 // UpdateFunctionCustomResource applies changes to the function custom object
 func UpdateFunctionCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
-	data, err := json.Marshal(f)
-	if err != nil {
-		return err
-	}
-
-	_, err = kubelessClient.KubelessV1beta1().Functions(f.Namespace).Patch(f.Name, types.MergePatchType, data)
+	_, err := kubelessClient.KubelessV1beta1().Functions(f.Namespace).Update(f)
 	return err
 }
 

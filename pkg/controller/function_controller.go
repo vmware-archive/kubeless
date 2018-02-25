@@ -286,18 +286,10 @@ func (c *FunctionController) deleteAutoscale(ns, name string) error {
 
 // deleteK8sResources removes k8s objects of the function
 func (c *FunctionController) deleteK8sResources(ns, name string) error {
-	//check if func is scheduled or not
-	_, err := c.clientset.BatchV2alpha1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", name), metav1.GetOptions{})
-	if err == nil {
-		err = c.clientset.BatchV2alpha1().CronJobs(ns).Delete(fmt.Sprintf("trigger-%s", name), &metav1.DeleteOptions{})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return err
-		}
-	}
 
 	// delete deployment
 	deletePolicy := metav1.DeletePropagationBackground
-	err = c.clientset.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
+	err := c.clientset.Extensions().Deployments(ns).Delete(name, &metav1.DeleteOptions{PropagationPolicy: &deletePolicy})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
