@@ -224,10 +224,6 @@ func (c *KafkaTriggerController) processItem(key string) error {
 	}
 
 	if !exists {
-		c.logger.Infof("Stopping consumer for trigger %s", name)
-		// FIXME: should be funcName
-		kafka.DeleteKafkaConsumer(stopM, stoppedM, name, ns)
-		c.logger.Infof("Stopped consumer for trigger %s", name)
 		return nil
 	}
 
@@ -235,6 +231,44 @@ func (c *KafkaTriggerController) processItem(key string) error {
 	topics := triggerObj.Spec.Topic
 	if topics == "" {
 		return errors.New("Topic can't be empty. Please check the trigger object")
+	}
+
+	if triggerObj.ObjectMeta.DeletionTimestamp != nil {
+		funcSelector, err := apimachineryHelpers.LabelSelectorAsSelector(&triggerObj.Spec.FunctionSelector)
+		if err != nil {
+			c.logger.Errorf("Failed to convert LabelSelector to Selector due to %s: ", err)
+		}
+		functions, err := c.functionInformer.Lister().Functions(ns).List(funcSelector)
+		if err != nil {
+			c.logger.Errorf("Failed to list function by Selector due to %s: ", err)
+		}
+
+		if len(functions) == 0 {
+			c.logger.Infof("No matching functions with selector %v found in namespace %s", funcSelector, ns)
+		}
+
+		for _, function := range functions {
+			if err != nil {
+				c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", function.ObjectMeta.Name, ns, err)
+				return err
+			}
+			funcName := function.ObjectMeta.Name
+			c.logger.Infof("Stopping consumer for trigger %s", name)
+			kafka.DeleteKafkaConsumer(stopM, stoppedM, funcName, ns)
+			c.logger.Infof("Stopped consumer for trigger %s", name)
+		}
+
+		if c.kafkaTriggerObjRemoveFinalizer(triggerObj) != nil {
+			c.logger.Errorf("Failed to remove Kafka trigger controller as finalizer to Kafka Trigger Obj: %s CRD object due to: %v: ", triggerObj.ObjectMeta.Name, err)
+		}
+		return nil
+	}
+
+	if c.kafkaTriggerObjNeedFinalizer(triggerObj) {
+		err = c.kafkaTriggerObjAddFinalizer(triggerObj)
+		if err != nil {
+			c.logger.Errorf("Error adding Kafka trigger controller as finalizer to Kafka Trigger Obj: %s CRD 	ect due to: %v: ", triggerObj.ObjectMeta.Name, err)
+		}
 	}
 
 	// taking brokers from env var
@@ -261,10 +295,8 @@ func (c *KafkaTriggerController) processItem(key string) error {
 			c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", function.ObjectMeta.Name, ns, err)
 			return err
 		}
-		if c.needToAddFinalizer(function) {
-			funcObjClone := function.DeepCopy()
-			funcObjClone.ObjectMeta.Finalizers = append(funcObjClone.ObjectMeta.Finalizers, kafkaTriggerFinalizer)
-			err = utils.UpdateFunctionCustomResource(c.kubelessclient, funcObjClone)
+		if c.functionObjNeedFinalizer(function) {
+			err = c.functionObjAddFinalizer(function)
 			if err != nil {
 				c.logger.Errorf("Error adding Kafka trigger controller as finalizer to Function: %s CRD object due to: %s: ", function.ObjectMeta.Name, err)
 			}
@@ -339,9 +371,29 @@ func (c *KafkaTriggerController) functionAddedDeletedUpdated(obj interface{}, de
 		}
 	}
 
-	funcObjClone := functionObj.DeepCopy()
+	err = c.functionObjRemoveFinalizer(functionObj)
+	if err != nil {
+		c.logger.Errorf("Error removing Kakfa trigger controller as finalizer to Function: %s CRD object due to: %s: ", functionObj.ObjectMeta.Name, err)
+		return
+	}
+
+	c.logger.Infof("Successfully removed Kafka trigger controller as finalizer to Function: %s CRD object", functionObj.ObjectMeta.Name)
+}
+
+func (c *KafkaTriggerController) functionObjNeedFinalizer(funcObj *kubelessApi.Function) bool {
+	currentFinalizers := funcObj.ObjectMeta.Finalizers
+	for _, f := range currentFinalizers {
+		if f == kafkaTriggerFinalizer {
+			return false
+		}
+	}
+	return funcObj.ObjectMeta.DeletionTimestamp == nil
+}
+
+func (c *KafkaTriggerController) functionObjRemoveFinalizer(funcObj *kubelessApi.Function) error {
+	funcObjClone := funcObj.DeepCopy()
 	newSlice := make([]string, 0)
-	for _, item := range functionObj.ObjectMeta.Finalizers {
+	for _, item := range funcObj.ObjectMeta.Finalizers {
 		if item == kafkaTriggerFinalizer {
 			continue
 		}
@@ -351,20 +403,48 @@ func (c *KafkaTriggerController) functionAddedDeletedUpdated(obj interface{}, de
 		newSlice = nil
 	}
 	funcObjClone.ObjectMeta.Finalizers = newSlice
-	err = utils.UpdateFunctionCustomResource(c.kubelessclient, funcObjClone)
-	if err != nil {
-		c.logger.Errorf("Error removing Kakfa trigger controller as finalizer to Function: %s CRD object due to: %s: ", functionObj.ObjectMeta.Name, err)
-		return
-	}
-	c.logger.Infof("Successfully removed Kafka trigger controller as finalizer to Function: %s CRD object", functionObj.ObjectMeta.Name)
+	err := utils.UpdateFunctionCustomResource(c.kubelessclient, funcObjClone)
+	return err
 }
 
-func (c *KafkaTriggerController) needToAddFinalizer(funcObj *kubelessApi.Function) bool {
-	currentFinalizers := funcObj.ObjectMeta.Finalizers
+func (c *KafkaTriggerController) functionObjAddFinalizer(funcObj *kubelessApi.Function) error {
+	funcObjClone := funcObj.DeepCopy()
+	funcObjClone.ObjectMeta.Finalizers = append(funcObjClone.ObjectMeta.Finalizers, kafkaTriggerFinalizer)
+	return utils.UpdateFunctionCustomResource(c.kubelessclient, funcObjClone)
+}
+
+func (c *KafkaTriggerController) kafkaTriggerObjNeedFinalizer(triggercObj *kubelessApi.KafkaTrigger) bool {
+	currentFinalizers := triggercObj.ObjectMeta.Finalizers
 	for _, f := range currentFinalizers {
 		if f == kafkaTriggerFinalizer {
 			return false
 		}
 	}
-	return funcObj.ObjectMeta.DeletionTimestamp == nil
+	return triggercObj.ObjectMeta.DeletionTimestamp == nil
+}
+
+func (c *KafkaTriggerController) kafkaTriggerObjAddFinalizer(triggercObj *kubelessApi.KafkaTrigger) error {
+	triggercObjClone := triggercObj.DeepCopy()
+	triggercObjClone.ObjectMeta.Finalizers = append(triggercObjClone.ObjectMeta.Finalizers, kafkaTriggerFinalizer)
+	return utils.UpdateKafkaTriggerCustomResource(c.kubelessclient, triggercObjClone)
+}
+
+func (c *KafkaTriggerController) kafkaTriggerObjRemoveFinalizer(triggercObj *kubelessApi.KafkaTrigger) error {
+	triggercObjClone := triggercObj.DeepCopy()
+	newSlice := make([]string, 0)
+	for _, item := range triggercObjClone.ObjectMeta.Finalizers {
+		if item == kafkaTriggerFinalizer {
+			continue
+		}
+		newSlice = append(newSlice, item)
+	}
+	if len(newSlice) == 0 {
+		newSlice = nil
+	}
+	triggercObjClone.ObjectMeta.Finalizers = newSlice
+	err := utils.UpdateKafkaTriggerCustomResource(c.kubelessclient, triggercObjClone)
+	if err != nil {
+		return err
+	}
+	return nil
 }

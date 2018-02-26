@@ -43,7 +43,6 @@ import (
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
@@ -228,12 +227,7 @@ func CreateCronJobCustomResource(kubelessClient versioned.Interface, cronJob *ku
 
 // UpdateCronJobCustomResource applies changes to the function custom object
 func UpdateCronJobCustomResource(kubelessClient versioned.Interface, cronJob *kubelessApi.CronJobTrigger) error {
-	data, err := json.Marshal(cronJob)
-	if err != nil {
-		return err
-	}
-
-	_, err = kubelessClient.KubelessV1beta1().CronJobTriggers(cronJob.Namespace).Patch(cronJob.Name, types.MergePatchType, data)
+	_, err := kubelessClient.KubelessV1beta1().CronJobTriggers(cronJob.Namespace).Update(cronJob)
 	return err
 }
 
@@ -268,12 +262,7 @@ func CreateKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaT
 
 // UpdateKafkaTriggerCustomResource applies changes to the function custom object
 func UpdateKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTrigger *kubelessApi.KafkaTrigger) error {
-	data, err := json.Marshal(kafkaTrigger)
-	if err != nil {
-		return err
-	}
-
-	_, err = kubelessClient.KubelessV1beta1().KafkaTriggers(kafkaTrigger.Namespace).Patch(kafkaTrigger.Name, types.MergePatchType, data)
+	_, err := kubelessClient.KubelessV1beta1().KafkaTriggers(kafkaTrigger.Namespace).Update(kafkaTrigger)
 	return err
 }
 
@@ -898,7 +887,7 @@ func doRESTReq(restIface rest.Interface, groupVersion, verb, resource, elem, nam
 }
 
 // EnsureCronJob creates/updates a function cron job
-func EnsureCronJob(client rest.Interface, funcObj *kubelessApi.Function, cronJobObj *kubelessApi.CronJobTrigger,  or []metav1.OwnerReference, groupVersion string) error {
+func EnsureCronJob(client rest.Interface, funcObj *kubelessApi.Function, cronJobObj *kubelessApi.CronJobTrigger, or []metav1.OwnerReference, groupVersion string) error {
 	var maxSucccessfulHist, maxFailedHist int32
 	maxSucccessfulHist = 3
 	maxFailedHist = 1
@@ -967,7 +956,6 @@ func EnsureCronJob(client rest.Interface, funcObj *kubelessApi.Function, cronJob
 	}
 	return err
 }
-
 
 // CreateAutoscale creates HPA object for function
 func CreateAutoscale(client kubernetes.Interface, hpa v2beta1.HorizontalPodAutoscaler) error {
