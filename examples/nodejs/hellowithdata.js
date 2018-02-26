@@ -1,5 +1,6 @@
 module.exports = {
   handler: (event, context) => {
-    return JSON.stringify(event);
+    console.log(event);
+    return event.data;
   },
 };

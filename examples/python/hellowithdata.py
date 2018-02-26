@@ -1,2 +1,3 @@
-def handler(data, context):
-    return data
+def handler(event, context):
+    print event
+    return event['data']

@@ -54,8 +54,16 @@ end
 
 before do
   contentType = request.env["CONTENT_TYPE"]
-  @event = ''
-  @context = {
+  data = ''
+  if request.env["CONTENT_LENGTH"] != nil && request.env["CONTENT_LENGTH"] > "0"
+    if contentType == "application/json"
+      data =  JSON.parse(request.body.read)
+    else
+      data = request.body.read
+    end
+  end
+  @event = {
+      data: data,
       'event-id': request.env["HTTP_EVENT_ID"],
       'event-type': request.env["HTTP_EVENT_TYPE"],
       'event-time': request.env["HTTP_EVENT_TIME"],
@@ -64,13 +72,7 @@ before do
         request: request,
       }
     }
-  if request.env["CONTENT_LENGTH"] != nil && request.env["CONTENT_LENGTH"] > "0"
-    if contentType == "application/json"
-      @event =  JSON.parse(request.body.read)
-    else
-      @event = request.body.read
-    end
-  end
+  @context = function_context
 end
 
 get '/' do

@@ -44,14 +44,14 @@ def handler():
     data = req.body.read()
     if content_type == 'application/json':
         data = req.json
-    context = {
+    event = {
+        'data': data,
         'event-id': req.get_header('event-id'),
         'event-type': req.get_header('event-type'),
         'event-time': req.get_header('event-time'),
         'event-namespace': req.get_header('event-namespace'),
         'extensions': {
-            'request': req,
-            'function-context': function_context
+            'request': req
         }
     }
     method = req.method
@@ -59,7 +59,7 @@ def handler():
     with func_errors.labels(method).count_exceptions():
         with func_hist.labels(method).time():
             q = Queue()
-            p = Process(target=funcWrap, args=(q, data, context))
+            p = Process(target=funcWrap, args=(q, event, function_context))
             p.start()
             p.join(timeout)
             # If thread is still active

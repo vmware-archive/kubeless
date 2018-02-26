@@ -1,6 +1,5 @@
 'use strict';
 
-const _ = require('lodash');
 const bodyParser = require('body-parser');
 const client = require('prom-client');
 const express = require('express');
@@ -25,7 +24,16 @@ helper.routeMetrics(app, client);
 const functionCallingCode = `
 try {
   Promise.resolve(module.exports.${funcHandler}(event, context)).then((result) => {
-    _res.end(result);
+    switch(typeof result) {
+      case 'string':
+        _res.end(result);
+        break;
+      case 'object':
+        _res.json(result);
+        break;
+      default:
+        _res.end(JSON.stringify(result))
+    }
     _end();
   }).catch((err) => {
     // Catch asynchronous errors
@@ -58,19 +66,21 @@ app.all('*', (req, res) => {
       data = JSON.parse(data)
     }
     const reqSandbox = Object.assign({
-      event: data,
-      context: {
+      event: {
+        data,
         'event-type': req.get('event-type'),
         'event-id': req.get('event-id'),
         'event-time': req.get('event-time'),
         'event-namespace': req.get('event-namespace'),
         extensions: {
           request: req,
-          'function-name': funcHandler,
-          timeout,
-          runtime: process.env.FUNC_RUNTIME,
-          'memory-limit': process.env.FUNC_MEMORY_LIMIT,
-        }
+        },
+      },
+      context: {
+        'function-name': funcHandler,
+        timeout,
+        runtime: process.env.FUNC_RUNTIME,
+        'memory-limit': process.env.FUNC_MEMORY_LIMIT,
       },
       _handleError: handleError,
       _res: res,

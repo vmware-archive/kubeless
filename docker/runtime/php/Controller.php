@@ -55,17 +55,17 @@ class Controller
         if ($_SERVER['HTTP_CONTENT_TYPE'] == 'application/json') {
           $data = json_decode($data);
         }
-        $context = (object) array(
+        $event = (object) array(
+          'data' => $data,
           'event-type' => $_SERVER['HTTP_EVENT_TYPE'],
           'event-id' => $_SERVER['HTTP_EVENT_ID'],
           'event-time' => $_SERVER['HTTP_EVENT_TIME'],
           'event-namespace' => $_SERVER['HTTP_EVENT_NAMESPACE'],
           'extensions' => (object) array(
             'request' => $request,
-            $this->functionContext
           )
         );
-        $res = call_user_func($this->function, $data, $context);
+        $res = call_user_func($this->function, $event, $this->functionContext);
         ob_end_clean();
         chdir($this->currentDir);
         return $res;

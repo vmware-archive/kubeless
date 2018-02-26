@@ -1,3 +1,4 @@
 def handler(event, context)
-  JSON.generate(event)
+  puts event
+  JSON.generate(event[:data])
 end
