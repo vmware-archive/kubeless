@@ -1116,3 +1116,39 @@ func MergeDeployments(destinationDeployment *v1beta1.Deployment, sourceDeploymen
 func UpdateFunctionDeployments(funcObj *kubelessApi.Function) error {
 	return nil
 }
+
+// FunctionObjAddFinalizer add specified finalizer string to function object
+func FunctionObjAddFinalizer(kubelessClient versioned.Interface, funcObj *kubelessApi.Function, finalizerString string) error {
+	funcObjClone := funcObj.DeepCopy()
+	funcObjClone.ObjectMeta.Finalizers = append(funcObjClone.ObjectMeta.Finalizers, finalizerString)
+	return UpdateFunctionCustomResource(kubelessClient, funcObjClone)
+}
+
+// FunctionObjHasFinalizer checks if function object already has the Function controller finalizer
+func FunctionObjHasFinalizer(funcObj *kubelessApi.Function, finalizerString string) bool {
+	currentFinalizers := funcObj.ObjectMeta.Finalizers
+	for _, f := range currentFinalizers {
+		if f == finalizerString {
+			return true
+		}
+	}
+	return false
+}
+
+// FunctionObjRemoveFinalizer removes the finalizer from the function object
+func FunctionObjRemoveFinalizer(kubelessClient versioned.Interface, funcObj *kubelessApi.Function, finalizerString string) error {
+	funcObjClone := funcObj.DeepCopy()
+	newSlice := make([]string, 0)
+	for _, item := range funcObj.ObjectMeta.Finalizers {
+		if item == finalizerString {
+			continue
+		}
+		newSlice = append(newSlice, item)
+	}
+	if len(newSlice) == 0 {
+		newSlice = nil
+	}
+	funcObjClone.ObjectMeta.Finalizers = newSlice
+	err := UpdateFunctionCustomResource(kubelessClient, funcObjClone)
+	return err
+}

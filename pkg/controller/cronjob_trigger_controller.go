@@ -283,34 +283,21 @@ func (c *CronJobTriggerController) functionAddedDeletedUpdated(obj interface{}, 
 		return
 	}
 
+	if utils.FunctionObjHasFinalizer(functionObj, cronJobTriggerFinalizer) {
 	//check if func is scheduled or not
 	cronJobName := fmt.Sprintf("trigger-%s", functionObj.ObjectMeta.Name)
-	_, err := c.clientset.BatchV2alpha1().CronJobs(functionObj.ObjectMeta.Namespace).Get(cronJobName, metav1.GetOptions{})
-	if err == nil {
-		err = c.clientset.BatchV2alpha1().CronJobs(functionObj.ObjectMeta.Namespace).Delete(cronJobName, &metav1.DeleteOptions{})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			c.logger.Errorf("Failed to delete cronjob %s created for the function %s in namespace %s", cronJobName, functionObj.ObjectMeta.Name, functionObj.ObjectMeta.Namespace)
+		_, err := c.clientset.BatchV2alpha1().CronJobs(functionObj.ObjectMeta.Namespace).Get(cronJobName, metav1.GetOptions{})
+		if err == nil {
+			err = c.clientset.BatchV2alpha1().CronJobs(functionObj.ObjectMeta.Namespace).Delete(cronJobName, &metav1.DeleteOptions{})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				c.logger.Errorf("Failed to delete cronjob %s created for the function %s in namespace %s", cronJobName, functionObj.ObjectMeta.Name, functionObj.ObjectMeta.Namespace)
+			}
+		}
+		err = utils.FunctionObjRemoveFinalizer(c.kubelessclient, functionObj, cronJobTriggerFinalizer)
+		if err == nil {
+			c.logger.Infof("Successfully removed CronJob trigger controller as finalizer to Function: %s CRD object", functionObj.ObjectMeta.Name)
 		}
 	}
-
-	funcObjClone := functionObj.DeepCopy()
-	newSlice := make([]string, 0)
-	for _, item := range functionObj.ObjectMeta.Finalizers {
-		if item == cronJobTriggerFinalizer {
-			continue
-		}
-		newSlice = append(newSlice, item)
-	}
-	if len(newSlice) == 0 {
-		newSlice = nil
-	}
-	funcObjClone.ObjectMeta.Finalizers = newSlice
-	err = utils.UpdateFunctionCustomResource(c.kubelessclient, funcObjClone)
-	if err != nil {
-		c.logger.Errorf("Error removing CronJob trigger controller as finalizer to Function: %s CRD object due to: %s: ", functionObj.ObjectMeta.Name, err)
-		return
-	}
-	c.logger.Infof("Successfully removed CronJob trigger controller as finalizer to Function: %s CRD object", functionObj.ObjectMeta.Name)
 }
 
 func needToAddFinalizer(funcObj *kubelessApi.Function) bool {

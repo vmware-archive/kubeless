@@ -46,6 +46,7 @@ const (
 	maxRetries = 5
 	funcKind   = "Function"
 	funcAPI    = "kubeless.io"
+	functionFinalizer = "kubeless.io/function"
 )
 
 // FunctionController object
@@ -328,16 +329,33 @@ func (c *FunctionController) processItem(key string) error {
 	}
 
 	if !exists {
+		c.logger.Infof("Function object %s not found, ignoring", key)
+		return nil
+	}
+
+	funcObj := obj.(*kubelessApi.Function)
+	if funcObj.ObjectMeta.DeletionTimestamp != nil && utils.FunctionObjHasFinalizer(funcObj, functionFinalizer) {
 		err := c.deleteK8sResources(ns, name)
 		if err != nil {
 			c.logger.Errorf("Can't delete function: %v", err)
 			return err
 		}
-		c.logger.Infof("Deleted Function %s", key)
+		err = utils.FunctionObjRemoveFinalizer(c.kubelessclient, funcObj, functionFinalizer)
+		if err != nil {
+			c.logger.Errorf("Failed to remove function controller as finalizer to Function Obj: %s object due to: %v: ", key, err)
+			return err
+		}
+		c.logger.Infof("Function object %s has been successfully processed and marked for deleteion", key)
 		return nil
 	}
 
-	funcObj := obj.(*kubelessApi.Function)
+	if !utils.FunctionObjHasFinalizer(funcObj, functionFinalizer) {
+		err = utils.FunctionObjAddFinalizer(c.kubelessclient, funcObj, functionFinalizer)
+		if err != nil {
+			c.logger.Errorf("Error adding Function controller as finalizer to Function Obj: %s CRD due to: %v: ", key, err)
+			return err
+		}
+	}
 
 	err = c.ensureK8sResources(funcObj)
 	if err != nil {
