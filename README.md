@@ -26,7 +26,7 @@ Click on this next picture to see a screencast demonstrating our [serverless](ht
 
 ## Quick start
 
-Check out the instructions for quickly set up Kubeless [here](https://kubeless.io/site/docs/quick-start).
+Check out the instructions for quickly set up Kubeless [here](http://kubeless.io/docs/quick-start).
 
 ## Building
 
