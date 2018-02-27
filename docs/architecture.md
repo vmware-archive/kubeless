@@ -12,33 +12,28 @@ Kubeless leverages multiple concepts of Kubernetes in order to support deploy fu
 - Service to expose function.
 - Init container to load the dependencies that function might have.
 
-When install kubeless, there is a CRD endpoint being deploy called `function.k8s.io`:
+When install kubeless, there is a CRD endpoint being deploy called `function.kubeless.io`:
 
-```
+```yaml
 $ kubectl get customresourcedefinition -o yaml
 apiVersion: v1
 items:
 - apiVersion: apiextensions.k8s.io/v1beta1
   kind: CustomResourceDefinition
   metadata:
-    annotations:
-      kubectl.kubernetes.io/last-applied-configuration: |
-        {"apiVersion":"apiextensions.k8s.io/v1beta1","description":"Kubernetes Native Serverless Framework","kind":"CustomResourceDefinition","metadata":{"annotations":{},"name":"functions.k8s.io","namespace":""},"spec":{"group":"k8s.io","names":{"kind":"Function","plural":"functions","singular":"function"},"scope":"Namespaced","version":"v1"}}
-    creationTimestamp: 2017-10-10T14:51:37Z
-    name: functions.k8s.io
-    namespace: ""
-    resourceVersion: "7943"
-    selfLink: /apis/apiextensions.k8s.io/v1beta1/customresourcedefinitions/functions.k8s.io
-    uid: 846770f8-adca-11e7-b48e-0a580a160058
+    ...
+    name: functions.kubeless.io
+    ...
+    selfLink: /apis/apiextensions.k8s.io/v1beta1/customresourcedefinitions/functions.kubeless.io
   spec:
-    group: k8s.io
+    group: kubeless.io
     names:
       kind: Function
       listKind: FunctionList
       plural: functions
       singular: function
     scope: Namespaced
-    version: v1
+    version: v1beta1
   status:
     acceptedNames:
       kind: Function
@@ -46,49 +41,35 @@ items:
       plural: functions
       singular: function
     conditions:
-    - lastTransitionTime: null
-      message: no conflicts found
-      reason: NoConflicts
-      status: "True"
-      type: NamesAccepted
-    - lastTransitionTime: 2017-10-10T14:51:37Z
-      message: the initial names have been accepted
-      reason: InitialNamesAccepted
-      status: "True"
-      type: Established
+      ...
 kind: List
-metadata:
-  resourceVersion: ""
-  selfLink: ""
 ```
 
 Then function custom objects will be created under this CRD endpoint. A function object looks like this:
 
-```
+```yaml
 $ kubectl get function -o yaml
 apiVersion: v1
 items:
-- apiVersion: k8s.io/v1
+- apiVersion: kubeless.io/v1beta1
   kind: Function
   metadata:
     clusterName: ""
-    creationTimestamp: 2017-10-10T16:09:06Z
-    deletionGracePeriodSeconds: null
-    deletionTimestamp: null
+    creationTimestamp: 2018-02-21T16:21:15Z
+    labels:
+      created-by: kubeless
     name: get-python
     namespace: default
-    resourceVersion: "13299"
-    selfLink: /apis/k8s.io/v1/namespaces/default/functions/get-python
-    uid: 5759e3f3-add5-11e7-b48e-0a580a160058
+    resourceVersion: "378"
+    selfLink: /apis/kubeless.io/v1beta1/namespaces/default/functions/get-python
+    uid: 3d544cf3-1723-11e8-ac5d-080027ae63b7
   spec:
-    deps: ""
-    function: |
-      def foobar(context):
-         print context.json
-         return context.json
-    handler: test.foobar
-    runtime: python2.7
-    schedule: ""
+    checksum: sha256:0807cad785f8bdb0d272bfd26cf34b44fa124189644ad7852c2c5a071ccd4a66
+    deployment:
+      metadata:
+        creationTimestamp: null
+      spec:
+        strategy: {}
     template:
       metadata:
         creationTimestamp: null
@@ -96,6 +77,39 @@ items:
         containers:
         - name: ""
           resources: {}
+      status: {}
+    deps: ""
+    function: |
+      def foo():
+          return "hello world"
+    function-content-type: text
+    handler: helloget.foo
+    horizontalPodAutoscaler:
+      metadata:
+        creationTimestamp: null
+      spec:
+        maxReplicas: 0
+        scaleTargetRef:
+          kind: ""
+          name: ""
+      status:
+        conditions: null
+        currentMetrics: null
+        currentReplicas: 0
+        desiredReplicas: 0
+    runtime: python2.7
+    schedule: ""
+    service:
+      ports:
+      - name: http-function-port
+        port: 8080
+        protocol: TCP
+        targetPort: 8080
+      selector:
+        created-by: kubeless
+        function: get-python
+      type: ClusterIP
+    timeout: "180"
     topic: ""
     type: HTTP
 kind: List
@@ -108,13 +122,13 @@ metadata:
 
 We write a custom controller named `Kubeless-controller` to continuously watch changes of function objects and react accordingly to deploy/delete K8S deployment/svc/configmap. By default Kubeless-controller is installed into `kubeless` namespace. Here we use configmap to inject the function code from function.spec.function into the corresponding k8s runtime pod.
 
-There are currently two type of functions supported in Kubeless: http-based and pubsub-based. A set of Kafka and Zookeeper is installed into the `kubeless` namespace to handle the pubsub-based functions.
+There are currently three type of functions supported in Kubeless: http-based, scheduled and pubsub-based. A set of Kafka and Zookeeper is installed into the `kubeless` namespace to handle the pubsub-based functions.
 
 ## Kubeless command-line client
 
 Together with `kubeless-controller`, we provide `kubeless` cli which enables users to interact with Kubeless system. At this moment, Kubeless cli provides these below actions:
 
-```
+```console
 $ kubeless --help
 Serverless framework for Kubernetes
 
@@ -122,39 +136,36 @@ Usage:
   kubeless [command]
 
 Available Commands:
-  function    function specific operations
-  install     Install Kubeless controller
-  topic       manage message topics in Kubeless
-  version     Print the version of Kubeless
+  autoscale         manage autoscale to function on Kubeless
+  function          function specific operations
+  get-server-config Print the current configuration of the controller
+  help              Help about any command
+  route             manage route to function on Kubeless
+  topic             manage message topics in Kubeless
+  version           Print the version of Kubeless
+
+Flags:
+  -h, --help   help for kubeless
 
 Use "kubeless [command] --help" for more information about a command.
 ```
 
-Diving into these above commands for more details.
-
 ## Implementation
 
-Kubeless controller is written in Go programming language, and uses the Kubernetes go client to interact with the Kubernetes API server. Detailed implementation of the controller could be found at https://github.com/kubeless/kubeless/blob/master/pkg/controller/controller.go#L113
+Kubeless controller is written in Go programming language, and uses the Kubernetes go client to interact with the Kubernetes API server.
 
-Kubeless CLI is written in Go as well, using the popular cli library `github.com/spf13/cobra`. Basically it is a bundle of HTTP requests and kubectl commands. We send http requests to the Kubernetes API server in order to 'crud' CRD objects. Other actions are just wrapping up `kubectl port-forward`, `kubectl exec` and `kubectl logs` in order to make direct call to function, inject message to Kafka controller or get function log. Checkout https://github.com/kubeless/kubeless/tree/master/cmd/kubeless for more details.
+Kubeless CLI is written in Go as well, using the popular cli library `github.com/spf13/cobra`. Basically it is a bundle of HTTP requests and kubectl commands. We send http requests to the Kubernetes API server in order to 'crud' CRD objects. Checkout [the cmd folder](https://github.com/kubeless/kubeless/tree/master/cmd/kubeless) for more details.
 
 ## Directory structure
 
 In order to help you getting a better feeling before you start diving into the project, we would give you the 10,000 foot view of the source code directory structure.
 
-```
 - chart: chart to deploy Kubeless with Helm
 - cmd: contains kubeless cli implementation and kubeless-controller.
 - docker: contains artifacts for building the kubeless-controller and runtime images.
 - docs: contains documentations.
 - examples: contains some samples of running function with kubeless.
-- manifests: collection of manifests for development
+- manifests: collection of manifests for additional features
 - pkg: contains shared packages.
-    - controller: kubeless controller implementation.
-    - function: kubeless function crud.
-    - spec: kubeless function spec.
-    - utils: k8s utilities which helps to interact with k8s apiserver.
 - script: contains build scripts.
 - vendor: contains dependencies packages.
-- version: nothing but kubeless version.
-```

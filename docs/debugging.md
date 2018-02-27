@@ -14,7 +14,7 @@ You can find the procedure to install and configure Delve in you PC (Linux, Mac 
 
 Some versions of Mac OS has been facing some troubles related to injection of auto-generated digital certificate required by Delve installation via Homebrew process. The error seems like that one presented below.
 
-```
+```console
 ==> Tapping go-delve/delve
 Cloning into '/usr/local/Homebrew/Library/Taps/go-delve/homebrew-delve'...
 remote: Counting objects: 7, done.
@@ -29,9 +29,11 @@ Tapped 1 formula (33 files, 41.4KB)
 ######################################################################## 100.0%
 security: SecKeychainSearchCopyNext: The specified item could not be found in the keychain.
 ==> Generating dlv-cert
-==> openssl req -new -newkey rsa:2048 -x509 -days 3650 -nodes -config dlv-cert.cfg -extensions codesign_reqext -batch -out dlv-cert.cer -keyout dlv-cert.key
+==> openssl req -new -newkey rsa:2048 -x509 -days 3650 -nodes -config dlv-cert.cfg
+-extensions codesign_reqext -batch -out dlv-cert.cer -keyout dlv-cert.key
 ==> [SUDO] Installing dlv-cert as root
-==> sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain dlv-cert.cer
+==> sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain
+dlv-cert.cer
 Last 15 lines from /Users/gta/Library/Logs/Homebrew/delve/02.sudo:
 2017-08-02 17:06:05 +0200
 
@@ -52,19 +54,19 @@ You can manually fix the error installing the certificate by yourself. To do tha
 
 **Unzip the delve-1.0.0-rc.1 file**
 
-```
+```console
 $ tar  /Users/{you_user}/Library/Caches/Homebrew/delve-1.0.0-rc.1
 ```
 
 **Navigate to Delve/Scripts directory**
 
-```
+```console
 $ cd /Users/{your_user}/Library/Caches/Homebrew/delve-1.0.0-rc.1/scripts
 ```
 
 **Execute gencert and provide your admin password**
 
-```
+```console
 $ ./gencert.sh
 ```
 
@@ -82,7 +84,7 @@ Microsoft already did a great job describing the processo to configure Delve on 
 
 If you was sucessful VS Code debug setup task, you now have a new directory with one file called "launch.json" inside. This file must contain the follow content inside.
 
-```
+```json
 {
 	"version": "0.2.0",
 	"configurations": [
@@ -105,7 +107,7 @@ If you was sucessful VS Code debug setup task, you now have a new directory with
 
 In order to debug a Go code, Delve looks for a "main" method, once that is the method that starts the entire execution flow. This way, could be a good practice replace the value of "program" property (currently "`${workspaceRoot}`") by the static path to the "main" file. In this case, the "program" property could be similar to this:
 
-```
+```json
  "program": "$/Users/{your_user}/Documents/Projects/.../kubeless/cmd/kubeless/"
 ```
 

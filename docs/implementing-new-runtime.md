@@ -53,10 +53,12 @@ func UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runtime string) {
 	switch {
 ...
 +	case strings.Contains(runtime, "ruby"):
-+		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-+			Name:  "GEM_HOME",
-+			Value: path.Join(depsPath, "ruby/2.4.0"),
-+		})
++		dpm.Spec.Template.Spec.Containers[0].Env = append(
++			dpm.Spec.Template.Spec.Containers[0].Env,
++			v1.EnvVar{
++				Name:  "GEM_HOME",
++				Value: path.Join(depsPath, "ruby/2.4.0"),
++			})
 ```
 
 This function is called if there are requirements to be injected in your runtime or if it is a custom runtime.
@@ -64,6 +66,7 @@ This function is called if there are requirements to be injected in your runtime
 ## 4. Add examples
 
 In order to demonstrate the usage of the new runtime it will be necessary to add at least three different examples:
+
  - GET Example: A simple example in which the function returns a "hello world" string or similar.
  - POST Example: Another example in which the function reads the received input and returns a response.
  - Deps Example: In this example the runtime should load an external library (installed via the build process) and produce a response.

@@ -1,6 +1,7 @@
 # Runtimes support
 
 Right now Kubeless has support for the following runtimes:
+
  - Python: For the branch 2.7.X
  - NodeJS: For the branches 6.X and 8.X
  - Ruby: For the branch 2.4.X
@@ -10,26 +11,40 @@ Each runtime is encapsulated in a container image. The reference to these images
 Runtimes have a maximum timeout set by the environment variable FUNC_TIMEOUT. This environment variable can be set using the CLI option `--timeout`. The default value is 180 seconds. If a function takes more than that in being executed, the process will be terminated.
 
 ## Configuring Default Runtime Container Images
+
 The Kubeless controller defines a set of default container images per supported runtime variant.
-These default container images can be configured via Kubernetes environment variables on the Kubeless controller's deployment container.
-Some examples:
+
+These default container images can be configured via Kubernetes environment variables on the Kubeless controller's deployment container. Or modifying the `kubeless-config` ConfigMap that is deployed along with the Kubeless controller.
+
+If you want to obtain the list of possible runtimes execute:
+
+```console
+$ kubeless get-server-config
+INFO[0000] Current Server Config:
+INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, dotnetcore2.0
+```
+
+If you want to deploy a custom runtime using an environment variable these are some examples:
 
 | Runtime Variant | Environment Variable Name |
 | --- | --- |
-| NodeJS 6.X HTTP Trigger | NODEJS6_RUNTIME |
-| NodeJS 8.X Event Trigger | NODEJS8_PUBSUB_RUNTIME |
-| Python 2.7.x HTTP Trigger | PYTHON2.7_RUNTIME |
-| Ruby 2.4.x HTTP Trigger | RUBY2.4_RUNTIME |
+| NodeJS 6.X HTTP Trigger | `NODEJS6_RUNTIME` |
+| NodeJS 8.X Event Trigger | `NODEJS8_PUBSUB_RUNTIME` |
+| Python 2.7.x HTTP Trigger | `PYTHON2.7_RUNTIME` |
+| Ruby 2.4.x HTTP Trigger | `RUBY2.4_RUNTIME` |
 | ... | ... |
 
 # Runtime variants
 ## HTTP Trigger
+
 This variant is used when the function is meant to be triggered through HTTP. For doing so we use a web framework that is in charge of receiving request and redirect them to the function. This kind of trigger is supported for all the runtimes.
 
 ### Node.js HTTP Trigger
+
 For the Node.js runtime we start an [Express](http://expressjs.com) server and we include the routes for serving the health check and exposing the monitoring metrics. Apart from that we enable [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS) requests and [Morgan](https://github.com/expressjs/morgan) for handling the logging in the server. Monitoring is supported if the function is synchronous or if it uses promises.
 
 When using the Node.js runtime, it is possible to configure a [custom registry or scope](https://docs.npmjs.com/misc/scope#associating-a-scope-with-a-registry) in case a function needs to install modules from a different source. For doing so it is necessary to set up the environment variables *NPM_REGISTRY* and *NPM_SCOPE* when deploying the function:
+
 ```console
 $ kubeless function deploy myFunction --runtime nodejs6 \
                                 --env NPM_REGISTRY=http://my-registry.com \
@@ -41,12 +56,15 @@ $ kubeless function deploy myFunction --runtime nodejs6 \
 ```
 
 ### Python HTTP Trigger
+
 For python we use [Bottle](https://bottlepy.org) and we also add routes for health check and monitoring metrics.
 
 ### Ruby HTTP Trigger
+
 For the case of Ruby we use [Sinatra](http://www.sinatrarb.com) as web framework and we add the routes required for the function and the health check. Monitoring is currently not supported yet for this framework. PR is welcome :-)
 
 ## Event trigger
+
 This variant is used when the function is meant to be triggered through message events in a pre-deployed [Kafka](https://kafka.apache.org) system. We include a set of kafka/zookeeper in the deployment manifest of [Kubeless release package](https://github.com/kubeless/kubeless/releases) that will be deployed together with the Kubeless controller. Basically the runtimes are Kafka consumers which listen messages in a specific kafka topic and execute the injected function.
 
 Right now the runtimes that support this kind of events are Python, NodeJS and Ruby.
@@ -65,6 +83,7 @@ For executing scheduled functions we use Kubernetes [CronJobs](https://kubernete
 If for some reason you want to modify one of the default values for a certain function you can execute `kubectl edit cronjob trigger-<func_name>` (where `func_name` is the name of your function) and modify the fields required. Once it is saved the CronJob will be updated.
 
 ## Monitoring functions
+
 Kubeless runtimes are exposing metrics at `/metrics` endpoint and these metrics will be collected by Prometheus. We also include a prometheus setup in [`manifests/monitoring`](https://github.com/kubeless/kubeless/blob/master/manifests/monitoring/prometheus.yaml) to help you easier set it up. The metrics collected are: Number of calls, succeeded and error executions and the time spent per call.
 
 # Custom Runtime (Alpha)
@@ -77,6 +96,7 @@ We are providing a way to define custom runtime in form of a container image. Th
  - (Optional) It serves [Prometheus](https://prometheus.io) metrics in the endpoint `/metrics`
 
 To deploy the container image you just need to specify it using the Kubeless CLI:
+
 ```console
 $ kubeless function deploy --runtime-image bitnami/tomcat:9.0 webserver
 $ kubeless function ls
@@ -85,6 +105,7 @@ webserver	default  	                	         	HTTP
 ```
 
 Now you can call your function like any other:
+
 ```console
 $ kubeless function call webserver
 ...
@@ -107,8 +128,14 @@ CMD ["python", "/kubeless.py"]
 ```
 
 Once you have built the image you need to push it to a registry to make it available within your cluster. Finally you can call the `deploy` command specifying the custom runtime image and the function you want to inject:
+
 ```console
-$ kubeless function deploy --runtime-image tuna/kubeless-python:0.0.6 --from-file ./handler.py --handler handler.hello --runtime python2.7 --trigger-http hello
+$ kubeless function deploy \
+  --runtime-image tuna/kubeless-python:0.0.6 \
+  --from-file ./handler.py \
+  --handler handler.hello \
+  --runtime python2.7 \
+  --trigger-http hello
 $ kubeless function ls
 NAME      	NAMESPACE	HANDLER     	RUNTIME  	TYPE	TOPIC
 get-python	default  	foo.foo	      python2.7	HTTP
