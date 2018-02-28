@@ -6,6 +6,7 @@ VERSION = dev-$(shell date +%FT%T%z)
 KUBECFG = kubecfg
 DOCKER = docker
 CONTROLLER_IMAGE = kubeless-controller-manager:latest
+KAFKA_CONTROLLER_IMAGE = kafka-trigger-controller:latest
 OS = linux
 ARCH = amd64
 BUNDLES = bundles
@@ -55,6 +56,15 @@ controller-build:
 
 controller-image: docker/controller-manager
 	$(DOCKER) build -t $(CONTROLLER_IMAGE) $<
+
+docker/kafka-controller: kafka-controller-build
+	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/kafka-controller $@
+
+kafka-controller-build:
+	./script/kafka-controller.sh -os=$(OS) -arch=$(ARCH)
+
+kafka-controller-image: docker/kafka-controller
+	$(DOCKER) build -t $(KAFKA_CONTROLLER_IMAGE) $<
 
 update:
 	./hack/update-codegen.sh

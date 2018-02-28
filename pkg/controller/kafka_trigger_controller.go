@@ -44,8 +44,6 @@ import (
 
 const (
 	triggerMaxRetries     = 5
-	objKind               = "Trigger"
-	objAPI                = "kubeless.io"
 	kafkaTriggerFinalizer = "kubeless.io/kafkatrigger"
 )
 
@@ -313,7 +311,7 @@ func (c *KafkaTriggerController) processItem(key string) error {
 		c.logger.Infof("Created consumer successfully")
 	}
 
-	c.logger.Infof("Processed change to Trigger: %s Namespace: %s", triggerObj.ObjectMeta.Name, ns)
+	c.logger.Infof("Processed change to Kafka trigger: %s Namespace: %s", triggerObj.ObjectMeta.Name, ns)
 	return nil
 }
 
