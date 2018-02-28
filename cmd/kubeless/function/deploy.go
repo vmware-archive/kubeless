@@ -229,6 +229,7 @@ var deployCmd = &cobra.Command{
 			}
 			kafkaTrigger.ObjectMeta.Labels = map[string]string{
 				"created-by": "kubeless",
+				"function":   funcName,
 			}
 			kafkaTrigger.Spec.FunctionSelector.MatchLabels = f.ObjectMeta.Labels
 			kafkaTrigger.Spec.Topic = topic
