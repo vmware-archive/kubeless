@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	apimachineryHelpers "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -209,36 +208,22 @@ func (c *CronJobTriggerController) processItem(key string) error {
 		return err
 	}
 
-	funcSelector, err := apimachineryHelpers.LabelSelectorAsSelector(&cronJobtriggerObj.Spec.FunctionSelector)
+	functionObj, err := c.functionInformer.Lister().Functions(ns).Get(cronJobtriggerObj.Spec.FunctionName)
 	if err != nil {
-		c.logger.Errorf("Failed to convert LabelSelector to Selector due to %s: ", err)
+		c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", cronJobtriggerObj.Spec.FunctionName, ns, err)
+		return err
 	}
-	functions, err := c.functionInformer.Lister().Functions(ns).List(funcSelector)
+	if needToAddFinalizer(functionObj) {
+		funcObjClone := functionObj.DeepCopy()
+		funcObjClone.ObjectMeta.Finalizers = append(funcObjClone.ObjectMeta.Finalizers, cronJobTriggerFinalizer)
+		err = utils.UpdateFunctionCustomResource(c.kubelessclient, funcObjClone)
+		if err != nil {
+			c.logger.Errorf("Error adding CronJob trigger controller as finalizer to Function: %s CRD object due to: %s: ", functionObj.ObjectMeta.Name, err)
+		}
+	}
+	err = utils.EnsureCronJob(restIface, functionObj, cronJobtriggerObj, or, groupVersion)
 	if err != nil {
-		c.logger.Errorf("Failed to list function by Selector due to %s: ", err)
-	}
-
-	if len(functions) == 0 {
-		c.logger.Infof("No matching functions with selector %v found in namespace %s", funcSelector, ns)
-	}
-
-	for _, function := range functions {
-		if err != nil {
-			c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", function.ObjectMeta.Name, ns, err)
-			return err
-		}
-		if needToAddFinalizer(function) {
-			funcObjClone := function.DeepCopy()
-			funcObjClone.ObjectMeta.Finalizers = append(funcObjClone.ObjectMeta.Finalizers, cronJobTriggerFinalizer)
-			err = utils.UpdateFunctionCustomResource(c.kubelessclient, funcObjClone)
-			if err != nil {
-				c.logger.Errorf("Error adding CronJob trigger controller as finalizer to Function: %s CRD object due to: %s: ", function.ObjectMeta.Name, err)
-			}
-		}
-		err = utils.EnsureCronJob(restIface, function, cronJobtriggerObj, or, groupVersion)
-		if err != nil {
-			return err
-		}
+		return err
 	}
 
 	c.logger.Infof("Processed change cron job to Trigger: %s Namespace: %s", cronJobtriggerObj.ObjectMeta.Name, ns)

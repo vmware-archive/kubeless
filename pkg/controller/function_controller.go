@@ -43,9 +43,9 @@ import (
 )
 
 const (
-	maxRetries = 5
-	funcKind   = "Function"
-	funcAPI    = "kubeless.io"
+	maxRetries        = 5
+	funcKind          = "Function"
+	funcAPI           = "kubeless.io"
 	functionFinalizer = "kubeless.io/function"
 )
 
@@ -128,7 +128,7 @@ func (c *FunctionController) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
 
-	c.logger.Info("Starting kubeless controller")
+	c.logger.Info("Starting Function controller")
 
 	go c.informer.Run(stopCh)
 
@@ -137,7 +137,7 @@ func (c *FunctionController) Run(stopCh <-chan struct{}) {
 		return
 	}
 
-	c.logger.Info("Kubeless controller synced and ready")
+	c.logger.Info("Function controller synced and ready")
 
 	// run one round of GC at startup to detect orphaned objects from the last time
 	c.garbageCollect()

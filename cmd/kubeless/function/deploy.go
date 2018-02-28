@@ -210,7 +210,7 @@ var deployCmd = &cobra.Command{
 			cronJobTrigger.ObjectMeta.Labels = map[string]string{
 				"created-by": "kubeless",
 			}
-			cronJobTrigger.Spec.FunctionSelector.MatchLabels = f.ObjectMeta.Labels
+			cronJobTrigger.Spec.FunctionName = funcName
 			cronJobTrigger.Spec.Schedule = schedule
 			err = utils.CreateCronJobCustomResource(kubelessClient, &cronJobTrigger)
 			if err != nil {
