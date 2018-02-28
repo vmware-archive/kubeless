@@ -174,7 +174,7 @@ func (c *CronJobTriggerController) processNextItem() bool {
 func (c *CronJobTriggerController) processItem(key string) error {
 	c.logger.Infof("Processing update to CronJobTrigger: %s", key)
 
-	ns, _, err := cache.SplitMetaNamespaceKey(key)
+	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return err
 	}
@@ -192,6 +192,14 @@ func (c *CronJobTriggerController) processItem(key string) error {
 	cronJobtriggerObj := obj.(*kubelessApi.CronJobTrigger)
 
 	if cronJobtriggerObj.ObjectMeta.DeletionTimestamp != nil && c.cronJobTriggerObjHasFinalizer(cronJobtriggerObj) {
+		_, err := c.clientset.BatchV2alpha1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", name), metav1.GetOptions{})
+		if err == nil {
+			err = c.clientset.BatchV2alpha1().CronJobs(ns).Delete(fmt.Sprintf("trigger-%s", name), &metav1.DeleteOptions{})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				c.logger.Errorf("Failed to remove CronJob created for CronJobTrigger Obj: %s due to: %v: ", key, err)
+				return err
+			}
+		}
 		err = c.cronJobTriggerObjRemoveFinalizer(cronJobtriggerObj)
 		if err != nil {
 			c.logger.Errorf("Failed to remove CronJob trigger controller as finalizer to CronJob Obj: %s due to: %v: ", key, err)
