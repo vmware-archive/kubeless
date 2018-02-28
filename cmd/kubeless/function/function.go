@@ -93,8 +93,12 @@ func parseEnv(envs []string) []v1.EnvVar {
 	return funcEnv
 }
 
-func parseMemory(mem string) (resource.Quantity, error) {
-	quantity, err := resource.ParseQuantity(mem)
+func parseResource(in string) (resource.Quantity, error) {
+	if in == "" {
+		return resource.Quantity{}, nil
+	}
+
+	quantity, err := resource.ParseQuantity(in)
 	if err != nil {
 		return resource.Quantity{}, err
 	}
@@ -131,7 +135,7 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, cpu, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
 		Kind:       "Function",
@@ -219,15 +223,22 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 	}
 
 	resources := v1.ResourceRequirements{}
-	if mem != "" {
-		funcMem, err := parseMemory(mem)
+	if mem != "" || cpu != "" {
+		funcMem, err := parseResource(mem)
 		if err != nil {
 			err = fmt.Errorf("Wrong format of the memory value: %v", err)
 			return &kubelessApi.Function{}, err
 		}
+		funcCPU, err := parseResource(cpu)
+		if err != nil {
+			err = fmt.Errorf("Wrong format for cpu value: %v", err)
+			return &kubelessApi.Function{}, err
+		}
 		resource := map[v1.ResourceName]resource.Quantity{
 			v1.ResourceMemory: funcMem,
+			v1.ResourceCPU:    funcCPU,
 		}
+
 		resources = v1.ResourceRequirements{
 			Limits:   resource,
 			Requests: resource,

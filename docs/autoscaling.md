@@ -51,6 +51,12 @@ Flags:
 
 The below part will walk you though setup need to be done in order to make function auto-scaled based on `qps` metric.
 
+## Autoscaling based on CPU usage
+
+To autoscale based on CPU usage, it is *required* that your function has been deployed with CPU request limits.
+
+To do this, use the `--cpu` parameter when deploying your function. Please see the [Meaning of CPU](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-cpu) for the format of the value that should be passed. 
+
 ## Autoscaling with custom metrics on k8s 1.7
 
 This walkthrough will go over the step-by-step of setting up the prometheus-based custom API server on your cluster and configuring autoscaler (HPA) to use application metrics sourced from prometheus instance.
