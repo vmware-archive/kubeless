@@ -172,14 +172,12 @@ func (c *CronJobTriggerController) processNextItem() bool {
 }
 
 func (c *CronJobTriggerController) processItem(key string) error {
-	c.logger.Infof("Processing change to Trigger %s", key)
+	c.logger.Infof("Processing update to CronJobTrigger: %s", key)
 
-	ns, name, err := cache.SplitMetaNamespaceKey(key)
+	ns, _, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return err
 	}
-
-	c.logger.Infof("Processing update to Cron Job Trigger: %s Namespace: %s", name, ns)
 
 	obj, exists, err := c.cronJobInformer.Informer().GetIndexer().GetByKey(key)
 	if err != nil {
@@ -187,15 +185,29 @@ func (c *CronJobTriggerController) processItem(key string) error {
 	}
 
 	if !exists {
-		if err != nil {
-			c.logger.Errorf("Can't delete function: %v", err)
-			return err
-		}
-		c.logger.Infof("Deleted Function %s", key)
+		c.logger.Infof("Cronjob Trigger %s not found, ignoring", key)
 		return nil
 	}
 
 	cronJobtriggerObj := obj.(*kubelessApi.CronJobTrigger)
+
+	if cronJobtriggerObj.ObjectMeta.DeletionTimestamp != nil && c.cronJobTriggerObjHasFinalizer(cronJobtriggerObj) {
+		err = c.cronJobTriggerObjRemoveFinalizer(cronJobtriggerObj)
+		if err != nil {
+			c.logger.Errorf("Failed to remove CronJob trigger controller as finalizer to CronJob Obj: %s due to: %v: ", key, err)
+			return err
+		}
+		c.logger.Infof("Cronjob trigger object %s has been successfully processed and marked for deleteion", key)
+	}
+
+	if !c.cronJobTriggerObjHasFinalizer(cronJobtriggerObj) {
+		err = c.cronJobTriggerObjAddFinalizer(cronJobtriggerObj)
+		if err != nil {
+			c.logger.Errorf("Error adding CronJob trigger controller as finalizer to  CronJobTrigger Obj: %s CRD object due to: %v: ", key, err)
+			return err
+		}
+		return nil
+	}
 
 	or, err := utils.GetCronJobTriggerOwnerReference(cronJobtriggerObj)
 	if err != nil {
@@ -213,20 +225,17 @@ func (c *CronJobTriggerController) processItem(key string) error {
 		c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", cronJobtriggerObj.Spec.FunctionName, ns, err)
 		return err
 	}
-	if needToAddFinalizer(functionObj) {
-		funcObjClone := functionObj.DeepCopy()
-		funcObjClone.ObjectMeta.Finalizers = append(funcObjClone.ObjectMeta.Finalizers, cronJobTriggerFinalizer)
-		err = utils.UpdateFunctionCustomResource(c.kubelessclient, funcObjClone)
-		if err != nil {
-			c.logger.Errorf("Error adding CronJob trigger controller as finalizer to Function: %s CRD object due to: %s: ", functionObj.ObjectMeta.Name, err)
-		}
-	}
 	err = utils.EnsureCronJob(restIface, functionObj, cronJobtriggerObj, or, groupVersion)
 	if err != nil {
 		return err
 	}
-
-	c.logger.Infof("Processed change cron job to Trigger: %s Namespace: %s", cronJobtriggerObj.ObjectMeta.Name, ns)
+	if !utils.FunctionObjHasFinalizer(functionObj, cronJobTriggerFinalizer) {
+		err = utils.FunctionObjAddFinalizer(c.kubelessclient, functionObj, cronJobTriggerFinalizer)
+		if err != nil {
+			c.logger.Errorf("Error adding CronJob trigger controller as finalizer to Function: %s CRD object due to: %s: ", functionObj.ObjectMeta.Name, err)
+		}
+	}
+	c.logger.Infof("Processed update to CronJobrigger: %s", key)
 	return nil
 }
 
@@ -285,12 +294,38 @@ func (c *CronJobTriggerController) functionAddedDeletedUpdated(obj interface{}, 
 	}
 }
 
-func needToAddFinalizer(funcObj *kubelessApi.Function) bool {
-	currentFinalizers := funcObj.ObjectMeta.Finalizers
+func (c *CronJobTriggerController) cronJobTriggerObjHasFinalizer(triggerObj *kubelessApi.CronJobTrigger) bool {
+	currentFinalizers := triggerObj.ObjectMeta.Finalizers
 	for _, f := range currentFinalizers {
 		if f == cronJobTriggerFinalizer {
-			return false
+			return true
 		}
 	}
-	return funcObj.ObjectMeta.DeletionTimestamp == nil
+	return false
+}
+
+func (c *CronJobTriggerController) cronJobTriggerObjAddFinalizer(triggercObj *kubelessApi.CronJobTrigger) error {
+	triggercObjClone := triggercObj.DeepCopy()
+	triggercObjClone.ObjectMeta.Finalizers = append(triggercObjClone.ObjectMeta.Finalizers, cronJobTriggerFinalizer)
+	return utils.UpdateCronJobCustomResource(c.kubelessclient, triggercObjClone)
+}
+
+func (c *CronJobTriggerController) cronJobTriggerObjRemoveFinalizer(triggercObj *kubelessApi.CronJobTrigger) error {
+	triggerObjClone := triggercObj.DeepCopy()
+	newSlice := make([]string, 0)
+	for _, item := range triggerObjClone.ObjectMeta.Finalizers {
+		if item == cronJobTriggerFinalizer {
+			continue
+		}
+		newSlice = append(newSlice, item)
+	}
+	if len(newSlice) == 0 {
+		newSlice = nil
+	}
+	triggerObjClone.ObjectMeta.Finalizers = newSlice
+	err := utils.UpdateCronJobCustomResource(c.kubelessclient, triggerObjClone)
+	if err != nil {
+		return err
+	}
+	return nil
 }
