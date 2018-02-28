@@ -99,11 +99,13 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "10", []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+
 	if err != nil {
 		t.Error(err)
 	}
-	parsedMem, _ := parseMemory("128Mi")
+	parsedMem, _ := parseResource("128Mi")
+	parsedCPU, _ := parseResource("")
 	expectedFunction := kubelessApi.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
@@ -137,9 +139,11 @@ func TestGetFunctionDescription(t *testing.T) {
 									Resources: v1.ResourceRequirements{
 										Limits: map[v1.ResourceName]resource.Quantity{
 											v1.ResourceMemory: parsedMem,
+											v1.ResourceCPU:    parsedCPU,
 										},
 										Requests: map[v1.ResourceName]resource.Quantity{
 											v1.ResourceMemory: parsedMem,
+											v1.ResourceCPU:    parsedCPU,
 										},
 									},
 									Image: "test-image",
@@ -172,7 +176,8 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should take the default values
-	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", []string{}, []string{}, []string{}, expectedFunction)
+	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", []string{}, []string{}, []string{}, expectedFunction)
+
 	if err != nil {
 		t.Error(err)
 	}
@@ -192,11 +197,13 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test-image2", "256Mi", "20", []string{"TEST=2"}, []string{"test=2"}, []string{"secret2"}, expectedFunction)
+	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test-image2", "256Mi", "100m", "20", []string{"TEST=2"}, []string{"test=2"}, []string{"secret2"}, expectedFunction)
+
 	if err != nil {
 		t.Error(err)
 	}
-	parsedMem2, _ := parseMemory("256Mi")
+	parsedMem2, _ := parseResource("256Mi")
+	parsedCPU2, _ := parseResource("100m")
 	newFunction := kubelessApi.Function{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Function",
@@ -230,9 +237,11 @@ func TestGetFunctionDescription(t *testing.T) {
 									Resources: v1.ResourceRequirements{
 										Limits: map[v1.ResourceName]resource.Quantity{
 											v1.ResourceMemory: parsedMem2,
+											v1.ResourceCPU:    parsedCPU2,
 										},
 										Requests: map[v1.ResourceName]resource.Quantity{
 											v1.ResourceMemory: parsedMem2,
+											v1.ResourceCPU:    parsedCPU2,
 										},
 									},
 									Image: "test-image2",
@@ -303,7 +312,8 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 	file.Close()
 	zipW.Close()
-	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", []string{}, []string{}, []string{}, expectedFunction)
+
+	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", []string{}, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -312,7 +322,8 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should maintain previous HPA definition
-	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "10", []string{"TEST=1"}, []string{"test=1"}, []string{}, kubelessApi.Function{
+	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", []string{"TEST=1"}, []string{"test=1"}, []string{}, kubelessApi.Function{
+
 		Spec: kubelessApi.FunctionSpec{
 			HorizontalPodAutoscaler: v2beta1.HorizontalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{

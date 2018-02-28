@@ -45,7 +45,7 @@ func listOutput(t *testing.T, client versioned.Interface, apiV1Client kubernetes
 }
 
 func TestList(t *testing.T) {
-	funcMem, _ := parseMemory("128Mi")
+	funcMem, _ := parseResource("128Mi")
 	listObj := kubelessApi.FunctionList{
 		Items: []*kubelessApi.Function{
 			{
