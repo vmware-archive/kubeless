@@ -56,6 +56,10 @@ func createConsumerProcess(brokers, topics, funcName, ns string, stopchan, stopp
 				}
 				consumer.MarkOffset(msg, "")
 			}
+		case ntf, more := <-consumer.Notifications():
+			if more {
+				logrus.Debugf("Rebalanced: %+v\n", ntf)
+			}
 		case err, more := <-consumer.Errors():
 			if more {
 				logrus.Fatalf("Error: %s\n", err.Error())
