@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -93,7 +94,11 @@ func NewKafkaTriggerController(cfg KafkaTriggerConfig) *KafkaTriggerController {
 		UpdateFunc: func(old, new interface{}) {
 			key, err := cache.MetaNamespaceKeyFunc(new)
 			if err == nil {
-				queue.Add(key)
+				newKafkaTriggerObj := new.(*kubelessApi.KafkaTrigger)
+				oldKafkaTriggerObj := old.(*kubelessApi.KafkaTrigger)
+				if kafkaTriggerObjChanged(oldKafkaTriggerObj, newKafkaTriggerObj) {
+					queue.Add(key)
+				}
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
@@ -432,4 +437,22 @@ func (c *KafkaTriggerController) kafkaTriggerObjRemoveFinalizer(triggercObj *kub
 		return err
 	}
 	return nil
+}
+
+func kafkaTriggerObjChanged(oldKafkaTriggerObj, newKafkaTriggerObj *kubelessApi.KafkaTrigger) bool {
+	// If the kafka trigger object's deletion timestamp is set, then process
+	if oldKafkaTriggerObj.DeletionTimestamp != newKafkaTriggerObj.DeletionTimestamp {
+		return true
+	}
+	// If the new and old kafka trigger object's resource version is same
+	if oldKafkaTriggerObj.ResourceVersion == newKafkaTriggerObj.ResourceVersion {
+		return false
+	}
+	if !reflect.DeepEqual(oldKafkaTriggerObj.Spec.FunctionSelector, newKafkaTriggerObj.Spec.FunctionSelector) {
+		return true
+	}
+	if oldKafkaTriggerObj.Spec.Topic != newKafkaTriggerObj.Spec.Topic {
+		return true
+	}
+	return false
 }
