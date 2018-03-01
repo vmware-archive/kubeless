@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kubeless/kubeless/pkg/client/informers/externalversions"
+	kubelessInformers "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
 	"github.com/sirupsen/logrus"
-	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -30,22 +31,24 @@ import (
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
-	kv1beta1 "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
+	"github.com/kubeless/kubeless/pkg/utils"
 )
 
 const (
 	httpTriggerMaxRetries = 5
 	httpTriggerObjKind    = "HttpTrigger"
 	httpTriggerObjAPI     = "kubeless.io"
+	httpTriggerFinalizer  = "kubeless.io/httptrigger"
 )
 
 // HTTPTriggerController object
 type HTTPTriggerController struct {
-	logger         *logrus.Entry
-	clientset      kubernetes.Interface
-	kubelessclient versioned.Interface
-	queue          workqueue.RateLimitingInterface
-	informer       cache.SharedIndexInformer
+	logger              *logrus.Entry
+	clientset           kubernetes.Interface
+	kubelessclient      versioned.Interface
+	queue               workqueue.RateLimitingInterface
+	httpTriggerInformer kubelessInformers.HTTPTriggerInformer
+	functionInformer    kubelessInformers.FunctionInformer
 }
 
 // HTTPTriggerConfig contains k8s client of a controller
@@ -58,9 +61,11 @@ type HTTPTriggerConfig struct {
 func NewHTTPTriggerController(cfg HTTPTriggerConfig) *HTTPTriggerController {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
-	informer := kv1beta1.NewHTTPTriggerInformer(cfg.TriggerClient, corev1.NamespaceAll, 0, cache.Indexers{})
+	sharedInformers := externalversions.NewSharedInformerFactory(cfg.TriggerClient, 0)
+	httpTrigggerInformer := sharedInformers.Kubeless().V1beta1().HTTPTriggers()
+	functionInformer := sharedInformers.Kubeless().V1beta1().Functions()
 
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	httpTrigggerInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			key, err := cache.MetaNamespaceKeyFunc(obj)
 			if err == nil {
@@ -81,13 +86,27 @@ func NewHTTPTriggerController(cfg HTTPTriggerConfig) *HTTPTriggerController {
 		},
 	})
 
-	return &HTTPTriggerController{
-		logger:         logrus.WithField("controller", "http-trigger-controller"),
-		clientset:      cfg.KubeCli,
-		kubelessclient: cfg.TriggerClient,
-		informer:       informer,
-		queue:          queue,
+	controller := HTTPTriggerController{
+		logger:              logrus.WithField("controller", "http-trigger-controller"),
+		clientset:           cfg.KubeCli,
+		kubelessclient:      cfg.TriggerClient,
+		httpTriggerInformer: httpTrigggerInformer,
+		functionInformer:    functionInformer,
+		queue:               queue,
 	}
+	functionInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			controller.functionAddedDeletedUpdated(obj, false)
+		},
+		DeleteFunc: func(obj interface{}) {
+			controller.functionAddedDeletedUpdated(obj, true)
+		},
+		UpdateFunc: func(old, new interface{}) {
+			controller.functionAddedDeletedUpdated(new, false)
+		},
+	})
+
+	return &controller
 }
 
 // Run starts the Trigger controller
@@ -97,7 +116,8 @@ func (c *HTTPTriggerController) Run(stopCh <-chan struct{}) {
 
 	c.logger.Info("Starting HTTP Trigger controller")
 
-	go c.informer.Run(stopCh)
+	go c.httpTriggerInformer.Informer().Run(stopCh)
+	go c.functionInformer.Informer().Run(stopCh)
 
 	if !cache.WaitForCacheSync(stopCh, c.HasSynced) {
 		utilruntime.HandleError(fmt.Errorf("Timed out waiting for caches to sync"))
@@ -111,12 +131,12 @@ func (c *HTTPTriggerController) Run(stopCh <-chan struct{}) {
 
 // HasSynced is required for the cache.Controller interface.
 func (c *HTTPTriggerController) HasSynced() bool {
-	return c.informer.HasSynced()
+	return c.httpTriggerInformer.Informer().HasSynced()
 }
 
 // LastSyncResourceVersion is required for the cache.Controller interface.
 func (c *HTTPTriggerController) LastSyncResourceVersion() string {
-	return c.informer.LastSyncResourceVersion()
+	return c.httpTriggerInformer.Informer().LastSyncResourceVersion()
 }
 
 func (c *HTTPTriggerController) runWorker() {
@@ -150,30 +170,115 @@ func (c *HTTPTriggerController) processNextItem() bool {
 }
 
 func (c *HTTPTriggerController) processItem(key string) error {
-	c.logger.Infof("Processing change to Trigger %s", key)
+	c.logger.Infof("Processing update to HttpTrigger: %s", key)
 
-	ns, name, err := cache.SplitMetaNamespaceKey(key)
+	ns, _, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return err
 	}
 
-	c.logger.Infof("Processing update to Trigger: %s Namespace: %s", name, ns)
-
-	obj, exists, err := c.informer.GetIndexer().GetByKey(key)
+	obj, exists, err := c.httpTriggerInformer.Informer().GetIndexer().GetByKey(key)
 	if err != nil {
 		return fmt.Errorf("Error fetching object with key %s from store: %v", key, err)
 	}
 
 	if !exists {
-		if err != nil {
-			c.logger.Errorf("Can't delete function: %v", err)
-			return err
-		}
-		c.logger.Infof("Deleted Function %s", key)
+		c.logger.Infof("Http Trigger object %s not found, ignoring", key)
 		return nil
 	}
 
-	triggerObj := obj.(*kubelessApi.HTTPTrigger)
-	c.logger.Infof("Processed change to Trigger: %s Namespace: %s", triggerObj.ObjectMeta.Name, ns)
+	httpTriggerObj := obj.(*kubelessApi.HTTPTrigger)
+	if httpTriggerObj.ObjectMeta.DeletionTimestamp != nil && c.httpTriggerObjHasFinalizer(httpTriggerObj) {
+		err = c.httpTriggerObjRemoveFinalizer(httpTriggerObj)
+		if err != nil {
+			c.logger.Errorf("Failed to remove HTTP trigger controller as finalizer to http trigger Obj: %s due to: %v: ", key, err)
+			return err
+		}
+		c.logger.Infof("HTTP trigger object %s has been successfully processed and marked for deleteion", key)
+		return nil
+	}
+
+	if !c.httpTriggerObjHasFinalizer(httpTriggerObj) {
+		err = c.httpTriggerObjAddFinalizer(httpTriggerObj)
+		if err != nil {
+			c.logger.Errorf("Error adding HTTP trigger controller as finalizer to  HTTPTrigger Obj: %s CRD object due to: %v: ", key, err)
+			return err
+		}
+		return nil
+	}
+	functionObj, err := c.functionInformer.Lister().Functions(ns).Get(httpTriggerObj.Spec.FunctionName)
+	if err != nil {
+		c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", httpTriggerObj.Spec.FunctionName, ns, err)
+		return err
+	}
+	if !utils.FunctionObjHasFinalizer(functionObj, httpTriggerFinalizer) {
+		err = utils.FunctionObjAddFinalizer(c.kubelessclient, functionObj, httpTriggerFinalizer)
+		if err != nil {
+			c.logger.Errorf("Error adding CronJob trigger controller as finalizer to Function: %s CRD object due to: %s: ", functionObj.ObjectMeta.Name, err)
+		}
+	}
+	c.logger.Infof("Processed update to HttpTrigger: %s", key)
+	return nil
+}
+
+func (c *HTTPTriggerController) functionAddedDeletedUpdated(obj interface{}, deleted bool) {
+	functionObj, ok := obj.(*kubelessApi.Function)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			c.logger.Errorf("Couldn't get object from tombstone %#v", obj)
+			return
+		}
+		functionObj, ok = tombstone.Obj.(*kubelessApi.Function)
+		if !ok {
+			c.logger.Errorf("Tombstone contained object that is not a Pod %#v", obj)
+			return
+		}
+	}
+	if deleted || functionObj.DeletionTimestamp == nil {
+		return
+	}
+
+	if utils.FunctionObjHasFinalizer(functionObj, httpTriggerFinalizer) {
+		err := utils.FunctionObjRemoveFinalizer(c.kubelessclient, functionObj, httpTriggerFinalizer)
+		if err == nil {
+			c.logger.Infof("Successfully removed HTTP trigger controller as finalizer to Function: %s CRD object", functionObj.ObjectMeta.Name)
+		}
+	}
+}
+
+func (c *HTTPTriggerController) httpTriggerObjHasFinalizer(triggerObj *kubelessApi.HTTPTrigger) bool {
+	currentFinalizers := triggerObj.ObjectMeta.Finalizers
+	for _, f := range currentFinalizers {
+		if f == httpTriggerFinalizer {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *HTTPTriggerController) httpTriggerObjAddFinalizer(triggercObj *kubelessApi.HTTPTrigger) error {
+	triggercObjClone := triggercObj.DeepCopy()
+	triggercObjClone.ObjectMeta.Finalizers = append(triggercObjClone.ObjectMeta.Finalizers, httpTriggerFinalizer)
+	return utils.UpdateHTTPTriggerCustomResource(c.kubelessclient, triggercObjClone)
+}
+
+func (c *HTTPTriggerController) httpTriggerObjRemoveFinalizer(triggercObj *kubelessApi.HTTPTrigger) error {
+	triggerObjClone := triggercObj.DeepCopy()
+	newSlice := make([]string, 0)
+	for _, item := range triggerObjClone.ObjectMeta.Finalizers {
+		if item == httpTriggerFinalizer {
+			continue
+		}
+		newSlice = append(newSlice, item)
+	}
+	if len(newSlice) == 0 {
+		newSlice = nil
+	}
+	triggerObjClone.ObjectMeta.Finalizers = newSlice
+	err := utils.UpdateHTTPTriggerCustomResource(c.kubelessclient, triggerObjClone)
+	if err != nil {
+		return err
+	}
 	return nil
 }

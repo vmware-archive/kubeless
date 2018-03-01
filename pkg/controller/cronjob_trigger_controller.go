@@ -206,6 +206,7 @@ func (c *CronJobTriggerController) processItem(key string) error {
 			return err
 		}
 		c.logger.Infof("Cronjob trigger object %s has been successfully processed and marked for deleteion", key)
+		return nil
 	}
 
 	if !c.cronJobTriggerObjHasFinalizer(cronJobtriggerObj) {

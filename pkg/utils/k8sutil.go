@@ -286,6 +286,41 @@ func GetKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTrig
 	return kafkaCRD, nil
 }
 
+// CreateHTTPTriggerCustomResource will create a HTTP trigger custom resource object
+func CreateHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTrigger *kubelessApi.HTTPTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().HTTPTriggers(httpTrigger.Namespace).Create(httpTrigger)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateHTTPTriggerCustomResource applies changes to the HTTP trigger custom resource object
+func UpdateHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTrigger *kubelessApi.HTTPTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().HTTPTriggers(httpTrigger.Namespace).Update(httpTrigger)
+	return err
+}
+
+// DeleteHTTPTriggerCustomResource will delete  HTTP trigger custom resource object
+func DeleteHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTriggerName, ns string) error {
+	err := kubelessClient.KubelessV1beta1().HTTPTriggers(ns).Delete(httpTriggerName, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetHTTPTriggerCustomResource will get  HTTP trigger custom resource object
+func GetHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTriggerName, ns string) (*kubelessApi.HTTPTrigger, error) {
+	kafkaCRD, err := kubelessClient.KubelessV1beta1().HTTPTriggers(ns).Get(httpTriggerName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return kafkaCRD, nil
+}
+
 // GetPodsByLabel returns list of pods which match the label
 // We use this to returns pods to which the function is deployed or pods running controllers
 func GetPodsByLabel(c kubernetes.Interface, ns, k, v string) (*v1.PodList, error) {
