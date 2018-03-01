@@ -41,7 +41,7 @@ Kubeless uses k8s primitives, there is no additional API server or API router/ga
 
 ## _Roadmap_
 
-We would love to get your help, feel free to land a hand. We are currently looking to implement the following high level features:
+We would love to get your help, feel free to lend a hand. We are currently looking to implement the following high level features:
 
 * Add other runtimes, currently Python, NodeJS, Ruby and .Net Core are supported. We are also providing a way to use custom runtime. Please check [this doc](./docs/runtimes.md) for more details.
 * Investigate other messaging bus (e.g nats.io)
