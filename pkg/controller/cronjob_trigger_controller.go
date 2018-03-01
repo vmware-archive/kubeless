@@ -20,19 +20,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sirupsen/logrus"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	"github.com/kubeless/kubeless/pkg/client/informers/externalversions"
 	kubelessInformers "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/sirupsen/logrus"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 )
 
 const (
@@ -286,8 +286,8 @@ func (c *CronJobTriggerController) functionAddedDeletedUpdated(obj interface{}, 
 	}
 
 	if utils.FunctionObjHasFinalizer(functionObj, cronJobTriggerFinalizer) {
-	//check if func is scheduled or not
-	cronJobName := fmt.Sprintf("trigger-%s", functionObj.ObjectMeta.Name)
+		//check if func is scheduled or not
+		cronJobName := fmt.Sprintf("trigger-%s", functionObj.ObjectMeta.Name)
 		_, err := c.clientset.BatchV2alpha1().CronJobs(functionObj.ObjectMeta.Namespace).Get(cronJobName, metav1.GetOptions{})
 		if err == nil {
 			err = c.clientset.BatchV2alpha1().CronJobs(functionObj.ObjectMeta.Namespace).Delete(cronJobName, &metav1.DeleteOptions{})
