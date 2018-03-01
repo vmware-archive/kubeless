@@ -51,11 +51,13 @@ const (
 var (
 	stopM    map[string](chan struct{})
 	stoppedM map[string](chan struct{})
+	consumerM map[string]bool
 )
 
 func init() {
 	stopM = make(map[string](chan struct{}))
 	stoppedM = make(map[string](chan struct{}))
+	consumerM = make(map[string]bool)
 }
 
 // KafkaTriggerController object
@@ -258,8 +260,14 @@ func (c *KafkaTriggerController) processItem(key string) error {
 			}
 			funcName := function.ObjectMeta.Name
 			c.logger.Infof("Stopping consumer for trigger %s", name)
-			kafka.DeleteKafkaConsumer(stopM, stoppedM, funcName, ns)
-			c.logger.Infof("Stopped consumer for trigger %s", name)
+			consumerID := topics + "+" + funcName + "+" + ns
+			if consumerM[consumerID] {
+				kafka.DeleteKafkaConsumer(stopM, stoppedM, funcName, ns)
+				c.logger.Infof("Stopped consumer for trigger %s", name)
+				consumerM[consumerID] = false
+			} else {
+				c.logger.Infof("Consumer for trigger %s doesn't exists. Good enough to skip the stop", name)
+			}
 		}
 
 		err = c.kafkaTriggerObjRemoveFinalizer(triggerObj)
@@ -311,9 +319,15 @@ func (c *KafkaTriggerController) processItem(key string) error {
 			}
 		}
 		funcName := function.ObjectMeta.Name
+		consumerID := topics + "+" + funcName + "+" + ns
 		c.logger.Infof("Creating consumer: broker %s - topic %s - function %s - namespace %s", brokers, topics, funcName, ns)
-		kafka.CreateKafkaConsumer(stopM, stoppedM, brokers, topics, funcName, ns)
-		c.logger.Infof("Created consumer successfully")
+		if !consumerM[consumerID] {
+			kafka.CreateKafkaConsumer(stopM, stoppedM, brokers, topics, funcName, ns)
+			c.logger.Infof("Created consumer successfully")
+			consumerM[consumerID] = true
+		} else {
+			c.logger.Infof("Consumer: broker %s - topic %s - function %s - namespace %s already exists. Skip the creation", brokers, topics, funcName, ns)
+		}
 	}
 
 	c.logger.Infof("Processed change to Kafka trigger: %s Namespace: %s", triggerObj.ObjectMeta.Name, ns)

@@ -146,6 +146,7 @@ artifacts/
 bats/
 bundles/
 docker/controller-manager/kubeless-controller-manager
+docker/kafka-controller/kafka-controller
 ksonnet-lib/
 kubeless-openshift.yaml
 kafka-zookeeper.yaml
