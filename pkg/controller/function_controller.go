@@ -84,7 +84,11 @@ func NewFunctionController(cfg Config, smclient *monitoringv1alpha1.MonitoringV1
 		UpdateFunc: func(old, new interface{}) {
 			key, err := cache.MetaNamespaceKeyFunc(new)
 			if err == nil {
-				queue.Add(key)
+				newFunctionObj := new.(*kubelessApi.Function)
+				oldFunctionObj := old.(*kubelessApi.Function)
+				if functionObjChanged(oldFunctionObj, newFunctionObj) {
+					queue.Add(key)
+				}
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
@@ -448,4 +452,27 @@ func (c *FunctionController) collectConfigMap() error {
 	}
 
 	return nil
+}
+
+func functionObjChanged(oldFunctionObj, newFunctionObj *kubelessApi.Function) bool {
+	// If the function object's deletion timestamp is set, then process
+	if oldFunctionObj.DeletionTimestamp != newFunctionObj.DeletionTimestamp {
+		return true
+	}
+	// If the new and old function object's resource version is same
+	if oldFunctionObj.ResourceVersion == newFunctionObj.ResourceVersion {
+		return false
+	}
+	newSpec := &oldFunctionObj.Spec
+	oldSpec := &newFunctionObj.Spec
+
+	if newSpec.Function != oldSpec.Function ||
+		newSpec.Handler != oldSpec.Handler ||
+		newSpec.FunctionContentType != oldSpec.FunctionContentType ||
+		newSpec.Deps != oldSpec.Deps ||
+		newSpec.Timeout != oldSpec.Timeout {
+		return true
+	}
+
+	return false
 }
