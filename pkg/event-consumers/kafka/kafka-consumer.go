@@ -104,6 +104,7 @@ func sendMessage(clientset kubernetes.Interface, funcName, ns, msg string) error
 	return nil
 }
 
+// CreateKafkaConsumer creates a goroutine that subscribes to Kafka topic and process messages to the topic
 func CreateKafkaConsumer(stopM map[string](chan struct{}), stoppedM map[string](chan struct{}), brokers, topics, funcName, ns string) {
 	funcID := funcName + "+" + ns
 	stopM[funcID] = make(chan struct{})
@@ -113,6 +114,7 @@ func CreateKafkaConsumer(stopM map[string](chan struct{}), stoppedM map[string](
 	go createConsumerProcess(brokers, topics, funcName, ns, stopM[funcID], stoppedM[funcID])
 }
 
+// DeleteKafkaConsumer deletes goroutine created by CreateKafkaConsumer
 func DeleteKafkaConsumer(stopM map[string](chan struct{}), stoppedM map[string](chan struct{}), funcName, ns string) {
 	funcID := funcName + "+" + ns
 	// delete consumer process

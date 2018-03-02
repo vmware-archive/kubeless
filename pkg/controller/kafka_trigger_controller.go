@@ -49,8 +49,8 @@ const (
 )
 
 var (
-	stopM    map[string](chan struct{})
-	stoppedM map[string](chan struct{})
+	stopM     map[string](chan struct{})
+	stoppedM  map[string](chan struct{})
 	consumerM map[string]bool
 )
 

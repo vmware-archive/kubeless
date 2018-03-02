@@ -3,7 +3,6 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -16,15 +15,11 @@ import (
 	"github.com/kubeless/kubeless/pkg/langruntime"
 
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
-	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
-	xv1beta1 "k8s.io/api/extensions/v1beta1"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apimachinery"
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
@@ -374,10 +369,6 @@ func TestEnsureDeployment(t *testing.T) {
 				Value: strconv.Itoa(int(f1Port)),
 			},
 			{
-				Name:  "TOPIC_NAME",
-				Value: "",
-			},
-			{
 				Name:  "PYTHONPATH",
 				Value: "/kubeless/lib/python2.7/site-packages",
 			},
@@ -544,154 +535,6 @@ func objBody(object interface{}) io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewReader([]byte(output)))
 }
 
-func TestEnsureCronJob(t *testing.T) {
-	or := []metav1.OwnerReference{
-		{
-			Kind:       "Function",
-			APIVersion: "k8s.io",
-		},
-	}
-	ns := "default"
-	f1Name := "func1"
-	f1 := &kubelessApi.Function{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      f1Name,
-			Namespace: ns,
-		},
-		Spec: kubelessApi.FunctionSpec{
-			Timeout:  "120",
-			Schedule: "*/10 * * * *",
-		},
-	}
-
-	expectedMeta := metav1.ObjectMeta{
-		Name:            "trigger-" + f1Name,
-		Namespace:       ns,
-		OwnerReferences: or,
-	}
-
-	client := fakeRESTClient(func(req *http.Request) (*http.Response, error) {
-		header := http.Header{}
-		header.Set("Content-Type", runtime.ContentTypeJSON)
-		listObj := batchv2alpha1.CronJobList{}
-		if req.Method == "POST" {
-			reqCronJobBytes, err := ioutil.ReadAll(req.Body)
-			if err != nil {
-				t.Fatal(err)
-			}
-			cronJob := batchv2alpha1.CronJob{}
-			err = json.Unmarshal(reqCronJobBytes, &cronJob)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !reflect.DeepEqual(expectedMeta, cronJob.ObjectMeta) {
-				t.Errorf("Unexpected metadata metadata. Expecting\n%+v \nReceived:\n%+v", expectedMeta, cronJob.ObjectMeta)
-			}
-			if *cronJob.Spec.SuccessfulJobsHistoryLimit != int32(3) {
-				t.Errorf("Unexpected SuccessfulJobsHistoryLimit: %d", *cronJob.Spec.SuccessfulJobsHistoryLimit)
-			}
-			if *cronJob.Spec.FailedJobsHistoryLimit != int32(1) {
-				t.Errorf("Unexpected FailedJobsHistoryLimit: %d", *cronJob.Spec.FailedJobsHistoryLimit)
-			}
-			if *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds != int64(120) {
-				t.Errorf("Unexpected ActiveDeadlineSeconds: %d", *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds)
-			}
-			expectedCommand := []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", f1Name, ns)}
-			if !reflect.DeepEqual(cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args, expectedCommand) {
-				t.Errorf("Unexpected command %s", strings.Join(cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args, " "))
-			}
-		} else {
-			t.Fatalf("unexpected verb %s", req.Method)
-		}
-		switch req.URL.Path {
-		case "/apis/batch/v2alpha1/namespaces/default/cronjobs":
-			return &http.Response{
-				StatusCode: 200,
-				Header:     header,
-				Body:       objBody(&listObj),
-			}, nil
-		default:
-			t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
-			return nil, nil
-		}
-	})
-	err := EnsureFuncCronJob(client, f1, or, "batch/v2alpha1")
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-
-	// It should update the existing cronJob if it is already created
-	updateCalled := false
-	client = fakeRESTClient(func(req *http.Request) (*http.Response, error) {
-		header := http.Header{}
-		header.Set("Content-Type", runtime.ContentTypeJSON)
-		switch req.Method {
-		case "POST":
-			return &http.Response{
-				StatusCode: http.StatusConflict,
-				Header:     header,
-				Body:       objBody(nil),
-			}, nil
-		case "GET":
-			previousCronJob := batchv2alpha1.CronJob{
-				ObjectMeta: metav1.ObjectMeta{
-					ResourceVersion: "123456",
-				},
-			}
-			return &http.Response{
-				StatusCode: 200,
-				Header:     header,
-				Body:       objBody(&previousCronJob),
-			}, nil
-		case "PUT":
-			updateCalled = true
-			reqCronJobBytes, err := ioutil.ReadAll(req.Body)
-			if err != nil {
-				t.Fatal(err)
-			}
-			cronJob := batchv2alpha1.CronJob{}
-			err = json.Unmarshal(reqCronJobBytes, &cronJob)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if cronJob.ObjectMeta.ResourceVersion != "123456" {
-				t.Error("Expecting that the object to update contains the previous information")
-			}
-			listObj := batchv2alpha1.CronJobList{}
-			return &http.Response{
-				StatusCode: 200,
-				Header:     header,
-				Body:       objBody(&listObj),
-			}, nil
-		default:
-			t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
-			return nil, nil
-		}
-	})
-	err = EnsureFuncCronJob(client, f1, or, "batch/v2alpha1")
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	if !updateCalled {
-		t.Errorf("Expect the update method to be called")
-	}
-
-	// IT should change the endpoint
-	client = fakeRESTClient(func(req *http.Request) (*http.Response, error) {
-		header := http.Header{}
-		header.Set("Content-Type", runtime.ContentTypeJSON)
-		if req.URL.Path != "/apis/batch/v1beta1/namespaces/default/cronjobs" {
-			t.Errorf("Unexpected URL %s", req.URL.Path)
-		}
-		return &http.Response{
-			StatusCode: 200,
-			Header:     header,
-			Body:       objBody(nil),
-		}, nil
-	})
-	err = EnsureFuncCronJob(client, f1, or, "batch/v1beta1")
-}
-
 func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
 	for _, e := range envs {
 		if e == env {
@@ -699,104 +542,6 @@ func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
 		}
 	}
 	return true
-}
-
-func TestCreateIngressResource(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
-	f1 := &kubelessApi.Function{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "myns",
-			UID:       "1234",
-		},
-		Spec: kubelessApi.FunctionSpec{
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						TargetPort: intstr.FromInt(8080),
-					},
-				},
-			},
-		},
-	}
-	if err := CreateIngress(clientset, f1, "bar", "foo.bar", "myns", false); err != nil {
-		t.Fatalf("Creating ingress returned err: %v", err)
-	}
-	if err := CreateIngress(clientset, f1, "bar", "foo.bar", "myns", false); err != nil {
-		if !k8sErrors.IsAlreadyExists(err) {
-			t.Fatalf("Expect object is already exists, got %v", err)
-		}
-	}
-	f1.Spec.ServiceSpec.Ports = []v1.ServicePort{}
-	if err := CreateIngress(clientset, f1, "bar", "foo.bar", "myns", false); err == nil {
-		t.Fatal("Expect create ingress fails, got success")
-	}
-}
-
-func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
-	f1 := &kubelessApi.Function{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "myns",
-			UID:       "1234",
-		},
-		Spec: kubelessApi.FunctionSpec{
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						TargetPort: intstr.FromInt(8080),
-					},
-				},
-			},
-		},
-	}
-
-	if err := CreateIngress(clientset, f1, "foo", "foo.bar", "myns", true); err != nil {
-		t.Fatalf("Creating ingress returned err: %v", err)
-	}
-
-	ingress, err := clientset.ExtensionsV1beta1().Ingresses("myns").Get("foo", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Getting Ingress returned err: %v", err)
-	}
-
-	annotations := ingress.ObjectMeta.Annotations
-	if annotations == nil || len(annotations) == 0 ||
-		annotations["kubernetes.io/tls-acme"] != "true" ||
-		annotations["ingress.kubernetes.io/ssl-redirect"] != "true" {
-		t.Fatal("Missing or wrong annotations!")
-	}
-
-	tls := ingress.Spec.TLS
-	if tls == nil || len(tls) != 1 ||
-		tls[0].SecretName == "" ||
-		tls[0].Hosts == nil || len(tls[0].Hosts) != 1 || tls[0].Hosts[0] == "" {
-		t.Fatal("Missing or incomplete TLS spec!")
-	}
-}
-
-func TestDeleteIngressResource(t *testing.T) {
-	myNsFoo := metav1.ObjectMeta{
-		Namespace: "myns",
-		Name:      "foo",
-	}
-
-	ing := xv1beta1.Ingress{
-		ObjectMeta: myNsFoo,
-	}
-
-	clientset := fake.NewSimpleClientset(&ing)
-	if err := DeleteIngress(clientset, "foo", "myns"); err != nil {
-		t.Fatalf("Deleting ingress returned err: %v", err)
-	}
-	a := clientset.Actions()
-	if ns := a[0].GetNamespace(); ns != "myns" {
-		t.Errorf("deleted ingress from wrong namespace (%s)", ns)
-	}
-	if name := a[0].(ktesting.DeleteAction).GetName(); name != "foo" {
-		t.Errorf("deleted ingress with wrong name (%s)", name)
-	}
 }
 
 func fakeConfig() *rest.Config {
@@ -928,56 +673,6 @@ func TestGetProvisionContainer(t *testing.T) {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 
-}
-
-func TestServiceSpec(t *testing.T) {
-	f1 := &kubelessApi.Function{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "myns",
-			Labels: map[string]string{
-				"function": "foo",
-			},
-		},
-		Spec: kubelessApi.FunctionSpec{
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						TargetPort: intstr.FromInt(9000),
-					},
-				},
-				Selector: map[string]string{
-					"function": "foo",
-				},
-			},
-		},
-	}
-
-	eSvc := v1.ServiceSpec{
-		Ports: []v1.ServicePort{
-			{
-				Name:       "http-function-port",
-				Protocol:   v1.ProtocolTCP,
-				Port:       8080,
-				TargetPort: intstr.FromInt(8080),
-			},
-		},
-		Selector: map[string]string{
-			"function": "foo",
-		},
-		Type: v1.ServiceTypeClusterIP,
-	}
-
-	aSvc := serviceSpec(f1)
-	if !reflect.DeepEqual(f1.Spec.ServiceSpec, aSvc) {
-		t.Errorf("Unexpected result:\n %+v", aSvc)
-	}
-
-	f1.Spec.ServiceSpec = v1.ServiceSpec{}
-	aSvc = serviceSpec(f1)
-	if !reflect.DeepEqual(aSvc, eSvc) {
-		t.Errorf("Unexpected result:\n %+v", aSvc)
-	}
 }
 
 func TestInitializeEmptyMapsInDeployment(t *testing.T) {

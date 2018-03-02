@@ -8,7 +8,6 @@ import (
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/autoscaling/v2beta1"
-	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	xv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -90,15 +89,7 @@ func TestDeleteK8sResources(t *testing.T) {
 		t.Errorf("failed to delete service")
 	}
 
-	// Test deleting cronjob
-	job := batchv2alpha1.CronJob{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "myns",
-			Name:      "trigger-foo",
-		},
-	}
-
-	clientset = fake.NewSimpleClientset(&job, &deploy, &svc, &cm)
+	clientset = fake.NewSimpleClientset(&deploy, &svc, &cm)
 	controller = FunctionController{
 		clientset: clientset,
 	}
@@ -109,7 +100,7 @@ func TestDeleteK8sResources(t *testing.T) {
 
 	t.Log("Actions:", clientset.Actions())
 
-	for _, kind := range []string{"cronjobs", "services", "configmaps", "deployments"} {
+	for _, kind := range []string{"services", "configmaps", "deployments"} {
 		a := findAction(clientset, "delete", kind)
 		if a == nil {
 			t.Errorf("failed to delete %s", kind)
