@@ -949,7 +949,7 @@ func GetOwnerReference(funcObj *kubelessApi.Function) ([]metav1.OwnerReference, 
 	return []metav1.OwnerReference{
 		{
 			Kind:       "Function",
-			APIVersion: "k8s.io",
+			APIVersion: "kubeless.io/v1beta1",
 			Name:       funcObj.ObjectMeta.Name,
 			UID:        funcObj.ObjectMeta.UID,
 		},
