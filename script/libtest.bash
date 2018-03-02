@@ -160,6 +160,9 @@ wait_for_kubeless_kafka_server_ready() {
     [[ $(kubectl get pod -n kubeless kafka-0 -ojsonpath='{.metadata.annotations.ready}') == true ]] && return 0
     echo_info "Waiting for kafka-0 to be ready ..."
     k8s_wait_for_pod_logline "Kafka.*Server.*started" -n kubeless kafka-0
+    echo_info "Waiting for kafka-trigger-controller pod to be ready ..."
+    k8s_wait_for_pod_ready -n kubeless -l kubeless=kafka-trigger-controller
+    _wait_for_cmd_ok kubectl get kafkatriggers 2>/dev/null
     kubectl annotate pods --overwrite -n kubeless kafka-0 ready=true
 }
 _wait_for_kubeless_kafka_topic_ready() {

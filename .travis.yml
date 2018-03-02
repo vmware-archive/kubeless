@@ -17,13 +17,14 @@ env:
   matrix:
     - TEST_TARGET=unit
     - TEST_TARGET=minikube
-    # Disable Kafka tests for the moment
-    # - TEST_TARGET=minikube_kafka
+    - TEST_TARGET=minikube_kafka
     - TEST_TARGET=GKE
   global:
     - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller-manager
     - CONTROLLER_TAG=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}
     - CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
+    - KAFKA_CONTROLLER_IMAGE_NAME=bitnami/kafka-trigger-controller
+    - KAFKA_CONTROLLER_IMAGE=${KAFKA_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
     - CGO_ENABLED=0
     - TEST_DEBUG=1
     - GKE_VERSION=1.7.11-gke.1
@@ -92,10 +93,12 @@ script:
     if [[ "$SHOULD_TEST" == "1" ]]; then
       make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
       make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
+      make kafka-controller-image KAFKA_CONTROLLER_IMAGE=$KAFKA_CONTROLLER_IMAGE
       make all-yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless.yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless-rbac.yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless-openshift.yaml
+      sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kafka-zookeeper.yaml
       case $TEST_TARGET in
       unit)
         make test
