@@ -269,7 +269,7 @@ post: post-python post-nodejs post-ruby post-python-custom-port
 
 pubsub-python:
 	kubeless topic create s3-python || true
-	kubeless function deploy pubsub-python --trigger-topic s3-python --runtime python2.7 --handler pubsub.handler --from-file python/pubsub.py
+	kubeless function deploy pubsub-python --trigger-topic s3-python --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py
 
 # Generate a random string to inject into s3 topic,
 # then "tail -f" until it shows (with timeout)
@@ -293,7 +293,7 @@ pubsub-python-verify:
 
 pubsub-python34:
 	kubeless topic create s3-python34 || true
-	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/pubsub.py
+	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/hellowithdata.py
 
 pubsub-python34-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
@@ -337,7 +337,7 @@ pubsub-python36-verify:
 
 pubsub-nodejs:
 	kubeless topic create s3-nodejs || true
-	kubeless function deploy pubsub-nodejs --trigger-topic s3-nodejs --runtime nodejs6 --handler pubsub-nodejs.handler --from-file nodejs/helloevent.js
+	kubeless function deploy pubsub-nodejs --trigger-topic s3-nodejs --runtime nodejs6 --handler pubsub-nodejs.handler --from-file nodejs/hellowithdata.js
 
 pubsub-nodejs-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
@@ -366,7 +366,7 @@ pubsub-nodejs-update-verify:
 
 pubsub-ruby:
 	kubeless topic create s3-ruby || true
-	kubeless function deploy pubsub-ruby --trigger-topic s3-ruby --runtime ruby2.4 --handler pubsub-ruby.handler --from-file ruby/helloevent.rb
+	kubeless function deploy pubsub-ruby --trigger-topic s3-ruby --runtime ruby2.4 --handler pubsub-ruby.handler --from-file ruby/hellowithdata.rb
 
 pubsub-ruby-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
@@ -386,4 +386,4 @@ pubsub-ruby-verify:
 	done; \
 	$$found
 
-post: pubsub-python pubsub-nodejs pubsub-ruby
+pubsub: pubsub-python pubsub-nodejs pubsub-ruby
