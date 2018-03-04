@@ -1,6 +1,6 @@
 require 'logging'
 
-def foo(context)
+def foo(event, context)
   logging = Logging.logger(STDOUT)
   logging.info "it works!"
   "hello world"

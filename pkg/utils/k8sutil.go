@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/kubeless/kubeless/pkg/langruntime"
 
@@ -42,7 +43,6 @@ import (
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
@@ -136,6 +136,20 @@ func GetFunctionClientOutCluster() (versioned.Interface, error) {
 	return kubelessClient, nil
 }
 
+// GetHTTPTriggerClientOutCluster returns HTTPTrigger clientset to the request from outside of cluster
+func GetHTTPTriggerClientOutCluster() (versioned.Interface, error) {
+	config, err := BuildOutOfClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	kubelessClient, err := versioned.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return kubelessClient, nil
+}
+
 //GetDefaultNamespace returns the namespace set in current cluster context
 func GetDefaultNamespace() string {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
@@ -167,8 +181,8 @@ func GetFunction(funcName, ns string) (kubelessApi.Function, error) {
 	return *f, nil
 }
 
-// CreateK8sCustomResource will create a custom function object
-func CreateK8sCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
+// CreateFunctionCustomResource will create a custom function object
+func CreateFunctionCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
 	_, err := kubelessClient.KubelessV1beta1().Functions(f.Namespace).Create(f)
 	if err != nil {
 		return err
@@ -176,25 +190,135 @@ func CreateK8sCustomResource(kubelessClient versioned.Interface, f *kubelessApi.
 	return nil
 }
 
-// UpdateK8sCustomResource applies changes to the function custom object
-func UpdateK8sCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
-	data, err := json.Marshal(f)
-	if err != nil {
-		return err
-	}
-
-	_, err = kubelessClient.KubelessV1beta1().Functions(f.Namespace).Patch(f.Name, types.MergePatchType, data)
+// UpdateFunctionCustomResource applies changes to the function custom object
+func UpdateFunctionCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
+	_, err := kubelessClient.KubelessV1beta1().Functions(f.Namespace).Update(f)
 	return err
 }
 
-// DeleteK8sCustomResource will delete custom function object
-func DeleteK8sCustomResource(kubelessClient versioned.Interface, funcName, ns string) error {
+// DeleteFunctionCustomResource will delete custom function object
+func DeleteFunctionCustomResource(kubelessClient versioned.Interface, funcName, ns string) error {
 	err := kubelessClient.KubelessV1beta1().Functions(ns).Delete(funcName, &metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// GetFunctionCustomResource will delete custom function object
+func GetFunctionCustomResource(kubelessClient versioned.Interface, funcName, ns string) (*kubelessApi.Function, error) {
+	functionObj, err := kubelessClient.KubelessV1beta1().Functions(ns).Get(funcName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return functionObj, nil
+}
+
+// CreateCronJobCustomResource will create a custom function object
+func CreateCronJobCustomResource(kubelessClient versioned.Interface, cronJob *kubelessApi.CronJobTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().CronJobTriggers(cronJob.Namespace).Create(cronJob)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateCronJobCustomResource applies changes to the function custom object
+func UpdateCronJobCustomResource(kubelessClient versioned.Interface, cronJob *kubelessApi.CronJobTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().CronJobTriggers(cronJob.Namespace).Update(cronJob)
+	return err
+}
+
+// DeleteCronJobCustomResource will delete custom function object
+func DeleteCronJobCustomResource(kubelessClient versioned.Interface, cronJobName, ns string) error {
+	err := kubelessClient.KubelessV1beta1().CronJobTriggers(ns).Delete(cronJobName, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetCronJobCustomResource will get CronJobTrigger custom resource object
+func GetCronJobCustomResource(kubelessClient versioned.Interface, cronJobName, ns string) (*kubelessApi.CronJobTrigger, error) {
+	cronJobCRD, err := kubelessClient.KubelessV1beta1().CronJobTriggers(ns).Get(cronJobName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return cronJobCRD, nil
+}
+
+// CreateKafkaTriggerCustomResource will create a custom function object
+func CreateKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTrigger *kubelessApi.KafkaTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().KafkaTriggers(kafkaTrigger.Namespace).Create(kafkaTrigger)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateKafkaTriggerCustomResource applies changes to the function custom object
+func UpdateKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTrigger *kubelessApi.KafkaTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().KafkaTriggers(kafkaTrigger.Namespace).Update(kafkaTrigger)
+	return err
+}
+
+// DeleteKafkaTriggerCustomResource will delete custom function object
+func DeleteKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTriggerName, ns string) error {
+	err := kubelessClient.KubelessV1beta1().KafkaTriggers(ns).Delete(kafkaTriggerName, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetKafkaTriggerCustomResource will get CronJobTrigger custom resource object
+func GetKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTriggerName, ns string) (*kubelessApi.KafkaTrigger, error) {
+	kafkaCRD, err := kubelessClient.KubelessV1beta1().KafkaTriggers(ns).Get(kafkaTriggerName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return kafkaCRD, nil
+}
+
+// CreateHTTPTriggerCustomResource will create a HTTP trigger custom resource object
+func CreateHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTrigger *kubelessApi.HTTPTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().HTTPTriggers(httpTrigger.Namespace).Create(httpTrigger)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateHTTPTriggerCustomResource applies changes to the HTTP trigger custom resource object
+func UpdateHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTrigger *kubelessApi.HTTPTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().HTTPTriggers(httpTrigger.Namespace).Update(httpTrigger)
+	return err
+}
+
+// DeleteHTTPTriggerCustomResource will delete  HTTP trigger custom resource object
+func DeleteHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTriggerName, ns string) error {
+	err := kubelessClient.KubelessV1beta1().HTTPTriggers(ns).Delete(httpTriggerName, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetHTTPTriggerCustomResource will get  HTTP trigger custom resource object
+func GetHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTriggerName, ns string) (*kubelessApi.HTTPTrigger, error) {
+	kafkaCRD, err := kubelessClient.KubelessV1beta1().HTTPTriggers(ns).Get(httpTriggerName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return kafkaCRD, nil
 }
 
 // GetPodsByLabel returns list of pods which match the label
@@ -298,17 +422,17 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 }
 
 // CreateIngress creates ingress rule for a specific function
-func CreateIngress(client kubernetes.Interface, funcObj *kubelessApi.Function, ingressName, hostname, ns string, enableTLSAcme bool) error {
-	or, err := GetOwnerReference(funcObj)
+func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTPTrigger, ingressName, hostname, ns string, enableTLSAcme bool) error {
+	or, err := GetHTTPTriggerOwnerReference(httpTriggerObj)
 	if err != nil {
 		return err
 	}
 
-	if len(funcObj.Spec.ServiceSpec.Ports) == 0 {
+	if len(httpTriggerObj.Spec.ServiceSpec.Ports) == 0 {
 		return fmt.Errorf("can't create route due to service port isn't defined")
 	}
 
-	port := funcObj.Spec.ServiceSpec.Ports[0].TargetPort
+	port := httpTriggerObj.Spec.ServiceSpec.Ports[0].TargetPort
 	if port.IntVal <= 0 || port.IntVal > 65535 {
 		return fmt.Errorf("Invalid port number %d specified", port.IntVal)
 	}
@@ -318,7 +442,7 @@ func CreateIngress(client kubernetes.Interface, funcObj *kubelessApi.Function, i
 			Name:            ingressName,
 			Namespace:       ns,
 			OwnerReferences: or,
-			Labels:          funcObj.ObjectMeta.Labels,
+			Labels:          httpTriggerObj.ObjectMeta.Labels,
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
@@ -330,8 +454,8 @@ func CreateIngress(client kubernetes.Interface, funcObj *kubelessApi.Function, i
 								{
 									Path: "/",
 									Backend: v1beta1.IngressBackend{
-										ServiceName: funcObj.ObjectMeta.Name,
-										ServicePort: funcObj.Spec.ServiceSpec.Ports[0].TargetPort,
+										ServiceName: httpTriggerObj.ObjectMeta.Name,
+										ServicePort: httpTriggerObj.Spec.ServiceSpec.Ports[0].TargetPort,
 									},
 								},
 							},
@@ -464,10 +588,6 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *kubelessApi.Funct
 // this function resolves backward incompatibility in case user uses old client which doesn't include serviceSpec into funcSpec.
 // if serviceSpec is empty, we will use the default serviceSpec whose port is 8080
 func serviceSpec(funcObj *kubelessApi.Function) v1.ServiceSpec {
-	if len(funcObj.Spec.ServiceSpec.Ports) != 0 && len(funcObj.Spec.ServiceSpec.Selector) != 0 {
-		return funcObj.Spec.ServiceSpec
-	}
-
 	return v1.ServiceSpec{
 		Ports: []v1.ServicePort{
 			{
@@ -517,9 +637,6 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *kubelessApi.Functio
 }
 
 func svcPort(funcObj *kubelessApi.Function) int32 {
-	if len(funcObj.Spec.ServiceSpec.Ports) != 0 {
-		return funcObj.Spec.ServiceSpec.Ports[0].Port
-	}
 	return int32(8080)
 }
 
@@ -612,7 +729,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		}
 		//only resolve the image name if it has not been already set
 		if dpm.Spec.Template.Spec.Containers[0].Image == "" {
-			imageName, err := lr.GetFunctionImage(funcObj.Spec.Runtime, funcObj.Spec.Type)
+			imageName, err := lr.GetFunctionImage(funcObj.Spec.Runtime)
 			if err != nil {
 				return err
 			}
@@ -636,6 +753,14 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 				Name:  "FUNC_TIMEOUT",
 				Value: timeout,
 			},
+			v1.EnvVar{
+				Name:  "FUNC_RUNTIME",
+				Value: funcObj.Spec.Runtime,
+			},
+			v1.EnvVar{
+				Name:  "FUNC_MEMORY_LIMIT",
+				Value: funcObj.Spec.Deployment.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String(),
+			},
 		)
 	}
 
@@ -650,12 +775,6 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	dpm.Spec.Template.Spec.Containers[0].Ports = append(dpm.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{
 		ContainerPort: svcPort(funcObj),
 	})
-	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
-		v1.EnvVar{
-			Name:  "TOPIC_NAME",
-			Value: funcObj.Spec.Topic,
-		})
-
 	runtimeVolumeMount := v1.VolumeMount{
 		Name:      runtimeVolumeName,
 		MountPath: "/kubeless",
@@ -719,20 +838,17 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		lr.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
 	}
 
-	// add liveness Probe to deployment
-	if funcObj.Spec.Type != pubsubFunc {
-		livenessProbe := &v1.Probe{
-			InitialDelaySeconds: int32(3),
-			PeriodSeconds:       int32(30),
-			Handler: v1.Handler{
-				HTTPGet: &v1.HTTPGetAction{
-					Path: "/healthz",
-					Port: intstr.FromInt(int(svcPort(funcObj))),
-				},
+	livenessProbe := &v1.Probe{
+		InitialDelaySeconds: int32(3),
+		PeriodSeconds:       int32(30),
+		Handler: v1.Handler{
+			HTTPGet: &v1.HTTPGetAction{
+				Path: "/healthz",
+				Port: intstr.FromInt(int(svcPort(funcObj))),
 			},
-		}
-		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
+		},
 	}
+	dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
 
 	_, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
@@ -805,8 +921,8 @@ func doRESTReq(restIface rest.Interface, groupVersion, verb, resource, elem, nam
 	return nil
 }
 
-// EnsureFuncCronJob creates/updates a function cron job
-func EnsureFuncCronJob(client rest.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference, groupVersion string) error {
+// EnsureCronJob creates/updates a function cron job
+func EnsureCronJob(client rest.Interface, funcObj *kubelessApi.Function, cronJobObj *kubelessApi.CronJobTrigger, or []metav1.OwnerReference, groupVersion string) error {
 	var maxSucccessfulHist, maxFailedHist int32
 	maxSucccessfulHist = 3
 	maxFailedHist = 1
@@ -822,6 +938,12 @@ func EnsureFuncCronJob(client rest.Interface, funcObj *kubelessApi.Function, or 
 	}
 	activeDeadlineSeconds := int64(timeout)
 	jobName := fmt.Sprintf("trigger-%s", funcObj.ObjectMeta.Name)
+	var headersString = ""
+	timestamp := time.Now().UTC()
+	headersString = headersString + " -H \"event-id: " + fmt.Sprintf("cronjob-controller-%s", timestamp.Format(time.RFC3339Nano)) + "\""
+	headersString = headersString + " -H \"event-time: " + timestamp.String() + "\""
+	headersString = headersString + " -H \"event-type: application/json\""
+	headersString = headersString + " -H \"event-namespace: kubeless.io\""
 	job := &batchv2alpha1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            jobName,
@@ -830,7 +952,7 @@ func EnsureFuncCronJob(client rest.Interface, funcObj *kubelessApi.Function, or 
 			OwnerReferences: or,
 		},
 		Spec: batchv2alpha1.CronJobSpec{
-			Schedule:                   funcObj.Spec.Schedule,
+			Schedule:                   cronJobObj.Spec.Schedule,
 			SuccessfulJobsHistoryLimit: &maxSucccessfulHist,
 			FailedJobsHistoryLimit:     &maxFailedHist,
 			JobTemplate: batchv2alpha1.JobTemplateSpec{
@@ -842,7 +964,7 @@ func EnsureFuncCronJob(client rest.Interface, funcObj *kubelessApi.Function, or 
 								{
 									Image: unzip,
 									Name:  "trigger",
-									Args:  []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.ObjectMeta.Name, funcObj.ObjectMeta.Namespace)},
+									Args:  []string{"curl", "-Lv", headersString, fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.ObjectMeta.Name, funcObj.ObjectMeta.Namespace)},
 								},
 							},
 							RestartPolicy: v1.RestartPolicyNever,
@@ -956,6 +1078,44 @@ func GetOwnerReference(funcObj *kubelessApi.Function) ([]metav1.OwnerReference, 
 	}, nil
 }
 
+// GetHTTPTriggerOwnerReference returns ownerRef for appending to objects's metadata
+// created by kubeless-controller one a function is deployed.
+func GetHTTPTriggerOwnerReference(httpTriggerObj *kubelessApi.HTTPTrigger) ([]metav1.OwnerReference, error) {
+	if httpTriggerObj.ObjectMeta.Name == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("function name can't be empty")
+	}
+	if httpTriggerObj.ObjectMeta.UID == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("uid of http trigger %s can't be empty", httpTriggerObj.ObjectMeta.Name)
+	}
+	return []metav1.OwnerReference{
+		{
+			Kind:       "HTTPTrigger",
+			APIVersion: "kubeless.io",
+			Name:       httpTriggerObj.ObjectMeta.Name,
+			UID:        httpTriggerObj.ObjectMeta.UID,
+		},
+	}, nil
+}
+
+// GetCronJobTriggerOwnerReference returns ownerRef for appending to objects's metadata
+// created by kubeless-controller one a function is deployed.
+func GetCronJobTriggerOwnerReference(cronJobTriggerObj *kubelessApi.CronJobTrigger) ([]metav1.OwnerReference, error) {
+	if cronJobTriggerObj.ObjectMeta.Name == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("function name can't be empty")
+	}
+	if cronJobTriggerObj.ObjectMeta.UID == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("uid of http trigger %s can't be empty", cronJobTriggerObj.ObjectMeta.Name)
+	}
+	return []metav1.OwnerReference{
+		{
+			Kind:       "CronJobTrigger",
+			APIVersion: "kubeless.io",
+			Name:       cronJobTriggerObj.ObjectMeta.Name,
+			UID:        cronJobTriggerObj.ObjectMeta.UID,
+		},
+	}, nil
+}
+
 // InitializeEmptyMapsInDeployment initializes all nil maps in a Deployment object
 // This is done to counteract with side-effects of github.com/imdario/mergo which panics when provided with a nil map in a struct
 func initializeEmptyMapsInDeployment(deployment *v1beta1.Deployment) {
@@ -985,4 +1145,45 @@ func MergeDeployments(destinationDeployment *v1beta1.Deployment, sourceDeploymen
 	initializeEmptyMapsInDeployment(destinationDeployment)
 	initializeEmptyMapsInDeployment(sourceDeployment)
 	return mergo.Merge(destinationDeployment, sourceDeployment)
+}
+
+// UpdateFunctionDeployments updated the deployments using the function with the updated function
+func UpdateFunctionDeployments(funcObj *kubelessApi.Function) error {
+	return nil
+}
+
+// FunctionObjAddFinalizer add specified finalizer string to function object
+func FunctionObjAddFinalizer(kubelessClient versioned.Interface, funcObj *kubelessApi.Function, finalizerString string) error {
+	funcObjClone := funcObj.DeepCopy()
+	funcObjClone.ObjectMeta.Finalizers = append(funcObjClone.ObjectMeta.Finalizers, finalizerString)
+	return UpdateFunctionCustomResource(kubelessClient, funcObjClone)
+}
+
+// FunctionObjHasFinalizer checks if function object already has the Function controller finalizer
+func FunctionObjHasFinalizer(funcObj *kubelessApi.Function, finalizerString string) bool {
+	currentFinalizers := funcObj.ObjectMeta.Finalizers
+	for _, f := range currentFinalizers {
+		if f == finalizerString {
+			return true
+		}
+	}
+	return false
+}
+
+// FunctionObjRemoveFinalizer removes the finalizer from the function object
+func FunctionObjRemoveFinalizer(kubelessClient versioned.Interface, funcObj *kubelessApi.Function, finalizerString string) error {
+	funcObjClone := funcObj.DeepCopy()
+	newSlice := make([]string, 0)
+	for _, item := range funcObj.ObjectMeta.Finalizers {
+		if item == finalizerString {
+			continue
+		}
+		newSlice = append(newSlice, item)
+	}
+	if len(newSlice) == 0 {
+		newSlice = nil
+	}
+	funcObjClone.ObjectMeta.Finalizers = newSlice
+	err := UpdateFunctionCustomResource(kubelessClient, funcObjClone)
+	return err
 }

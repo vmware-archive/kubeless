@@ -43,8 +43,7 @@ func (e *ErrFieldMismatch) Error() string {
 		e.FieldName, e.StructType, e.Reason)
 }
 
-// protoToKey converts a Reference proto to a *Key. If the key is invalid,
-// protoToKey will return the invalid key along with ErrInvalidKey.
+// protoToKey converts a Reference proto to a *Key.
 func protoToKey(r *pb.Reference) (k *Key, err error) {
 	appID := r.GetApp()
 	namespace := r.GetNameSpace()
@@ -58,7 +57,7 @@ func protoToKey(r *pb.Reference) (k *Key, err error) {
 			namespace: namespace,
 		}
 		if !k.valid() {
-			return k, ErrInvalidKey
+			return nil, ErrInvalidKey
 		}
 	}
 	return

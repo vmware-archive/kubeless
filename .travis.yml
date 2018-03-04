@@ -17,7 +17,8 @@ env:
   matrix:
     - TEST_TARGET=unit
     - TEST_TARGET=minikube
-    - TEST_TARGET=minikube_kafka
+    # Disable Kafka tests for the moment
+    # - TEST_TARGET=minikube_kafka
     - TEST_TARGET=GKE
   global:
     - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller

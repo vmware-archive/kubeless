@@ -1,6 +1,6 @@
 <?php
 
-function foo() {
-  print "hello world";
+function foo($event, $context) {
+  return "hello world";
 }
 

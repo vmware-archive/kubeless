@@ -25,8 +25,20 @@ type FakeKubelessV1beta1 struct {
 	*testing.Fake
 }
 
+func (c *FakeKubelessV1beta1) CronJobTriggers(namespace string) v1beta1.CronJobTriggerInterface {
+	return &FakeCronJobTriggers{c, namespace}
+}
+
 func (c *FakeKubelessV1beta1) Functions(namespace string) v1beta1.FunctionInterface {
 	return &FakeFunctions{c, namespace}
+}
+
+func (c *FakeKubelessV1beta1) HTTPTriggers(namespace string) v1beta1.HTTPTriggerInterface {
+	return &FakeHTTPTriggers{c, namespace}
+}
+
+func (c *FakeKubelessV1beta1) KafkaTriggers(namespace string) v1beta1.KafkaTriggerInterface {
+	return &FakeKafkaTriggers{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

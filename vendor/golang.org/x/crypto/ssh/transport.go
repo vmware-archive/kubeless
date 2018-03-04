@@ -6,15 +6,9 @@ package ssh
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"io"
-	"log"
 )
-
-// debugTransport if set, will print packet types as they go over the
-// wire. No message decoding is done, to minimize the impact on timing.
-const debugTransport = false
 
 const (
 	gcmCipherID    = "aes128-gcm@openssh.com"
@@ -28,9 +22,7 @@ type packetConn interface {
 	// Encrypt and send a packet of data to the remote peer.
 	writePacket(packet []byte) error
 
-	// Read a packet from the connection. The read is blocking,
-	// i.e. if error is nil, then the returned byte slice is
-	// always non-empty.
+	// Read a packet from the connection
 	readPacket() ([]byte, error)
 
 	// Close closes the write-side of the connection.
@@ -46,7 +38,7 @@ type transport struct {
 	bufReader *bufio.Reader
 	bufWriter *bufio.Writer
 	rand      io.Reader
-	isClient  bool
+
 	io.Closer
 }
 
@@ -77,53 +69,24 @@ type connectionState struct {
 // both directions are triggered by reading and writing a msgNewKey packet
 // respectively.
 func (t *transport) prepareKeyChange(algs *algorithms, kexResult *kexResult) error {
-	ciph, err := newPacketCipher(t.reader.dir, algs.r, kexResult)
-	if err != nil {
+	if ciph, err := newPacketCipher(t.reader.dir, algs.r, kexResult); err != nil {
 		return err
+	} else {
+		t.reader.pendingKeyChange <- ciph
 	}
-	t.reader.pendingKeyChange <- ciph
 
-	ciph, err = newPacketCipher(t.writer.dir, algs.w, kexResult)
-	if err != nil {
+	if ciph, err := newPacketCipher(t.writer.dir, algs.w, kexResult); err != nil {
 		return err
+	} else {
+		t.writer.pendingKeyChange <- ciph
 	}
-	t.writer.pendingKeyChange <- ciph
 
 	return nil
 }
 
-func (t *transport) printPacket(p []byte, write bool) {
-	if len(p) == 0 {
-		return
-	}
-	who := "server"
-	if t.isClient {
-		who = "client"
-	}
-	what := "read"
-	if write {
-		what = "write"
-	}
-
-	log.Println(what, who, p[0])
-}
-
 // Read and decrypt next packet.
-func (t *transport) readPacket() (p []byte, err error) {
-	for {
-		p, err = t.reader.readPacket(t.bufReader)
-		if err != nil {
-			break
-		}
-		if len(p) == 0 || (p[0] != msgIgnore && p[0] != msgDebug) {
-			break
-		}
-	}
-	if debugTransport {
-		t.printPacket(p, false)
-	}
-
-	return p, err
+func (t *transport) readPacket() ([]byte, error) {
+	return t.reader.readPacket(t.bufReader)
 }
 
 func (s *connectionState) readPacket(r *bufio.Reader) ([]byte, error) {
@@ -140,7 +103,7 @@ func (s *connectionState) readPacket(r *bufio.Reader) ([]byte, error) {
 			case cipher := <-s.pendingKeyChange:
 				s.packetCipher = cipher
 			default:
-				return nil, errors.New("ssh: got bogus newkeys message")
+				return nil, errors.New("ssh: got bogus newkeys message.")
 			}
 
 		case msgDisconnect:
@@ -166,9 +129,6 @@ func (s *connectionState) readPacket(r *bufio.Reader) ([]byte, error) {
 }
 
 func (t *transport) writePacket(packet []byte) error {
-	if debugTransport {
-		t.printPacket(packet, true)
-	}
 	return t.writer.writePacket(t.bufWriter, t.rand, packet)
 }
 
@@ -209,8 +169,6 @@ func newTransport(rwc io.ReadWriteCloser, rand io.Reader, isClient bool) *transp
 		},
 		Closer: rwc,
 	}
-	t.isClient = isClient
-
 	if isClient {
 		t.reader.dir = serverKeys
 		t.writer.dir = clientKeys
@@ -233,22 +191,51 @@ var (
 	clientKeys = direction{[]byte{'A'}, []byte{'C'}, []byte{'E'}}
 )
 
-// setupKeys sets the cipher and MAC keys from kex.K, kex.H and sessionId, as
-// described in RFC 4253, section 6.4. direction should either be serverKeys
-// (to setup server->client keys) or clientKeys (for client->server keys).
-func newPacketCipher(d direction, algs directionAlgorithms, kex *kexResult) (packetCipher, error) {
+// generateKeys generates key material for IV, MAC and encryption.
+func generateKeys(d direction, algs directionAlgorithms, kex *kexResult) (iv, key, macKey []byte) {
 	cipherMode := cipherModes[algs.Cipher]
 	macMode := macModes[algs.MAC]
 
-	iv := make([]byte, cipherMode.ivSize)
-	key := make([]byte, cipherMode.keySize)
-	macKey := make([]byte, macMode.keySize)
+	iv = make([]byte, cipherMode.ivSize)
+	key = make([]byte, cipherMode.keySize)
+	macKey = make([]byte, macMode.keySize)
 
 	generateKeyMaterial(iv, d.ivTag, kex)
 	generateKeyMaterial(key, d.keyTag, kex)
 	generateKeyMaterial(macKey, d.macKeyTag, kex)
+	return
+}
 
-	return cipherModes[algs.Cipher].create(key, iv, macKey, algs)
+// setupKeys sets the cipher and MAC keys from kex.K, kex.H and sessionId, as
+// described in RFC 4253, section 6.4. direction should either be serverKeys
+// (to setup server->client keys) or clientKeys (for client->server keys).
+func newPacketCipher(d direction, algs directionAlgorithms, kex *kexResult) (packetCipher, error) {
+	iv, key, macKey := generateKeys(d, algs, kex)
+
+	if algs.Cipher == gcmCipherID {
+		return newGCMCipher(iv, key, macKey)
+	}
+
+	if algs.Cipher == aes128cbcID {
+		return newAESCBCCipher(iv, key, macKey, algs)
+	}
+
+	if algs.Cipher == tripledescbcID {
+		return newTripleDESCBCCipher(iv, key, macKey, algs)
+	}
+
+	c := &streamPacketCipher{
+		mac: macModes[algs.MAC].new(macKey),
+	}
+	c.macResult = make([]byte, c.mac.Size())
+
+	var err error
+	c.cipher, err = cipherModes[algs.Cipher].createStream(key, iv)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }
 
 // generateKeyMaterial fills out with key material generated from tag, K, H
@@ -313,7 +300,7 @@ func readVersion(r io.Reader) ([]byte, error) {
 	var ok bool
 	var buf [1]byte
 
-	for length := 0; length < maxVersionStringBytes; length++ {
+	for len(versionString) < maxVersionStringBytes {
 		_, err := io.ReadFull(r, buf[:])
 		if err != nil {
 			return nil, err
@@ -321,13 +308,6 @@ func readVersion(r io.Reader) ([]byte, error) {
 		// The RFC says that the version should be terminated with \r\n
 		// but several SSH servers actually only send a \n.
 		if buf[0] == '\n' {
-			if !bytes.HasPrefix(versionString, []byte("SSH-")) {
-				// RFC 4253 says we need to ignore all version string lines
-				// except the one containing the SSH version (provided that
-				// all the lines do not exceed 255 bytes in total).
-				versionString = versionString[:0]
-				continue
-			}
 			ok = true
 			break
 		}

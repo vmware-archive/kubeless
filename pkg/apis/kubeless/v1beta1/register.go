@@ -34,6 +34,12 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&Function{},
 		&FunctionList{},
+		&HTTPTrigger{},
+		&HTTPTriggerList{},
+		&KafkaTrigger{},
+		&KafkaTriggerList{},
+		&CronJobTrigger{},
+		&CronJobTriggerList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
