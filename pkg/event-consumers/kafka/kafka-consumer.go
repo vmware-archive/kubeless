@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -16,7 +17,27 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func createConsumerProcess(brokers, topics, funcName, ns string, stopchan, stoppedchan chan struct{}) {
+var (
+	stopM     map[string](chan struct{})
+	stoppedM  map[string](chan struct{})
+	consumerM map[string]bool
+	brokers   string
+)
+
+func init() {
+	stopM = make(map[string](chan struct{}))
+	stoppedM = make(map[string](chan struct{}))
+	consumerM = make(map[string]bool)
+
+	// taking brokers from env var
+	brokers = os.Getenv("KAFKA_BROKERS")
+	if brokers == "" {
+		brokers = "kafka.kubeless:9092"
+	}
+}
+
+// createConsumerProcess gets messages to a Kafka topic from the broker and send the payload to function service
+func createConsumerProcess(brokers, topic, funcName, ns, consumerGroupID string, stopchan, stoppedchan chan struct{}) {
 	// Init config
 	config := cluster.NewConfig()
 
@@ -27,8 +48,7 @@ func createConsumerProcess(brokers, topics, funcName, ns string, stopchan, stopp
 	// Init consumer, consume errors & messages
 	// consumer is grouped and labeled by functionID to receive load-balanced messages
 	// More details: https://kafka.apache.org/documentation/#intro_consumers
-	functionID := funcName + "+" + ns
-	consumer, err := cluster.NewConsumer(strings.Split(brokers, ","), functionID, strings.Split(topics, ","), config)
+	consumer, err := cluster.NewConsumer(strings.Split(brokers, ","), consumerGroupID, strings.Split(topic, ","), config)
 	if err != nil {
 		logrus.Fatalf("Failed to start consumer: %v", err)
 	}
@@ -104,20 +124,41 @@ func sendMessage(clientset kubernetes.Interface, funcName, ns, msg string) error
 	return nil
 }
 
-// CreateKafkaConsumer creates a goroutine that subscribes to Kafka topic and process messages to the topic
-func CreateKafkaConsumer(stopM map[string](chan struct{}), stoppedM map[string](chan struct{}), brokers, topics, funcName, ns string) {
-	funcID := funcName + "+" + ns
-	stopM[funcID] = make(chan struct{})
-	stoppedM[funcID] = make(chan struct{})
+// CreateKafkaConsumer creates a goroutine that subscribes to Kafka topic
+func CreateKafkaConsumer(triggerObjName, funcName, ns, topic string) error {
+	consumerID := generateUniqueConsumerGroupID(triggerObjName, funcName, ns, topic)
+	if !consumerM[consumerID] {
+		logrus.Infof("Creating Kafka consumer for the function %s associated with for trigger %s", funcName, triggerObjName)
+		stopM[consumerID] = make(chan struct{})
+		stoppedM[consumerID] = make(chan struct{})
+		logrus.Infof("Broker: %v, Topic: %v, Function: %v, consumerID: %v", brokers, topic, funcName, consumerID)
+		go createConsumerProcess(brokers, topic, funcName, ns, consumerID, stopM[consumerID], stoppedM[consumerID])
+		consumerM[consumerID] = true
+		logrus.Infof("Created Kafka consumer for the function %s associated with for trigger %s", funcName, triggerObjName)
+	} else {
+		logrus.Infof("Consumer for function %s associated with trigger %s already exists, so just returning", funcName, triggerObjName)
+	}
 
 	// create consumer process
-	go createConsumerProcess(brokers, topics, funcName, ns, stopM[funcID], stoppedM[funcID])
+	return nil
 }
 
 // DeleteKafkaConsumer deletes goroutine created by CreateKafkaConsumer
-func DeleteKafkaConsumer(stopM map[string](chan struct{}), stoppedM map[string](chan struct{}), funcName, ns string) {
-	funcID := funcName + "+" + ns
-	// delete consumer process
-	close(stopM[funcID])
-	<-stoppedM[funcID]
+func DeleteKafkaConsumer(triggerObjName, funcName, ns, topic string) error {
+	consumerID := generateUniqueConsumerGroupID(triggerObjName, funcName, ns, topic)
+	if consumerM[consumerID] {
+		logrus.Infof("Stopping consumer for the function %s associated with for trigger %s", funcName, triggerObjName)
+		// delete consumer process
+		close(stopM[consumerID])
+		<-stoppedM[consumerID]
+		consumerM[consumerID] = false
+		logrus.Infof("Stopped consumer for the function %s associated with for trigger %s", funcName, triggerObjName)
+	} else {
+		logrus.Infof("Consumer for function %s associated with trigger does n't exists. Good enough to skip the stop", funcName, triggerObjName)
+	}
+	return nil
+}
+
+func generateUniqueConsumerGroupID(triggerObjName, funcName, ns, topic string) string {
+	return ns + "_" + triggerObjName + "_" + funcName + "_" + topic
 }
