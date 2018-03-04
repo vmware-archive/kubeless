@@ -52,7 +52,7 @@ type CronJobTriggerController struct {
 	functionInformer kubelessInformers.FunctionInformer
 }
 
-// CronJobTriggerConfig contains k8s client of a controller
+// CronJobTriggerConfig contains config for CronJobTriggerController
 type CronJobTriggerConfig struct {
 	KubeCli       kubernetes.Interface
 	TriggerClient versioned.Interface
@@ -121,8 +121,7 @@ func (c *CronJobTriggerController) Run(stopCh <-chan struct{}) {
 	go c.cronJobInformer.Informer().Run(stopCh)
 	go c.functionInformer.Informer().Run(stopCh)
 
-	if !cache.WaitForCacheSync(stopCh, c.HasSynced) {
-		utilruntime.HandleError(fmt.Errorf("Timed out waiting for caches to sync"))
+	if !c.WaitForCacheSync(stopCh) {
 		return
 	}
 
@@ -131,14 +130,14 @@ func (c *CronJobTriggerController) Run(stopCh <-chan struct{}) {
 	wait.Until(c.runWorker, time.Second, stopCh)
 }
 
-// HasSynced is required for the cache.Controller interface.
-func (c *CronJobTriggerController) HasSynced() bool {
-	return c.cronJobInformer.Informer().HasSynced()
-}
-
-// LastSyncResourceVersion is required for the cache.Controller interface.
-func (c *CronJobTriggerController) LastSyncResourceVersion() string {
-	return c.cronJobInformer.Informer().LastSyncResourceVersion()
+// WaitForCacheSync is required for caches to be synced
+func (c *CronJobTriggerController) WaitForCacheSync(stopCh <-chan struct{}) bool {
+	if !cache.WaitForCacheSync(stopCh, c.cronJobInformer.Informer().HasSynced, c.functionInformer.Informer().HasSynced) {
+		utilruntime.HandleError(fmt.Errorf("Timed out waiting for caches required for Cronjob triggers controller to sync;"))
+		return false
+	}
+	c.logger.Info("Cronjob Trigger controller caches are synced and ready")
+	return true
 }
 
 func (c *CronJobTriggerController) runWorker() {
@@ -154,7 +153,7 @@ func (c *CronJobTriggerController) processNextItem() bool {
 	}
 	defer c.queue.Done(key)
 
-	err := c.processItem(key.(string))
+	err := c.syncCronJobTrigger(key.(string))
 	if err == nil {
 		// No error, reset the ratelimit counters
 		c.queue.Forget(key)
@@ -171,8 +170,8 @@ func (c *CronJobTriggerController) processNextItem() bool {
 	return true
 }
 
-func (c *CronJobTriggerController) processItem(key string) error {
-	c.logger.Infof("Processing update to CronJobTrigger: %s", key)
+func (c *CronJobTriggerController) syncCronJobTrigger(key string) error {
+	c.logger.Infof("Processing update to CronJob Trigger: %s", key)
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -184,6 +183,7 @@ func (c *CronJobTriggerController) processItem(key string) error {
 		return fmt.Errorf("Error fetching object with key %s from store: %v", key, err)
 	}
 
+	// this is an update when CronJob trigger API object is actually deleted, we dont need to process anything here
 	if !exists {
 		c.logger.Infof("Cronjob Trigger %s not found, ignoring", key)
 		return nil
@@ -191,7 +191,15 @@ func (c *CronJobTriggerController) processItem(key string) error {
 
 	cronJobtriggerObj := obj.(*kubelessApi.CronJobTrigger)
 
-	if cronJobtriggerObj.ObjectMeta.DeletionTimestamp != nil && c.cronJobTriggerObjHasFinalizer(cronJobtriggerObj) {
+	// CronJob trigger API object is marked for deletion (DeletionTimestamp != nil), so lets process the delete update
+	if cronJobtriggerObj.ObjectMeta.DeletionTimestamp != nil {
+
+		// If finalizer is removed, then we already processed the delete update, so just return
+		if !c.cronJobTriggerObjHasFinalizer(cronJobtriggerObj) {
+			return nil
+		}
+
+		// CronJob Trigger object should be deleted, so remove associated cronjob and remove the finalizer
 		_, err := c.clientset.BatchV2alpha1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", name), metav1.GetOptions{})
 		if err == nil {
 			err = c.clientset.BatchV2alpha1().CronJobs(ns).Delete(fmt.Sprintf("trigger-%s", name), &metav1.DeleteOptions{})
@@ -200,15 +208,19 @@ func (c *CronJobTriggerController) processItem(key string) error {
 				return err
 			}
 		}
+
+		// remove finalizer from the cronjob trigger object, so that we dont have to process any further and object can be deleted
 		err = c.cronJobTriggerObjRemoveFinalizer(cronJobtriggerObj)
 		if err != nil {
 			c.logger.Errorf("Failed to remove CronJob trigger controller as finalizer to CronJob Obj: %s due to: %v: ", key, err)
 			return err
 		}
-		c.logger.Infof("Cronjob trigger object %s has been successfully processed and marked for deleteion", key)
+
+		c.logger.Infof("Cronjob trigger object %s has been successfully processed and marked for deletion", key)
 		return nil
 	}
 
+	// If CronJob trigger API in not marked with self as finalizer, then add the finalizer
 	if !c.cronJobTriggerObjHasFinalizer(cronJobtriggerObj) {
 		err = c.cronJobTriggerObjAddFinalizer(cronJobtriggerObj)
 		if err != nil {
@@ -238,12 +250,7 @@ func (c *CronJobTriggerController) processItem(key string) error {
 	if err != nil {
 		return err
 	}
-	if !utils.FunctionObjHasFinalizer(functionObj, cronJobTriggerFinalizer) {
-		err = utils.FunctionObjAddFinalizer(c.kubelessclient, functionObj, cronJobTriggerFinalizer)
-		if err != nil {
-			c.logger.Errorf("Error adding CronJob trigger controller as finalizer to Function: %s CRD object due to: %s: ", functionObj.ObjectMeta.Name, err)
-		}
-	}
+
 	c.logger.Infof("Processed update to CronJobrigger: %s", key)
 	return nil
 }
@@ -282,11 +289,9 @@ func (c *CronJobTriggerController) functionAddedDeletedUpdated(obj interface{}, 
 			return
 		}
 	}
-	if deleted || functionObj.DeletionTimestamp == nil {
-		return
-	}
 
-	if utils.FunctionObjHasFinalizer(functionObj, cronJobTriggerFinalizer) {
+	c.logger.Infof("Processing update to function object %s Namespace: %s", functionObj.Name, functionObj.Namespace)
+	if deleted {
 		//check if func is scheduled or not
 		cronJobName := fmt.Sprintf("trigger-%s", functionObj.ObjectMeta.Name)
 		_, err := c.clientset.BatchV2alpha1().CronJobs(functionObj.ObjectMeta.Namespace).Get(cronJobName, metav1.GetOptions{})
@@ -295,10 +300,6 @@ func (c *CronJobTriggerController) functionAddedDeletedUpdated(obj interface{}, 
 			if err != nil && !k8sErrors.IsNotFound(err) {
 				c.logger.Errorf("Failed to delete cronjob %s created for the function %s in namespace %s", cronJobName, functionObj.ObjectMeta.Name, functionObj.ObjectMeta.Namespace)
 			}
-		}
-		err = utils.FunctionObjRemoveFinalizer(c.kubelessclient, functionObj, cronJobTriggerFinalizer)
-		if err == nil {
-			c.logger.Infof("Successfully removed CronJob trigger controller as finalizer to Function: %s CRD object", functionObj.ObjectMeta.Name)
 		}
 	}
 }

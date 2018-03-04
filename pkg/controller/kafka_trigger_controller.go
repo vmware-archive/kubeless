@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -47,16 +46,14 @@ const (
 // KafkaTriggerController object
 type KafkaTriggerController struct {
 	logger           *logrus.Entry
-	clientset        kubernetes.Interface
 	kubelessclient   versioned.Interface
 	queue            workqueue.RateLimitingInterface
 	kafkaInformer    kubelessInformers.KafkaTriggerInformer
 	functionInformer kubelessInformers.FunctionInformer
 }
 
-// KafkaTriggerConfig contains config required to create new KafkaTriggerController
+// KafkaTriggerConfig contains config for KafkaTriggerController
 type KafkaTriggerConfig struct {
-	KubeCli       kubernetes.Interface
 	TriggerClient versioned.Interface
 }
 
@@ -95,7 +92,6 @@ func NewKafkaTriggerController(cfg KafkaTriggerConfig) *KafkaTriggerController {
 
 	controller := KafkaTriggerController{
 		logger:           logrus.WithField("controller", "kafka-trigger-controller"),
-		clientset:        cfg.KubeCli,
 		kubelessclient:   cfg.TriggerClient,
 		kafkaInformer:    kafkaInformer,
 		functionInformer: functionInformer,
@@ -240,7 +236,7 @@ func (c *KafkaTriggerController) syncKafkaTrigger(key string) error {
 			c.logger.Errorf("Failed to remove Kafka trigger controller as finalizer to Kafka Trigger Obj: %s CRD object due to: %v: ", triggerObj.ObjectMeta.Name, err)
 			return err
 		}
-		c.logger.Infof("Kafka trigger %s has been successfully processed and marked for deleteion", key)
+		c.logger.Infof("Kafka trigger %s has been successfully processed and marked for deletion", key)
 		return nil
 	}
 

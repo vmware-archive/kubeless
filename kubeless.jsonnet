@@ -30,7 +30,7 @@ local controllerEnv = [
 ];
 
 local controllerContainer =
-  container.default("kubeless-controller", "bitnami/kubeless-controller:latest") +
+  container.default("kubeless-controller-manager", "bitnami/kubeless-controller:latest") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(controllerEnv);
 
@@ -40,7 +40,7 @@ local controllerAccount =
   serviceAccount.default(controller_account_name, namespace);
 
 local controllerDeployment =
-  deployment.default("kubeless-controller", controllerContainer, namespace) +
+  deployment.default("kubeless-controller-manager", controllerContainer, namespace) +
   {metadata+:{labels: kubelessLabel}} +
   {spec+: {selector: {matchLabels: kubelessLabel}}} +
   {spec+: {template+: {spec+: {serviceAccountName: controllerAccount.metadata.name}}}} +

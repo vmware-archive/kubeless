@@ -138,8 +138,6 @@ func CreateKafkaConsumer(triggerObjName, funcName, ns, topic string) error {
 	} else {
 		logrus.Infof("Consumer for function %s associated with trigger %s already exists, so just returning", funcName, triggerObjName)
 	}
-
-	// create consumer process
 	return nil
 }
 
