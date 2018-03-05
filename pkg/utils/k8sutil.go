@@ -43,6 +43,7 @@ import (
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
@@ -193,6 +194,16 @@ func CreateFunctionCustomResource(kubelessClient versioned.Interface, f *kubeles
 // UpdateFunctionCustomResource applies changes to the function custom object
 func UpdateFunctionCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
 	_, err := kubelessClient.KubelessV1beta1().Functions(f.Namespace).Update(f)
+	return err
+}
+
+// PatchFunctionCustomResource applies changes to the function custom object
+func PatchFunctionCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
+	data, err := json.Marshal(f)
+	if err != nil {
+		return err
+	}
+	_, err = kubelessClient.KubelessV1beta1().Functions(f.Namespace).Patch(f.Name, types.MergePatchType, data)
 	return err
 }
 

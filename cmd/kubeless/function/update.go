@@ -185,7 +185,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		logrus.Infof("Redeploying function...")
-		err = utils.UpdateFunctionCustomResource(kubelessClient, f)
+		err = utils.PatchFunctionCustomResource(kubelessClient, f)
 		if err != nil {
 			logrus.Fatal(err)
 		}
