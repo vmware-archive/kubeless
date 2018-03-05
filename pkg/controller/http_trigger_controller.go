@@ -172,7 +172,7 @@ func (c *HTTPTriggerController) processNextItem() bool {
 func (c *HTTPTriggerController) processItem(key string) error {
 	c.logger.Infof("Processing update to HttpTrigger: %s", key)
 
-	ns, _, err := cache.SplitMetaNamespaceKey(key)
+	_, _, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return err
 	}
@@ -206,17 +206,6 @@ func (c *HTTPTriggerController) processItem(key string) error {
 		}
 		return nil
 	}
-	functionObj, err := c.functionInformer.Lister().Functions(ns).Get(httpTriggerObj.Spec.FunctionName)
-	if err != nil {
-		c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", httpTriggerObj.Spec.FunctionName, ns, err)
-		return err
-	}
-	if !utils.FunctionObjHasFinalizer(functionObj, httpTriggerFinalizer) {
-		err = utils.FunctionObjAddFinalizer(c.kubelessclient, functionObj, httpTriggerFinalizer)
-		if err != nil {
-			c.logger.Errorf("Error adding CronJob trigger controller as finalizer to Function: %s CRD object due to: %s: ", functionObj.ObjectMeta.Name, err)
-		}
-	}
 	c.logger.Infof("Processed update to HttpTrigger: %s", key)
 	return nil
 }
@@ -237,13 +226,6 @@ func (c *HTTPTriggerController) functionAddedDeletedUpdated(obj interface{}, del
 	}
 	if deleted || functionObj.DeletionTimestamp == nil {
 		return
-	}
-
-	if utils.FunctionObjHasFinalizer(functionObj, httpTriggerFinalizer) {
-		err := utils.FunctionObjRemoveFinalizer(c.kubelessclient, functionObj, httpTriggerFinalizer)
-		if err == nil {
-			c.logger.Infof("Successfully removed HTTP trigger controller as finalizer to Function: %s CRD object", functionObj.ObjectMeta.Name)
-		}
 	}
 }
 
