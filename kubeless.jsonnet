@@ -30,7 +30,7 @@ local controllerEnv = [
 ];
 
 local controllerContainer =
-  container.default("kubeless-controller-manager", "bitnami/kubeless-controller:latest") +
+  container.default("kubeless-controller-manager", "bitnami/kubeless-controller-manager:latest") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(controllerEnv);
 

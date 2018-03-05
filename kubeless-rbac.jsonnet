@@ -23,7 +23,7 @@ local controller_roles = [
   },
   {
     apiGroups: ["kubeless.io"],
-    resources: ["functions", "kafkatrigger", "httptrigger", "cronjobtrigger"],
+    resources: ["functions", "kafkatriggers", "httptriggers", "cronjobtriggers"],
     verbs: ["get", "list", "watch"],
   },
   {
