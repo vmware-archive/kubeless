@@ -292,7 +292,7 @@ test_kubeless_function_update() {
 test_kubeless_ingress() {
     local func=${1:?} domain=example.com act_ingress exp_ingress
     echo_info "TEST: ingress ${func}"
-    kubeless route create ing-${func} --function ${func} --hostname ${func}.${domain}
+    kubeless route create ing-${func} --http-trigger ${func} --hostname ${func}.${domain}
     kubeless route list | fgrep -w ing-${func}
     act_ingress=$(kubectl get ingress ing-${func} -ojsonpath='{range .spec.rules[*]}{@.host}:{@.http.paths[*].backend.serviceName}')
     exp_ingress="${func}.${domain}:${func}"

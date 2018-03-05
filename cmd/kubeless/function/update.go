@@ -175,7 +175,7 @@ var updateCmd = &cobra.Command{
 		if port != nil && (*port <= 0 || *port > 65535) {
 			logrus.Fatalf("Invalid port number %d specified", *port)
 		}
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, headless, port, envs, labels, secrets, previousFunction)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, timeout, envs, labels, secrets, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -191,6 +191,11 @@ var updateCmd = &cobra.Command{
 		}
 		logrus.Infof("Function %s submitted for deployment", funcName)
 		logrus.Infof("Check the deployment status executing 'kubeless function ls %s'", funcName)
+		switch {
+		case triggerHTTP:
+		case schedule != "":
+		case topic != "":
+		}
 	},
 }
 

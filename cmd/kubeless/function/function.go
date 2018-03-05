@@ -20,7 +20,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -130,7 +129,7 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, runtimeImage, mem, timeout string, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
 		Kind:       "Function",
@@ -167,17 +166,6 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 
 	if timeout != "" {
 		function.Spec.Timeout = timeout
-	}
-
-	triggers := []bool{triggerHTTP, topic != "", schedule != ""}
-	triggerCount := 0
-	for i := len(triggers) - 1; i >= 0; i-- {
-		if triggers[i] {
-			triggerCount++
-		}
-	}
-	if triggerCount > 1 {
-		return nil, errors.New("exactly one of --trigger-http, --trigger-topic, --schedule must be specified")
 	}
 
 	funcEnv := parseEnv(envs)

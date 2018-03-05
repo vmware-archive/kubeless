@@ -27,7 +27,9 @@ import (
 	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var deployCmd = &cobra.Command{
@@ -177,7 +179,7 @@ var deployCmd = &cobra.Command{
 			"created-by": "kubeless",
 			"function":   funcName,
 		}
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, timeout, triggerHTTP, &headless, &port, envs, labels, secrets, defaultFunctionSpec)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, timeout, envs, labels, secrets, defaultFunctionSpec)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -195,6 +197,22 @@ var deployCmd = &cobra.Command{
 		logrus.Infof("Function %s submitted for deployment", funcName)
 		logrus.Infof("Check the deployment status executing 'kubeless function ls %s'", funcName)
 
+		triggers := []bool{triggerHTTP, topic != "", schedule != ""}
+		triggerCount := 0
+		for i := len(triggers) - 1; i >= 0; i-- {
+			if triggers[i] {
+				triggerCount++
+			}
+		}
+		if triggerCount > 1 {
+			logrus.Fatal("exactly one of --trigger-http, --trigger-topic, --schedule must be specified")
+		}
+
+		// Specifying trigger is not mandatory, if no trigger is specified then just return
+		if triggerCount == 0 {
+			return
+		}
+
 		switch {
 		case triggerHTTP:
 			httpTrigger := kubelessApi.HTTPTrigger{}
@@ -210,6 +228,28 @@ var deployCmd = &cobra.Command{
 				"created-by": "kubeless",
 			}
 			httpTrigger.Spec.FunctionName = funcName
+
+			svcSpec := v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{
+						Name:     "http-function-port",
+						NodePort: 0,
+						Protocol: v1.ProtocolTCP,
+					},
+				},
+				Selector: f.ObjectMeta.Labels,
+				Type:     v1.ServiceTypeClusterIP,
+			}
+
+			if headless {
+				svcSpec.ClusterIP = v1.ClusterIPNone
+			}
+
+			if port != 0 {
+				svcSpec.Ports[0].Port = port
+				svcSpec.Ports[0].TargetPort = intstr.FromInt(int(port))
+			}
+			httpTrigger.Spec.ServiceSpec = svcSpec
 			err = utils.CreateHTTPTriggerCustomResource(kubelessClient, &httpTrigger)
 			if err != nil {
 				logrus.Fatalf("Failed to deploy HTTP job trigger %s. Received:\n%s", funcName, err)
