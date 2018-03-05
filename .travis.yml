@@ -21,7 +21,7 @@ env:
     # - TEST_TARGET=minikube_kafka
     - TEST_TARGET=GKE
   global:
-    - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller
+    - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller-manager
     - CONTROLLER_TAG=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}
     - CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
     - CGO_ENABLED=0
