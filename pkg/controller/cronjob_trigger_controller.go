@@ -227,7 +227,6 @@ func (c *CronJobTriggerController) syncCronJobTrigger(key string) error {
 			c.logger.Errorf("Error adding CronJob trigger controller as finalizer to  CronJobTrigger Obj: %s CRD object due to: %v: ", key, err)
 			return err
 		}
-		return nil
 	}
 
 	or, err := utils.GetCronJobTriggerOwnerReference(cronJobtriggerObj)

@@ -273,7 +273,7 @@ func (c *FunctionController) ensureK8sResources(funcObj *kubelessApi.Function) e
 		}
 	}
 
-	or, err := utils.GetOwnerReference(funcObj)
+	or, err := utils.GetFunctionOwnerReference(funcObj)
 	if err != nil {
 		return err
 	}

@@ -1059,9 +1059,9 @@ func CreateServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, 
 	return fmt.Errorf("service monitor has already existed")
 }
 
-// GetOwnerReference returns ownerRef for appending to objects's metadata
-// created by kubeless-controller one a function is deployed.
-func GetOwnerReference(funcObj *kubelessApi.Function) ([]metav1.OwnerReference, error) {
+// GetFunctionOwnerReference returns ownerRef for appending to objects's metadata
+// created by kubeless-controller once a function is deployed.
+func GetFunctionOwnerReference(funcObj *kubelessApi.Function) ([]metav1.OwnerReference, error) {
 	if funcObj.ObjectMeta.Name == "" {
 		return []metav1.OwnerReference{}, fmt.Errorf("function name can't be empty")
 	}
@@ -1082,7 +1082,7 @@ func GetOwnerReference(funcObj *kubelessApi.Function) ([]metav1.OwnerReference, 
 // created by kubeless-controller one a function is deployed.
 func GetHTTPTriggerOwnerReference(httpTriggerObj *kubelessApi.HTTPTrigger) ([]metav1.OwnerReference, error) {
 	if httpTriggerObj.ObjectMeta.Name == "" {
-		return []metav1.OwnerReference{}, fmt.Errorf("function name can't be empty")
+		return []metav1.OwnerReference{}, fmt.Errorf("HTTP trigger name can't be empty")
 	}
 	if httpTriggerObj.ObjectMeta.UID == "" {
 		return []metav1.OwnerReference{}, fmt.Errorf("uid of http trigger %s can't be empty", httpTriggerObj.ObjectMeta.Name)
@@ -1101,10 +1101,10 @@ func GetHTTPTriggerOwnerReference(httpTriggerObj *kubelessApi.HTTPTrigger) ([]me
 // created by kubeless-controller one a function is deployed.
 func GetCronJobTriggerOwnerReference(cronJobTriggerObj *kubelessApi.CronJobTrigger) ([]metav1.OwnerReference, error) {
 	if cronJobTriggerObj.ObjectMeta.Name == "" {
-		return []metav1.OwnerReference{}, fmt.Errorf("function name can't be empty")
+		return []metav1.OwnerReference{}, fmt.Errorf("CronJob trigger name can't be empty")
 	}
 	if cronJobTriggerObj.ObjectMeta.UID == "" {
-		return []metav1.OwnerReference{}, fmt.Errorf("uid of http trigger %s can't be empty", cronJobTriggerObj.ObjectMeta.Name)
+		return []metav1.OwnerReference{}, fmt.Errorf("uid of cronjob trigger %s can't be empty", cronJobTriggerObj.ObjectMeta.Name)
 	}
 	return []metav1.OwnerReference{
 		{

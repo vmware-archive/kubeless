@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,11 +16,13 @@ import (
 	"github.com/kubeless/kubeless/pkg/langruntime"
 
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
+	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/apimachinery"
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
@@ -735,4 +738,163 @@ func TestMergeDeployments(t *testing.T) {
 		t.Fatalf("Expecting replicas as 10 but received %v", *destinationDeployment.Spec.Replicas)
 	}
 
+}
+
+func TestEnsureCronJob(t *testing.T) {
+	or := []metav1.OwnerReference{
+		{
+			Kind:       "Function",
+			APIVersion: "k8s.io",
+		},
+	}
+	ns := "default"
+	f1Name := "func1"
+	f1 := &kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      f1Name,
+			Namespace: ns,
+		},
+		Spec: kubelessApi.FunctionSpec{
+			Timeout: "120",
+		},
+	}
+	c := &kubelessApi.CronJobTrigger{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      f1Name,
+			Namespace: ns,
+		},
+		Spec: kubelessApi.CronJobTriggerSpec{
+			Schedule:     "*/10 * * * *",
+			FunctionName: f1Name,
+		},
+	}
+	expectedMeta := metav1.ObjectMeta{
+		Name:            "trigger-" + f1Name,
+		Namespace:       ns,
+		OwnerReferences: or,
+	}
+
+	client := fakeRESTClient(func(req *http.Request) (*http.Response, error) {
+		header := http.Header{}
+		header.Set("Content-Type", runtime.ContentTypeJSON)
+		listObj := batchv2alpha1.CronJobList{}
+		if req.Method == "POST" {
+			reqCronJobBytes, err := ioutil.ReadAll(req.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cronJob := batchv2alpha1.CronJob{}
+			err = json.Unmarshal(reqCronJobBytes, &cronJob)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(expectedMeta, cronJob.ObjectMeta) {
+				t.Errorf("Unexpected metadata metadata. Expecting\n%+v \nReceived:\n%+v", expectedMeta, cronJob.ObjectMeta)
+			}
+			if *cronJob.Spec.SuccessfulJobsHistoryLimit != int32(3) {
+				t.Errorf("Unexpected SuccessfulJobsHistoryLimit: %d", *cronJob.Spec.SuccessfulJobsHistoryLimit)
+			}
+			if *cronJob.Spec.FailedJobsHistoryLimit != int32(1) {
+				t.Errorf("Unexpected FailedJobsHistoryLimit: %d", *cronJob.Spec.FailedJobsHistoryLimit)
+			}
+			if *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds != int64(120) {
+				t.Errorf("Unexpected ActiveDeadlineSeconds: %d", *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds)
+			}
+			expectedCommand := []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", f1Name, ns)}
+			args := cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args
+			// skip event headers data (i.e  -H "event-id: cronjob-controller-2018-03-05T05:55:41.990784027Z" etc)
+			foundCommand := []string{args[0], args[1], args[len(args)-1]}
+			if !reflect.DeepEqual(foundCommand, expectedCommand) {
+				t.Errorf("Unexpected command %s expexted %s", foundCommand, expectedCommand)
+			}
+		} else {
+			t.Fatalf("unexpected verb %s", req.Method)
+		}
+		switch req.URL.Path {
+		case "/apis/batch/v2alpha1/namespaces/default/cronjobs":
+			return &http.Response{
+				StatusCode: 200,
+				Header:     header,
+				Body:       objBody(&listObj),
+			}, nil
+		default:
+			t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
+			return nil, nil
+		}
+	})
+	err := EnsureCronJob(client, f1, c, or, "batch/v2alpha1")
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+
+	// It should update the existing cronJob if it is already created
+	updateCalled := false
+	client = fakeRESTClient(func(req *http.Request) (*http.Response, error) {
+		header := http.Header{}
+		header.Set("Content-Type", runtime.ContentTypeJSON)
+		switch req.Method {
+		case "POST":
+			return &http.Response{
+				StatusCode: http.StatusConflict,
+				Header:     header,
+				Body:       objBody(nil),
+			}, nil
+		case "GET":
+			previousCronJob := batchv2alpha1.CronJob{
+				ObjectMeta: metav1.ObjectMeta{
+					ResourceVersion: "123456",
+				},
+			}
+			return &http.Response{
+				StatusCode: 200,
+				Header:     header,
+				Body:       objBody(&previousCronJob),
+			}, nil
+		case "PUT":
+			updateCalled = true
+			reqCronJobBytes, err := ioutil.ReadAll(req.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cronJob := batchv2alpha1.CronJob{}
+			err = json.Unmarshal(reqCronJobBytes, &cronJob)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cronJob.ObjectMeta.ResourceVersion != "123456" {
+				t.Error("Expecting that the object to update contains the previous information")
+			}
+			listObj := batchv2alpha1.CronJobList{}
+			return &http.Response{
+				StatusCode: 200,
+				Header:     header,
+				Body:       objBody(&listObj),
+			}, nil
+		default:
+			t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
+			return nil, nil
+		}
+	})
+	err = EnsureCronJob(client, f1, c, or, "batch/v2alpha1")
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if !updateCalled {
+		t.Errorf("Expect the update method to be called")
+	}
+
+	// IT should change the endpoint
+	client = fakeRESTClient(func(req *http.Request) (*http.Response, error) {
+		header := http.Header{}
+		header.Set("Content-Type", runtime.ContentTypeJSON)
+		if req.URL.Path != "/apis/batch/v1beta1/namespaces/default/cronjobs" {
+			t.Errorf("Unexpected URL %s", req.URL.Path)
+		}
+		return &http.Response{
+			StatusCode: 200,
+			Header:     header,
+			Body:       objBody(nil),
+		}, nil
+	})
+	err = EnsureCronJob(client, f1, c, or, "batch/v1beta1")
 }
