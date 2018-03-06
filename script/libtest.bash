@@ -261,7 +261,7 @@ verify_function() {
     k8s_wait_for_pod_ready -l function=${func}
     case "${func}" in
         *pubsub*)
-            func_topic=$(kubeless function describe "${func}" -o yaml|sed -n 's/topic: //p')
+            func_topic=$(kubectl get kafkatrigger "${func}" -o yaml|sed -n 's/topic: //p')
             echo_info "FUNC TOPIC: $func_topic"
     esac
     local -i counter=0
