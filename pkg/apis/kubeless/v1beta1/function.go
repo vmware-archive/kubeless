@@ -18,7 +18,6 @@ package v1beta1
 
 import (
 	"k8s.io/api/autoscaling/v2beta1"
-	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -40,12 +39,8 @@ type FunctionSpec struct {
 	FunctionContentType     string                          `json:"function-content-type"` // Function file content type (plain text, base64 or zip)
 	Checksum                string                          `json:"checksum"`              // Checksum of the file
 	Runtime                 string                          `json:"runtime"`               // Function runtime to use
-	Type                    string                          `json:"type"`                  // Function trigger type
-	Topic                   string                          `json:"topic"`                 // Function topic trigger (for PubSub type)
-	Schedule                string                          `json:"schedule"`              // Function scheduled time (for Schedule type)
 	Timeout                 string                          `json:"timeout"`               // Maximum timeout for the function to complete its execution
 	Deps                    string                          `json:"deps"`                  // Function dependencies
-	ServiceSpec             v1.ServiceSpec                  `json:"service"`
 	Deployment              v1beta1.Deployment              `json:"deployment" protobuf:"bytes,3,opt,name=template"`
 	HorizontalPodAutoscaler v2beta1.HorizontalPodAutoscaler `json:"horizontalPodAutoscaler" protobuf:"bytes,3,opt,name=horizontalPodAutoscaler"`
 }
