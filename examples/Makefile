@@ -275,7 +275,7 @@ pubsub-python:
 # then "tail -f" until it shows (with timeout)
 pubsub-python-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
-	kubeless topic publish --topic s3-python --data "$(DATA)"
+	kubeless topic publish --topic s3-python --data '{"payload":"$(DATA)"}'
 	number="1"; \
 	timeout="60"; \
 	found=false; \
@@ -297,7 +297,7 @@ pubsub-python34:
 
 pubsub-python34-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
-	kubeless topic publish --topic s3-python34 --data "$(DATA)"
+	kubeless topic publish --topic s3-python34 --data '{"payload":"$(DATA)"}'
 	number="1"; \
 	timeout="60"; \
 	found=false; \
@@ -319,7 +319,7 @@ pubsub-python36:
 
 pubsub-python36-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
-	kubeless topic publish --topic s3-python36 --data "$(DATA)"
+	kubeless topic publish --topic s3-python36 --data '{"payload":"$(DATA)"}'
 	number="1"; \
 	timeout="60"; \
 	found=false; \
@@ -370,7 +370,7 @@ pubsub-ruby:
 
 pubsub-ruby-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
-	kubeless topic publish --topic s3-ruby --data "$(DATA)"
+	kubeless topic publish --topic s3-ruby --data '{"payload":"$(DATA)"}'
 	number="1"; \
 	timeout="60"; \
 	found=false; \
