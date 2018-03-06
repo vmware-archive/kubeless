@@ -293,7 +293,7 @@ pubsub-python-verify:
 
 pubsub-python34:
 	kubeless topic create s3-python34 || true
-	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/hellowithdata.py
+	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/hellowithdata34.py
 
 pubsub-python34-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
