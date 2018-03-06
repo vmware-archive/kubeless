@@ -119,8 +119,7 @@ func (c *HTTPTriggerController) Run(stopCh <-chan struct{}) {
 	go c.httpTriggerInformer.Informer().Run(stopCh)
 	go c.functionInformer.Informer().Run(stopCh)
 
-	if !cache.WaitForCacheSync(stopCh, c.HasSynced) {
-		utilruntime.HandleError(fmt.Errorf("Timed out waiting for caches to sync"))
+	if !c.waitForCacheSync(stopCh) {
 		return
 	}
 
@@ -129,14 +128,18 @@ func (c *HTTPTriggerController) Run(stopCh <-chan struct{}) {
 	wait.Until(c.runWorker, time.Second, stopCh)
 }
 
+func (c *HTTPTriggerController) waitForCacheSync(stopCh <-chan struct{}) bool {
+	if !cache.WaitForCacheSync(stopCh, c.httpTriggerInformer.Informer().HasSynced, c.functionInformer.Informer().HasSynced) {
+		utilruntime.HandleError(fmt.Errorf("Timed out waiting for caches required for HTTP triggers controller to sync;"))
+		return false
+	}
+	c.logger.Info("HTTP Trigger controller caches are synced and ready")
+	return true
+}
+
 // HasSynced is required for the cache.Controller interface.
 func (c *HTTPTriggerController) HasSynced() bool {
 	return c.httpTriggerInformer.Informer().HasSynced()
-}
-
-// LastSyncResourceVersion is required for the cache.Controller interface.
-func (c *HTTPTriggerController) LastSyncResourceVersion() string {
-	return c.httpTriggerInformer.Informer().LastSyncResourceVersion()
 }
 
 func (c *HTTPTriggerController) runWorker() {
@@ -152,7 +155,7 @@ func (c *HTTPTriggerController) processNextItem() bool {
 	}
 	defer c.queue.Done(key)
 
-	err := c.processItem(key.(string))
+	err := c.syncHTTPTrigger(key.(string))
 	if err == nil {
 		// No error, reset the ratelimit counters
 		c.queue.Forget(key)
@@ -169,8 +172,8 @@ func (c *HTTPTriggerController) processNextItem() bool {
 	return true
 }
 
-func (c *HTTPTriggerController) processItem(key string) error {
-	c.logger.Infof("Processing update to HttpTrigger: %s", key)
+func (c *HTTPTriggerController) syncHTTPTrigger(key string) error {
+	c.logger.Infof("Processing update to HTTPTrigger: %s", key)
 
 	_, _, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -182,13 +185,22 @@ func (c *HTTPTriggerController) processItem(key string) error {
 		return fmt.Errorf("Error fetching object with key %s from store: %v", key, err)
 	}
 
+	// this is an update when HTTP trigger API object is actually deleted, we dont need to process anything here
 	if !exists {
-		c.logger.Infof("Http Trigger object %s not found, ignoring", key)
+		c.logger.Infof("HTTP Trigger %s not found in the cache, ignoring the deletion update", key)
 		return nil
 	}
 
 	httpTriggerObj := obj.(*kubelessApi.HTTPTrigger)
-	if httpTriggerObj.ObjectMeta.DeletionTimestamp != nil && c.httpTriggerObjHasFinalizer(httpTriggerObj) {
+
+	// HTTP trigger API object is marked for deletion (DeletionTimestamp != nil), so lets process the delete update
+	if httpTriggerObj.ObjectMeta.DeletionTimestamp != nil {
+
+		// If finalizer is removed, then we already processed the delete update, so just return
+		if !c.httpTriggerObjHasFinalizer(httpTriggerObj) {
+			return nil
+		}
+
 		err = c.httpTriggerObjRemoveFinalizer(httpTriggerObj)
 		if err != nil {
 			c.logger.Errorf("Failed to remove HTTP trigger controller as finalizer to http trigger Obj: %s due to: %v: ", key, err)
@@ -206,10 +218,11 @@ func (c *HTTPTriggerController) processItem(key string) error {
 		}
 		return nil
 	}
-	c.logger.Infof("Processed update to HttpTrigger: %s", key)
+	c.logger.Infof("Processed update to HTTPTrigger: %s", key)
 	return nil
 }
 
+// FunctionAddedDeletedUpdated process the updates to Function objects
 func (c *HTTPTriggerController) functionAddedDeletedUpdated(obj interface{}, deleted bool) {
 	functionObj, ok := obj.(*kubelessApi.Function)
 	if !ok {
@@ -220,13 +233,11 @@ func (c *HTTPTriggerController) functionAddedDeletedUpdated(obj interface{}, del
 		}
 		functionObj, ok = tombstone.Obj.(*kubelessApi.Function)
 		if !ok {
-			c.logger.Errorf("Tombstone contained object that is not a Pod %#v", obj)
+			c.logger.Errorf("Tombstone contained object that is not a Function object %#v", obj)
 			return
 		}
 	}
-	if deleted || functionObj.DeletionTimestamp == nil {
-		return
-	}
+	c.logger.Infof("Successfully processed update to function object %s Namespace: %s", functionObj.Name, functionObj.Namespace)
 }
 
 func (c *HTTPTriggerController) httpTriggerObjHasFinalizer(triggerObj *kubelessApi.HTTPTrigger) bool {

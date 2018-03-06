@@ -124,15 +124,14 @@ func (c *KafkaTriggerController) Run(stopCh <-chan struct{}) {
 	go c.kafkaInformer.Informer().Run(stopCh)
 	go c.functionInformer.Informer().Run(stopCh)
 
-	if !c.WaitForCacheSync(stopCh) {
+	if !c.waitForCacheSync(stopCh) {
 		return
 	}
 
 	wait.Until(c.runWorker, time.Second, stopCh)
 }
 
-// WaitForCacheSync is required for caches to be synced
-func (c *KafkaTriggerController) WaitForCacheSync(stopCh <-chan struct{}) bool {
+func (c *KafkaTriggerController) waitForCacheSync(stopCh <-chan struct{}) bool {
 	if !cache.WaitForCacheSync(stopCh, c.kafkaInformer.Informer().HasSynced, c.functionInformer.Informer().HasSynced) {
 		utilruntime.HandleError(fmt.Errorf("Timed out waiting for caches required for Kafka triggers controller to sync;"))
 		return false
@@ -290,7 +289,7 @@ func (c *KafkaTriggerController) FunctionAddedDeletedUpdated(obj interface{}, de
 		}
 		functionObj, ok = tombstone.Obj.(*kubelessApi.Function)
 		if !ok {
-			c.logger.Errorf("Tombstone contained object that is not a Pod %#v", obj)
+			c.logger.Errorf("Tombstone contained object that is not a Function object %#v", obj)
 			return
 		}
 	}
