@@ -17,7 +17,9 @@ limitations under the License.
 package controller
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"net/url"
 	"os"
 	"time"
 
@@ -39,6 +41,7 @@ import (
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	kv1beta1 "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/langruntime"
+	"github.com/kubeless/kubeless/pkg/registry"
 	"github.com/kubeless/kubeless/pkg/utils"
 )
 
@@ -240,7 +243,45 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 		return err
 	}
 
-	err = utils.EnsureFuncDeployment(c.clientset, funcObj, or, c.langRuntime)
+	imagePullSecret, err := c.clientset.CoreV1().Secrets(funcObj.ObjectMeta.Namespace).Get("registry-credentials", metav1.GetOptions{})
+	prebuiltImage := ""
+	// Skip image build if using a custom runtime
+	if len(funcObj.Spec.Deployment.Spec.Template.Spec.Containers) > 0 && funcObj.Spec.Deployment.Spec.Template.Spec.Containers[0].Image != "" {
+		prebuiltImage = funcObj.Spec.Deployment.Spec.Template.Spec.Containers[0].Image
+	}
+	if err == nil && prebuiltImage == "" {
+		// If the secret is available we can build in the registry
+		reg, err := registry.New(*imagePullSecret)
+		if err != nil {
+			return fmt.Errorf("Unable to retrieve registry information: %v", err)
+		}
+		// Use function spec checksum as tag
+		tag := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%v", funcObj.Spec))))
+		imageName := fmt.Sprintf("%s/%s", reg.Creds.Username, funcObj.ObjectMeta.Name)
+		prebuiltImage = fmt.Sprintf("%s:%s", imageName, tag)
+		// Check if image already exists
+		exists, err := reg.ImageExists(imageName, tag)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			regURL, err := url.Parse(reg.Endpoint)
+			if err != nil {
+				return fmt.Errorf("Unable to parse registry URL: %v", err)
+			}
+			err = utils.EnsureFuncImage(c.clientset, funcObj, c.langRuntime, or, imageName, tag, c.config.Data["builder-image"], regURL.Host, imagePullSecret.Name)
+			if err != nil {
+				return err
+			}
+			logrus.Infof("Started build process for function %s", funcObj.ObjectMeta.Name)
+		} else {
+			logrus.Infof("Using prebuilt image %s", prebuiltImage)
+		}
+	} else {
+		logrus.Infof("Skipping image-build step for %s", funcObj.ObjectMeta.Name)
+	}
+
+	err = utils.EnsureFuncDeployment(c.clientset, funcObj, or, c.langRuntime, prebuiltImage)
 	if err != nil {
 		return err
 	}
@@ -327,6 +368,14 @@ func (c *Controller) deleteK8sResources(ns, name string) error {
 
 	// delete service monitor
 	err = c.deleteAutoscale(ns, name)
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+
+	// delete build job
+	err = c.clientset.BatchV1().Jobs(ns).DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("created-by=kubeless,function=%s", name),
+	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}

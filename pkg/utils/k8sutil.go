@@ -516,6 +516,200 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *kubelessApi.Functio
 	return err
 }
 
+func getRuntimeVolumeMount(name string) v1.VolumeMount {
+	return v1.VolumeMount{
+		Name:      name,
+		MountPath: "/kubeless",
+	}
+}
+
+// populatePodSpec create a basic Pod Spec that uses init containers to populate
+// the runtime container with the function content and its dependencies.
+// The caller should define the runtime container(s).
+// It returns the VolumeMount that the runtime container should use
+func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes, podSpec *v1.PodSpec, runtimeVolumeMount v1.VolumeMount) error {
+	depsVolumeName := funcObj.ObjectMeta.Name + "-deps"
+	result := podSpec
+	result.Volumes = []v1.Volume{
+		v1.Volume{
+			Name: runtimeVolumeMount.Name,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		},
+		v1.Volume{
+			Name: depsVolumeName,
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: funcObj.ObjectMeta.Name,
+					},
+				},
+			},
+		},
+	}
+	// prepare init-containers if some function is specified
+	if funcObj.Spec.Function != "" {
+		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime, lr)
+		if err != nil {
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		srcVolumeMount := v1.VolumeMount{
+			Name:      depsVolumeName,
+			MountPath: "/src",
+		}
+		provisionContainer, err := getProvisionContainer(
+			funcObj.Spec.Function,
+			funcObj.Spec.Checksum,
+			fileName,
+			funcObj.Spec.Handler,
+			funcObj.Spec.FunctionContentType,
+			funcObj.Spec.Runtime,
+			runtimeVolumeMount,
+			srcVolumeMount,
+			lr,
+		)
+		if err != nil {
+			return err
+		}
+		result.InitContainers = []v1.Container{provisionContainer}
+	}
+
+	// Add the imagesecrets if present to pull images from private docker registry
+	if funcObj.Spec.Runtime != "" {
+		imageSecrets, err := lr.GetImageSecrets(funcObj.Spec.Runtime)
+		if err != nil {
+			return fmt.Errorf("Unable to fetch ImagePullSecrets, %v", err)
+		}
+		result.ImagePullSecrets = imageSecrets
+	}
+
+	// ensure that the runtime is supported for installing dependencies
+	_, err := lr.GetRuntimeInfo(funcObj.Spec.Runtime)
+	if funcObj.Spec.Deps != "" && err != nil {
+		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
+	} else if funcObj.Spec.Deps != "" {
+		envVars := []v1.EnvVar{}
+		if len(result.Containers) > 0 {
+			envVars = result.Containers[0].Env
+		}
+		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, envVars, runtimeVolumeMount)
+		if err != nil {
+			return err
+		}
+		result.InitContainers = append(
+			result.InitContainers,
+			depsInstallContainer,
+		)
+	}
+	return nil
+}
+
+// EnsureFuncImage creates a Job to build a function image
+func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function, lr *langruntime.Langruntimes, or []metav1.OwnerReference, imageName, tag, builderImage, registryHost, imagePullSecretName string) error {
+	if len(tag) < 64 {
+		return fmt.Errorf("Expecting sha256 as image tag")
+	}
+	jobName := fmt.Sprintf("build-%s-%s", funcObj.ObjectMeta.Name, tag[0:10])
+	_, err := client.BatchV1().Jobs(funcObj.ObjectMeta.Namespace).Get(jobName, metav1.GetOptions{})
+	if err == nil {
+		// The job already exists
+		logrus.Infof("Skipping build stage for %s, image %s:%s already exists", funcObj.ObjectMeta.Name, imageName, tag)
+		return nil
+	}
+	podSpec := v1.PodSpec{}
+	runtimeVolumeMount := getRuntimeVolumeMount(funcObj.ObjectMeta.Name)
+	err = populatePodSpec(funcObj, lr, &podSpec, runtimeVolumeMount)
+	if err != nil {
+		return err
+	}
+
+	// Add a final initContainer to create the function bundle
+	prepareContainer := v1.Container{}
+	for _, c := range podSpec.InitContainers {
+		if c.Name == "prepare" {
+			prepareContainer = c
+		}
+	}
+	podSpec.InitContainers = append(podSpec.InitContainers, v1.Container{
+		Name:         "bundle",
+		Command:      []string{"sh", "-c"},
+		Args:         []string{fmt.Sprintf("tar cvf %s/bundle.tar %s/*", runtimeVolumeMount.MountPath, runtimeVolumeMount.MountPath)},
+		VolumeMounts: prepareContainer.VolumeMounts,
+		Image:        unzip,
+	})
+	podSpec.RestartPolicy = v1.RestartPolicyOnFailure
+
+	buildJob := batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            jobName,
+			Namespace:       funcObj.ObjectMeta.Namespace,
+			OwnerReferences: or,
+			Labels: map[string]string{
+				"created-by": "kubeless",
+				"function":   funcObj.ObjectMeta.Name,
+			},
+		},
+		Spec: batchv1.JobSpec{
+			Template: v1.PodTemplateSpec{
+				Spec: podSpec,
+			},
+		},
+	}
+
+	baseImage, err := lr.GetFunctionImage(funcObj.Spec.Runtime, funcObj.Spec.Type)
+	if err != nil {
+		return err
+	}
+
+	// Registry volume
+	dockerCredsVol := imagePullSecretName
+	dockerCredsVolMountPath := "/docker"
+	registryCredsVolume := v1.Volume{
+		Name: dockerCredsVol,
+		VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{
+				SecretName: imagePullSecretName,
+			},
+		},
+	}
+	buildJob.Spec.Template.Spec.Volumes = append(buildJob.Spec.Template.Spec.Volumes, registryCredsVolume)
+
+	// Add main container
+	buildJob.Spec.Template.Spec.Containers = []v1.Container{
+		v1.Container{
+			Name:  "build",
+			Image: builderImage,
+			VolumeMounts: append(prepareContainer.VolumeMounts,
+				v1.VolumeMount{
+					Name:      dockerCredsVol,
+					MountPath: dockerCredsVolMountPath,
+				},
+			),
+			Env: []v1.EnvVar{
+				v1.EnvVar{
+					Name:  "DOCKER_CONFIG_FOLDER",
+					Value: dockerCredsVolMountPath,
+				},
+			},
+
+			Command: []string{"/image_builder.sh"},
+			Args: []string{
+				fmt.Sprintf("docker://%s/%s", registryHost, baseImage),
+				fmt.Sprintf("docker://%s/%s:%s", registryHost, imageName, tag),
+				fmt.Sprintf("%s/bundle.tar", podSpec.InitContainers[0].VolumeMounts[0].MountPath),
+			},
+		},
+	}
+
+	// Create the job if doesn't exists yet
+	_, err = client.BatchV1().Jobs(funcObj.ObjectMeta.Namespace).Create(&buildJob)
+	return err
+}
+
 func svcPort(funcObj *kubelessApi.Function) int32 {
 	if len(funcObj.Spec.ServiceSpec.Ports) != 0 {
 		return funcObj.Spec.ServiceSpec.Ports[0].Port
@@ -524,12 +718,10 @@ func svcPort(funcObj *kubelessApi.Function) int32 {
 }
 
 // EnsureFuncDeployment creates/updates a function deployment
-func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference, lr *langruntime.Langruntimes) error {
+func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference, lr *langruntime.Langruntimes, prebuiltRuntimeImage string) error {
 
 	var err error
 
-	runtimeVolumeName := funcObj.ObjectMeta.Name
-	depsVolumeName := funcObj.ObjectMeta.Name + "-deps"
 	podAnnotations := map[string]string{
 		// Attempt to attract the attention of prometheus.
 		// For runtimes that don't support /metrics,
@@ -583,40 +775,35 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		}
 	}
 
-	dpm.Spec.Template.Spec.Volumes = append(dpm.Spec.Template.Spec.Volumes,
-		v1.Volume{
-			Name: runtimeVolumeName,
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
-		},
-		v1.Volume{
-			Name: depsVolumeName,
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{
-						Name: funcObj.ObjectMeta.Name,
-					},
-				},
-			},
-		})
-
 	if len(dpm.Spec.Template.Spec.Containers) == 0 {
 		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
 	}
 
-	if funcObj.Spec.Handler != "" {
+	runtimeVolumeMount := getRuntimeVolumeMount(funcObj.ObjectMeta.Name)
+	if funcObj.Spec.Handler != "" && funcObj.Spec.Function != "" {
 		modName, handlerName, err := splitHandler(funcObj.Spec.Handler)
 		if err != nil {
 			return err
 		}
-		//only resolve the image name if it has not been already set
-		if dpm.Spec.Template.Spec.Containers[0].Image == "" {
+		//only resolve the image name and build the function if it has not been built already
+		if dpm.Spec.Template.Spec.Containers[0].Image == "" && prebuiltRuntimeImage == "" {
+			err := populatePodSpec(funcObj, lr, &dpm.Spec.Template.Spec, runtimeVolumeMount)
+			if err != nil {
+				return err
+			}
+
 			imageName, err := lr.GetFunctionImage(funcObj.Spec.Runtime, funcObj.Spec.Type)
 			if err != nil {
 				return err
 			}
 			dpm.Spec.Template.Spec.Containers[0].Image = imageName
+
+			dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, runtimeVolumeMount)
+
+		} else {
+			if dpm.Spec.Template.Spec.Containers[0].Image == "" {
+				dpm.Spec.Template.Spec.Containers[0].Image = prebuiltRuntimeImage
+			}
 		}
 		timeout := funcObj.Spec.Timeout
 		if timeout == "" {
@@ -656,68 +843,8 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 			Value: funcObj.Spec.Topic,
 		})
 
-	runtimeVolumeMount := v1.VolumeMount{
-		Name:      runtimeVolumeName,
-		MountPath: "/kubeless",
-	}
-
-	dpm.Spec.Template.Spec.Containers[0].VolumeMounts = append(dpm.Spec.Template.Spec.Containers[0].VolumeMounts, runtimeVolumeMount)
-
-	// prepare init-containers if some function is specified
-	if funcObj.Spec.Function != "" {
-		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime, lr)
-		if err != nil {
-			return err
-		}
-		if err != nil {
-			return err
-		}
-		srcVolumeMount := v1.VolumeMount{
-			Name:      depsVolumeName,
-			MountPath: "/src",
-		}
-		provisionContainer, err := getProvisionContainer(
-			funcObj.Spec.Function,
-			funcObj.Spec.Checksum,
-			fileName,
-			funcObj.Spec.Handler,
-			funcObj.Spec.FunctionContentType,
-			funcObj.Spec.Runtime,
-			runtimeVolumeMount,
-			srcVolumeMount,
-			lr,
-		)
-		if err != nil {
-			return err
-		}
-		dpm.Spec.Template.Spec.InitContainers = []v1.Container{provisionContainer}
-	}
-
-	// Add the imagesecrets if present to pull images from private docker registry
-	if funcObj.Spec.Runtime != "" {
-		imageSecrets, err := lr.GetImageSecrets(funcObj.Spec.Runtime)
-		if err != nil {
-			return fmt.Errorf("Unable to fetch ImagePullSecrets, %v", err)
-		}
-		dpm.Spec.Template.Spec.ImagePullSecrets = imageSecrets
-	}
-
-	// ensure that the runtime is supported for installing dependencies
-	_, err = lr.GetRuntimeInfo(funcObj.Spec.Runtime)
-	if funcObj.Spec.Deps != "" && err != nil {
-		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
-	} else if funcObj.Spec.Deps != "" {
-		buildContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, dpm.Spec.Template.Spec.Containers[0].Env, runtimeVolumeMount)
-		if err != nil {
-			return err
-		}
-		dpm.Spec.Template.Spec.InitContainers = append(
-			dpm.Spec.Template.Spec.InitContainers,
-			buildContainer,
-		)
-		// update deployment for loading dependencies
-		lr.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
-	}
+	// update deployment for loading dependencies
+	lr.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
 
 	// add liveness Probe to deployment
 	if funcObj.Spec.Type != pubsubFunc {
