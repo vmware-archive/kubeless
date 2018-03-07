@@ -45,7 +45,7 @@ func listOutput(t *testing.T, client versioned.Interface, apiV1Client kubernetes
 }
 
 func TestList(t *testing.T) {
-	funcMem, _ := parseResource("128Mi")
+	funcMem, _ := parseMemory("128Mi")
 	listObj := kubelessApi.FunctionList{
 		Items: []*kubelessApi.Function{
 			{
@@ -57,8 +57,6 @@ func TestList(t *testing.T) {
 					Handler:  "fhandler",
 					Function: "ffunction",
 					Runtime:  "fruntime",
-					Type:     "ftype",
-					Topic:    "ftopic",
 					Deps:     "fdeps",
 					Deployment: v1beta1.Deployment{
 						Spec: v1beta1.DeploymentSpec{
@@ -83,8 +81,6 @@ func TestList(t *testing.T) {
 					Handler:  "bhandler",
 					Function: "bfunction",
 					Runtime:  "nodejs6",
-					Type:     "btype",
-					Topic:    "btopic",
 					Deps:     "{\"dependencies\": {\"test\": \"^1.0.0\"}}",
 					Deployment: v1beta1.Deployment{
 						Spec: v1beta1.DeploymentSpec{
@@ -127,8 +123,6 @@ func TestList(t *testing.T) {
 					Handler:  "fhandler",
 					Function: "ffunction",
 					Runtime:  "fruntime",
-					Type:     "ftype",
-					Topic:    "ftopic",
 					Deps:     "fdeps",
 					Deployment: v1beta1.Deployment{
 						Spec: v1beta1.DeploymentSpec{

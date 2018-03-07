@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/kubeless/kubeless/cmd/kubeless/version"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -83,6 +85,11 @@ var callCmd = &cobra.Command{
 			// So we need to manually build the URL
 			req = req.AbsPath(svc.ObjectMeta.SelfLink + ":" + port + "/proxy/")
 		}
+		timestamp := time.Now().UTC()
+		req.SetHeader("event-id", fmt.Sprintf("cli-%s-%s-%s", version.VERSION, version.GITCOMMIT, timestamp.Format(time.RFC3339Nano)))
+		req.SetHeader("event-type", "application/json")
+		req.SetHeader("event-time", timestamp.String())
+		req.SetHeader("event-namespace", "cli.kubeless.io")
 		res, err := req.Do().Raw()
 		if err != nil {
 			// Properly interpret line breaks

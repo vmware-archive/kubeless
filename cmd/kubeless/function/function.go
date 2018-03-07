@@ -20,7 +20,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -34,7 +33,6 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -93,12 +91,8 @@ func parseEnv(envs []string) []v1.EnvVar {
 	return funcEnv
 }
 
-func parseResource(in string) (resource.Quantity, error) {
-	if in == "" {
-		return resource.Quantity{}, nil
-	}
-
-	quantity, err := resource.ParseQuantity(in)
+func parseMemory(mem string) (resource.Quantity, error) {
+	quantity, err := resource.ParseQuantity(mem)
 	if err != nil {
 		return resource.Quantity{}, err
 	}
@@ -135,7 +129,7 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, cpu, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, runtimeImage, mem, timeout string, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
 		Kind:       "Function",
@@ -174,35 +168,6 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		function.Spec.Timeout = timeout
 	}
 
-	triggers := []bool{triggerHTTP, topic != "", schedule != ""}
-	triggerCount := 0
-	for i := len(triggers) - 1; i >= 0; i-- {
-		if triggers[i] {
-			triggerCount++
-		}
-	}
-	if triggerCount > 1 {
-		return nil, errors.New("exactly one of --trigger-http, --trigger-topic, --schedule must be specified")
-	}
-
-	switch {
-	case triggerHTTP:
-		function.Spec.Type = "HTTP"
-		function.Spec.Topic = ""
-		function.Spec.Schedule = ""
-		break
-	case schedule != "":
-		function.Spec.Type = "Scheduled"
-		function.Spec.Schedule = schedule
-		function.Spec.Topic = ""
-		break
-	case topic != "":
-		function.Spec.Type = "PubSub"
-		function.Spec.Topic = topic
-		function.Spec.Schedule = ""
-		break
-	}
-
 	funcEnv := parseEnv(envs)
 	if len(funcEnv) == 0 && len(defaultFunction.Spec.Deployment.Spec.Template.Spec.Containers) != 0 {
 		funcEnv = defaultFunction.Spec.Deployment.Spec.Template.Spec.Containers[0].Env
@@ -223,22 +188,15 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 	}
 
 	resources := v1.ResourceRequirements{}
-	if mem != "" || cpu != "" {
-		funcMem, err := parseResource(mem)
+	if mem != "" {
+		funcMem, err := parseMemory(mem)
 		if err != nil {
 			err = fmt.Errorf("Wrong format of the memory value: %v", err)
 			return &kubelessApi.Function{}, err
 		}
-		funcCPU, err := parseResource(cpu)
-		if err != nil {
-			err = fmt.Errorf("Wrong format for cpu value: %v", err)
-			return &kubelessApi.Function{}, err
-		}
 		resource := map[v1.ResourceName]resource.Quantity{
 			v1.ResourceMemory: funcMem,
-			v1.ResourceCPU:    funcCPU,
 		}
-
 		resources = v1.ResourceRequirements{
 			Limits:   resource,
 			Requests: resource,
@@ -285,36 +243,6 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		selectorLabels[k] = v
 	}
 	selectorLabels["function"] = funcName
-
-	svcSpec := v1.ServiceSpec{
-		Ports: []v1.ServicePort{
-			{
-				Name:     "http-function-port",
-				NodePort: 0,
-				Protocol: v1.ProtocolTCP,
-			},
-		},
-		Selector: selectorLabels,
-		Type:     v1.ServiceTypeClusterIP,
-	}
-
-	if headlessFlag != nil {
-		if *headlessFlag == true {
-			svcSpec.ClusterIP = v1.ClusterIPNone
-		}
-	} else {
-		svcSpec.ClusterIP = defaultFunction.Spec.ServiceSpec.ClusterIP
-	}
-
-	if portFlag != nil {
-		svcSpec.Ports[0].Port = *portFlag
-		svcSpec.Ports[0].TargetPort = intstr.FromInt(int(*portFlag))
-	} else {
-		svcSpec.Ports[0].Port = defaultFunction.Spec.ServiceSpec.Ports[0].Port
-		svcSpec.Ports[0].TargetPort = defaultFunction.Spec.ServiceSpec.Ports[0].TargetPort
-	}
-	function.Spec.ServiceSpec = svcSpec
-
 	return &function, nil
 }
 
