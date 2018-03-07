@@ -1,0 +1,10 @@
+{
+    "autoload": {
+        "psr-4": {
+            "PHPEnv\\": "src/"
+        }
+    },
+    "require": {
+        "slim/slim": "^3.9"
+    }
+}
