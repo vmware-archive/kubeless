@@ -23,8 +23,8 @@ local controller_roles = [
   },
   {
     apiGroups: ["kubeless.io"],
-    resources: ["functions"],
-    verbs: ["get", "list", "watch"],
+    resources: ["functions", "kafkatriggers", "httptriggers", "cronjobtriggers"],
+    verbs: ["get", "list", "watch", "update"],
   },
   {
     apiGroups: ["batch"],
@@ -40,6 +40,11 @@ local controller_roles = [
     apiGroups: ["monitoring.coreos.com"],
     resources: ["alertmanagers", "prometheuses", "servicemonitors"],
     verbs: ["*"],
+  },
+  {
+    apiGroups: ["extensions"],
+    resources: ["ingresses"],
+    verbs: ["create", "get", "list", "update", "delete"],
   },
 ];
 
