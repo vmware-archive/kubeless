@@ -531,13 +531,13 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 	depsVolumeName := funcObj.ObjectMeta.Name + "-deps"
 	result := podSpec
 	result.Volumes = []v1.Volume{
-		v1.Volume{
+		{
 			Name: runtimeVolumeMount.Name,
 			VolumeSource: v1.VolumeSource{
 				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},
 		},
-		v1.Volume{
+		{
 			Name: depsVolumeName,
 			VolumeSource: v1.VolumeSource{
 				ConfigMap: &v1.ConfigMapVolumeSource{
@@ -680,7 +680,7 @@ func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function,
 
 	// Add main container
 	buildJob.Spec.Template.Spec.Containers = []v1.Container{
-		v1.Container{
+		{
 			Name:  "build",
 			Image: builderImage,
 			VolumeMounts: append(prepareContainer.VolumeMounts,
@@ -690,7 +690,7 @@ func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function,
 				},
 			),
 			Env: []v1.EnvVar{
-				v1.EnvVar{
+				{
 					Name:  "DOCKER_CONFIG_FOLDER",
 					Value: dockerCredsVolMountPath,
 				},
