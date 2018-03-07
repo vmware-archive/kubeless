@@ -1,0 +1,11 @@
+RUNTIME ERROR: Operator % cannot be used on types number and string.
+-------------------------------------------------
+	<std>:189:13-100	function <anonymous>
+
+            error "Operator % cannot be used on types " + std.type(a) + " and " + std.type(b) + ".",
+
+-------------------------------------------------
+
+
+-------------------------------------------------
+	During evaluation
