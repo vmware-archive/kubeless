@@ -35,8 +35,8 @@ BUILD_FLAGS=(-ldflags="-w -X version.GITCOMMIT=${GITCOMMIT}")
 # Get rid of existing binaries
 rm -rf bundles/kubeless*
 
-# Build kubeless-controller
+# Build kafka-controller
 gox "${OS_PLATFORM_ARG[@]}" "${OS_ARCH_ARG[@]}" \
-    -output="bundles/kubeless_{{.OS}}-{{.Arch}}/kubeless-controller-manager" \
+    -output="bundles/kubeless_{{.OS}}-{{.Arch}}/kafka-controller" \
     "${BUILD_FLAGS[@]}" \
-    github.com/kubeless/kubeless/cmd/kubeless-controller-manager
+    github.com/kubeless/kubeless/cmd/kafka-trigger-controller
