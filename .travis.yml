@@ -20,12 +20,14 @@ env:
     - TEST_TARGET=minikube_kafka
     - TEST_TARGET=GKE
   global:
-    - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller
+    - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller-manager
     - CONTROLLER_TAG=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}
     - CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
+    - KAFKA_CONTROLLER_IMAGE_NAME=bitnami/kafka-trigger-controller
+    - KAFKA_CONTROLLER_IMAGE=${KAFKA_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
     - CGO_ENABLED=0
     - TEST_DEBUG=1
-    - GKE_VERSION=1.7.12-gke.1
+    - GKE_VERSION=1.7.11-gke.1
     - secure: QTXmAe9Z5WkWq8KDvcP5JauyYrYaupywLUQjlE2SJWuD1wvgcQxPlkWF5NpSAL70TqnGhkmCmsfQBdJ+T59/yYjTldfnFumkp1dABdIURFPQc8h7IeF+evSSmwgaGwTc7bRPu9cprH1yflwyAEQmnzKGkT91ZHszZxfyMDFKPcFJhBdz2lcOsJRIetgrMOBS0sguZVnnY08okq6F0DEDk3SYT9RoPN0/NjyerPpxJ7arS2bN02R6ogBZM7LiTUF6aFuA3vaVKZarVBXYL5ZDr0HvHcSuT0T8F+CGDM7KALldOWgrNbDiVLXBliwRpQbxmKMti7gSftym77MYZHvfq7kKWNrJ/CkV0yXIBrvC0+CQ8Q6E7+dx6pD5HRPB4KGTvAJASZPpysDOcLvjIJh6UvCnQ6I0anoIeK3Socm3NQeEYr6gLVOtZfoiIL1D27NgOEtgviEMQ/haNW9x6O6LT4K/j5NAjm/mcW4/h5Z7vJHBnIbEVsXCe5hj8QmoH1hJvkRcgT5eB5E5dCidt+hMed/cD/ERb1XG1fnK6uBHLS3+sm86ZEyMu7/uI2OQkBtvhPthdcPsCB6rnJMdkIg2vq981vlxA7d2uWhhLX8lfhKMKLEhZtNJPBdcXNvo6a5GxbhHWlPIH7wli2be9t/UuZBRuSINnN4HBAXKWD364lo=
     - secure: NxB8NiLbhZpSwLEQoldgI6fDH3w2NuKcSFIHV/ZVqxO0zOknttP0t5UPmkCBKaVgWHo1PizkC7Iu/ukn757sqa9M4iZAlenl+uu4Zw86S6PMz5UsKwtivV1t6/fXaMqn/RryYzGFDPdgTWTSM97j0/b3iw09Ph5CvMhfT7gkinWtF/TZyx5MbSZfpFRM+zy8pm/TpwQ6xeYIFKlhshv9NMZrj5cVbp2S+9V1GR+eoYnaCXfN99cf+lNwKAMhFihKkFzYrXBy8QNflsvfc4JNJlTOzf3OQd6oQ2u+V+x4tHq4oyIjZAQBNLFR9zfF1ClbRdbmoWt8JxPEfVM0mNxzRKnSHs+o7ZkBlAs8vxSnH4f4qWMlHAD3CKzc+jDKIYLdFtwLMP/0PVNF5EvYfteSKa/+dZtGFMweJu3ZMG2ikFT9kmpJ/RBncePm40yVIpqkMgf6VlsXYnD9pdlBvIaEZK5Qa9DHpkJAhiJ2ZPV4YxoAn2n9L/++EicHB8Wy+wud3yJFVSUDx+Gg5njJGOx32pypQReY7objy7nRuR0r9dhNyQ+VgCUp8Cv9pyJjXUqjOauAF60n+2KuOo6NKYg5lA9IqcOKP7svlFwgtOpKHEC1tg9CKhdhRr82TFBuJsyuAzVulDAOcxHSMJP7bz4I9Jtxxr4EMjYrpoOfgkOlmxY=
     - secure: qbbTVfwkOraWTkQ8SxJOAsjv7qVrWqrOINIOCeFcKzwrQPHVjzr97JeOcQK73PLTwkgYg8QurwiRGB98O0fcroiqbzgXIwVk0yFrRtbmcaQ/NYXt9ipfPeeChsn8bwF7vYRuGfz9HybCU2CBmxwjJqfTeU2iqvOFfAH2Sh4b6VmbCVkINn4GFHLATcwHKoQO16B6S+z4FGSHX/AWT3vRFTBZZ65gZF7evPURtNDbumwe28KCKzmqySF5UKw2HEmDyCD+fRozlCcWYC2lbS2iZn/d0VXZvUpZxpEDVyaHdH/n6I03DZ+gnbgCi+/uw7d96s3pjomPkCiY9VfmQPl020kR8FeREyOsc0rqYtrxwe1ImKJUHsjdUZ6nUL5HcFyWJdKX6txn6bUJwUOF/+lg1O34n0ZJym3j5sm7kyoBzh0lTRMiue7Nd9WD7iJePmPEfb+Sk6UGCjgf/KGkcGr75jaVFb3AsIjtGgbq9BDQN4SKRGW3NSmXZ6pKbwFm1b6c+LPPOTukKsPTUBwEqcCCwoNSqcgIBv325dBEKJMa945/RR7E7/KXzKoWkoLkKZUTPKtVJpjsIxVkq1spPZQmmSZ3FBUww2tC+l6stD62xDYSuBH6iqLhU/xpeAjizCMS1YjNUxjs1oVBkdu2IEUV61SOoZtYyIgDvvPGpm2YcgQ=
@@ -91,10 +93,12 @@ script:
     if [[ "$SHOULD_TEST" == "1" ]]; then
       make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
       make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
+      make kafka-controller-image KAFKA_CONTROLLER_IMAGE=$KAFKA_CONTROLLER_IMAGE
       make all-yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless.yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless-rbac.yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless-openshift.yaml
+      sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kafka-zookeeper.yaml
       case $TEST_TARGET in
       unit)
         make test
@@ -151,7 +155,6 @@ before_deploy:
       sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless.yaml > kubeless-${TRAVIS_TAG}.yaml
       sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
       sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
-      cp kafka-zookeeper.yaml kafka-zookeeper-${TRAVIS_TAG}.yaml
     fi
 
 deploy:
