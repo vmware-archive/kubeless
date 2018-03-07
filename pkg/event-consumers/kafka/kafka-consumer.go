@@ -54,20 +54,15 @@ func createConsumerProcess(brokers, topic, funcName, ns, consumerGroupID string,
 	}
 	defer consumer.Close()
 
+	logrus.Infof("Started Kakfa consumer Broker: %v, Topic: %v, Function: %v, consumerID: %v", brokers, topic, funcName, consumerGroupID)
+
 	// Consume messages, wait for signal to stopchan to exit
 	defer close(stoppedchan)
 	for {
 		select {
 		case msg, more := <-consumer.Messages():
 			if more {
-				//print to stdout
-				//TODO: should be logrus.Debugf and enable verbosity
-				fmt.Printf("Partition:\t%d\n", msg.Partition)
-				fmt.Printf("Offset:\t%d\n", msg.Offset)
-				fmt.Printf("Key:\t%s\n", string(msg.Key))
-				fmt.Printf("Value:\t%s\n", string(msg.Value))
-				fmt.Println()
-
+				logrus.Infof("Received Kafka message Partition: %d Offset: %d Key: %s Value: %s ", msg.Partition, msg.Offset, string(msg.Key), string(msg.Value))
 				//forward msg to function
 				clientset := utils.GetClient()
 				err = sendMessage(clientset, funcName, ns, string(msg.Value))
@@ -131,7 +126,6 @@ func CreateKafkaConsumer(triggerObjName, funcName, ns, topic string) error {
 		logrus.Infof("Creating Kafka consumer for the function %s associated with for trigger %s", funcName, triggerObjName)
 		stopM[consumerID] = make(chan struct{})
 		stoppedM[consumerID] = make(chan struct{})
-		logrus.Infof("Broker: %v, Topic: %v, Function: %v, consumerID: %v", brokers, topic, funcName, consumerID)
 		go createConsumerProcess(brokers, topic, funcName, ns, consumerID, stopM[consumerID], stoppedM[consumerID])
 		consumerM[consumerID] = true
 		logrus.Infof("Created Kafka consumer for the function %s associated with for trigger %s", funcName, triggerObjName)
