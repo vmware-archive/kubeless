@@ -1,11 +1,15 @@
-hash: fb7887d71cdbcf6a4f7fe0e2ab992a5607356e0108571bedcbdf4dc0c77a8df0
-updated: 2018-01-30T10:46:26.433257+01:00
+hash: 94baa64a80d75d5f6b7f2da323ca473005e33861c74c9fc5e931d94f8db69048
+updated: 2018-03-07T08:14:19.446040382+05:30
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
   subpackages:
   - compute/metadata
   - internal
+- name: github.com/blang/semver
+  version: c5e971dbed7850a93c23aa6ff69db5771d8e23b3
+- name: github.com/bsm/sarama-cluster
+  version: 3001c2453136632aa3219a58ea3795bb584b83b5
 - name: github.com/coreos/prometheus-operator
   version: 197eb012d973f5aaf4d0446fd8f638f1b9067128
   subpackages:
@@ -14,6 +18,14 @@ imports:
   version: 782f4967f2dc4564575ca782fe2d04090b5faca8
   subpackages:
   - spew
+- name: github.com/eapache/go-resiliency
+  version: ef9aaa7ea8bd2448429af1a77cf41b2b3b34bdd6
+  subpackages:
+  - breaker
+- name: github.com/eapache/go-xerial-snappy
+  version: bb955e01b9346ac19dc29eb16586c90ded99a98c
+- name: github.com/eapache/queue
+  version: 093482f3f8ce946c05bcba64badd2c82369e084d
 - name: github.com/emicklei/go-restful
   version: ff4f55a206334ef123e4f79bbf348980da81ca46
   subpackages:
@@ -45,8 +57,14 @@ imports:
   - ptypes/any
   - ptypes/duration
   - ptypes/timestamp
+- name: github.com/golang/snappy
+  version: 553a641470496b2327abcac10b36396bd98e45c9
 - name: github.com/google/btree
   version: 7d79101e329e5a3adf994758c578dab82b90c017
+- name: github.com/google/go-jsonnet
+  version: cf6933d45bbb7619436668966e2f166e3007d8eb
+  subpackages:
+  - ast
 - name: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
 - name: github.com/googleapis/gnostic
@@ -79,9 +97,9 @@ imports:
 - name: github.com/juju/ratelimit
   version: 5b9ff866471762aa2ab2dced63c9fb6f53921342
 - name: github.com/ksonnet/ksonnet-lib
-  version: 660b58e9eadcf230620541d238a3a412ba0c1e1c
+  version: 5f18b78811847eb7f581deb4ad3d3cf0abdbe00d
   subpackages:
-  - ksonnet-gen/ast
+  - ksonnet-gen/astext
   - ksonnet-gen/jsonnet
   - ksonnet-gen/ksonnet
   - ksonnet-gen/kubespec
@@ -95,25 +113,35 @@ imports:
   - jlexer
   - jwriter
 - name: github.com/mattn/go-runewidth
-  version: 97311d9f7767e3d6f422ea06661bc2c7a19e8a5d
+  version: a9d6d1e4dc51df2130326793d49971f238839169
 - name: github.com/peterbourgon/diskv
   version: 5f041e8faa004a95c88a202771f4cc3e991971e6
+- name: github.com/pierrec/lz4
+  version: ed8d4cc3b461464e69798080a0092bd028910298
+- name: github.com/pierrec/xxHash
+  version: a0006b13c722f7f12368c00a3d3c2ae8a999a0c6
+  subpackages:
+  - xxHash32
 - name: github.com/pkg/errors
   version: 30136e27e2ac8d167177e8a583aa4c3fea5be833
 - name: github.com/PuerkitoBio/purell
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
+- name: github.com/rcrowley/go-metrics
+  version: 8732c616f52954686704c8645fe1a9d59e9df7c1
 - name: github.com/robfig/cron
   version: 2315d5715e36303a941d907f038da7f7c44c773b
+- name: github.com/Shopify/sarama
+  version: 240fd146ce68bcafb034cc5dc977229ffbafa8ea
 - name: github.com/sirupsen/logrus
   version: 768a92a02685ee7535069fc1581341b41bab9b72
 - name: github.com/spf13/cobra
   version: 7b2c5ac9fc04fc5efafb60700713d4fa609b777b
 - name: github.com/spf13/pflag
-  version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
+  version: ee5fd03fd6acfd43e44aea0b4135958546ed8e73
 - name: golang.org/x/crypto
-  version: 1875d0a70c90e57f11972aefd42276df65e895b9
+  version: 85f98707c97e11569271e4d9b3d397e079c4f4d0
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
