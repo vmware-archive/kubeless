@@ -1,3 +1,3 @@
-def foo(context)
+def foo(event, context)
   "hello world"
 end

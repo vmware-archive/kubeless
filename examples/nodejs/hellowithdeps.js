@@ -3,8 +3,8 @@
 const _ = require('lodash');
 
 module.exports = {
-    handler: (req, res) => {
-        _.assign(req.body, {date: new Date().toTimeString()})
-        res.end(JSON.stringify(req.body));
+    handler: (event, context) => {
+        _.assign(event.data, {date: new Date().toTimeString()})
+        return JSON.stringify(event.data);
     },
 };
