@@ -362,7 +362,7 @@ pubsub-nodejs-update:
 	kubeless function update pubsub-nodejs --trigger-topic s3-nodejs-2
 
 pubsub-nodejs-update-verify:
-	kubectl describe $$(kubectl get po -oname|grep pubsub-nodejs) | grep -e "TOPIC_NAME:\s*s3-nodejs-2"
+	kubectl describe $$(kubectl get -o yaml KafkaTrigger pubsub-nodejs) | grep -e "topic:\s*s3-nodejs-2"
 
 pubsub-ruby:
 	kubeless topic create s3-ruby || true
