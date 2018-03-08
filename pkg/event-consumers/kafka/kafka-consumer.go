@@ -99,8 +99,9 @@ func sendMessage(clientset kubernetes.Interface, funcName, ns, msg string) error
 		return fmt.Errorf("Failed to create a request %v", req)
 	}
 	timestamp := time.Now().UTC()
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("event-id", fmt.Sprintf("kafka-consumer-%s-%s-%s", funcName, ns, timestamp.Format(time.RFC3339Nano)))
-	req.Header.Add("event-type", "plain/text")
+	req.Header.Add("event-type", "application/x-www-form-urlencoded")
 	req.Header.Add("event-time", timestamp.String())
 	req.Header.Add("event-namespace", "kafkatriggers.kubeless.io")
 	client := &http.Client{}
