@@ -1,9 +1,9 @@
 package kafka
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -93,21 +93,18 @@ func sendMessage(clientset kubernetes.Interface, funcName, ns, msg string) error
 	}
 	logrus.Infof("Sending message %s to function %s", msg, funcName)
 	funcPort := strconv.Itoa(int(svc.Spec.Ports[0].Port))
-	if svc.Spec.Ports[0].Name != "" {
-		funcPort = svc.Spec.Ports[0].Name
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s.%s.svc.cluster.local:%s", funcName, ns, funcPort), strings.NewReader(msg))
+	if err != nil {
+		return fmt.Errorf("Failed to create a request %v", req)
 	}
-
-	jsonStr := []byte(msg)
-	req := clientset.CoreV1().RESTClient().Post().Body(bytes.NewBuffer(jsonStr)).SetHeader("Content-Type", "application/json")
-	req = req.AbsPath(svc.ObjectMeta.SelfLink + ":" + funcPort + "/proxy/")
-
 	timestamp := time.Now().UTC()
-	req.SetHeader("event-id", fmt.Sprintf("kafka-consumer-%s-%s-%s", funcName, ns, timestamp.Format(time.RFC3339Nano)))
-	req.SetHeader("event-type", "application/json")
-	req.SetHeader("event-time", timestamp.String())
-	req.SetHeader("event-namespace", "kafkatriggers.kubeless.io")
-
-	_, err = req.Do().Raw()
+	req.Header.Add("event-id", fmt.Sprintf("kafka-consumer-%s-%s-%s", funcName, ns, timestamp.Format(time.RFC3339Nano)))
+	req.Header.Add("event-type", "plain/text")
+	req.Header.Add("event-time", timestamp.String())
+	req.Header.Add("event-namespace", "kafkatriggers.kubeless.io")
+	client := &http.Client{}
+	_, err = client.Do(req)
 	if err != nil {
 		//detect the request timeout case
 		if strings.Contains(err.Error(), "status code 408") {
