@@ -37,7 +37,7 @@ func init() {
 }
 
 // createConsumerProcess gets messages to a Kafka topic from the broker and send the payload to function service
-func createConsumerProcess(brokers, topic, funcName, ns, consumerGroupID string, stopchan, stoppedchan chan struct{}) {
+func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, stopchan, stoppedchan chan struct{}) {
 	// Init config
 	config := cluster.NewConfig()
 
@@ -45,16 +45,17 @@ func createConsumerProcess(brokers, topic, funcName, ns, consumerGroupID string,
 	config.Group.Return.Notifications = true
 	config.Consumer.Offsets.Initial = sarama.OffsetNewest
 
-	// Init consumer, consume errors & messages
-	// consumer is grouped and labeled by functionID to receive load-balanced messages
-	// More details: https://kafka.apache.org/documentation/#intro_consumers
-	consumer, err := cluster.NewConsumer(strings.Split(brokers, ","), consumerGroupID, strings.Split(topic, ","), config)
+	// Init consumer
+	brokersSlice := []string{broker}
+	topicsSlice := []string{topic}
+
+	consumer, err := cluster.NewConsumer(brokersSlice, consumerGroupID, topicsSlice, config)
 	if err != nil {
 		logrus.Fatalf("Failed to start consumer: %v", err)
 	}
 	defer consumer.Close()
 
-	logrus.Infof("Started Kakfa consumer Broker: %v, Topic: %v, Function: %v, consumerID: %v", brokers, topic, funcName, consumerGroupID)
+	logrus.Infof("Started Kakfa consumer Broker: %v, Topic: %v, Function: %v, consumerID: %v", broker, topic, funcName, consumerGroupID)
 
 	// Consume messages, wait for signal to stopchan to exit
 	defer close(stoppedchan)
@@ -73,11 +74,11 @@ func createConsumerProcess(brokers, topic, funcName, ns, consumerGroupID string,
 			}
 		case ntf, more := <-consumer.Notifications():
 			if more {
-				logrus.Debugf("Rebalanced: %+v\n", ntf)
+				logrus.Infof("Rebalanced: %+v\n", ntf)
 			}
 		case err, more := <-consumer.Errors():
 			if more {
-				logrus.Fatalf("Error: %s\n", err.Error())
+				logrus.Errorf("Error: %s\n", err.Error())
 			}
 		case <-stopchan:
 			return
