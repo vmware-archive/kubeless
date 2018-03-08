@@ -58,9 +58,9 @@ You can use the CLI to create a function. Functions have three possible types:
 Here is a toy:
 
 ```python
-def foobar(context):
-   print context.json
-   return context.json
+def foobar(event, context):
+  print event
+  return event['data']
 ```
 
 You create it with:
@@ -160,9 +160,9 @@ zookeeper   ClusterIP   10.55.249.102   <none>        2181/TCP            1m
 Now you can deploy a pubsub function. A function can be as simple as:
 
 ```python
-def foobar(context):
-    print context
-    return context
+def foobar(event, context):
+  print event['data']
+  return event['data']
 ```
 
 You create it the same way than an _HTTP_ function except that you specify a `--trigger-topic`.
@@ -185,6 +185,7 @@ You can check the result in the pod logs:
 
 ```console
 $ kubectl logs test-695251588-cxwmc
+...
 Hello World!
 ```
 
@@ -194,13 +195,13 @@ You can delete and list functions:
 
 ```console
 $ kubeless function ls
-NAME        NAMESPACE   HANDLER     RUNTIME     TYPE    TOPIC
-test        default     test.foobar python2.7   PubSub  test-topic
+NAME        NAMESPACE   HANDLER     RUNTIME     DEPENDENCIES    STATUS
+test        default     test.foobar python2.7                   1/1 READY
 
 $ kubeless function delete test
 
 $ kubeless function ls
-NAME        NAMESPACE   HANDLER     RUNTIME     TYPE    TOPIC
+NAME        NAMESPACE   HANDLER     RUNTIME     DEPENDENCIES    STATUS
 ```
 
 You can create, list and delete PubSub topics:
@@ -219,7 +220,7 @@ You can also see the list of supported runtimes:
 ```console
 $ kubeless get-server-config
 INFO[0000] Current Server Config:
-INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, dotnetcore2.0
+INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, php7.2
 ```
 
 ## Examples
