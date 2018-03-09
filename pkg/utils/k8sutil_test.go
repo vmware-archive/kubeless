@@ -20,6 +20,8 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	xv1beta1 "k8s.io/api/extensions/v1beta1"
+	extensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	fakeextensionsapi "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apimachinery"
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
@@ -50,7 +52,7 @@ func TestEnsureConfigMap(t *testing.T) {
 	or := []metav1.OwnerReference{
 		{
 			Kind:       "Function",
-			APIVersion: "k8s.io",
+			APIVersion: "kubeless.io/v1beta1",
 		},
 	}
 	ns := "default"
@@ -172,7 +174,7 @@ func TestEnsureService(t *testing.T) {
 	or := []metav1.OwnerReference{
 		{
 			Kind:       "Function",
-			APIVersion: "k8s.io",
+			APIVersion: "kubeless.io/v1beta1",
 		},
 	}
 	ns := "default"
@@ -262,7 +264,7 @@ func TestEnsureDeployment(t *testing.T) {
 	or := []metav1.OwnerReference{
 		{
 			Kind:       "Function",
-			APIVersion: "k8s.io",
+			APIVersion: "kubeless.io/v1beta1",
 		},
 	}
 	ns := "default"
@@ -583,7 +585,7 @@ func TestEnsureCronJob(t *testing.T) {
 	or := []metav1.OwnerReference{
 		{
 			Kind:       "Function",
-			APIVersion: "k8s.io",
+			APIVersion: "kubeless.io/v1beta1",
 		},
 	}
 	ns := "default"
@@ -1073,6 +1075,70 @@ func TestMergeDeployments(t *testing.T) {
 	}
 	if *destinationDeployment.Spec.Replicas != replicas {
 		t.Fatalf("Expecting replicas as 10 but received %v", *destinationDeployment.Spec.Replicas)
+	}
+
+}
+
+func TestGetAnnotationsFromCRD(t *testing.T) {
+	crdWithoutAnnotationName := "crdWithoutAnnotation"
+	crdWithAnnotationName := "crdWithAnnotation"
+	expectedAnnotations := map[string]string{
+		"foo": "bar",
+	}
+	crdWithAnnotation := &extensionsv1beta1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"foo": "bar",
+			},
+			Name: crdWithAnnotationName,
+		},
+		Spec: extensionsv1beta1.CustomResourceDefinitionSpec{
+			Group: "foo.group.io",
+			Names: extensionsv1beta1.CustomResourceDefinitionNames{
+				Plural:   "foos",
+				Singular: "foo",
+				Kind:     "fooKind",
+				ListKind: "fooList",
+			},
+		},
+	}
+	clientset := fakeextensionsapi.NewSimpleClientset()
+	_, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crdWithAnnotation)
+	if err != nil {
+		t.Fatalf("Error while creating CRD: %v", err)
+	}
+	annotations, err := GetAnnotationsFromCRD(clientset, crdWithAnnotationName)
+	if err != nil {
+		t.Fatalf("Error while fetching CRD: %v", err)
+	}
+	for i := range expectedAnnotations {
+		if annotations[i] != expectedAnnotations[i] {
+			t.Errorf("Expecting annotation %s but received %s", expectedAnnotations[i], annotations[i])
+		}
+	}
+
+	crdWithoutAnnotation := &extensionsv1beta1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{},
+			Name:        crdWithoutAnnotationName,
+		},
+		Spec: extensionsv1beta1.CustomResourceDefinitionSpec{
+			Group: "foo.group.io",
+			Names: extensionsv1beta1.CustomResourceDefinitionNames{
+				Plural:   "foos",
+				Singular: "foo",
+				Kind:     "fooKind",
+				ListKind: "fooList",
+			},
+		},
+	}
+	_, err = clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crdWithoutAnnotation)
+	if err != nil {
+		t.Fatalf("Error while creating CRD: %v", err)
+	}
+	_, err = GetAnnotationsFromCRD(clientset, crdWithoutAnnotationName)
+	if err.Error() != "No annotations found in CRD" {
+		t.Fatalf("Expecting error: \"No annotations found in CRD\" but found \"%v\"", err.Error())
 	}
 
 }

@@ -43,6 +43,33 @@ $ export KUBELESS_NAMESPACE=<name of namespace>
 $ export KUBELESS_CONFIG=<name of config file>
 ```
 
+or the following information can be added to `functions.kubeless.io` `CustomResourceDefinition` as `annotations`. E.g. below `CustomResourceDefinition` will signify `kubeless-controller` is installed in namespace `kubless-new-namespace` and config name is `kubeless-config-new-name`
+
+```yaml
+apiVersion: apiextensions.k8s.io/v1beta1
+description: Kubernetes Native Serverless Framework
+kind: CustomResourceDefinition
+metadata:
+  name: functions.kubeless.io
+  annotations:
+    kubeless.io/namespace: kubless-new-namespace
+    kubeless.io/config: kubeless-config-new-name
+spec:
+  group: kubeless.io
+  names:
+    kind: Function
+    plural: functions
+    singular: function
+  scope: Namespaced
+  version: v1beta1
+```
+
+The priority of deciding the `namespace` and `config name` (highest to lowest) is:
+
+- Environment variables
+- Annotations in `functions.kubeless.io` CRD
+- default: `namespace` is `kubeless` and `ConfigMap` is `kubeless-config`  
+
 You are now ready to create functions.
 
 # Usage

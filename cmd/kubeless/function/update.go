@@ -18,7 +18,6 @@ package function
 
 import (
 	"io/ioutil"
-	"os"
 	"strings"
 
 	"github.com/kubeless/kubeless/pkg/langruntime"
@@ -36,16 +35,9 @@ var updateCmd = &cobra.Command{
 	Long:  `update a function on Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cli := utils.GetClientOutOfCluster()
-		controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
-		kubelessConfig := os.Getenv("KUBELESS_CONFIG")
-
-		if len(controllerNamespace) == 0 {
-			controllerNamespace = "kubeless"
-		}
-
-		if len(kubelessConfig) == 0 {
-			kubelessConfig = "kubeless-config"
-		}
+		configLocation := utils.GetConfigLocation()
+		controllerNamespace := configLocation["namespace"]
+		kubelessConfig := configLocation["name"]
 		config, err := cli.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
 		if err != nil {
 			logrus.Fatalf("Unable to read the configmap: %v", err)
