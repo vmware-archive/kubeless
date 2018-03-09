@@ -32,6 +32,7 @@ load ../script/libtest
   kubeless_function_delete pubsub-python34
 }
 @test "Test function: pubsub-nodejs" {
+  skip "Will cover this test case as part of new IT tests when `kubeless trigger create/update/delete` is added"
   deploy_function pubsub-nodejs
   verify_function pubsub-nodejs
   test_kubeless_function_update pubsub-nodejs
