@@ -106,7 +106,7 @@ func (d *Description) Content() ([]byte, error) {
 }
 
 // ToLayer returns the Description as a Layer
-func (d *Description) ToLayer(dir string) (*Layer, error) {
+func (d *Description) ToLayer() (*Layer, error) {
 	content, err := d.Content()
 	if err != nil {
 		return nil, err

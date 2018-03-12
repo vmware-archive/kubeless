@@ -55,30 +55,26 @@ func copyFile(src, dst string) error {
 	return copyReader(srcFile, dst)
 }
 
-func addLayerFile(imageDir, tarFile string) (*Layer, error) {
-	layerFile, err := os.Open(tarFile)
+func getLayer(file string) (*Layer, error) {
+	layerFile, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
 	defer layerFile.Close()
-	// Copy tar layer to the image dir
 	layer := Layer{}
 	err = layer.New(layerFile)
-	if err != nil {
-		return nil, err
-	}
-	layerPath := path.Join(imageDir, fmt.Sprintf("%s.tar", layer.Sha256))
-	if err != nil {
-		return nil, err
-	}
-	err = copyFile(tarFile, layerPath)
 	if err != nil {
 		return nil, err
 	}
 	return &layer, nil
 }
 
-func updateDescription(descriptionDir string, descriptionFile *os.File, newLayer *Layer) (*Layer, error) {
+func saveNewDescription(content []byte, dir, contentChecksum string) error {
+	dLayerFile := path.Join(dir, fmt.Sprintf("%s.tar", contentChecksum))
+	return copyReader(bytes.NewReader(content), dLayerFile)
+}
+
+func updateDescription(descriptionDir string, descriptionFile *os.File, newLayer *Layer) (*Description, error) {
 	d := Description{}
 	err := d.New(descriptionFile)
 	if err != nil {
@@ -88,25 +84,16 @@ func updateDescription(descriptionDir string, descriptionFile *os.File, newLayer
 	if err != nil {
 		return nil, fmt.Errorf("Unable to update image description: %v", err)
 	}
-	dLayer, err := d.ToLayer(descriptionDir)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to generate layer from description: %v", err)
-	}
-	dContent, err := d.Content()
-	if err != nil {
-		return nil, fmt.Errorf("Unable to get description content: %v", err)
-	}
-	dLayerFile := path.Join(descriptionDir, fmt.Sprintf("%s.tar", dLayer.Sha256))
-	err = copyReader(bytes.NewReader(dContent), dLayerFile)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to store new description: %v", err)
-	}
-	return dLayer, nil
+	return &d, nil
 }
 
 // AddTarToLayer copies a tar file into a image directory and update its metadata
 func AddTarToLayer(imageDir, tarFile string) error {
-	tarLayer, err := addLayerFile(imageDir, tarFile)
+	tarLayer, err := getLayer(tarFile)
+	if err != nil {
+		return err
+	}
+	err = copyFile(tarFile, path.Join(imageDir, fmt.Sprintf("%s.tar", tarLayer.Sha256)))
 	if err != nil {
 		return fmt.Errorf("Failed to copy tar file: %v", err)
 	}
@@ -129,7 +116,19 @@ func AddTarToLayer(imageDir, tarFile string) error {
 	if err != nil {
 		return err
 	}
-	descriptionLayer, err := updateDescription(imageDir, descriptionFile, tarLayer)
+	description, err := updateDescription(imageDir, descriptionFile, tarLayer)
+	if err != nil {
+		return err
+	}
+	descriptionLayer, err := description.ToLayer()
+	if err != nil {
+		return fmt.Errorf("Unable to generate layer from description: %v", err)
+	}
+	descriptionContent, err := description.Content()
+	if err != nil {
+		return err
+	}
+	err = saveNewDescription(descriptionContent, imageDir, descriptionLayer.Sha256)
 	if err != nil {
 		return err
 	}

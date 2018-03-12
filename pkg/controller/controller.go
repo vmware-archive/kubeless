@@ -215,7 +215,6 @@ func (c *Controller) startImageBuildJob(funcObj *kubelessApi.Function, or []meta
 		return "", false, fmt.Errorf("Unable to locate registry credentials to build function image: %v", err)
 	}
 	reg, err := registry.New(*imagePullSecret)
-	// If the secret is available we can build in the registry
 	if err != nil {
 		return "", false, fmt.Errorf("Unable to retrieve registry information: %v", err)
 	}
@@ -281,10 +280,10 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 	}
 
 	prebuiltImage := ""
-	// Skip image build if using a custom runtime
 	if len(funcObj.Spec.Deployment.Spec.Template.Spec.Containers) > 0 && funcObj.Spec.Deployment.Spec.Template.Spec.Containers[0].Image != "" {
 		prebuiltImage = funcObj.Spec.Deployment.Spec.Template.Spec.Containers[0].Image
 	}
+	// Skip image build step if using a custom runtime
 	if prebuiltImage == "" {
 		if c.config.Data["enable-build-step"] == "true" {
 			var isBuilding bool
