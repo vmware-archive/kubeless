@@ -122,6 +122,19 @@ func GetAPIExtensionsClientOutOfCluster() clientsetAPIExtensions.Interface {
 	return clientset
 }
 
+// GetAPIExtensionsClientInCluster returns a k8s clientset to access APIExtensions from inside of cluster
+func GetAPIExtensionsClientInCluster() clientsetAPIExtensions.Interface {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		logrus.Fatalf("Can not get kubernetes config: %v", err)
+	}
+	clientset, err := clientsetAPIExtensions.NewForConfig(config)
+	if err != nil {
+		logrus.Fatalf("Can not get kubernetes client: %v", err)
+	}
+	return clientset
+}
+
 // GetFunctionClientInCluster returns function clientset to the request from inside of cluster
 func GetFunctionClientInCluster() (versioned.Interface, error) {
 	config, err := rest.InClusterConfig()
