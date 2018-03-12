@@ -207,6 +207,43 @@ func (c *Controller) getResouceGroupVersion(target string) (string, error) {
 	return groupVersion, nil
 }
 
+// startImageBuildJob creates (if necessary) a job that will build an image for the given function
+// returns the name of the image, a boolean indicating if the build job has been created and an error
+func (c *Controller) startImageBuildJob(funcObj *kubelessApi.Function, or []metav1.OwnerReference) (string, bool, error) {
+	imagePullSecret, err := c.clientset.CoreV1().Secrets(funcObj.ObjectMeta.Namespace).Get("kubeless-registry-credentials", metav1.GetOptions{})
+	if err != nil {
+		return "", false, fmt.Errorf("Unable to locate registry credentials to build function image: %v", err)
+	}
+	reg, err := registry.New(*imagePullSecret)
+	// If the secret is available we can build in the registry
+	if err != nil {
+		return "", false, fmt.Errorf("Unable to retrieve registry information: %v", err)
+	}
+	// Use function content and deps as tag (digested)
+	tag := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%v%v", funcObj.Spec.Function, funcObj.Spec.Deps))))
+	imageName := fmt.Sprintf("%s/%s", reg.Creds.Username, funcObj.ObjectMeta.Name)
+	// Check if image already exists
+	exists, err := reg.ImageExists(imageName, tag)
+	if err != nil {
+		return "", false, fmt.Errorf("Unable to check is target image exists: %v", err)
+	}
+	image := fmt.Sprintf("%s:%s", imageName, tag)
+	if !exists {
+		regURL, err := url.Parse(reg.Endpoint)
+		if err != nil {
+			return "", false, fmt.Errorf("Unable to parse registry URL: %v", err)
+		}
+		err = utils.EnsureFuncImage(c.clientset, funcObj, c.langRuntime, or, imageName, tag, c.config.Data["builder-image"], regURL.Host, imagePullSecret.Name)
+		if err != nil {
+			return "", false, fmt.Errorf("Unable to create image build job: %v", err)
+		}
+	} else {
+		// Image already exists
+		return image, false, nil
+	}
+	return image, true, nil
+}
+
 // ensureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
 func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 	if len(funcObj.ObjectMeta.Labels) == 0 {
@@ -243,39 +280,24 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 		return err
 	}
 
-	imagePullSecret, err := c.clientset.CoreV1().Secrets(funcObj.ObjectMeta.Namespace).Get("registry-credentials", metav1.GetOptions{})
 	prebuiltImage := ""
 	// Skip image build if using a custom runtime
 	if len(funcObj.Spec.Deployment.Spec.Template.Spec.Containers) > 0 && funcObj.Spec.Deployment.Spec.Template.Spec.Containers[0].Image != "" {
 		prebuiltImage = funcObj.Spec.Deployment.Spec.Template.Spec.Containers[0].Image
 	}
-	if err == nil && prebuiltImage == "" {
-		// If the secret is available we can build in the registry
-		reg, err := registry.New(*imagePullSecret)
-		if err != nil {
-			return fmt.Errorf("Unable to retrieve registry information: %v", err)
-		}
-		// Use function content and deps as tag (digested)
-		tag := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%v%v", funcObj.Spec.Function, funcObj.Spec.Deps))))
-		imageName := fmt.Sprintf("%s/%s", reg.Creds.Username, funcObj.ObjectMeta.Name)
-		prebuiltImage = fmt.Sprintf("%s:%s", imageName, tag)
-		// Check if image already exists
-		exists, err := reg.ImageExists(imageName, tag)
-		if err != nil {
-			return err
-		}
-		if !exists {
-			regURL, err := url.Parse(reg.Endpoint)
+	if prebuiltImage == "" {
+		if c.config.Data["enable-build-step"] == "true" {
+			var isBuilding bool
+			prebuiltImage, isBuilding, err = c.startImageBuildJob(funcObj, or)
 			if err != nil {
-				return fmt.Errorf("Unable to parse registry URL: %v", err)
+				logrus.Errorf("Unable to build function: %v", err)
+			} else {
+				if isBuilding {
+					logrus.Infof("Started build process for function %s", funcObj.ObjectMeta.Name)
+				} else {
+					logrus.Infof("Found existing image %s", prebuiltImage)
+				}
 			}
-			err = utils.EnsureFuncImage(c.clientset, funcObj, c.langRuntime, or, imageName, tag, c.config.Data["builder-image"], regURL.Host, imagePullSecret.Name)
-			if err != nil {
-				return err
-			}
-			logrus.Infof("Started build process for function %s", funcObj.ObjectMeta.Name)
-		} else {
-			logrus.Infof("Using prebuilt image %s", prebuiltImage)
 		}
 	} else {
 		logrus.Infof("Skipping image-build step for %s", funcObj.ObjectMeta.Name)

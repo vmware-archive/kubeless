@@ -155,7 +155,8 @@ local kubelessConfig  = configMap.default("kubeless-config", namespace) +
     configMap.data({"service-type": "ClusterIP"})+
     configMap.data({"deployment": std.toString(deploymentConfig)})+
     configMap.data({"runtime-images": std.toString(runtime_images)})+
-    configMap.data({"builder-image": "andresmgot/function-image-builder@sha256:273f04376b8b3433cea12beb5a6a0a2ac63d74ef1bb489d556cf993e14e57b02"});
+    configMap.data({"enable-build-step": "false"})+
+    configMap.data({"builder-image": "andresmgot/kubeless-function-image-builder:latest"});
 
 {
   controllerAccount: k.util.prune(controllerAccount),
