@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # k8s and kubeless helpers, specially "wait"-ers on pod ready/deleted/etc
+set -x
 
 KUBELESS_MANIFEST=kubeless.yaml
 KUBELESS_MANIFEST_RBAC=kubeless-rbac.yaml
@@ -43,6 +44,8 @@ k8s_wait_for_pod_ready() {
     # Retries just in case it is not stable
     local -i successCount=0
     while [ "$successCount" -lt "3" ]; do
+        echo_info "$(kubectl get po --all-namespaces)"
+        echo_info "$(kubectl logs -l kubeless=controller -n kubeless)"
         if kubectl get pod "${@}" |&grep -q Running; then
             ((successCount=successCount+1))
         fi
@@ -135,11 +138,16 @@ kubeless_recreate() {
         sleep 1
     done
     kubectl create namespace kubeless
+    echo "##################### debugging ###########"
+    echo "${manifest_upd}"
     kubectl create -f ${manifest_upd}
 }
 kubeless_function_delete() {
     local func=${1:?}; shift
     echo_info "Deleting function "${func}" in case still present ... "
+    echo "##################### are we here ###########"
+    kubeless function ls
+    kubectl get po -n kubeless
     kubeless function ls |grep -w "${func}" && kubeless function delete "${func}" >& /dev/null || true
 }
 kubeless_function_deploy() {
@@ -149,7 +157,11 @@ kubeless_function_deploy() {
 }
 _wait_for_kubeless_controller_ready() {
     echo_info "Waiting for kubeless controller to be ready ... "
+    echo_info "are we here!!!!"
+    echo_info "$(kubectl get po,deploy,svc,crd --all-namespaces)"
+    echo_info "$(kubectl describe deploy/kubeless-controller -n kubeless)"
     k8s_wait_for_pod_ready -n kubeless -l kubeless=controller
+    echo_info "$(kubectl describe deploy/kubeless-controller -n kubeless)"
     _wait_for_cmd_ok kubectl get functions 2>/dev/null
 }
 _wait_for_kubeless_controller_logline() {
