@@ -1,5 +1,5 @@
-hash: fb7887d71cdbcf6a4f7fe0e2ab992a5607356e0108571bedcbdf4dc0c77a8df0
-updated: 2018-01-30T10:46:26.433257+01:00
+hash: 2708ebf58736ddfd6b4a58047814ce896c64560a1fa90b675efdce8c52c6eaa5
+updated: 2018-03-08T17:51:11.716656+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -195,6 +195,8 @@ imports:
   - settings/v1alpha1
   - storage/v1
   - storage/v1beta1
+- name: k8s.io/apiextensions-apiserver
+  version: d0becfa6529e20309bd6684f8486abc265cf0b59
 - name: k8s.io/apimachinery
   version: bc110fd540ab678abbf2bc71d9ce908eb9325ef6
   subpackages:
