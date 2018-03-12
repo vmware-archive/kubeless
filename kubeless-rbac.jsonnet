@@ -28,8 +28,8 @@ local controller_roles = [
   },
   {
     apiGroups: ["batch"],
-    resources: ["cronjobs"],
-    verbs: ["create", "get", "delete", "list", "update", "patch"],
+    resources: ["cronjobs", "jobs"],
+    verbs: ["create", "get", "delete", "deletecollection", "list", "update", "patch"],
   },
   {
     apiGroups: ["autoscaling"],
