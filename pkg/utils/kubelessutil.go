@@ -2,14 +2,16 @@ package utils
 
 import (
 	"os"
+
+	clientsetAPIExtensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 )
 
 // GetConfigLocation returns a map which has information on the namespace where Kubeless controller is installed and the name of the ConfigMap which stores kubeless configurations
-func GetConfigLocation() (map[string]string, error) {
+func GetConfigLocation(apiExtensionsClientset clientsetAPIExtensions.Interface) (map[string]string, error) {
 	configLocation := make(map[string]string)
 	controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
 	kubelessConfig := os.Getenv("KUBELESS_CONFIG")
-	apiExtensionsClientset := GetAPIExtensionsClientOutOfCluster()
+
 	annotationsCRD, err := GetAnnotationsFromCRD(apiExtensionsClientset, "functions.kubeless.io")
 	if err != nil {
 		return nil, err

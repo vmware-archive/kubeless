@@ -93,7 +93,8 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 		},
 	})
 
-	configLocation, err := utils.GetConfigLocation()
+	apiExtensionsClientset := utils.GetAPIExtensionsClientInCluster()
+	configLocation, err := utils.GetConfigLocation(apiExtensionsClientset)
 	if err != nil {
 		logrus.Fatalf("Error while fetching config location: %v", err)
 	}

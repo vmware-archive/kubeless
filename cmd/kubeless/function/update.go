@@ -35,7 +35,8 @@ var updateCmd = &cobra.Command{
 	Long:  `update a function on Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cli := utils.GetClientOutOfCluster()
-		configLocation, err := utils.GetConfigLocation()
+		apiExtensionsClientset := utils.GetAPIExtensionsClientOutOfCluster()
+		configLocation, err := utils.GetConfigLocation(apiExtensionsClientset)
 		if err != nil {
 			logrus.Fatalf("Error while fetching config location: %v", err)
 		}
