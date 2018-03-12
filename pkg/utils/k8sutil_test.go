@@ -1136,9 +1136,12 @@ func TestGetAnnotationsFromCRD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error while creating CRD: %v", err)
 	}
-	_, err = GetAnnotationsFromCRD(clientset, crdWithoutAnnotationName)
-	if err.Error() != "No annotations found in CRD" {
-		t.Fatalf("Expecting error: \"No annotations found in CRD\" but found \"%v\"", err.Error())
+	annotations, err = GetAnnotationsFromCRD(clientset, crdWithoutAnnotationName)
+	if err != nil {
+		t.Fatalf("Error while fetching annotations from CRD: %v", err)
+	}
+	if len(annotations) != 0 {
+		t.Errorf("Expecting annotations of length 0 but received length %d", len(annotations))
 	}
 
 }

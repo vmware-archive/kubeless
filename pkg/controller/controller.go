@@ -93,7 +93,10 @@ func New(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *Con
 		},
 	})
 
-	configLocation := utils.GetConfigLocation()
+	configLocation, err := utils.GetConfigLocation()
+	if err != nil {
+		logrus.Fatalf("Error while fetching config location: %v", err)
+	}
 	controllerNamespace := configLocation["namespace"]
 	kubelessConfig := configLocation["name"]
 

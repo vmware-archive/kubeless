@@ -4,13 +4,16 @@ import (
 	"os"
 )
 
-// GetConfigLocation returns a map which has information on the namespace where Kubeless controller is installed and the name of the ConfigMap which stores Kubeless configurations
-func GetConfigLocation() map[string]string {
-	var configLocation map[string]string
+// GetConfigLocation returns a map which has information on the namespace where Kubeless controller is installed and the name of the ConfigMap which stores kubeless configurations
+func GetConfigLocation() (map[string]string, error) {
+	configLocation := make(map[string]string)
 	controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
 	kubelessConfig := os.Getenv("KUBELESS_CONFIG")
 	apiExtensionsClientset := GetAPIExtensionsClientOutOfCluster()
-	annotationsCRD, _ := GetAnnotationsFromCRD(apiExtensionsClientset, "functions.kubeless.io")
+	annotationsCRD, err := GetAnnotationsFromCRD(apiExtensionsClientset, "functions.kubeless.io")
+	if err != nil {
+		return nil, err
+	}
 	if len(controllerNamespace) == 0 {
 		if ns, ok := annotationsCRD["kubeless.io/namespace"]; ok {
 			controllerNamespace = ns
@@ -27,5 +30,5 @@ func GetConfigLocation() map[string]string {
 		}
 	}
 	configLocation["name"] = kubelessConfig
-	return configLocation
+	return configLocation, nil
 }

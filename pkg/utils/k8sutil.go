@@ -18,7 +18,6 @@ package utils
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -1005,11 +1004,8 @@ func MergeDeployments(destinationDeployment *v1beta1.Deployment, sourceDeploymen
 // GetAnnotationsFromCRD gets annotations from a CustomResourceDefinition
 func GetAnnotationsFromCRD(clientset clientsetAPIExtensions.Interface, name string) (map[string]string, error) {
 	crd, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(name, metav1.GetOptions{})
-	if err == nil {
-		if len(crd.GetAnnotations()) == 0 {
-			return nil, errors.New("No annotations found in CRD")
-		}
-		return crd.GetAnnotations(), nil
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+	return crd.GetAnnotations(), nil
 }

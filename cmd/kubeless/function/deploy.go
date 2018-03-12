@@ -35,7 +35,10 @@ var deployCmd = &cobra.Command{
 	Long:  `deploy a function to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cli := utils.GetClientOutOfCluster()
-		configLocation := utils.GetConfigLocation()
+		configLocation, err := utils.GetConfigLocation()
+		if err != nil {
+			logrus.Fatalf("Error while fetching config location: %v", err)
+		}
 		controllerNamespace := configLocation["namespace"]
 		kubelessConfig := configLocation["name"]
 		config, err := cli.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
