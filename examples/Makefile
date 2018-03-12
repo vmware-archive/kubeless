@@ -216,13 +216,13 @@ get-dotnetcore-verify:
 	kubeless function call get-dotnetcore |egrep hello.world
 
 custom-get-python:
-	kubeless function deploy --runtime-image kubeless/get-python-example@sha256:a922942597ce617adbe808b9f0cdc3cf7ff987a1277adf0233dd47be5d85082a custom-get-python
+	kubeless function deploy --runtime-image kubeless/get-python-example@sha256:af01f42956ca9981bc4ccec0c7df553539a44630fb87e00e562091a95e75dd21 custom-get-python
 
 custom-get-python-verify:
 	kubeless function call custom-get-python |egrep hello.world
 
 custom-get-python-update:
-	kubeless function update --runtime-image kubeless/get-python-example@sha256:d2ca4ab086564afbac6d30c29614f1623ddb9163b818537742c42fd785fcf2ce custom-get-python
+	kubeless function update --runtime-image kubeless/get-python-example@sha256:2cbc81d6412be01596bb5d8f3541a8e3e30ae6a8634122764bd32cff400dac3d custom-get-python
 
 custom-get-python-update-verify:
 	kubeless function call custom-get-python |egrep hello.world.updated
