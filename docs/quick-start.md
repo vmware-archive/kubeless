@@ -36,39 +36,7 @@ NAME         AGE
 get-python   1d
 ```
 
-If you have installed Kubeless into some other namespace (which is not called `kubeless`) or changed the name of the config file from kubeless-config to something else, then you have to export the kubeless namespace and the name of kubeless config as environment variables before using kubless cli. This can be done as follows:
-
-```bash
-$ export KUBELESS_NAMESPACE=<name of namespace>
-$ export KUBELESS_CONFIG=<name of config file>
-```
-
-or the following information can be added to `functions.kubeless.io` `CustomResourceDefinition` as `annotations`. E.g. below `CustomResourceDefinition` will signify `kubeless-controller` is installed in namespace `kubless-new-namespace` and config name is `kubeless-config-new-name`
-
-```yaml
-apiVersion: apiextensions.k8s.io/v1beta1
-description: Kubernetes Native Serverless Framework
-kind: CustomResourceDefinition
-metadata:
-  name: functions.kubeless.io
-  annotations:
-    kubeless.io/namespace: kubless-new-namespace
-    kubeless.io/config: kubeless-config-new-name
-spec:
-  group: kubeless.io
-  names:
-    kind: Function
-    plural: functions
-    singular: function
-  scope: Namespaced
-  version: v1beta1
-```
-
-The priority of deciding the `namespace` and `config name` (highest to lowest) is:
-
-- Environment variables
-- Annotations in `functions.kubeless.io` CRD
-- default: `namespace` is `kubeless` and `ConfigMap` is `kubeless-config`  
+### Details on [installing kubeless in a different namespace](./function-controller-configuration.md) can be found here.  
 
 You are now ready to create functions.
 
