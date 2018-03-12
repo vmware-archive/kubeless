@@ -255,8 +255,8 @@ func (c *Controller) ensureK8sResources(funcObj *kubelessApi.Function) error {
 		if err != nil {
 			return fmt.Errorf("Unable to retrieve registry information: %v", err)
 		}
-		// Use function spec checksum as tag
-		tag := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%v", funcObj.Spec))))
+		// Use function content and deps as tag (digested)
+		tag := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%v%v", funcObj.Spec.Function, funcObj.Spec.Deps))))
 		imageName := fmt.Sprintf("%s/%s", reg.Creds.Username, funcObj.ObjectMeta.Name)
 		prebuiltImage = fmt.Sprintf("%s:%s", imageName, tag)
 		// Check if image already exists
