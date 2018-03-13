@@ -36,6 +36,7 @@ import (
 	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	clientsetAPIExtensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -105,6 +106,32 @@ func GetClientOutOfCluster() kubernetes.Interface {
 		logrus.Fatalf("Can not get kubernetes client: %v", err)
 	}
 
+	return clientset
+}
+
+// GetAPIExtensionsClientOutOfCluster returns a k8s clientset to access APIExtensions from outside of cluster
+func GetAPIExtensionsClientOutOfCluster() clientsetAPIExtensions.Interface {
+	config, err := BuildOutOfClusterConfig()
+	if err != nil {
+		logrus.Fatalf("Can not get kubernetes config: %v", err)
+	}
+	clientset, err := clientsetAPIExtensions.NewForConfig(config)
+	if err != nil {
+		logrus.Fatalf("Can not get kubernetes client: %v", err)
+	}
+	return clientset
+}
+
+// GetAPIExtensionsClientInCluster returns a k8s clientset to access APIExtensions from inside of cluster
+func GetAPIExtensionsClientInCluster() clientsetAPIExtensions.Interface {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		logrus.Fatalf("Can not get kubernetes config: %v", err)
+	}
+	clientset, err := clientsetAPIExtensions.NewForConfig(config)
+	if err != nil {
+		logrus.Fatalf("Can not get kubernetes client: %v", err)
+	}
 	return clientset
 }
 
@@ -985,4 +1012,13 @@ func MergeDeployments(destinationDeployment *v1beta1.Deployment, sourceDeploymen
 	initializeEmptyMapsInDeployment(destinationDeployment)
 	initializeEmptyMapsInDeployment(sourceDeployment)
 	return mergo.Merge(destinationDeployment, sourceDeployment)
+}
+
+// GetAnnotationsFromCRD gets annotations from a CustomResourceDefinition
+func GetAnnotationsFromCRD(clientset clientsetAPIExtensions.Interface, name string) (map[string]string, error) {
+	crd, err := clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Get(name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return crd.GetAnnotations(), nil
 }

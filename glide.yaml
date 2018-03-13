@@ -6,10 +6,9 @@ import:
 - package: k8s.io/apimachinery
   version: kubernetes-1.8.7
 - package: k8s.io/client-go
-  version: kubernetes-1.8.7
-  subpackages:
-    - plugin/pkg/client/auth/gcp
   version: v5.0.0
+  subpackages:
+  - plugin/pkg/client/auth/gcp
 - package: k8s.io/api
   version: kubernetes-1.8.7
 - package: k8s.io/code-generator
@@ -27,3 +26,5 @@ import:
   version: 7ddbeae9ae08c6a06a59597f0c9edbc5ff2444ce
 - package: github.com/imdario/mergo
   version: v0.3.2
+- package: k8s.io/apiextensions-apiserver
+  version: kubernetes-1.8.7
