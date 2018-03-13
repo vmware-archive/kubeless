@@ -22,8 +22,8 @@ var GetServerConfigCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatalf("Error while fetching config location: %v", err)
 		}
-		controllerNamespace := configLocation["namespace"]
-		kubelessConfig := configLocation["name"]
+		controllerNamespace := configLocation.Namespace
+		kubelessConfig := configLocation.Name
 		config, err := cli.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
 		if err != nil {
 			logrus.Fatalf("Unable to read the configmap: %v", err)
