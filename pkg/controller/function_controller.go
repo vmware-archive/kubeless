@@ -18,7 +18,6 @@ package controller
 
 import (
 	"fmt"
-	"os"
 	"reflect"
 	"time"
 
@@ -100,14 +99,14 @@ func NewFunctionController(cfg Config, smclient *monitoringv1alpha1.MonitoringV1
 		},
 	})
 
-	controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
-	kubelessConfig := os.Getenv("KUBELESS_CONFIG")
-	if len(controllerNamespace) == 0 {
-		controllerNamespace = "kubeless"
+	apiExtensionsClientset := utils.GetAPIExtensionsClientInCluster()
+	configLocation, err := utils.GetConfigLocation(apiExtensionsClientset)
+	if err != nil {
+		logrus.Fatalf("Error while fetching config location: %v", err)
 	}
-	if len(kubelessConfig) == 0 {
-		kubelessConfig = "kubeless-config"
-	}
+	controllerNamespace := configLocation.Namespace
+	kubelessConfig := configLocation.Name
+
 	config, err := cfg.KubeCli.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
 	if err != nil {
 		logrus.Fatalf("Unable to read the configmap: %s", err)

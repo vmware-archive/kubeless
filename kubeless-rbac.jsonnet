@@ -37,6 +37,11 @@ local controller_roles = [
     verbs: ["create", "get", "delete", "list", "update", "patch"],
   },
   {
+    apiGroups: ["apiextensions.k8s.io"],
+    resources: ["customresourcedefinitions"],
+    verbs: ["get", "list"],
+  },
+  {
     apiGroups: ["monitoring.coreos.com"],
     resources: ["alertmanagers", "prometheuses", "servicemonitors"],
     verbs: ["*"],

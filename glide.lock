@@ -223,6 +223,8 @@ imports:
   - settings/v1alpha1
   - storage/v1
   - storage/v1beta1
+- name: k8s.io/apiextensions-apiserver
+  version: d0becfa6529e20309bd6684f8486abc265cf0b59
 - name: k8s.io/apimachinery
   version: bc110fd540ab678abbf2bc71d9ce908eb9325ef6
   subpackages:
