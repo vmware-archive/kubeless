@@ -523,10 +523,11 @@ func getRuntimeVolumeMount(name string) v1.VolumeMount {
 	}
 }
 
-// populatePodSpec create a basic Pod Spec that uses init containers to populate
+// populatePodSpec populates a basic Pod Spec that uses init containers to populate
 // the runtime container with the function content and its dependencies.
 // The caller should define the runtime container(s).
-// It returns the VolumeMount that the runtime container should use
+// It accepts a prepopulated podSpec with default information and volume that the
+// runtime container should mount
 func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes, podSpec *v1.PodSpec, runtimeVolumeMount v1.VolumeMount) error {
 	depsVolumeName := funcObj.ObjectMeta.Name + "-deps"
 	result := podSpec
@@ -617,17 +618,19 @@ func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function,
 	_, err := client.BatchV1().Jobs(funcObj.ObjectMeta.Namespace).Get(jobName, metav1.GetOptions{})
 	if err == nil {
 		// The job already exists
-		logrus.Infof("Skipping build stage for %s, image %s:%s already exists", funcObj.ObjectMeta.Name, imageName, tag)
+		logrus.Infof("Found a previous job for building %s:%s", imageName, tag)
 		return nil
 	}
-	podSpec := v1.PodSpec{}
+	podSpec := v1.PodSpec{
+		RestartPolicy: v1.RestartPolicyOnFailure,
+	}
 	runtimeVolumeMount := getRuntimeVolumeMount(funcObj.ObjectMeta.Name)
 	err = populatePodSpec(funcObj, lr, &podSpec, runtimeVolumeMount)
 	if err != nil {
 		return err
 	}
 
-	// Add a final initContainer to create the function bundle
+	// Add a final initContainer to create the function bundle.tar
 	prepareContainer := v1.Container{}
 	for _, c := range podSpec.InitContainers {
 		if c.Name == "prepare" {
@@ -641,7 +644,6 @@ func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function,
 		VolumeMounts: prepareContainer.VolumeMounts,
 		Image:        unzip,
 	})
-	podSpec.RestartPolicy = v1.RestartPolicyOnFailure
 
 	buildJob := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{

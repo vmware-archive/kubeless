@@ -54,7 +54,7 @@ func TestAddLayerDescription(t *testing.T) {
 
 func TestDescriptionToLayer(t *testing.T) {
 	emptyDesc := Description{}
-	res, err := emptyDesc.ToLayer("/test-dir")
+	res, err := emptyDesc.ToLayer()
 	if err != nil {
 		t.Fatalf("Unexpected error %v", err)
 	}

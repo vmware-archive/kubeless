@@ -57,7 +57,7 @@ type dockerCfg struct {
 	Auths map[string]Credentials `json:"auths"`
 }
 
-// New returns a Registry struct obtaining the
+// New returns a Registry struct parsing its URL and storing the required credentials
 func New(config v1.Secret) (*Registry, error) {
 	// Parse secret
 	cfg := dockerCfg{}
@@ -83,6 +83,7 @@ func New(config v1.Secret) (*Registry, error) {
 	return &reg, err
 }
 
+// getTags return the list of tags from an HTTP response to the tag/list API endpoint
 func (r *Registry) getTags(body []byte) ([]string, error) {
 	switch r.Version {
 	case "v1":
@@ -108,6 +109,7 @@ func (r *Registry) getTags(body []byte) ([]string, error) {
 	}
 }
 
+// tagURL return the URL of the endpoint for listing existing tags
 func (r *Registry) tagURL(img string) (string, error) {
 	switch r.Version {
 	case "v1":
@@ -119,6 +121,7 @@ func (r *Registry) tagURL(img string) (string, error) {
 	}
 }
 
+// findProperty returns the value of a property from a list witht the format 'foo="bar",bar="foo"'
 func findProperty(src, property string) (string, error) {
 	re := regexp.MustCompile(fmt.Sprintf("%s=\"([^\"]*)\"", property))
 	res := re.FindStringSubmatch(src)
@@ -132,6 +135,7 @@ type authResponse struct {
 	Token string `json:"token"`
 }
 
+// doRequestWithAuth does an HTTP GET agains the given url parsing the authInfo given
 func doRequestWithAuth(authInfo, url string, client *http.Client) ([]byte, error) {
 	bearer, err := findProperty(authInfo, "Bearer realm")
 	if err != nil {
