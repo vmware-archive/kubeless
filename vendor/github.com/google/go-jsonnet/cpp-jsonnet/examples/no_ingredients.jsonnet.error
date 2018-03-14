@@ -1,3 +1,0 @@
-RUNTIME ERROR: No ingredients specified.
-	bar_menu_utils.libsonnet:5:13-45	function <anonymous>
-	no_ingredients.jsonnet:3:1-24

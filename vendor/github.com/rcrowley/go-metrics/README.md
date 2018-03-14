@@ -92,10 +92,10 @@ issues [#121](https://github.com/rcrowley/go-metrics/issues/121) and
 import "github.com/vrischmann/go-metrics-influxdb"
 
 go influxdb.InfluxDB(metrics.DefaultRegistry,
-  10e9,
-  "127.0.0.1:8086",
-  "database-name",
-  "username",
+  10e9, 
+  "127.0.0.1:8086", 
+  "database-name", 
+  "username", 
   "password"
 )
 ```

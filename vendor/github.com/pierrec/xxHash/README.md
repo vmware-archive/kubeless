@@ -20,7 +20,7 @@ This package follows the hash interfaces (hash.Hash32 and hash.Hash64).
 		"github.com/pierrec/xxHash/xxHash32"
 	)
 
-	x := xxHash32.New(0xCAFE) // hash.Hash32
+ 	x := xxHash32.New(0xCAFE) // hash.Hash32
 	x.Write([]byte("abc"))
 	x.Write([]byte("def"))
 	fmt.Printf("%x\n", x.Sum32())
@@ -33,3 +33,4 @@ This package follows the hash interfaces (hash.Hash32 and hash.Hash64).
 ## Command line utility
 
 A simple command line utility is provided to hash files content under the xxhsum directory.
+

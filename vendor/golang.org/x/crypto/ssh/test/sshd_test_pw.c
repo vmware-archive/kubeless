@@ -60,7 +60,7 @@ init(void) {
   real_getpwnam_r = dlsym(RTLD_NEXT, "getpwnam_r");
   real_getspnam = dlsym(RTLD_NEXT, "getspnam");
   real_getspnam_r = dlsym(RTLD_NEXT, "getspnam_r");
-
+  
   /* abort if env variables are not defined */
   if (getenv("TEST_USER") == NULL || getenv("TEST_PASSWD") == NULL) {
     fprintf(stderr, "env variables TEST_USER and TEST_PASSWD are missing\n");
@@ -95,7 +95,7 @@ getpwnam(const char *name) {
   struct passwd *pw;
 
   DEBUG("sshd_test_pw getpwnam(%s)\n", name);
-
+  
   if (real_getpwnam == NULL)
     init();
   if ((pw = real_getpwnam(name)) == NULL)
@@ -103,7 +103,7 @@ getpwnam(const char *name) {
 
   if (is_test_user(name))
     pw->pw_passwd = strdup(test_passwd_hash);
-
+      
   return pw;
 }
 
@@ -118,7 +118,7 @@ getpwnam_r(const char *name,
   int r;
 
   DEBUG("sshd_test_pw getpwnam_r(%s)\n", name);
-
+  
   if (real_getpwnam_r == NULL)
     init();
   if ((r = real_getpwnam_r(name, pwd, buf, buflen, result)) != 0 || *result == NULL)
@@ -126,7 +126,7 @@ getpwnam_r(const char *name,
 
   if (is_test_user(name))
     pwd->pw_passwd = strdup(test_passwd_hash);
-
+  
   return 0;
 }
 
@@ -137,7 +137,7 @@ getspnam(const char *name) {
   struct spwd *sp;
 
   DEBUG("sshd_test_pw getspnam(%s)\n", name);
-
+  
   if (real_getspnam == NULL)
     init();
   if ((sp = real_getspnam(name)) == NULL)
@@ -145,7 +145,7 @@ getspnam(const char *name) {
 
   if (is_test_user(name))
     sp->sp_pwdp = strdup(test_passwd_hash);
-
+  
   return sp;
 }
 
@@ -160,7 +160,7 @@ getspnam_r(const char *name,
   int r;
 
   DEBUG("sshd_test_pw getspnam_r(%s)\n", name);
-
+  
   if (real_getspnam_r == NULL)
     init();
   if ((r = real_getspnam_r(name, spbuf, buf, buflen, spbufp)) != 0)
@@ -168,6 +168,6 @@ getspnam_r(const char *name,
 
   if (is_test_user(name))
     spbuf->sp_pwdp = strdup(test_passwd_hash);
-
+  
   return r;
 }

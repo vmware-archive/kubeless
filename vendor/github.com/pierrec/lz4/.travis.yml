@@ -3,6 +3,6 @@ language: go
 go:
   - 1.x
 
-script:
+script: 
  - go test -v -cpu=2
  - go test -v -cpu=2 -race
