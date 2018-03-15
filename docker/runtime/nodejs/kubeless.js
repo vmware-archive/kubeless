@@ -33,64 +33,82 @@ const { timeHistogram, callsCounter, errorsCounter } = helper.prepareStatistics(
 helper.routeLivenessProbe(app);
 helper.routeMetrics(app, client);
 
+const context = {
+    'function-name': funcHandler,
+    'timeout' : timeout,
+    'runtime': process.env.FUNC_RUNTIME,
+    'memory-limit': process.env.FUNC_MEMORY_LIMIT
+};
+
 const script = new vm.Script(fs.readFileSync(modPath), {
     filename: modPath,
     displayErrors: true,
 });
 
 function modRequire(p, req, res, end) {
-    if (p.indexOf('./') === 0)
-        return require(path.join(path.dirname(modPath), p));
+    if (p === 'kubeless')
+        return (handler) => modExecute(handler, req, res, end);
     else if (libDeps.includes(p))
         return require(path.join(libPath, p));
-    else if (p === 'kubeless')
-        return (handler) => modExecute(handler, req, res, end);
+    else if (p.indexOf('./') === 0)
+        return require(path.join(path.dirname(modPath), p));
     else
         return require(p);
 }
 
 function modExecute(handler, req, res, end) {
+    let func = null;
+    switch (typeof handler) {
+        case 'function':
+            func = handler;
+            break;
+        case 'object':
+            if (handler) func = handler[funcHandler];
+            break;
+    }
+    if (func === null)
+        throw new Error(`Unable to load ${handler}`);
+
     try {
         const event = {
             'event-type': req.get('event-type'),
             'event-id': req.get('event-id'),
             'event-time': req.get('event-time'),
             'event-namespace': req.get('event-namespace'),
-            'data': req.body.toString('utf-8'),
+            'data': (req.get('content-type') === 'application/json') ? JSON.parse(req.body.toString('utf-8')) : req.body.toString('utf-8'),
             'extensions': { request: req },
         };
-        const context = {
-            'function-name': funcHandler,
-            'timeout' : timeout,
-            'runtime': process.env.FUNC_RUNTIME,
-            'memory-limit': process.env.FUNC_MEMORY_LIMIT
-        };
-        Promise.resolve(handler(event, context)).then((result) => {
-            switch(typeof result) {
-                case 'string':
-                    res.end(result);
-                    break;
-                case 'object':
-                    res.json(result);
-                    break;
-                default:
-                    res.end(JSON.stringify(result));
-            }
-            end();
-        }).catch((err) => {
+        Promise.resolve(func(event, context))
+        // Finalize
+            .then(rval => modFinalize(rval, res, end))
             // Catch asynchronous errors
-            handleError(err, res, funcLabel(req));
-        });
+            .catch(err => handleError(err, res, funcLabel(req), end))
+        ;
     } catch (err) {
         // Catch synchronous errors
-        handleError(err, res, funcLabel(req));
+        handleError(err, res, funcLabel(req), end);
     }
 }
 
-function handleError(err, res, label) {
+function modFinalize(result, res, end) {
+    switch(typeof result) {
+        case 'string':
+            res.end(result);
+            break;
+        case 'object':
+            res.json(result);
+            break;
+        default:
+            res.end(JSON.stringify(result));
+    }
+    end();
+}
+
+function handleError(err, res, label, end) {
     errorsCounter.labels(label).inc();
     res.status(500).send('Internal Server Error');
     console.error(`Function failed to execute: ${err.stack}`);
+    end();
 }
 
 function funcLabel(req) {
@@ -111,8 +129,8 @@ app.all('*', (req, res) => {
 
         const sandbox = Object.assign({}, global, {
             __filename: modPath,
-            __dirname: path.dirname(modPath),
-            module: new Module(modPath),
+            __dirname: modRootPath,
+            module: new Module(modPath, null),
             require: (p) => modRequire(p, req, res, end),
         });
 
@@ -126,7 +144,7 @@ app.all('*', (req, res) => {
                 console.error('CRITICAL: Unable to stop spawned process. Exiting');
                 process.exit(1);
             } else {
-                handleError(err, res, funcLabel);
+                handleError(err, res, funcLabel, end);
             }
         }
     }
