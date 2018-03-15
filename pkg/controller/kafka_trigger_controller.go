@@ -218,10 +218,6 @@ func (c *KafkaTriggerController) syncKafkaTrigger(key string) error {
 		}
 
 		for _, function := range functions {
-			if err != nil {
-				c.logger.Errorf("Unable to find the function %s in the namespace %s due to %v: ", function.ObjectMeta.Name, ns, err)
-				return err
-			}
 			funcName := function.ObjectMeta.Name
 			err = kafka.DeleteKafkaConsumer(triggerObjName, funcName, ns, topic)
 			if err != nil {
@@ -263,10 +259,6 @@ func (c *KafkaTriggerController) syncKafkaTrigger(key string) error {
 	}
 
 	for _, function := range functions {
-		if err != nil {
-			c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", function.ObjectMeta.Name, ns, err)
-			return err
-		}
 		funcName := function.ObjectMeta.Name
 		err = kafka.CreateKafkaConsumer(triggerObjName, funcName, ns, topic)
 		if err != nil {

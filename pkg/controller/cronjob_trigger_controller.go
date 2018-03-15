@@ -59,12 +59,11 @@ type CronJobTriggerConfig struct {
 }
 
 // NewCronJobTriggerController initializes a controller object
-func NewCronJobTriggerController(cfg CronJobTriggerConfig) *CronJobTriggerController {
+func NewCronJobTriggerController(cfg CronJobTriggerConfig, sharedInformerFactory externalversions.SharedInformerFactory) *CronJobTriggerController {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
-	sharedInformers := externalversions.NewSharedInformerFactory(cfg.TriggerClient, 0)
-	cronJobInformer := sharedInformers.Kubeless().V1beta1().CronJobTriggers()
-	functionInformer := sharedInformers.Kubeless().V1beta1().Functions()
+	cronJobInformer := sharedInformerFactory.Kubeless().V1beta1().CronJobTriggers()
+	functionInformer := sharedInformerFactory.Kubeless().V1beta1().Functions()
 
 	cronJobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -81,7 +80,6 @@ func NewCronJobTriggerController(cfg CronJobTriggerConfig) *CronJobTriggerContro
 				if cronJobTriggerObjChanged(oldObj, newObj) {
 					queue.Add(key)
 				}
-				queue.Add(key)
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
@@ -302,7 +300,7 @@ func (c *CronJobTriggerController) functionAddedDeletedUpdated(obj interface{}, 
 		if err == nil {
 			err = c.clientset.BatchV2alpha1().CronJobs(functionObj.ObjectMeta.Namespace).Delete(cronJobName, &metav1.DeleteOptions{})
 			if err != nil && !k8sErrors.IsNotFound(err) {
-				c.logger.Errorf("Failed to delete cronjob %s created for the function %s in namespace %s", cronJobName, functionObj.ObjectMeta.Name, functionObj.ObjectMeta.Namespace)
+				c.logger.Errorf("Failed to delete cronjob %s created for the function %s in namespace %s, Error: %s", cronJobName, functionObj.ObjectMeta.Name, functionObj.ObjectMeta.Namespace, err)
 			}
 		}
 	}

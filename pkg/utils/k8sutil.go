@@ -150,22 +150,8 @@ func GetFunctionClientInCluster() (versioned.Interface, error) {
 	return kubelessClient, nil
 }
 
-// GetFunctionClientOutCluster returns function clientset to the request from outside of cluster
-func GetFunctionClientOutCluster() (versioned.Interface, error) {
-	config, err := BuildOutOfClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-	kubelessClient, err := versioned.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return kubelessClient, nil
-}
-
-// GetHTTPTriggerClientOutCluster returns HTTPTrigger clientset to the request from outside of cluster
-func GetHTTPTriggerClientOutCluster() (versioned.Interface, error) {
+// GetKubelessClientOutCluster returns kubeless clientset to make kubeless API request from outside of cluster
+func GetKubelessClientOutCluster() (versioned.Interface, error) {
 	config, err := BuildOutOfClusterConfig()
 	if err != nil {
 		return nil, err
@@ -192,7 +178,7 @@ func GetDefaultNamespace() string {
 
 // GetFunction returns specification of a function
 func GetFunction(funcName, ns string) (kubelessApi.Function, error) {
-	kubelessClient, err := GetFunctionClientOutCluster()
+	kubelessClient, err := GetKubelessClientOutCluster()
 	if err != nil {
 		return kubelessApi.Function{}, err
 	}
@@ -1193,11 +1179,6 @@ func MergeDeployments(destinationDeployment *v1beta1.Deployment, sourceDeploymen
 	initializeEmptyMapsInDeployment(destinationDeployment)
 	initializeEmptyMapsInDeployment(sourceDeployment)
 	return mergo.Merge(destinationDeployment, sourceDeployment)
-}
-
-// UpdateFunctionDeployments updated the deployments using the function with the updated function
-func UpdateFunctionDeployments(funcObj *kubelessApi.Function) error {
-	return nil
 }
 
 // FunctionObjAddFinalizer add specified finalizer string to function object

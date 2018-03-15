@@ -22,7 +22,6 @@ import (
 
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/utils"
-	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -86,26 +85,6 @@ var updateCmd = &cobra.Command{
 		if runtime != "" && !lr.IsValidRuntime(runtime) {
 			logrus.Fatalf("Invalid runtime: %s. Supported runtimes are: %s",
 				runtime, strings.Join(lr.GetRuntimes(), ", "))
-		}
-
-		triggerHTTP, err := cmd.Flags().GetBool("trigger-http")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
-		schedule, err := cmd.Flags().GetString("schedule")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		if schedule != "" {
-			if _, err := cron.ParseStandard(schedule); err != nil {
-				logrus.Fatalf("Invalid value for --schedule. " + err.Error())
-			}
-		}
-
-		topic, err := cmd.Flags().GetString("trigger-topic")
-		if err != nil {
-			logrus.Fatal(err)
 		}
 
 		labels, err := cmd.Flags().GetStringSlice("label")
@@ -182,7 +161,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		kubelessClient, err := utils.GetFunctionClientOutCluster()
+		kubelessClient, err := utils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -193,11 +172,6 @@ var updateCmd = &cobra.Command{
 		}
 		logrus.Infof("Function %s submitted for deployment", funcName)
 		logrus.Infof("Check the deployment status executing 'kubeless function ls %s'", funcName)
-		switch {
-		case triggerHTTP:
-		case schedule != "":
-		case topic != "":
-		}
 	},
 }
 

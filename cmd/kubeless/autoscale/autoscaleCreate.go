@@ -61,7 +61,7 @@ var autoscaleCreateCmd = &cobra.Command{
 		}
 		function.Spec.HorizontalPodAutoscaler = hpa
 
-		kubelessClient, err := utils.GetFunctionClientOutCluster()
+		kubelessClient, err := utils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}

@@ -59,12 +59,11 @@ type HTTPTriggerConfig struct {
 }
 
 // NewHTTPTriggerController initializes a controller object
-func NewHTTPTriggerController(cfg HTTPTriggerConfig) *HTTPTriggerController {
+func NewHTTPTriggerController(cfg HTTPTriggerConfig, sharedInformerFactory externalversions.SharedInformerFactory) *HTTPTriggerController {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
-	sharedInformers := externalversions.NewSharedInformerFactory(cfg.TriggerClient, 0)
-	httpTrigggerInformer := sharedInformers.Kubeless().V1beta1().HTTPTriggers()
-	functionInformer := sharedInformers.Kubeless().V1beta1().Functions()
+	httpTrigggerInformer := sharedInformerFactory.Kubeless().V1beta1().HTTPTriggers()
+	functionInformer := sharedInformerFactory.Kubeless().V1beta1().Functions()
 
 	httpTrigggerInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
