@@ -161,13 +161,13 @@ func TestGetBuildContainer(t *testing.T) {
 		t.Errorf("Unexpected command %s", c.Args[0])
 	}
 
-	secrets, err := lr.GetImageSecrets("ruby2.4")
+	secrets, err := lr.GetAllSecrets("ruby2.4")
 	if err != nil {
 		t.Errorf("Unable to fetch secrets: %v", err)
 	}
 
-	if secrets[0].Name != "p1" && secrets[1].Name != "p2" {
-		t.Errorf("Expected first secret to be 'p1' but found %v and second secret to be 'p2' and found %v", secrets[0], secrets[1])
+	if secrets[0].Name != "p1" || secrets[1].Name != "p2" || secrets[2].Name != "p3" {
+		t.Errorf("Expected first secret to be 'p1' but found %v and second secret to be 'p2' and found %v and third secret to be 'p3' and found %v", secrets[0], secrets[1], secrets[2])
 	}
 
 }

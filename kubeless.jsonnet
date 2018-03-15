@@ -150,11 +150,16 @@ local runtime_images ='[
   }
 ]';
 
+local provision_container_image = '{
+  Image: "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697"
+}';
+
 local kubelessConfig  = configMap.default("kubeless-config", namespace) +
     configMap.data({"ingress-enabled": "false"}) +
     configMap.data({"service-type": "ClusterIP"})+
     configMap.data({"deployment": std.toString(deploymentConfig)})+
-    configMap.data({"runtime-images": std.toString(runtime_images)});
+    configMap.data({"runtime-images": std.toString(runtime_images)})+
+    configMap.data({"provision-container-image": std.toString(provision_container_image)});
 
 {
   controllerAccount: k.util.prune(controllerAccount),

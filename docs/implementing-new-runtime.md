@@ -15,6 +15,7 @@ If you want to extend it and make another language available it is necessary to 
 
 ## 1. Update the kubeless-config configmap
 
+### Custom runtime images
 In this configmap there is a set of runtime images. You need to update this set with an entry pointing to the repository of the Docker container image for the runtime of the new language.
 
 Usually there are three entries - one for HTTP triggers, another for event based functions and another one for the Init container that will be used to install dependencies in the build process. If your new runtime implementation will support only HTTP triggers, then create only two entries as follows:
@@ -35,6 +36,16 @@ runtime-images
 +         depName: "requirements.xml"
 +         fileNameSuffix: ".cs"
 ``` 
+
+### Custom Provisioning container Images
+In the configmap there is a default provisioning container image. This image is used for init-container inside the function pods definition. One can specify a custom provisioning container by updating `provision-container-image` in the configmap
+
+```patch
+provision-container-image
+...
++ Image: "mycustom/provision/image:latest"
++ ImageSecret: "Secret"
+```
 
 Restart the controller after updating the configmap.
 
