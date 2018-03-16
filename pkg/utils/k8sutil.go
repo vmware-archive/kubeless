@@ -793,7 +793,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 			},
 			v1.EnvVar{
 				Name:  "FUNC_MEMORY_LIMIT",
-				Value: funcObj.Spec.Deployment.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String(),
+				Value: dpm.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String(),
 			},
 		)
 	}

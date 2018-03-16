@@ -204,7 +204,7 @@ func (l *Langruntimes) GetBuildContainer(runtime string, env []v1.EnvVar, instal
 			}
 		}
 		command = "npm config set " + scope + "registry " + registry +
-			" && npm install --prefix=" + installVolume.MountPath
+			" && npm install --production --prefix=" + installVolume.MountPath
 	case strings.Contains(runtime, "ruby"):
 		command = "bundle install --gemfile=" + depsFile + " --path=" + installVolume.MountPath
 
