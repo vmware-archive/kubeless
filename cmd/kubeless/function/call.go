@@ -19,7 +19,6 @@ package function
 import (
 	"bytes"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -30,16 +29,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 )
-
-const letterBytes = "abcdefghijklmnopqrstuvwxyz0123456789"
-
-func getRandString(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-	return string(b)
-}
 
 var callCmd = &cobra.Command{
 	Use:   "call <function_name> FLAG",
@@ -96,7 +85,11 @@ var callCmd = &cobra.Command{
 			req = req.AbsPath(svc.ObjectMeta.SelfLink + ":" + port + "/proxy/")
 		}
 		timestamp := time.Now().UTC()
-		req.SetHeader("event-id", fmt.Sprintf("kubeless-cli-%s", getRandString(11)))
+		eventID, err := utils.GetRandString(11)
+		if err != nil {
+			logrus.Fatalf("Unable to generate ID %v", err)
+		}
+		req.SetHeader("event-id", eventID)
 		req.SetHeader("event-type", "application/json")
 		req.SetHeader("event-time", timestamp.String())
 		req.SetHeader("event-namespace", "cli.kubeless.io")
@@ -116,7 +109,6 @@ var callCmd = &cobra.Command{
 }
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
 	callCmd.Flags().StringP("data", "", "", "Specify data for function")
 	callCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 

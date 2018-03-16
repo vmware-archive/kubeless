@@ -17,6 +17,8 @@ limitations under the License.
 package utils
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -974,10 +976,14 @@ func EnsureCronJob(client rest.Interface, funcObj *kubelessApi.Function, cronJob
 	jobName := fmt.Sprintf("trigger-%s", funcObj.ObjectMeta.Name)
 	var headersString = ""
 	timestamp := time.Now().UTC()
-	headersString = headersString + " -H \"event-id: " + fmt.Sprintf("cronjob-controller-%s", timestamp.Format(time.RFC3339Nano)) + "\""
+	eventID, err := GetRandString(11)
+	if err != nil {
+		return fmt.Errorf("Failed to create a event-ID %v", err)
+	}
+	headersString = headersString + " -H \"event-id: " + eventID + "\""
 	headersString = headersString + " -H \"event-time: " + timestamp.String() + "\""
 	headersString = headersString + " -H \"event-type: application/json\""
-	headersString = headersString + " -H \"event-namespace: kubeless.io\""
+	headersString = headersString + " -H \"event-namespace: cronjobtrigger.kubeless.io\""
 	job := &batchv2alpha1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            jobName,
@@ -1011,7 +1017,7 @@ func EnsureCronJob(client rest.Interface, funcObj *kubelessApi.Function, cronJob
 
 	// We need to use directly the REST API since the endpoint
 	// for CronJobs changes from Kubernetes 1.8
-	err := doRESTReq(client, groupVersion, "create", "cronjobs", jobName, funcObj.ObjectMeta.Namespace, job, nil)
+	err = doRESTReq(client, groupVersion, "create", "cronjobs", jobName, funcObj.ObjectMeta.Namespace, job, nil)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		newCronJob := batchv2alpha1.CronJob{}
 		err = doRESTReq(client, groupVersion, "get", "cronjobs", jobName, funcObj.ObjectMeta.Namespace, nil, &newCronJob)
@@ -1224,4 +1230,13 @@ func GetAnnotationsFromCRD(clientset clientsetAPIExtensions.Interface, name stri
 		return nil, err
 	}
 	return crd.GetAnnotations(), nil
+}
+
+// GetRandString returns a random string of lenght N
+func GetRandString(n int) (string, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }

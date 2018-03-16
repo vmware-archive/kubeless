@@ -225,7 +225,7 @@ post-python-verify:
 	echo $$logs | grep -q "event-time.*UTC" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
 	echo $$logs | grep -q "event-namespace.*cli.kubeless.io" && \
-	echo $$logs | grep -q "event-id.*cli-"
+	echo $$logs | grep -q "event-id.*"
 
 post-python-custom-port:
 	kubeless function deploy post-python-custom-port --trigger-http --runtime python2.7 --handler hellowithdata.handler --from-file python/hellowithdata.py --port 8081
@@ -244,7 +244,7 @@ post-nodejs-verify:
 	echo $$logs | grep -q "event-time.*UTC" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
 	echo $$logs | grep -q "event-namespace.*cli.kubeless.io" && \
-	echo $$logs | grep -q "event-id.*cli-"
+	echo $$logs | grep -q "event-id.*"
 
 post-ruby:
 	kubeless function deploy post-ruby --trigger-http --runtime ruby2.4 --handler hellowithdata.handler --from-file ruby/hellowithdata.rb
@@ -257,7 +257,7 @@ post-ruby-verify:
 	echo $$logs | grep -q "event-time.*UTC" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
 	echo $$logs | grep -q "event-namespace.*cli.kubeless.io" && \
-	echo $$logs | grep -q "event-id.*cli-"
+	echo $$logs | grep -q "event-id.*"
 
 post-dotnetcore:
 	kubeless function deploy post-dotnetcore --runtime dotnetcore2.0 --handler hellowithdata.handler --from-file dotnetcore/hellowithdata.cs --trigger-http

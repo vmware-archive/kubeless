@@ -143,7 +143,7 @@ local runtime_images ='[
       {
         "name": "php72",
         "version": "7.2",
-        "runtimeImage": "kubeless/php@sha256:2abb820ad23b59aa9ebdd9457a6596ffd3f8bc0ddc9d91bb72b2a46a3069d82c",
+        "runtimeImage": "kubeless/php@sha256:6be0b60b54a2a945a0a95fd4453f197af5ce306be7c921e9ab1c785652f6e618",
         "initImage": "composer:1.6"
       }
     ],
