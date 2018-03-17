@@ -52,7 +52,12 @@ var describeCmd = &cobra.Command{
 			logrus.Fatalf("Can not describe function: %v", err)
 		}
 
-		f, err := utils.GetFunction(funcName, ns)
+		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		f, err := utils.GetFunctionCustomResource(kubelessClient, funcName, ns)
 		if err != nil {
 			logrus.Fatalf("Can not describe function: %v", err)
 		}
@@ -69,7 +74,7 @@ func init() {
 	describeCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 }
 
-func print(f kubelessApi.Function, name, output string) error {
+func print(f *kubelessApi.Function, name, output string) error {
 	switch output {
 	case "":
 		table := uitable.New()

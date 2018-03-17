@@ -340,7 +340,7 @@ func (c *KafkaTriggerController) kafkaTriggerHasFinalizer(triggercObj *kubelessA
 func (c *KafkaTriggerController) kafkaTriggerObjAddFinalizer(triggercObj *kubelessApi.KafkaTrigger) error {
 	triggercObjClone := triggercObj.DeepCopy()
 	triggercObjClone.ObjectMeta.Finalizers = append(triggercObjClone.ObjectMeta.Finalizers, kafkaTriggerFinalizer)
-	return utils.UpdateKafkaTriggerCustomResource(c.kubelessclient, triggercObjClone)
+	return utils.PatchKafkaTriggerCustomResource(c.kubelessclient, triggercObj, triggercObjClone)
 }
 
 func (c *KafkaTriggerController) kafkaTriggerObjRemoveFinalizer(triggercObj *kubelessApi.KafkaTrigger) error {
@@ -356,7 +356,7 @@ func (c *KafkaTriggerController) kafkaTriggerObjRemoveFinalizer(triggercObj *kub
 		newSlice = nil
 	}
 	triggercObjClone.ObjectMeta.Finalizers = newSlice
-	err := utils.UpdateKafkaTriggerCustomResource(c.kubelessclient, triggercObjClone)
+	err := utils.PatchKafkaTriggerCustomResource(c.kubelessclient, triggercObj, triggercObjClone)
 	if err != nil {
 		return err
 	}

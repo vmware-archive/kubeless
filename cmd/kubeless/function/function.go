@@ -186,11 +186,10 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 	for k, v := range ls {
 		funcLabels[k] = v
 	}
-	function.ObjectMeta = metav1.ObjectMeta{
-		Name:      funcName,
-		Namespace: ns,
-		Labels:    funcLabels,
-	}
+
+	function.ObjectMeta.Name = funcName
+	function.ObjectMeta.Namespace = ns
+	function.ObjectMeta.Labels = funcLabels
 
 	resources := v1.ResourceRequirements{}
 	if mem != "" || cpu != "" {
