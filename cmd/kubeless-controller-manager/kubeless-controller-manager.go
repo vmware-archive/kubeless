@@ -26,6 +26,7 @@ import (
 	"syscall"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
+	"github.com/kubeless/kubeless/pkg/client/informers/externalversions"
 	"github.com/kubeless/kubeless/pkg/controller"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
@@ -70,9 +71,11 @@ var rootCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		sharedInformerFactory := externalversions.NewSharedInformerFactory(kubelessClient, 0)
+
 		functionController := controller.NewFunctionController(functionCfg, smclient)
-		httpTriggerController := controller.NewHTTPTriggerController(httpTriggerCfg)
-		cronJobTriggerController := controller.NewCronJobTriggerController(cronJobTriggerCfg)
+		httpTriggerController := controller.NewHTTPTriggerController(httpTriggerCfg, sharedInformerFactory)
+		cronJobTriggerController := controller.NewCronJobTriggerController(cronJobTriggerCfg, sharedInformerFactory)
 
 		stopCh := make(chan struct{})
 		defer close(stopCh)

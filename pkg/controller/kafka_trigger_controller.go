@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
@@ -47,6 +48,7 @@ const (
 type KafkaTriggerController struct {
 	logger           *logrus.Entry
 	kubelessclient   versioned.Interface
+	kubernetesClient kubernetes.Interface
 	queue            workqueue.RateLimitingInterface
 	kafkaInformer    kubelessInformers.KafkaTriggerInformer
 	functionInformer kubelessInformers.FunctionInformer
@@ -93,6 +95,7 @@ func NewKafkaTriggerController(cfg KafkaTriggerConfig) *KafkaTriggerController {
 	controller := KafkaTriggerController{
 		logger:           logrus.WithField("controller", "kafka-trigger-controller"),
 		kubelessclient:   cfg.TriggerClient,
+		kubernetesClient: utils.GetClient(),
 		kafkaInformer:    kafkaInformer,
 		functionInformer: functionInformer,
 		queue:            queue,
@@ -218,10 +221,6 @@ func (c *KafkaTriggerController) syncKafkaTrigger(key string) error {
 		}
 
 		for _, function := range functions {
-			if err != nil {
-				c.logger.Errorf("Unable to find the function %s in the namespace %s due to %v: ", function.ObjectMeta.Name, ns, err)
-				return err
-			}
 			funcName := function.ObjectMeta.Name
 			err = kafka.DeleteKafkaConsumer(triggerObjName, funcName, ns, topic)
 			if err != nil {
@@ -263,12 +262,8 @@ func (c *KafkaTriggerController) syncKafkaTrigger(key string) error {
 	}
 
 	for _, function := range functions {
-		if err != nil {
-			c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", function.ObjectMeta.Name, ns, err)
-			return err
-		}
 		funcName := function.ObjectMeta.Name
-		err = kafka.CreateKafkaConsumer(triggerObjName, funcName, ns, topic)
+		err = kafka.CreateKafkaConsumer(triggerObjName, funcName, ns, topic, c.kubernetesClient)
 		if err != nil {
 			c.logger.Errorf("Failed to create the Kafka consumer for the function %s associated with the Kafka trigger %s due to %v: ", funcName, key, err)
 		}
@@ -315,7 +310,7 @@ func (c *KafkaTriggerController) FunctionAddedDeletedUpdated(obj interface{}, de
 			c.logger.Infof("Successfully removed Kafka consumer for Function: %s", functionObj.Name)
 		} else {
 			c.logger.Infof("We got a Kafka trigger  %s that function %s need to be associated so create Kafka consumer", triggerObj.Name, functionObj.Name)
-			kafka.CreateKafkaConsumer(triggerObj.Name, functionObj.Name, functionObj.Namespace, triggerObj.Spec.Topic)
+			kafka.CreateKafkaConsumer(triggerObj.Name, functionObj.Name, functionObj.Namespace, triggerObj.Spec.Topic, c.kubernetesClient)
 			c.logger.Infof("Successfully created Kafka consumer for Function: %s", functionObj.Name)
 		}
 	}
@@ -345,7 +340,7 @@ func (c *KafkaTriggerController) kafkaTriggerHasFinalizer(triggercObj *kubelessA
 func (c *KafkaTriggerController) kafkaTriggerObjAddFinalizer(triggercObj *kubelessApi.KafkaTrigger) error {
 	triggercObjClone := triggercObj.DeepCopy()
 	triggercObjClone.ObjectMeta.Finalizers = append(triggercObjClone.ObjectMeta.Finalizers, kafkaTriggerFinalizer)
-	return utils.UpdateKafkaTriggerCustomResource(c.kubelessclient, triggercObjClone)
+	return utils.PatchKafkaTriggerCustomResource(c.kubelessclient, triggercObj, triggercObjClone)
 }
 
 func (c *KafkaTriggerController) kafkaTriggerObjRemoveFinalizer(triggercObj *kubelessApi.KafkaTrigger) error {
@@ -361,7 +356,7 @@ func (c *KafkaTriggerController) kafkaTriggerObjRemoveFinalizer(triggercObj *kub
 		newSlice = nil
 	}
 	triggercObjClone.ObjectMeta.Finalizers = newSlice
-	err := utils.UpdateKafkaTriggerCustomResource(c.kubelessclient, triggercObjClone)
+	err := utils.PatchKafkaTriggerCustomResource(c.kubelessclient, triggercObj, triggercObjClone)
 	if err != nil {
 		return err
 	}

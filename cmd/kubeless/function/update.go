@@ -22,7 +22,6 @@ import (
 
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/utils"
-	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -88,26 +87,6 @@ var updateCmd = &cobra.Command{
 				runtime, strings.Join(lr.GetRuntimes(), ", "))
 		}
 
-		triggerHTTP, err := cmd.Flags().GetBool("trigger-http")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
-		schedule, err := cmd.Flags().GetString("schedule")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		if schedule != "" {
-			if _, err := cron.ParseStandard(schedule); err != nil {
-				logrus.Fatalf("Invalid value for --schedule. " + err.Error())
-			}
-		}
-
-		topic, err := cmd.Flags().GetString("trigger-topic")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
 		labels, err := cmd.Flags().GetStringSlice("label")
 		if err != nil {
 			logrus.Fatal(err)
@@ -168,7 +147,12 @@ var updateCmd = &cobra.Command{
 			}
 		})
 
-		previousFunction, err := utils.GetFunction(funcName, ns)
+		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		previousFunction, err := utils.GetFunctionCustomResource(kubelessClient, funcName, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -177,27 +161,21 @@ var updateCmd = &cobra.Command{
 			logrus.Fatalf("Invalid port number %d specified", *port)
 		}
 
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, envs, labels, secrets, previousFunction)
+		updatedFunction, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, envs, labels, secrets, *previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		kubelessClient, err := utils.GetFunctionClientOutCluster()
-		if err != nil {
-			logrus.Fatal(err)
-		}
+		previousFunction.TypeMeta.Kind = "Function"
+		previousFunction.TypeMeta.APIVersion = "kubeless.io/v1beta1"
+
 		logrus.Infof("Redeploying function...")
-		err = utils.PatchFunctionCustomResource(kubelessClient, f)
+		err = utils.PatchFunctionCustomResource(kubelessClient, previousFunction, updatedFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 		logrus.Infof("Function %s submitted for deployment", funcName)
 		logrus.Infof("Check the deployment status executing 'kubeless function ls %s'", funcName)
-		switch {
-		case triggerHTTP:
-		case schedule != "":
-		case topic != "":
-		}
 	},
 }
 

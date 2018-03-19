@@ -43,7 +43,7 @@ var routeDeleteCmd = &cobra.Command{
 			ns = utils.GetDefaultNamespace()
 		}
 
-		kubelessClient, err := utils.GetHTTPTriggerClientOutCluster()
+		kubelessClient, err := utils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}

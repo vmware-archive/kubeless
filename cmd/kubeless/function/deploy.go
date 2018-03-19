@@ -187,7 +187,7 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		kubelessClient, err := utils.GetFunctionClientOutCluster()
+		kubelessClient, err := utils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -202,8 +202,8 @@ var deployCmd = &cobra.Command{
 
 		triggers := []bool{triggerHTTP, topic != "", schedule != ""}
 		triggerCount := 0
-		for i := len(triggers) - 1; i >= 0; i-- {
-			if triggers[i] {
+		for _, v := range triggers {
+			if v {
 				triggerCount++
 			}
 		}
@@ -229,6 +229,7 @@ var deployCmd = &cobra.Command{
 			}
 			httpTrigger.ObjectMeta.Labels = map[string]string{
 				"created-by": "kubeless",
+				"function":   funcName,
 			}
 			httpTrigger.Spec.FunctionName = funcName
 
@@ -270,6 +271,7 @@ var deployCmd = &cobra.Command{
 			}
 			cronJobTrigger.ObjectMeta.Labels = map[string]string{
 				"created-by": "kubeless",
+				"function":   funcName,
 			}
 			cronJobTrigger.Spec.FunctionName = funcName
 			cronJobTrigger.Spec.Schedule = schedule

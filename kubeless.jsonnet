@@ -86,19 +86,19 @@ local runtime_images ='[
       {
         "name": "python27",
         "version": "2.7",
-        "runtimeImage": "andresmgot/python@sha256:cdba8db2ab40c2e1b954f133c4b3c2dc8f63044e490bcccee88621a61d2d06d5",
+        "runtimeImage": "kubeless/python@sha256:f55d5e52005c33b15390c36d7371eec0770eb75abfd7a33065073ac578413c89",
         "initImage": "python:2.7"
       },
       {
         "name": "python34",
         "version": "3.4",
-        "runtimeImage": "andresmgot/python@sha256:f5adcac7eeb24689786f600c7d9b6620b43f6c1027588e275360349b931d086b",
+        "runtimeImage": "kubeless/python@sha256:c3c1c2aea32ff5600cf5c2de6a395043b9b95dcafe2c7cece0703846bfa5460c",
         "initImage": "python:3.4"
       },
       {
         "name": "python36",
         "version": "3.6",
-        "runtimeImage": "andresmgot/python@sha256:7874ec2b71008fed0a0b18d4f907b7375452bbaf7ee8c000c5a6d18a93260ff7",
+        "runtimeImage": "kubeless/python@sha256:3f92be1701afea8b59fbbd7517b27d5e72ba1d16adc9883c87b306b72d8465fd",
         "initImage": "python:3.6"
       }
     ],
@@ -130,7 +130,7 @@ local runtime_images ='[
       {
         "name": "ruby24",
         "version": "2.4",
-        "runtimeImage": "andresmgot/ruby@sha256:a5fdab9ab42a973971f9902f0af8a5fa233d728bc786ce6c1d5e22094f04099d",
+        "runtimeImage": "kubeless/ruby@sha256:a0c5700b9dd1bf14917a6be3dc05d18f059c045a89ef4252b3048fbb902e4624",
         "initImage": "bitnami/ruby:2.4"
       }
     ],
@@ -143,8 +143,7 @@ local runtime_images ='[
       {
         "name": "php72",
         "version": "7.2",
-        "runtimeImage": "andresmgot/php@sha256:2abb820ad23b59aa9ebdd9457a6596ffd3f8bc0ddc9d91bb72b2a46a3069d82c",
-        "pubsubImage": "",
+        "runtimeImage": "kubeless/php@sha256:6be0b60b54a2a945a0a95fd4453f197af5ce306be7c921e9ab1c785652f6e618",
         "initImage": "composer:1.6"
       }
     ],

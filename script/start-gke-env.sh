@@ -21,6 +21,9 @@ if gcloud container clusters list | grep -q $CLUSTER; then
     kubectl delete ns kubeless || true
     resources=(
         functions
+        cronjobtriggers
+        httptriggers
+        kafkatriggers
         cronjobs
         jobs
         deployments
@@ -29,7 +32,10 @@ if gcloud container clusters list | grep -q $CLUSTER; then
     for res in "${resources[@]}"; do
         clean $res
     done
-    kubectl delete crd functions.k8s.io || true
+    kubectl delete crd functions.kubeless.io || true
+    kubectl delete crd cronjobtriggers.kubeless.io || true
+    kubectl delete crd httptriggers.kubeless.io || true
+    kubectl delete crd kafkatriggers.kubeless.io || true
 else
     echo "Creating cluster $CLUSTER in $ZONE (v$VERSION)"
     # Bypass the warning about using alpha features

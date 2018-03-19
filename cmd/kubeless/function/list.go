@@ -54,7 +54,7 @@ var listCmd = &cobra.Command{
 			ns = utils.GetDefaultNamespace()
 		}
 
-		kubelessClient, err := utils.GetFunctionClientOutCluster()
+		kubelessClient, err := utils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not list functions: %v", err)
 		}

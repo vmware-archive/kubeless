@@ -59,12 +59,11 @@ type HTTPTriggerConfig struct {
 }
 
 // NewHTTPTriggerController initializes a controller object
-func NewHTTPTriggerController(cfg HTTPTriggerConfig) *HTTPTriggerController {
+func NewHTTPTriggerController(cfg HTTPTriggerConfig, sharedInformerFactory externalversions.SharedInformerFactory) *HTTPTriggerController {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
-	sharedInformers := externalversions.NewSharedInformerFactory(cfg.TriggerClient, 0)
-	httpTrigggerInformer := sharedInformers.Kubeless().V1beta1().HTTPTriggers()
-	functionInformer := sharedInformers.Kubeless().V1beta1().Functions()
+	httpTrigggerInformer := sharedInformerFactory.Kubeless().V1beta1().HTTPTriggers()
+	functionInformer := sharedInformerFactory.Kubeless().V1beta1().Functions()
 
 	httpTrigggerInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -283,7 +282,7 @@ func (c *HTTPTriggerController) httpTriggerObjHasFinalizer(triggerObj *kubelessA
 func (c *HTTPTriggerController) httpTriggerObjAddFinalizer(triggercObj *kubelessApi.HTTPTrigger) error {
 	triggercObjClone := triggercObj.DeepCopy()
 	triggercObjClone.ObjectMeta.Finalizers = append(triggercObjClone.ObjectMeta.Finalizers, httpTriggerFinalizer)
-	return utils.UpdateHTTPTriggerCustomResource(c.kubelessclient, triggercObjClone)
+	return utils.PatchHTTPTriggerCustomResource(c.kubelessclient, triggercObj, triggercObjClone)
 }
 
 func (c *HTTPTriggerController) httpTriggerObjRemoveFinalizer(triggercObj *kubelessApi.HTTPTrigger) error {
@@ -299,7 +298,7 @@ func (c *HTTPTriggerController) httpTriggerObjRemoveFinalizer(triggercObj *kubel
 		newSlice = nil
 	}
 	triggerObjClone.ObjectMeta.Finalizers = newSlice
-	err := utils.UpdateHTTPTriggerCustomResource(c.kubelessclient, triggerObjClone)
+	err := utils.PatchHTTPTriggerCustomResource(c.kubelessclient, triggercObj, triggerObjClone)
 	if err != nil {
 		return err
 	}
