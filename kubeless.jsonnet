@@ -111,13 +111,13 @@ local runtime_images ='[
       {
         "name": "node6",
         "version": "6",
-        "runtimeImage": "andresmgot/nodejs@sha256:a9d8b31c403a014d83e8820868421750f7513a6897a430454abfd0a76a22bb71",
+        "runtimeImage": "andresmgot/nodejs@sha256:37d496adee0896a4a192f7116d8075ae88ee14b1a3c41974d79609e0863ae464",
         "initImage": "node:6.10"
       },
       {
         "name": "node8",
         "version": "8",
-        "runtimeImage": "andresmgot/nodejs@sha256:7138b35e510ab824b6d453af0b6903b4f4c1e3b81ac8a2b69447306a79ba12a4",
+        "runtimeImage": "andresmgot/nodejs@sha256:4327d0f7781463a8b0a843000592c2c0df17988662b38b33dbb35b1bdd5ccc2b",
         "initImage": "node:8"
       }
     ],
