@@ -48,8 +48,9 @@ import (
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 
-	// Adding explicitely the GCP auth plugin
+	// Auth plugins
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 
 	"github.com/imdario/mergo"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
