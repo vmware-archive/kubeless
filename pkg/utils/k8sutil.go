@@ -277,7 +277,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 		checksumInfo := strings.Split(checksum, ":")
 		switch checksumInfo[0] {
 		case "sha256":
-			shaFile := originFile + ".sha256"
+			shaFile := "/tmp/func.sha256"
 			prepareCommand = appendToCommand(prepareCommand,
 				fmt.Sprintf("echo '%s  %s' > %s", checksumInfo[1], originFile, shaFile),
 				fmt.Sprintf("sha256sum -c %s", shaFile),
