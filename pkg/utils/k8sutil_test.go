@@ -924,7 +924,7 @@ func TestGetProvisionContainer(t *testing.T) {
 		Name:            "prepare",
 		Image:           "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697",
 		Command:         []string{"sh", "-c"},
-		Args:            []string{"echo 'abc1234  /deps/test.func' > /deps/test.func.sha256 && sha256sum -c /deps/test.func.sha256 && cp /deps/test.func /runtime/test.py && cp /deps/requirements.txt /runtime"},
+		Args:            []string{"echo 'abc1234  /deps/test.func' > /tmp/func.sha256 && sha256sum -c /tmp/func.sha256 && cp /deps/test.func /runtime/test.py && cp /deps/requirements.txt /runtime"},
 		VolumeMounts:    []v1.VolumeMount{rvol, dvol},
 		ImagePullPolicy: v1.PullIfNotPresent,
 	}
