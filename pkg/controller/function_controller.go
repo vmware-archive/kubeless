@@ -18,7 +18,6 @@ package controller
 
 import (
 	"fmt"
-	"reflect"
 	"time"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
@@ -381,8 +380,8 @@ func functionObjChanged(oldFunctionObj, newFunctionObj *kubelessApi.Function) bo
 		return true
 	}
 
-	if !reflect.DeepEqual(newSpec.Deployment, oldSpec.Deployment) ||
-		!reflect.DeepEqual(newSpec.HorizontalPodAutoscaler, oldSpec.HorizontalPodAutoscaler) {
+	if fmt.Sprintf("%v", newSpec.Deployment) != fmt.Sprintf("%v", oldSpec.Deployment) ||
+		fmt.Sprintf("%v", newSpec.HorizontalPodAutoscaler) != fmt.Sprintf("%v", oldSpec.HorizontalPodAutoscaler) {
 		return true
 	}
 	return false
