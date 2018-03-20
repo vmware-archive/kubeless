@@ -111,13 +111,13 @@ local runtime_images ='[
       {
         "name": "node6",
         "version": "6",
-        "runtimeImage": "kubeless/nodejs@sha256:37d496adee0896a4a192f7116d8075ae88ee14b1a3c41974d79609e0863ae464",
+        "runtimeImage": "kubeless/nodejs@sha256:9231b3a983407a1538375f508dc7dc8e30770f2633e0cd0a0e642ef6b7f0fbea",
         "initImage": "node:6.10"
       },
       {
         "name": "node8",
         "version": "8",
-        "runtimeImage": "kubeless/nodejs@sha256:4327d0f7781463a8b0a843000592c2c0df17988662b38b33dbb35b1bdd5ccc2b",
+        "runtimeImage": "kubeless/nodejs@sha256:2fc2e4b8d6e2bb1bda75e431082a998e623dabe51cfb6cab19edfce835289622",
         "initImage": "node:8"
       }
     ],
