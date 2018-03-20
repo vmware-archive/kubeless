@@ -736,6 +736,9 @@ func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function,
 
 	// Create the job if doesn't exists yet
 	_, err = client.BatchV1().Jobs(funcObj.ObjectMeta.Namespace).Create(&buildJob)
+	if err == nil {
+		logrus.Infof("Started function build job %s", jobName)
+	}
 	return err
 }
 

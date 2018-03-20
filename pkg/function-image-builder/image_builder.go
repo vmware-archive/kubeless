@@ -130,7 +130,10 @@ var layerCmd = &cobra.Command{
 		log.Println("Succesfully stored base image ", srcImage, " at ", workDir)
 
 		// Add layer
-		lbuilder.AddTarToLayer(workDir, layerTar)
+		err = lbuilder.AddTarToLayer(workDir, layerTar)
+		if err != nil {
+			log.Fatal(err)
+		}
 		log.Println("Added layer ", layerTar, " in ", workDir)
 
 		// Publish new image

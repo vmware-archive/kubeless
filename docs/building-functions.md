@@ -1,5 +1,7 @@
 # Kubeless building process for functions
 
+> **Warning**: This feature is still under heavy development
+
 Kubeless includes a way of building and storing functions as docker images. This can be used to:
 
  - Persistent function storage.
