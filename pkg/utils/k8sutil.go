@@ -48,7 +48,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/apimachinery/pkg/util/jsonmergepatch"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 
@@ -179,6 +178,25 @@ func GetDefaultNamespace() string {
 	return v1.NamespaceDefault
 }
 
+// GetFunction returns specification of a function
+func GetFunction(funcName, ns string) (kubelessApi.Function, error) {
+	kubelessClient, err := GetKubelessClientOutCluster()
+	if err != nil {
+		return kubelessApi.Function{}, err
+	}
+
+	f, err := kubelessClient.KubelessV1beta1().Functions(ns).Get(funcName, metav1.GetOptions{})
+
+	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			logrus.Fatalf("Function %s is not found", funcName)
+		}
+		return kubelessApi.Function{}, err
+	}
+
+	return *f, nil
+}
+
 // CreateFunctionCustomResource will create a custom function object
 func CreateFunctionCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
 	_, err := kubelessClient.KubelessV1beta1().Functions(f.Namespace).Create(f)
@@ -195,23 +213,12 @@ func UpdateFunctionCustomResource(kubelessClient versioned.Interface, f *kubeles
 }
 
 // PatchFunctionCustomResource applies changes to the function custom object
-func PatchFunctionCustomResource(kubelessClient versioned.Interface, original, patched *kubelessApi.Function) error {
-	curJSON, err := json.Marshal(original)
+func PatchFunctionCustomResource(kubelessClient versioned.Interface, f *kubelessApi.Function) error {
+	data, err := json.Marshal(f)
 	if err != nil {
 		return err
 	}
-	modJSON, err := json.Marshal(patched)
-	if err != nil {
-		return err
-	}
-	patch, err := jsonmergepatch.CreateThreeWayJSONMergePatch(curJSON, modJSON, curJSON)
-	if err != nil {
-		return err
-	}
-	if len(patch) == 0 || string(patch) == "{}" {
-		return nil
-	}
-	_, err = kubelessClient.KubelessV1beta1().Functions(original.Namespace).Patch(original.Name, types.MergePatchType, patch)
+	_, err = kubelessClient.KubelessV1beta1().Functions(f.Namespace).Patch(f.Name, types.MergePatchType, data)
 	return err
 }
 
@@ -235,7 +242,7 @@ func GetFunctionCustomResource(kubelessClient versioned.Interface, funcName, ns 
 	return functionObj, nil
 }
 
-// CreateCronJobCustomResource will create a CronJobTrigger custom resource object
+// CreateCronJobCustomResource will create a custom function object
 func CreateCronJobCustomResource(kubelessClient versioned.Interface, cronJob *kubelessApi.CronJobTrigger) error {
 	_, err := kubelessClient.KubelessV1beta1().CronJobTriggers(cronJob.Namespace).Create(cronJob)
 	if err != nil {
@@ -244,34 +251,13 @@ func CreateCronJobCustomResource(kubelessClient versioned.Interface, cronJob *ku
 	return nil
 }
 
-// UpdateCronJobCustomResource applies changes to the CronJobTrigger custom resource object
+// UpdateCronJobCustomResource applies changes to the function custom object
 func UpdateCronJobCustomResource(kubelessClient versioned.Interface, cronJob *kubelessApi.CronJobTrigger) error {
 	_, err := kubelessClient.KubelessV1beta1().CronJobTriggers(cronJob.Namespace).Update(cronJob)
 	return err
 }
 
-// PatchCronJobCustomResource patches changes to the CronJobTrigger custom resource object
-func PatchCronJobCustomResource(kubelessClient versioned.Interface, original, patched *kubelessApi.CronJobTrigger) error {
-	curJSON, err := json.Marshal(original)
-	if err != nil {
-		return err
-	}
-	modJSON, err := json.Marshal(patched)
-	if err != nil {
-		return err
-	}
-	patch, err := jsonmergepatch.CreateThreeWayJSONMergePatch(curJSON, modJSON, curJSON)
-	if err != nil {
-		return err
-	}
-	if len(patch) == 0 || string(patch) == "{}" {
-		return nil
-	}
-	_, err = kubelessClient.KubelessV1beta1().CronJobTriggers(original.Namespace).Patch(original.Name, types.MergePatchType, patch)
-	return err
-}
-
-// DeleteCronJobCustomResource will delete CronJobTrigger custom resource object
+// DeleteCronJobCustomResource will delete custom function object
 func DeleteCronJobCustomResource(kubelessClient versioned.Interface, cronJobName, ns string) error {
 	err := kubelessClient.KubelessV1beta1().CronJobTriggers(ns).Delete(cronJobName, &metav1.DeleteOptions{})
 	if err != nil {
@@ -291,7 +277,7 @@ func GetCronJobCustomResource(kubelessClient versioned.Interface, cronJobName, n
 	return cronJobCRD, nil
 }
 
-// CreateKafkaTriggerCustomResource will create a KafkaTrigger CRD object
+// CreateKafkaTriggerCustomResource will create a custom function object
 func CreateKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTrigger *kubelessApi.KafkaTrigger) error {
 	_, err := kubelessClient.KubelessV1beta1().KafkaTriggers(kafkaTrigger.Namespace).Create(kafkaTrigger)
 	if err != nil {
@@ -300,13 +286,13 @@ func CreateKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaT
 	return nil
 }
 
-// UpdateKafkaTriggerCustomResource applies changes to the KafkaTrigger CRD object
+// UpdateKafkaTriggerCustomResource applies changes to the function custom object
 func UpdateKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTrigger *kubelessApi.KafkaTrigger) error {
 	_, err := kubelessClient.KubelessV1beta1().KafkaTriggers(kafkaTrigger.Namespace).Update(kafkaTrigger)
 	return err
 }
 
-// DeleteKafkaTriggerCustomResource will delete KafkaTrigger CRD object
+// DeleteKafkaTriggerCustomResource will delete custom function object
 func DeleteKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTriggerName, ns string) error {
 	err := kubelessClient.KubelessV1beta1().KafkaTriggers(ns).Delete(kafkaTriggerName, &metav1.DeleteOptions{})
 	if err != nil {
@@ -316,28 +302,7 @@ func DeleteKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaT
 	return nil
 }
 
-// PatchKafkaTriggerCustomResource patches changes to the KafkaTrigger CRD object
-func PatchKafkaTriggerCustomResource(kubelessClient versioned.Interface, original, patched *kubelessApi.KafkaTrigger) error {
-	curJSON, err := json.Marshal(original)
-	if err != nil {
-		return err
-	}
-	modJSON, err := json.Marshal(patched)
-	if err != nil {
-		return err
-	}
-	patch, err := jsonmergepatch.CreateThreeWayJSONMergePatch(curJSON, modJSON, curJSON)
-	if err != nil {
-		return err
-	}
-	if len(patch) == 0 || string(patch) == "{}" {
-		return nil
-	}
-	_, err = kubelessClient.KubelessV1beta1().KafkaTriggers(original.Namespace).Patch(original.Name, types.MergePatchType, patch)
-	return err
-}
-
-// GetKafkaTriggerCustomResource will get KafkaTrigger CRD object
+// GetKafkaTriggerCustomResource will get CronJobTrigger custom resource object
 func GetKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTriggerName, ns string) (*kubelessApi.KafkaTrigger, error) {
 	kafkaCRD, err := kubelessClient.KubelessV1beta1().KafkaTriggers(ns).Get(kafkaTriggerName, metav1.GetOptions{})
 	if err != nil {
@@ -362,24 +327,13 @@ func UpdateHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTri
 	return err
 }
 
-// PatchHTTPTriggerCustomResource applies changes to the HTTP trigger custom resource object
-func PatchHTTPTriggerCustomResource(kubelessClient versioned.Interface, original, patched *kubelessApi.HTTPTrigger) error {
-	curJSON, err := json.Marshal(original)
+// PatchHTTPTriggerCustomResource applies changes to the function custom object
+func PatchHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTrigger *kubelessApi.HTTPTrigger) error {
+	data, err := json.Marshal(httpTrigger)
 	if err != nil {
 		return err
 	}
-	modJSON, err := json.Marshal(patched)
-	if err != nil {
-		return err
-	}
-	patch, err := jsonmergepatch.CreateThreeWayJSONMergePatch(curJSON, modJSON, curJSON)
-	if err != nil {
-		return err
-	}
-	if len(patch) == 0 || string(patch) == "{}" {
-		return nil
-	}
-	_, err = kubelessClient.KubelessV1beta1().HTTPTriggers(original.Namespace).Patch(original.Name, types.MergePatchType, patch)
+	_, err = kubelessClient.KubelessV1beta1().HTTPTriggers(httpTrigger.Namespace).Patch(httpTrigger.Name, types.MergePatchType, data)
 	return err
 }
 
@@ -1237,7 +1191,7 @@ func MergeDeployments(destinationDeployment *v1beta1.Deployment, sourceDeploymen
 func FunctionObjAddFinalizer(kubelessClient versioned.Interface, funcObj *kubelessApi.Function, finalizerString string) error {
 	funcObjClone := funcObj.DeepCopy()
 	funcObjClone.ObjectMeta.Finalizers = append(funcObjClone.ObjectMeta.Finalizers, finalizerString)
-	return PatchFunctionCustomResource(kubelessClient, funcObj, funcObjClone)
+	return UpdateFunctionCustomResource(kubelessClient, funcObjClone)
 }
 
 // FunctionObjHasFinalizer checks if function object already has the Function controller finalizer
@@ -1265,7 +1219,8 @@ func FunctionObjRemoveFinalizer(kubelessClient versioned.Interface, funcObj *kub
 		newSlice = nil
 	}
 	funcObjClone.ObjectMeta.Finalizers = newSlice
-	return PatchFunctionCustomResource(kubelessClient, funcObj, funcObjClone)
+	err := UpdateFunctionCustomResource(kubelessClient, funcObjClone)
+	return err
 }
 
 // GetAnnotationsFromCRD gets annotations from a CustomResourceDefinition

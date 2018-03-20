@@ -319,7 +319,7 @@ func (c *CronJobTriggerController) cronJobTriggerObjHasFinalizer(triggerObj *kub
 func (c *CronJobTriggerController) cronJobTriggerObjAddFinalizer(triggercObj *kubelessApi.CronJobTrigger) error {
 	triggercObjClone := triggercObj.DeepCopy()
 	triggercObjClone.ObjectMeta.Finalizers = append(triggercObjClone.ObjectMeta.Finalizers, cronJobTriggerFinalizer)
-	return utils.PatchCronJobCustomResource(c.kubelessclient, triggercObj, triggercObjClone)
+	return utils.UpdateCronJobCustomResource(c.kubelessclient, triggercObjClone)
 }
 
 func (c *CronJobTriggerController) cronJobTriggerObjRemoveFinalizer(triggercObj *kubelessApi.CronJobTrigger) error {
@@ -335,7 +335,7 @@ func (c *CronJobTriggerController) cronJobTriggerObjRemoveFinalizer(triggercObj 
 		newSlice = nil
 	}
 	triggerObjClone.ObjectMeta.Finalizers = newSlice
-	err := utils.PatchCronJobCustomResource(c.kubelessclient, triggercObj, triggerObjClone)
+	err := utils.UpdateCronJobCustomResource(c.kubelessclient, triggerObjClone)
 	if err != nil {
 		return err
 	}

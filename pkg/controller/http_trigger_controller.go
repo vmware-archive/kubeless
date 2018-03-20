@@ -282,7 +282,7 @@ func (c *HTTPTriggerController) httpTriggerObjHasFinalizer(triggerObj *kubelessA
 func (c *HTTPTriggerController) httpTriggerObjAddFinalizer(triggercObj *kubelessApi.HTTPTrigger) error {
 	triggercObjClone := triggercObj.DeepCopy()
 	triggercObjClone.ObjectMeta.Finalizers = append(triggercObjClone.ObjectMeta.Finalizers, httpTriggerFinalizer)
-	return utils.PatchHTTPTriggerCustomResource(c.kubelessclient, triggercObj, triggercObjClone)
+	return utils.UpdateHTTPTriggerCustomResource(c.kubelessclient, triggercObjClone)
 }
 
 func (c *HTTPTriggerController) httpTriggerObjRemoveFinalizer(triggercObj *kubelessApi.HTTPTrigger) error {
@@ -298,7 +298,7 @@ func (c *HTTPTriggerController) httpTriggerObjRemoveFinalizer(triggercObj *kubel
 		newSlice = nil
 	}
 	triggerObjClone.ObjectMeta.Finalizers = newSlice
-	err := utils.PatchHTTPTriggerCustomResource(c.kubelessclient, triggercObj, triggerObjClone)
+	err := utils.UpdateHTTPTriggerCustomResource(c.kubelessclient, triggerObjClone)
 	if err != nil {
 		return err
 	}

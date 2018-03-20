@@ -147,12 +147,7 @@ var updateCmd = &cobra.Command{
 			}
 		})
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
-		previousFunction, err := utils.GetFunctionCustomResource(kubelessClient, funcName, ns)
+		previousFunction, err := utils.GetFunction(funcName, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -161,16 +156,17 @@ var updateCmd = &cobra.Command{
 			logrus.Fatalf("Invalid port number %d specified", *port)
 		}
 
-		updatedFunction, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, envs, labels, secrets, *previousFunction)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, envs, labels, secrets, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		previousFunction.TypeMeta.Kind = "Function"
-		previousFunction.TypeMeta.APIVersion = "kubeless.io/v1beta1"
-
+		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		if err != nil {
+			logrus.Fatal(err)
+		}
 		logrus.Infof("Redeploying function...")
-		err = utils.PatchFunctionCustomResource(kubelessClient, previousFunction, updatedFunction)
+		err = utils.PatchFunctionCustomResource(kubelessClient, f)
 		if err != nil {
 			logrus.Fatal(err)
 		}
