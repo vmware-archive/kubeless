@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -84,6 +85,12 @@ func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, 
 	}
 }
 
+func isJSON(s string) bool {
+	var js map[string]interface{}
+	return json.Unmarshal([]byte(s), &js) == nil
+
+}
+
 func sendMessage(clientset kubernetes.Interface, funcName, ns, msg string) error {
 	svc, err := clientset.CoreV1().Services(ns).Get(funcName, metav1.GetOptions{})
 	if err != nil {
@@ -101,11 +108,16 @@ func sendMessage(clientset kubernetes.Interface, funcName, ns, msg string) error
 	if err != nil {
 		return fmt.Errorf("Failed to create a event-ID %v", err)
 	}
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("event-id", eventID)
-	req.Header.Add("event-type", "application/x-www-form-urlencoded")
 	req.Header.Add("event-time", timestamp.String())
 	req.Header.Add("event-namespace", "kafkatriggers.kubeless.io")
+	if isJSON(msg) {
+		req.Header.Add("Content-Type", "application/json")
+		req.Header.Add("event-type", "application/json")
+	} else {
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Add("event-type", "application/x-www-form-urlencoded")
+	}
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
