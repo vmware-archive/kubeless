@@ -464,13 +464,9 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 		return err
 	}
 
-	if len(httpTriggerObj.Spec.ServiceSpec.Ports) == 0 {
-		return fmt.Errorf("can't create route due to service port isn't defined")
-	}
-
-	port := httpTriggerObj.Spec.ServiceSpec.Ports[0].TargetPort
-	if port.IntVal <= 0 || port.IntVal > 65535 {
-		return fmt.Errorf("Invalid port number %d specified", port.IntVal)
+	funcSvc, err := client.CoreV1().Services(httpTriggerObj.ObjectMeta.Namespace).Get(httpTriggerObj.ObjectMeta.Name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("Unable to find the function internal service: %v", funcSvc)
 	}
 
 	ingress := &v1beta1.Ingress{
@@ -491,7 +487,7 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 									Path: "/",
 									Backend: v1beta1.IngressBackend{
 										ServiceName: httpTriggerObj.ObjectMeta.Name,
-										ServicePort: httpTriggerObj.Spec.ServiceSpec.Ports[0].TargetPort,
+										ServicePort: funcSvc.Spec.Ports[0].TargetPort,
 									},
 								},
 							},
@@ -624,19 +620,22 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *kubelessApi.Funct
 // this function resolves backward incompatibility in case user uses old client which doesn't include serviceSpec into funcSpec.
 // if serviceSpec is empty, we will use the default serviceSpec whose port is 8080
 func serviceSpec(funcObj *kubelessApi.Function) v1.ServiceSpec {
-	return v1.ServiceSpec{
-		Ports: []v1.ServicePort{
-			{
-				// Note: Prefix: "http-" is added to adapt to Istio so that it can discover the function services
-				Name:       "http-function-port",
-				Protocol:   v1.ProtocolTCP,
-				Port:       8080,
-				TargetPort: intstr.FromInt(8080),
+	if len(funcObj.Spec.ServiceSpec.Ports) == 0 {
+		return v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					// Note: Prefix: "http-" is added to adapt to Istio so that it can discover the function services
+					Name:       "http-function-port",
+					Protocol:   v1.ProtocolTCP,
+					Port:       8080,
+					TargetPort: intstr.FromInt(8080),
+				},
 			},
-		},
-		Selector: funcObj.ObjectMeta.Labels,
-		Type:     v1.ServiceTypeClusterIP,
+			Selector: funcObj.ObjectMeta.Labels,
+			Type:     v1.ServiceTypeClusterIP,
+		}
 	}
+	return funcObj.Spec.ServiceSpec
 }
 
 // EnsureFuncService creates/updates a function service
@@ -673,7 +672,10 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *kubelessApi.Functio
 }
 
 func svcPort(funcObj *kubelessApi.Function) int32 {
-	return int32(8080)
+	if len(funcObj.Spec.ServiceSpec.Ports) == 0 {
+		return int32(8080)
+	}
+	return funcObj.Spec.ServiceSpec.Ports[0].Port
 }
 
 // EnsureFuncDeployment creates/updates a function deployment

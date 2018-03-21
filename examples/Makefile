@@ -23,6 +23,7 @@ get-python-custom-port:
 	kubeless function deploy get-python-custom-port --trigger-http --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --port 8081
 
 get-python-custom-port-verify:
+	kubectl get svc get-python-custom-port -o yaml | grep 'targetPort: 8081'
 	kubeless function call get-python-custom-port |egrep hello.world
 
 get-python-deps-update:
@@ -86,6 +87,7 @@ get-nodejs-custom-port:
 	kubeless function deploy get-nodejs-custom-port --trigger-http --runtime nodejs6 --handler helloget.foo --from-file nodejs/helloget.js --port 8083
 
 get-nodejs-custom-port-verify:
+	kubectl get svc get-nodejs-custom-port -o yaml | grep 'targetPort: 8083'
 	kubeless function call get-nodejs-custom-port |egrep hello.world
 
 timeout-nodejs:
@@ -134,6 +136,7 @@ get-ruby-custom-port:
 	kubeless function deploy get-ruby-custom-port --trigger-http --runtime ruby2.4 --handler helloget.foo --from-file ruby/helloget.rb --port 8082
 
 get-ruby-custom-port-verify:
+	kubectl get svc get-ruby-custom-port -o yaml | grep 'targetPort: 8082'
 	kubeless function call get-ruby-custom-port |egrep hello.world
 
 get-php:
@@ -231,6 +234,7 @@ post-python-custom-port:
 	kubeless function deploy post-python-custom-port --trigger-http --runtime python2.7 --handler hellowithdata.handler --from-file python/hellowithdata.py --port 8081
 
 post-python-custom-port-verify:
+	kubectl get svc post-python-custom-port -o yaml | grep 'targetPort: 8081'
 	kubeless function call post-python-custom-port --data '{"it-s": "alive"}'|egrep "it.*alive"
 
 post-nodejs:

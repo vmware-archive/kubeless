@@ -33,6 +33,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -133,7 +134,7 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, port int32, headless bool, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
 
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
@@ -233,6 +234,28 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 	if len(defaultFunction.Spec.Deployment.Spec.Template.Spec.Containers) != 0 {
 		function.Spec.Deployment.Spec.Template.Spec.Containers[0].VolumeMounts = defaultFunction.Spec.Deployment.Spec.Template.Spec.Containers[0].VolumeMounts
 	}
+
+	svcSpec := v1.ServiceSpec{
+		Ports: []v1.ServicePort{
+			{
+				Name:     "http-function-port",
+				NodePort: 0,
+				Protocol: v1.ProtocolTCP,
+			},
+		},
+		Selector: funcLabels,
+		Type:     v1.ServiceTypeClusterIP,
+	}
+
+	if headless {
+		svcSpec.ClusterIP = v1.ClusterIPNone
+	}
+
+	if port != 0 {
+		svcSpec.Ports[0].Port = port
+		svcSpec.Ports[0].TargetPort = intstr.FromInt(int(port))
+	}
+	function.Spec.ServiceSpec = svcSpec
 
 	for _, secret := range secrets {
 		function.Spec.Deployment.Spec.Template.Spec.Volumes = append(function.Spec.Deployment.Spec.Template.Spec.Volumes, v1.Volume{

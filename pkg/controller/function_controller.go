@@ -25,6 +25,7 @@ import (
 	"k8s.io/api/autoscaling/v2beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -380,8 +381,9 @@ func functionObjChanged(oldFunctionObj, newFunctionObj *kubelessApi.Function) bo
 		return true
 	}
 
-	if fmt.Sprintf("%v", newSpec.Deployment) != fmt.Sprintf("%v", oldSpec.Deployment) ||
-		fmt.Sprintf("%v", newSpec.HorizontalPodAutoscaler) != fmt.Sprintf("%v", oldSpec.HorizontalPodAutoscaler) {
+	if !apiequality.Semantic.DeepEqual(newSpec.Deployment, oldSpec.Deployment) ||
+		!apiequality.Semantic.DeepEqual(newSpec.HorizontalPodAutoscaler, oldSpec.HorizontalPodAutoscaler) ||
+		!apiequality.Semantic.DeepEqual(newSpec.ServiceSpec, oldSpec.ServiceSpec) {
 		return true
 	}
 	return false

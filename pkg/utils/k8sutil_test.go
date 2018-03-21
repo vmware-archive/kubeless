@@ -711,7 +711,18 @@ func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
 }
 
 func TestCreateIngressResource(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+	fakeSvc := v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "myns",
+			Name:      "foo",
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{TargetPort: intstr.FromInt(8080)},
+			},
+		},
+	}
+	clientset := fake.NewSimpleClientset(&fakeSvc)
 	f1 := &kubelessApi.Function{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
@@ -727,13 +738,6 @@ func TestCreateIngressResource(t *testing.T) {
 			UID:       "1234",
 		},
 		Spec: kubelessApi.HTTPTriggerSpec{
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						TargetPort: intstr.FromInt(8080),
-					},
-				},
-			},
 			FunctionName: f1.Name,
 		},
 	}
@@ -745,14 +749,24 @@ func TestCreateIngressResource(t *testing.T) {
 			t.Fatalf("Expect object is already exists, got %v", err)
 		}
 	}
-	httpTrigger.Spec.ServiceSpec.Ports = []v1.ServicePort{}
 	if err := CreateIngress(clientset, httpTrigger); err == nil {
 		t.Fatal("Expect create ingress fails, got success")
 	}
 }
 
 func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+	fakeSvc := v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "myns",
+			Name:      "foo",
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{TargetPort: intstr.FromInt(8080)},
+			},
+		},
+	}
+	clientset := fake.NewSimpleClientset(&fakeSvc)
 	f1 := &kubelessApi.Function{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
@@ -768,13 +782,6 @@ func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
 			UID:       "1234",
 		},
 		Spec: kubelessApi.HTTPTriggerSpec{
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						TargetPort: intstr.FromInt(8080),
-					},
-				},
-			},
 			HostName:     "foo",
 			RouteName:    "foo",
 			TLSAcme:      true,

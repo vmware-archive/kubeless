@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -33,12 +32,11 @@ type HTTPTrigger struct {
 
 // HTTPTriggerSpec contains func specification
 type HTTPTriggerSpec struct {
-	FunctionName  string         `json:"function-name"` // Name of the associated function
-	ServiceSpec   v1.ServiceSpec `json:"service"`
-	HostName      string         `json:"host-name"`
-	TLSAcme       bool           `json:"tls"`
-	RouteName     string         `json:"route-name"`
-	EnableIngress bool           `json:"ingress-enabled"`
+	FunctionName  string `json:"function-name"` // Name of the associated function
+	HostName      string `json:"host-name"`
+	TLSAcme       bool   `json:"tls"`
+	RouteName     string `json:"route-name"`
+	EnableIngress bool   `json:"ingress-enabled"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

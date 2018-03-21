@@ -18,7 +18,6 @@ package controller
 
 import (
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/kubeless/kubeless/pkg/client/informers/externalversions"
@@ -318,9 +317,6 @@ func httpTriggerObjChanged(oldObj, newObj *kubelessApi.HTTPTrigger) bool {
 	oldSpec := &oldObj.Spec
 
 	if newSpec.HostName != oldSpec.HostName || newSpec.TLSAcme != oldSpec.TLSAcme {
-		return true
-	}
-	if !reflect.DeepEqual(newSpec.ServiceSpec, oldSpec.ServiceSpec) {
 		return true
 	}
 	return false

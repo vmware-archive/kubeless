@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	"k8s.io/api/autoscaling/v2beta1"
+	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -42,6 +43,7 @@ type FunctionSpec struct {
 	Timeout                 string                          `json:"timeout"`               // Maximum timeout for the function to complete its execution
 	Deps                    string                          `json:"deps"`                  // Function dependencies
 	Deployment              v1beta1.Deployment              `json:"deployment" protobuf:"bytes,3,opt,name=template"`
+	ServiceSpec             v1.ServiceSpec                  `json:"service"`
 	HorizontalPodAutoscaler v2beta1.HorizontalPodAutoscaler `json:"horizontalPodAutoscaler" protobuf:"bytes,3,opt,name=horizontalPodAutoscaler"`
 }
 
