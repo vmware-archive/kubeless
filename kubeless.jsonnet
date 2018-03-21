@@ -86,19 +86,19 @@ local runtime_images ='[
       {
         "name": "python27",
         "version": "2.7",
-        "runtimeImage": "kubeless/python@sha256:f55d5e52005c33b15390c36d7371eec0770eb75abfd7a33065073ac578413c89",
+        "runtimeImage": "kubeless/python@sha256:565bebecb08d9a7b804c588105677a3572f10ff2032cef7727975061a653fb98",
         "initImage": "python:2.7"
       },
       {
         "name": "python34",
         "version": "3.4",
-        "runtimeImage": "kubeless/python@sha256:c3c1c2aea32ff5600cf5c2de6a395043b9b95dcafe2c7cece0703846bfa5460c",
+        "runtimeImage": "kubeless/python@sha256:4eead12b5631d91130fde8740eab9ff96d7f231c1da45c8d30db7ada523b70b1",
         "initImage": "python:3.4"
       },
       {
         "name": "python36",
         "version": "3.6",
-        "runtimeImage": "kubeless/python@sha256:3f92be1701afea8b59fbbd7517b27d5e72ba1d16adc9883c87b306b72d8465fd",
+        "runtimeImage": "kubeless/python@sha256:5a84245496452ce87e8c9a4f120357dce842f293e3ce9252a30fd9141045c7ca",
         "initImage": "python:3.6"
       }
     ],

@@ -35,7 +35,10 @@ function_context = {
 }
 
 def funcWrap(q, event, c):
-    q.put(func(event, c))
+    try:
+        q.put(func(event, c))
+    except Exception as inst:
+        q.put(inst)
 
 @app.route('/', method=['GET', 'POST', 'PATCH', 'DELETE'])
 def handler():
@@ -68,7 +71,10 @@ def handler():
                 p.join()
                 return bottle.HTTPError(408, "Timeout while processing the function")
             else:
-                return q.get()
+                res = q.get()
+                if isinstance(res, Exception):
+                    raise res
+                return res
 
 @app.get('/healthz')
 def healthz():
