@@ -25,6 +25,7 @@ import (
 	"github.com/kubeless/kubeless/cmd/kubeless/getserverconfig"
 	"github.com/kubeless/kubeless/cmd/kubeless/route"
 	"github.com/kubeless/kubeless/cmd/kubeless/topic"
+	"github.com/kubeless/kubeless/cmd/kubeless/trigger"
 	"github.com/kubeless/kubeless/cmd/kubeless/version"
 	"github.com/spf13/cobra"
 )
@@ -38,7 +39,7 @@ func newRootCmd() *cobra.Command {
 		Long:  globalUsage,
 	}
 
-	cmd.AddCommand(function.FunctionCmd, topic.TopicCmd, version.VersionCmd, route.RouteCmd, autoscale.AutoscaleCmd, getserverconfig.GetServerConfigCmd)
+	cmd.AddCommand(function.FunctionCmd, topic.TopicCmd, version.VersionCmd, route.RouteCmd, autoscale.AutoscaleCmd, getserverconfig.GetServerConfigCmd, trigger.TriggerCmd)
 	return cmd
 }
 
