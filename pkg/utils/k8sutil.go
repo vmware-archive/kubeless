@@ -152,7 +152,7 @@ func GetFunctionClientInCluster() (versioned.Interface, error) {
 	return kubelessClient, nil
 }
 
-// GetKubelessClientOutCluster returns kubeless clientset to make kubeless API request from outside of cluster
+// GetKubelessClientOutCluster returns kubeless clientset for making requests from outside of cluster
 func GetKubelessClientOutCluster() (versioned.Interface, error) {
 	config, err := BuildOutOfClusterConfig()
 	if err != nil {

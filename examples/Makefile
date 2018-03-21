@@ -359,10 +359,25 @@ pubsub-nodejs-verify:
 
 pubsub-nodejs-update:
 	kubeless topic create s3-nodejs-2 || true
-	kubeless function update pubsub-nodejs --trigger-topic s3-nodejs-2
+	kubeless trigger kafka update pubsub-nodejs --trigger-topic s3-nodejs-2
 
 pubsub-nodejs-update-verify:
-	kubectl describe $$(kubectl get -o yaml KafkaTrigger pubsub-nodejs) | grep -e "topic:\s*s3-nodejs-2"
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
+	kubeless topic publish --topic s3-nodejs-2  --data '{"test": "$(DATA)"}'
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=pubsub-nodejs`; \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+        if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
 
 pubsub-ruby:
 	kubeless topic create s3-ruby || true
