@@ -22,6 +22,12 @@ local controller_roles = [
     verbs: ["list", "delete"],
   },
   {
+    apiGroups: [""],
+    resources: ["secrets"],
+    resourceNames: ["kubeless-registry-credentials"],
+    verbs: ["get"],
+  },
+  {
     apiGroups: ["kubeless.io"],
     resources: ["functions"],
     verbs: ["get", "list", "watch"],
