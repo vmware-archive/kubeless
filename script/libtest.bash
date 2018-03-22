@@ -340,9 +340,10 @@ verify_clean_object() {
     local name=${1:?}; shift
     echo_info "Checking if "${type}" exists for function "${name}"... "
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
-    until [[ ! $(kubectl get ${type} | grep ${name}) ]]; do
+    until [[ ! $(kubectl get ${type} 2>&1 | grep ${name}) ]]; do
         ((cnt=cnt-1)) || return 1
         sleep 1
+        echo_info "$(kubectl get ${type} 2>&1 | grep ${name})"
     done
     echo_info "${type}/${name} is gone"
 }
