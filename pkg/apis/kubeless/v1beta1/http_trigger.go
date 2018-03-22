@@ -30,7 +30,7 @@ type HTTPTrigger struct {
 	Spec              HTTPTriggerSpec `json:"spec"`
 }
 
-// HTTPTriggerSpec contains func specification
+// HTTPTriggerSpec contains HTTP trigger specification
 type HTTPTriggerSpec struct {
 	FunctionName  string `json:"function-name"` // Name of the associated function
 	HostName      string `json:"host-name"`
@@ -42,7 +42,7 @@ type HTTPTriggerSpec struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// HTTPTriggerList contains map of functions
+// HTTPTriggerList contains list of HTTPTrigger's
 type HTTPTriggerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
