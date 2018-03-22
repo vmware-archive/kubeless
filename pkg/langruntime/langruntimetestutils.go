@@ -18,10 +18,10 @@ func AddFakeConfig(clientset *fake.Clientset) {
 		FileNameSuffix: ".py",
 		Versions: []RuntimeVersion{
 			{
-				Name:      "python27",
-				Version:   "2.7",
-				InitImage: "tuna/python-pillow:2.7.11-alpine",
-				HTTPImage: "kubeless/python@sha256:0f3b64b654df5326198e481cd26e73ecccd905aae60810fc9baea4dcbb61f697",
+				Name:         "python27",
+				Version:      "2.7",
+				InitImage:    "tuna/python-pillow:2.7.11-alpine",
+				RuntimeImage: "kubeless/python@sha256:0f3b64b654df5326198e481cd26e73ecccd905aae60810fc9baea4dcbb61f697",
 
 				ImagePullSecrets: []ImageSecret{
 					{ImageSecret: "p1"}, {ImageSecret: "p2"},

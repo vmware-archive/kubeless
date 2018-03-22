@@ -20,7 +20,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -135,7 +134,8 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, topic, schedule, runtimeImage, mem, cpu, timeout string, triggerHTTP bool, headlessFlag *bool, portFlag *int32, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, port int32, headless bool, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
+
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
 		Kind:       "Function",
@@ -172,35 +172,6 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 
 	if timeout != "" {
 		function.Spec.Timeout = timeout
-	}
-
-	triggers := []bool{triggerHTTP, topic != "", schedule != ""}
-	triggerCount := 0
-	for i := len(triggers) - 1; i >= 0; i-- {
-		if triggers[i] {
-			triggerCount++
-		}
-	}
-	if triggerCount > 1 {
-		return nil, errors.New("exactly one of --trigger-http, --trigger-topic, --schedule must be specified")
-	}
-
-	switch {
-	case triggerHTTP:
-		function.Spec.Type = "HTTP"
-		function.Spec.Topic = ""
-		function.Spec.Schedule = ""
-		break
-	case schedule != "":
-		function.Spec.Type = "Scheduled"
-		function.Spec.Schedule = schedule
-		function.Spec.Topic = ""
-		break
-	case topic != "":
-		function.Spec.Type = "PubSub"
-		function.Spec.Topic = topic
-		function.Spec.Schedule = ""
-		break
 	}
 
 	funcEnv := parseEnv(envs)
@@ -264,6 +235,28 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		function.Spec.Deployment.Spec.Template.Spec.Containers[0].VolumeMounts = defaultFunction.Spec.Deployment.Spec.Template.Spec.Containers[0].VolumeMounts
 	}
 
+	svcSpec := v1.ServiceSpec{
+		Ports: []v1.ServicePort{
+			{
+				Name:     "http-function-port",
+				NodePort: 0,
+				Protocol: v1.ProtocolTCP,
+			},
+		},
+		Selector: funcLabels,
+		Type:     v1.ServiceTypeClusterIP,
+	}
+
+	if headless {
+		svcSpec.ClusterIP = v1.ClusterIPNone
+	}
+
+	if port != 0 {
+		svcSpec.Ports[0].Port = port
+		svcSpec.Ports[0].TargetPort = intstr.FromInt(int(port))
+	}
+	function.Spec.ServiceSpec = svcSpec
+
 	for _, secret := range secrets {
 		function.Spec.Deployment.Spec.Template.Spec.Volumes = append(function.Spec.Deployment.Spec.Template.Spec.Volumes, v1.Volume{
 			Name: secret + "-vol",
@@ -285,36 +278,6 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 		selectorLabels[k] = v
 	}
 	selectorLabels["function"] = funcName
-
-	svcSpec := v1.ServiceSpec{
-		Ports: []v1.ServicePort{
-			{
-				Name:     "http-function-port",
-				NodePort: 0,
-				Protocol: v1.ProtocolTCP,
-			},
-		},
-		Selector: selectorLabels,
-		Type:     v1.ServiceTypeClusterIP,
-	}
-
-	if headlessFlag != nil {
-		if *headlessFlag == true {
-			svcSpec.ClusterIP = v1.ClusterIPNone
-		}
-	} else {
-		svcSpec.ClusterIP = defaultFunction.Spec.ServiceSpec.ClusterIP
-	}
-
-	if portFlag != nil {
-		svcSpec.Ports[0].Port = *portFlag
-		svcSpec.Ports[0].TargetPort = intstr.FromInt(int(*portFlag))
-	} else {
-		svcSpec.Ports[0].Port = defaultFunction.Spec.ServiceSpec.Ports[0].Port
-		svcSpec.Ports[0].TargetPort = defaultFunction.Spec.ServiceSpec.Ports[0].TargetPort
-	}
-	function.Spec.ServiceSpec = svcSpec
-
 	return &function, nil
 }
 

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
@@ -83,6 +84,15 @@ var callCmd = &cobra.Command{
 			// So we need to manually build the URL
 			req = req.AbsPath(svc.ObjectMeta.SelfLink + ":" + port + "/proxy/")
 		}
+		timestamp := time.Now().UTC()
+		eventID, err := utils.GetRandString(11)
+		if err != nil {
+			logrus.Fatalf("Unable to generate ID %v", err)
+		}
+		req.SetHeader("event-id", eventID)
+		req.SetHeader("event-type", "application/json")
+		req.SetHeader("event-time", timestamp.String())
+		req.SetHeader("event-namespace", "cli.kubeless.io")
 		res, err := req.Do().Raw()
 		if err != nil {
 			// Properly interpret line breaks

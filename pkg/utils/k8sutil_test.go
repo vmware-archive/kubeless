@@ -193,19 +193,6 @@ func TestEnsureService(t *testing.T) {
 			Deps:     "deps",
 			Handler:  "foo.bar",
 			Runtime:  "python2.7",
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						Name:       "http-function-port",
-						Port:       8080,
-						TargetPort: intstr.FromInt(8080),
-						NodePort:   0,
-						Protocol:   v1.ProtocolTCP,
-					},
-				},
-				Selector: funcLabels,
-				Type:     v1.ServiceTypeClusterIP,
-			},
 		},
 	}
 	err := EnsureFuncService(clientset, f1, or)
@@ -292,19 +279,6 @@ func TestEnsureDeployment(t *testing.T) {
 			Deps:     "deps",
 			Handler:  "foo.bar",
 			Runtime:  "python2.7",
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						Name:       "http-function-port",
-						Port:       f1Port,
-						TargetPort: intstr.FromInt(int(f1Port)),
-						NodePort:   0,
-						Protocol:   v1.ProtocolTCP,
-					},
-				},
-				Selector: funcLabels,
-				Type:     v1.ServiceTypeClusterIP,
-			},
 			Deployment: v1beta1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: funcAnno,
@@ -390,12 +364,16 @@ func TestEnsureDeployment(t *testing.T) {
 				Value: "180",
 			},
 			{
-				Name:  "FUNC_PORT",
-				Value: strconv.Itoa(int(f1Port)),
+				Name:  "FUNC_RUNTIME",
+				Value: "python2.7",
 			},
 			{
-				Name:  "TOPIC_NAME",
-				Value: "",
+				Name:  "FUNC_MEMORY_LIMIT",
+				Value: "0",
+			},
+			{
+				Name:  "FUNC_PORT",
+				Value: strconv.Itoa(int(f1Port)),
 			},
 			{
 				Name:  "PYTHONPATH",
@@ -481,23 +459,6 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 	if len(dpm.Spec.Template.Spec.InitContainers) > 0 {
 		t.Error("It should not setup an init container")
-	}
-
-	// If the function is the type PubSub it should not contain a livenessProbe
-	f5 := kubelessApi.Function{}
-	f5 = *f1
-	f5.ObjectMeta.Name = "func5"
-	f5.Spec.Type = "PubSub"
-	err = EnsureFuncDeployment(clientset, &f5, or, lr)
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func5", metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	if dpm.Spec.Template.Spec.Containers[0].LivenessProbe != nil {
-		t.Error("It should not setup a liveness probe")
 	}
 
 	// It should update a deployment if it is already present
@@ -596,11 +557,19 @@ func TestEnsureCronJob(t *testing.T) {
 			Namespace: ns,
 		},
 		Spec: kubelessApi.FunctionSpec{
-			Timeout:  "120",
-			Schedule: "*/10 * * * *",
+			Timeout: "120",
 		},
 	}
-
+	c := &kubelessApi.CronJobTrigger{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      f1Name,
+			Namespace: ns,
+		},
+		Spec: kubelessApi.CronJobTriggerSpec{
+			Schedule:     "*/10 * * * *",
+			FunctionName: f1Name,
+		},
+	}
 	expectedMeta := metav1.ObjectMeta{
 		Name:            "trigger-" + f1Name,
 		Namespace:       ns,
@@ -634,8 +603,11 @@ func TestEnsureCronJob(t *testing.T) {
 				t.Errorf("Unexpected ActiveDeadlineSeconds: %d", *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds)
 			}
 			expectedCommand := []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", f1Name, ns)}
-			if !reflect.DeepEqual(cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args, expectedCommand) {
-				t.Errorf("Unexpected command %s", strings.Join(cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args, " "))
+			args := cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args
+			// skip event headers data (i.e  -H "event-id: cronjob-controller-2018-03-05T05:55:41.990784027Z" etc)
+			foundCommand := []string{args[0], args[1], args[len(args)-1]}
+			if !reflect.DeepEqual(foundCommand, expectedCommand) {
+				t.Errorf("Unexpected command %s expexted %s", foundCommand, expectedCommand)
 			}
 		} else {
 			t.Fatalf("unexpected verb %s", req.Method)
@@ -652,7 +624,7 @@ func TestEnsureCronJob(t *testing.T) {
 			return nil, nil
 		}
 	})
-	err := EnsureFuncCronJob(client, f1, or, "batch/v2alpha1")
+	err := EnsureCronJob(client, f1, c, or, "batch/v2alpha1")
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -705,7 +677,7 @@ func TestEnsureCronJob(t *testing.T) {
 			return nil, nil
 		}
 	})
-	err = EnsureFuncCronJob(client, f1, or, "batch/v2alpha1")
+	err = EnsureCronJob(client, f1, c, or, "batch/v2alpha1")
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -726,7 +698,7 @@ func TestEnsureCronJob(t *testing.T) {
 			Body:       objBody(nil),
 		}, nil
 	})
-	err = EnsureFuncCronJob(client, f1, or, "batch/v1beta1")
+	err = EnsureCronJob(client, f1, c, or, "batch/v1beta1")
 }
 
 func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
@@ -739,57 +711,84 @@ func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
 }
 
 func TestCreateIngressResource(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+	fakeSvc := v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "myns",
+			Name:      "foo",
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{TargetPort: intstr.FromInt(8080)},
+			},
+		},
+	}
+	clientset := fake.NewSimpleClientset(&fakeSvc)
 	f1 := &kubelessApi.Function{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "myns",
 			UID:       "1234",
 		},
-		Spec: kubelessApi.FunctionSpec{
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						TargetPort: intstr.FromInt(8080),
-					},
-				},
-			},
+		Spec: kubelessApi.FunctionSpec{},
+	}
+	httpTrigger := &kubelessApi.HTTPTrigger{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "myns",
+			UID:       "1234",
+		},
+		Spec: kubelessApi.HTTPTriggerSpec{
+			FunctionName: f1.Name,
 		},
 	}
-	if err := CreateIngress(clientset, f1, "bar", "foo.bar", "myns", false); err != nil {
+	if err := CreateIngress(clientset, httpTrigger); err != nil {
 		t.Fatalf("Creating ingress returned err: %v", err)
 	}
-	if err := CreateIngress(clientset, f1, "bar", "foo.bar", "myns", false); err != nil {
+	if err := CreateIngress(clientset, httpTrigger); err != nil {
 		if !k8sErrors.IsAlreadyExists(err) {
 			t.Fatalf("Expect object is already exists, got %v", err)
 		}
 	}
-	f1.Spec.ServiceSpec.Ports = []v1.ServicePort{}
-	if err := CreateIngress(clientset, f1, "bar", "foo.bar", "myns", false); err == nil {
+	if err := CreateIngress(clientset, httpTrigger); err == nil {
 		t.Fatal("Expect create ingress fails, got success")
 	}
 }
 
 func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+	fakeSvc := v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "myns",
+			Name:      "foo",
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{TargetPort: intstr.FromInt(8080)},
+			},
+		},
+	}
+	clientset := fake.NewSimpleClientset(&fakeSvc)
 	f1 := &kubelessApi.Function{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "myns",
 			UID:       "1234",
 		},
-		Spec: kubelessApi.FunctionSpec{
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						TargetPort: intstr.FromInt(8080),
-					},
-				},
-			},
+		Spec: kubelessApi.FunctionSpec{},
+	}
+	httpTrigger := &kubelessApi.HTTPTrigger{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "myns",
+			UID:       "1234",
+		},
+		Spec: kubelessApi.HTTPTriggerSpec{
+			HostName:     "foo",
+			RouteName:    "foo",
+			TLSAcme:      true,
+			FunctionName: f1.Name,
 		},
 	}
-
-	if err := CreateIngress(clientset, f1, "foo", "foo.bar", "myns", true); err != nil {
+	if err := CreateIngress(clientset, httpTrigger); err != nil {
 		t.Fatalf("Creating ingress returned err: %v", err)
 	}
 
@@ -965,56 +964,6 @@ func TestGetProvisionContainer(t *testing.T) {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 
-}
-
-func TestServiceSpec(t *testing.T) {
-	f1 := &kubelessApi.Function{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "myns",
-			Labels: map[string]string{
-				"function": "foo",
-			},
-		},
-		Spec: kubelessApi.FunctionSpec{
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						TargetPort: intstr.FromInt(9000),
-					},
-				},
-				Selector: map[string]string{
-					"function": "foo",
-				},
-			},
-		},
-	}
-
-	eSvc := v1.ServiceSpec{
-		Ports: []v1.ServicePort{
-			{
-				Name:       "http-function-port",
-				Protocol:   v1.ProtocolTCP,
-				Port:       8080,
-				TargetPort: intstr.FromInt(8080),
-			},
-		},
-		Selector: map[string]string{
-			"function": "foo",
-		},
-		Type: v1.ServiceTypeClusterIP,
-	}
-
-	aSvc := serviceSpec(f1)
-	if !reflect.DeepEqual(f1.Spec.ServiceSpec, aSvc) {
-		t.Errorf("Unexpected result:\n %+v", aSvc)
-	}
-
-	f1.Spec.ServiceSpec = v1.ServiceSpec{}
-	aSvc = serviceSpec(f1)
-	if !reflect.DeepEqual(aSvc, eSvc) {
-		t.Errorf("Unexpected result:\n %+v", aSvc)
-	}
 }
 
 func TestInitializeEmptyMapsInDeployment(t *testing.T) {

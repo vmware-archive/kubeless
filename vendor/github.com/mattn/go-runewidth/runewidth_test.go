@@ -1,11 +1,18 @@
+// +build !windows,!js
+
 package runewidth
 
 import (
+	"os"
 	"sort"
 	"testing"
 )
 
 var _ sort.Interface = (*table)(nil)
+
+func init() {
+	os.Setenv("RUNEWIDTH_EASTASIAN", "")
+}
 
 func (t table) Len() int {
 	return len(t)

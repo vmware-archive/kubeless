@@ -5,7 +5,7 @@ require 'vendor/autoload.php';
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 
-function foo() {
+function foo($event, $context) {
   // create a log channel
   $log = new Logger('name');
   $log->pushHandler(new StreamHandler("php://stdout", Logger::INFO));
@@ -13,5 +13,5 @@ function foo() {
   // add records to the log
   $log->info('Hello');
   $log->info('World');
-  print "hello world";
+  return "hello world";
 }

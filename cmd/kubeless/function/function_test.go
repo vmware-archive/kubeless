@@ -100,9 +100,8 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	inputHeadless := true
-	inputPort := int32(80)
-	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+
 	if err != nil {
 		t.Error(err)
 	}
@@ -123,31 +122,11 @@ func TestGetFunctionDescription(t *testing.T) {
 		Spec: kubelessApi.FunctionSpec{
 			Handler:             "file.handler",
 			Runtime:             "runtime",
-			Type:                "HTTP",
 			Function:            "function",
 			Checksum:            "sha256:78f9ac018e554365069108352dacabb7fbd15246edf19400677e3b54fe24e126",
 			FunctionContentType: "text",
 			Deps:                "dependencies",
-			Topic:               "",
-			Schedule:            "",
 			Timeout:             "10",
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						Name:       "http-function-port",
-						Port:       int32(80),
-						TargetPort: intstr.FromInt(80),
-						NodePort:   0,
-						Protocol:   v1.ProtocolTCP,
-					},
-				},
-				Selector: map[string]string{
-					"test":     "1",
-					"function": "test",
-				},
-				Type:      v1.ServiceTypeClusterIP,
-				ClusterIP: v1.ClusterIPNone,
-			},
 			Deployment: v1beta1.Deployment{
 				Spec: v1beta1.DeploymentSpec{
 					Template: v1.PodTemplateSpec{
@@ -191,6 +170,15 @@ func TestGetFunctionDescription(t *testing.T) {
 					},
 				},
 			},
+			ServiceSpec: v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{Name: "http-function-port", Protocol: "TCP", Port: 8080, TargetPort: intstr.FromInt(8080)},
+				},
+				Selector: map[string]string{
+					"test": "1",
+				},
+				Type: v1.ServiceTypeClusterIP,
+			},
 		},
 	}
 	if !reflect.DeepEqual(expectedFunction, *result) {
@@ -198,7 +186,8 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should take the default values
-	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", "", "", false, nil, nil, []string{}, []string{}, []string{}, expectedFunction)
+	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", 8080, false, []string{}, []string{}, []string{}, expectedFunction)
+
 	if err != nil {
 		t.Error(err)
 	}
@@ -217,9 +206,9 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
-	input3Headless := false
-	input3Port := int32(8080)
-	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test_topic", "", "test-image2", "256Mi", "100m", "20", false, &input3Headless, &input3Port, []string{"TEST=2"}, []string{"test=2"}, []string{"secret2"}, expectedFunction)
+
+	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test-image2", "256Mi", "100m", "20", 8080, false, []string{"TEST=2"}, []string{"test=2"}, []string{"secret2"}, expectedFunction)
+
 	if err != nil {
 		t.Error(err)
 	}
@@ -240,30 +229,11 @@ func TestGetFunctionDescription(t *testing.T) {
 		Spec: kubelessApi.FunctionSpec{
 			Handler:             "file.handler2",
 			Runtime:             "runtime2",
-			Type:                "PubSub",
 			Function:            "function-modified",
 			FunctionContentType: "text",
 			Checksum:            "sha256:1958eb96d7d3cadedd0f327f09322eb7db296afb282ed91aa66cb4ab0dcc3c9f",
 			Deps:                "dependencies2",
-			Topic:               "test_topic",
-			Schedule:            "",
 			Timeout:             "20",
-			ServiceSpec: v1.ServiceSpec{
-				Ports: []v1.ServicePort{
-					{
-						Name:       "http-function-port",
-						Port:       int32(8080),
-						TargetPort: intstr.FromInt(8080),
-						NodePort:   0,
-						Protocol:   v1.ProtocolTCP,
-					},
-				},
-				Selector: map[string]string{
-					"test":     "2",
-					"function": "test",
-				},
-				Type: v1.ServiceTypeClusterIP,
-			},
 			Deployment: v1beta1.Deployment{
 				Spec: v1beta1.DeploymentSpec{
 					Template: v1.PodTemplateSpec{
@@ -317,6 +287,15 @@ func TestGetFunctionDescription(t *testing.T) {
 					},
 				},
 			},
+			ServiceSpec: v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{Name: "http-function-port", Protocol: "TCP", Port: 8080, TargetPort: intstr.FromInt(8080)},
+				},
+				Selector: map[string]string{
+					"test": "2",
+				},
+				Type: v1.ServiceTypeClusterIP,
+			},
 		},
 	}
 	if !reflect.DeepEqual(newFunction, *result3) {
@@ -352,7 +331,8 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 	file.Close()
 	zipW.Close()
-	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", "", "", false, nil, nil, []string{}, []string{}, []string{}, expectedFunction)
+
+	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", 8080, false, []string{}, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -361,7 +341,8 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should maintain previous HPA definition
-	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "", "", "test-image", "128Mi", "", "10", true, &inputHeadless, &inputPort, []string{"TEST=1"}, []string{"test=1"}, []string{}, kubelessApi.Function{
+	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{}, kubelessApi.Function{
+
 		Spec: kubelessApi.FunctionSpec{
 			HorizontalPodAutoscaler: v2beta1.HorizontalPodAutoscaler{
 				ObjectMeta: metav1.ObjectMeta{
@@ -372,5 +353,21 @@ func TestGetFunctionDescription(t *testing.T) {
 	})
 	if result5.Spec.HorizontalPodAutoscaler.ObjectMeta.Name != "previous-hpa" {
 		t.Error("should maintain previous HPA definition")
+	}
+
+	// It should set the Port and headless service properly
+	result6, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "", 9091, true, []string{}, []string{}, []string{}, kubelessApi.Function{})
+	expectedPort := v1.ServicePort{
+		Name:       "http-function-port",
+		Port:       9091,
+		TargetPort: intstr.FromInt(9091),
+		NodePort:   0,
+		Protocol:   v1.ProtocolTCP,
+	}
+	if !reflect.DeepEqual(result6.Spec.ServiceSpec.Ports[0], expectedPort) {
+		t.Errorf("Unexpected port definition: %v", result6.Spec.ServiceSpec.Ports[0])
+	}
+	if result6.Spec.ServiceSpec.ClusterIP != v1.ClusterIPNone {
+		t.Errorf("Unexpected clusterIP %v", result6.Spec.ServiceSpec.ClusterIP)
 	}
 }
