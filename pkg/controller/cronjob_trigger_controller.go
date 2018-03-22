@@ -239,7 +239,7 @@ func (c *CronJobTriggerController) syncCronJobTrigger(key string) error {
 		c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", cronJobtriggerObj.Spec.FunctionName, ns, err)
 		return err
 	}
-	err = utils.EnsureCronJob(c.clientset, functionObj, cronJobtriggerObj, or)
+	err = utils.EnsureCronJob(c.clientset, functionObj, cronJobtriggerObj.Spec.Schedule, or)
 	if err != nil {
 		return err
 	}

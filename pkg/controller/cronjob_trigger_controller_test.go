@@ -109,22 +109,22 @@ func TestCronJobTriggerObjChanged(t *testing.T) {
 		Time: time.Now(),
 	}
 	testObjs := []testObj{
-		testObj{
+		{
 			old:             &kubelessApi.CronJobTrigger{ObjectMeta: metav1.ObjectMeta{Name: "foo"}},
 			new:             &kubelessApi.CronJobTrigger{ObjectMeta: metav1.ObjectMeta{Name: "foo"}},
 			expectedChanged: false,
 		},
-		testObj{
+		{
 			old:             &kubelessApi.CronJobTrigger{ObjectMeta: metav1.ObjectMeta{DeletionTimestamp: &t1}},
 			new:             &kubelessApi.CronJobTrigger{ObjectMeta: metav1.ObjectMeta{DeletionTimestamp: &t2}},
 			expectedChanged: true,
 		},
-		testObj{
+		{
 			old:             &kubelessApi.CronJobTrigger{Spec: kubelessApi.CronJobTriggerSpec{Schedule: "* * * * *"}},
 			new:             &kubelessApi.CronJobTrigger{Spec: kubelessApi.CronJobTriggerSpec{Schedule: "* * * * *"}},
 			expectedChanged: false,
 		},
-		testObj{
+		{
 			old:             &kubelessApi.CronJobTrigger{Spec: kubelessApi.CronJobTriggerSpec{Schedule: "*/10 * * * *"}},
 			new:             &kubelessApi.CronJobTrigger{Spec: kubelessApi.CronJobTriggerSpec{Schedule: "* * * * *"}},
 			expectedChanged: true,

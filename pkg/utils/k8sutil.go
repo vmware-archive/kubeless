@@ -960,7 +960,7 @@ func doRESTReq(restIface rest.Interface, groupVersion, verb, resource, elem, nam
 }
 
 // EnsureCronJob creates/updates a function cron job
-func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, cronJobObj *kubelessApi.CronJobTrigger, or []metav1.OwnerReference) error {
+func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, schedule string, or []metav1.OwnerReference) error {
 	var maxSucccessfulHist, maxFailedHist int32
 	maxSucccessfulHist = 3
 	maxFailedHist = 1
@@ -994,7 +994,7 @@ func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, c
 			OwnerReferences: or,
 		},
 		Spec: batchv1beta1.CronJobSpec{
-			Schedule:                   cronJobObj.Spec.Schedule,
+			Schedule:                   schedule,
 			SuccessfulJobsHistoryLimit: &maxSucccessfulHist,
 			FailedJobsHistoryLimit:     &maxFailedHist,
 			JobTemplate: batchv1beta1.JobTemplateSpec{
