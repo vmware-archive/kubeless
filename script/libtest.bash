@@ -335,4 +335,15 @@ sts_restart() {
     k8s_wait_for_uniq_pod -l kubeless=kafka -n kubeless
     wait_for_kubeless_kafka_server_ready
 }
+verify_clean_object() {
+    local type=${1:?}; shift
+    local name=${1:?}; shift
+    echo_info "Checking if "${type}" exists for function "${name}"... "
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    until [[ ! $(kubectl get ${type} | grep ${name}) ]]; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
+    echo_info "${type}/${name} is gone"
+}
 # vim: sw=4 ts=4 et si

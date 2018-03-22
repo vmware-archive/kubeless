@@ -161,6 +161,8 @@ load ../script/libtest
   # without having to wait
   verify_function scheduled-get-python
   kubeless_function_delete scheduled-get-python
+  verify_clean_object cronjobtrigger scheduled-get-python
+  verify_clean_object cronjob trigger-scheduled-get-python
 }
 @test "Test no-errors" {
   if kubectl logs -n kubeless -l kubeless=controller | grep "level=error"; then

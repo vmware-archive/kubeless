@@ -36,7 +36,7 @@ import (
 
 	"k8s.io/api/autoscaling/v2beta1"
 	batchv1 "k8s.io/api/batch/v1"
-	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
+	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	clientsetAPIExtensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -960,7 +960,7 @@ func doRESTReq(restIface rest.Interface, groupVersion, verb, resource, elem, nam
 }
 
 // EnsureCronJob creates/updates a function cron job
-func EnsureCronJob(client rest.Interface, funcObj *kubelessApi.Function, cronJobObj *kubelessApi.CronJobTrigger, or []metav1.OwnerReference, groupVersion string) error {
+func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, cronJobObj *kubelessApi.CronJobTrigger, or []metav1.OwnerReference) error {
 	var maxSucccessfulHist, maxFailedHist int32
 	maxSucccessfulHist = 3
 	maxFailedHist = 1
@@ -986,18 +986,18 @@ func EnsureCronJob(client rest.Interface, funcObj *kubelessApi.Function, cronJob
 	headersString = headersString + " -H \"event-time: " + timestamp.String() + "\""
 	headersString = headersString + " -H \"event-type: application/json\""
 	headersString = headersString + " -H \"event-namespace: cronjobtrigger.kubeless.io\""
-	job := &batchv2alpha1.CronJob{
+	job := &batchv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            jobName,
 			Namespace:       funcObj.ObjectMeta.Namespace,
 			Labels:          funcObj.ObjectMeta.Labels,
 			OwnerReferences: or,
 		},
-		Spec: batchv2alpha1.CronJobSpec{
+		Spec: batchv1beta1.CronJobSpec{
 			Schedule:                   cronJobObj.Spec.Schedule,
 			SuccessfulJobsHistoryLimit: &maxSucccessfulHist,
 			FailedJobsHistoryLimit:     &maxFailedHist,
-			JobTemplate: batchv2alpha1.JobTemplateSpec{
+			JobTemplate: batchv1beta1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
 					ActiveDeadlineSeconds: &activeDeadlineSeconds,
 					Template: v1.PodTemplateSpec{
@@ -1019,17 +1019,17 @@ func EnsureCronJob(client rest.Interface, funcObj *kubelessApi.Function, cronJob
 
 	// We need to use directly the REST API since the endpoint
 	// for CronJobs changes from Kubernetes 1.8
-	err = doRESTReq(client, groupVersion, "create", "cronjobs", jobName, funcObj.ObjectMeta.Namespace, job, nil)
+	_, err = client.BatchV1beta1().CronJobs(funcObj.ObjectMeta.Namespace).Create(job)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		newCronJob := batchv2alpha1.CronJob{}
-		err = doRESTReq(client, groupVersion, "get", "cronjobs", jobName, funcObj.ObjectMeta.Namespace, nil, &newCronJob)
+		newCronJob := &batchv1beta1.CronJob{}
+		newCronJob, err = client.BatchV1beta1().CronJobs(funcObj.ObjectMeta.Namespace).Get(jobName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
 		newCronJob.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
 		newCronJob.ObjectMeta.OwnerReferences = or
 		newCronJob.Spec = job.Spec
-		err = doRESTReq(client, groupVersion, "update", "cronjobs", jobName, funcObj.ObjectMeta.Namespace, &newCronJob, nil)
+		_, err = client.BatchV1beta1().CronJobs(funcObj.ObjectMeta.Namespace).Update(newCronJob)
 	}
 	return err
 }
