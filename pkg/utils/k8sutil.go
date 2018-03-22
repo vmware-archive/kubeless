@@ -484,7 +484,7 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 						HTTP: &v1beta1.HTTPIngressRuleValue{
 							Paths: []v1beta1.HTTPIngressPath{
 								{
-									Path: httpTriggerObj.Spec.IngressPathName,
+									Path: httpTriggerObj.Spec.Path,
 									Backend: v1beta1.IngressBackend{
 										ServiceName: httpTriggerObj.ObjectMeta.Name,
 										ServicePort: funcSvc.Spec.Ports[0].TargetPort,

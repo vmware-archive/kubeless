@@ -37,7 +37,7 @@ type HTTPTriggerSpec struct {
 	TLSAcme         bool   `json:"tls"`
 	RouteName       string `json:"route-name"`
 	EnableIngress   bool   `json:"ingress-enabled"`
-	IngressPathName string `json:"path-name"`
+	Path            string `json:"path"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
