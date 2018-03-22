@@ -20,11 +20,13 @@ env:
     - TEST_TARGET=minikube_kafka
     - TEST_TARGET=GKE
   global:
-    - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller
+    - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller-manager
     - BUILDER_IMAGE_NAME=kubeless/function-image-builder
     - CONTROLLER_TAG=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}
     - CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
     - BUILDER_IMAGE=${BUILDER_IMAGE_NAME}:${CONTROLLER_TAG}
+    - KAFKA_CONTROLLER_IMAGE_NAME=bitnami/kafka-trigger-controller
+    - KAFKA_CONTROLLER_IMAGE=${KAFKA_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
     - CGO_ENABLED=0
     - TEST_DEBUG=1
     - GKE_VERSION=1.7.12-gke.2
@@ -95,10 +97,12 @@ script:
       make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
       make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
       make function-image-builder FUNCTION_IMAGE_BUILDER=$BUILDER_IMAGE
+      make kafka-controller-image KAFKA_CONTROLLER_IMAGE=$KAFKA_CONTROLLER_IMAGE
       make all-yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless.yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless-rbac.yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless-openshift.yaml
+      sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kafka-zookeeper.yaml
       case $TEST_TARGET in
       unit)
         make test
@@ -116,6 +120,7 @@ script:
         docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
         docker push $CONTROLLER_IMAGE
         docker push $BUILDER_IMAGE
+        docker push $KAFKA_CONTROLLER_IMAGE
         echo "Waiting for the GKE cluster to be ready"
         tail -f $TRAVIS_BUILD_DIR/gke-start.log &
         wait $GKE_START_PID
@@ -156,7 +161,6 @@ before_deploy:
       sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless.yaml > kubeless-${TRAVIS_TAG}.yaml
       sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-rbac.yaml > kubeless-rbac-${TRAVIS_TAG}.yaml
       sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
-      cp kafka-zookeeper.yaml kafka-zookeeper-${TRAVIS_TAG}.yaml
     fi
 
 deploy:

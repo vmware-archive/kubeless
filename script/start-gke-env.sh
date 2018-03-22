@@ -20,7 +20,6 @@ if gcloud container clusters list | grep -q $CLUSTER; then
     gcloud container clusters get-credentials $CLUSTER --zone $ZONE
     kubectl delete ns kubeless || true
     resources=(
-        functions
         cronjobs
         jobs
         deployments
@@ -29,7 +28,40 @@ if gcloud container clusters list | grep -q $CLUSTER; then
     for res in "${resources[@]}"; do
         clean $res
     done
-    kubectl delete crd functions.k8s.io || true
+
+    echo "Removing customresourcecleanup.apiextensions.k8s.io finalizer from CRD's"  >&9
+    kubectl patch crd/functions.kubeless.io -p '{"metadata":{"finalizers":[]}}' --type=merge       || true
+    kubectl patch crd/cronjobtriggers.kubeless.io -p '{"metadata":{"finalizers":[]}}' --type=merge || true
+    kubectl patch crd/httptriggers.kubeless.io -p '{"metadata":{"finalizers":[]}}' --type=merge    || true
+    kubectl patch crd/kafkatriggers.kubeless.io -p '{"metadata":{"finalizers":[]}}' --type=merge   || true
+
+    echo "Removing finalizers from CRD object's and deleting the CRD objects"  >&9
+    functions=$(kubectl get functions -o name)
+    for func in $functions; do
+        kubectl patch $func -p '{"metadata":{"finalizers":[]}}' --type=merge || true
+        kubectl delete $func
+    done
+    cronjobtriggers=$(kubectl get cronjobtriggers -o name)
+    for trigger in $cronjobtriggers; do
+        kubectl patch $trigger -p '{"metadata":{"finalizers":[]}}' --type=merge || true
+        kubectl delete $trigger
+    done
+    httptriggers=$(kubectl get httptriggers -o name)
+    for trigger in $httptriggers; do
+        kubectl patch $trigger -p '{"metadata":{"finalizers":[]}}' --type=merge || true
+        kubectl delete $trigger        
+    done
+    kafkatriggers=$(kubectl get kafkatriggers -o name)
+    for trigger in $kafkatriggers; do
+        kubectl patch $trigger -p '{"metadata":{"finalizers":[]}}' --type=merge || true
+        kubectl delete $trigger        
+    done
+
+    echo "Deleting CRD's"  >&9
+    kubectl delete crd functions.kubeless.io       || true
+    kubectl delete crd cronjobtriggers.kubeless.io || true
+    kubectl delete crd httptriggers.kubeless.io    || true
+    kubectl delete crd kafkatriggers.kubeless.io   || true
 else
     echo "Creating cluster $CLUSTER in $ZONE (v$VERSION)"
     # Bypass the warning about using alpha features

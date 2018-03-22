@@ -5,6 +5,7 @@ Right now Kubeless has support for the following runtimes:
  - Python: For the branch 2.7.X
  - NodeJS: For the branches 6.X and 8.X
  - Ruby: For the branch 2.4.X
+ - PHP: For the branch 7.2.X
 
 Each runtime is encapsulated in a container image. The reference to these images are injected in the Kubeless controller. You can find source code of all runtimes in `docker/runtime`.
 
@@ -35,11 +36,10 @@ If you want to deploy a custom runtime using an environment variable these are s
 | ... | ... |
 
 # Runtime variants
-## HTTP Trigger
 
-This variant is used when the function is meant to be triggered through HTTP. For doing so we use a web framework that is in charge of receiving request and redirect them to the function. This kind of trigger is supported for all the runtimes.
+Every runtime use a web framework that is in charge of receiving requests and redirect them to the function.
 
-### Node.js HTTP Trigger
+### Node.js Trigger
 
 For the Node.js runtime we start an [Express](http://expressjs.com) server and we include the routes for serving the health check and exposing the monitoring metrics. Apart from that we enable [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS) requests and [Morgan](https://github.com/expressjs/morgan) for handling the logging in the server. Monitoring is supported if the function is synchronous or if it uses promises.
 
@@ -63,15 +63,8 @@ For python we use [Bottle](https://bottlepy.org) and we also add routes for heal
 
 For the case of Ruby we use [Sinatra](http://www.sinatrarb.com) as web framework and we add the routes required for the function and the health check. Monitoring is currently not supported yet for this framework. PR is welcome :-)
 
-## Event trigger
 
-This variant is used when the function is meant to be triggered through message events in a pre-deployed [Kafka](https://kafka.apache.org) system. We include a set of kafka/zookeeper in the deployment manifest of [Kubeless release package](https://github.com/kubeless/kubeless/releases) that will be deployed together with the Kubeless controller. Basically the runtimes are Kafka consumers which listen messages in a specific kafka topic and execute the injected function.
-
-Right now the runtimes that support this kind of events are Python, NodeJS and Ruby.
-
-The pods are deployed using the function handler as [group ID](https://kafka.apache.org/documentation/#intro_consumers). That means that the load will be balanced. If a function is scaled and its deployment has more than one replica only one pod will process a published message.
-
-## Scheduled Trigger
+# Scheduled Trigger
 
 This is meant for functions that should be triggered following a certain schedule. For specifying the execution frequency  we use the [Cron](https://en.wikipedia.org/wiki/Cron) format. Every time a scheduled function is executed, a [Job](https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/) is started. This Job will do a HTTP GET request to the function service and will be successful as far as the function returns 200 OK.
 
@@ -82,9 +75,9 @@ For executing scheduled functions we use Kubernetes [CronJobs](https://kubernete
 
 If for some reason you want to modify one of the default values for a certain function you can execute `kubectl edit cronjob trigger-<func_name>` (where `func_name` is the name of your function) and modify the fields required. Once it is saved the CronJob will be updated.
 
-## Monitoring functions
+# Monitoring functions
 
-Kubeless runtimes are exposing metrics at `/metrics` endpoint and these metrics will be collected by Prometheus. We also include a prometheus setup in [`manifests/monitoring`](https://github.com/kubeless/kubeless/blob/master/manifests/monitoring/prometheus.yaml) to help you easier set it up. The metrics collected are: Number of calls, succeeded and error executions and the time spent per call.
+Some Kubeless runtimes expose metrics at `/metrics` endpoint and these metrics will be collected by Prometheus. We also include a prometheus setup in [`manifests/monitoring`](https://github.com/kubeless/kubeless/blob/master/manifests/monitoring/prometheus.yaml) to help you easier set it up. The metrics collected are: Number of calls, succeeded and error executions and the time spent per call.
 
 # Custom Runtime (Alpha)
 

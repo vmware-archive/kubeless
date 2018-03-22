@@ -3,9 +3,27 @@ local k = import "ksonnet.beta.1/k.libsonnet";
 local statefulset = k.apps.v1beta1.statefulSet;
 local container = k.core.v1.container;
 local service = k.core.v1.service;
+local deployment = k.apps.v1beta1.deployment;
+local serviceAccount = k.core.v1.serviceAccount;
 
 local namespace = "kubeless";
 local controller_account_name = "controller-acct";
+
+local controllerContainer =
+  container.default("kafka-trigger-controller", "bitnami/kafka-trigger-controller:latest") +
+  container.imagePullPolicy("IfNotPresent");
+
+local kubelessLabel = {kubeless: "kafka-trigger-controller"};
+
+local controllerAccount =
+  serviceAccount.default(controller_account_name, namespace);
+
+local controllerDeployment =
+  deployment.default("kafka-trigger-controller", controllerContainer, namespace) +
+  {metadata+:{labels: kubelessLabel}} +
+  {spec+: {selector: {matchLabels: kubelessLabel}}} +
+  {spec+: {template+: {spec+: {serviceAccountName: controllerAccount.metadata.name}}}} +
+  {spec+: {template+: {metadata: {labels: kubelessLabel}}}};
 
 local kafkaEnv = [
   {
@@ -193,4 +211,5 @@ local zookeeperHeadlessSvc =
   kafkaHeadlessSvc: k.util.prune(kafkaHeadlessSvc),
   zookeeperSvc: k.util.prune(zookeeperSvc),
   zookeeperHeadlessSvc: k.util.prune(zookeeperHeadlessSvc),
+  controller: k.util.prune(controllerDeployment),
 }

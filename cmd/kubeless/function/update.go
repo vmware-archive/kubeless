@@ -22,10 +22,8 @@ import (
 
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/utils"
-	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -88,26 +86,6 @@ var updateCmd = &cobra.Command{
 				runtime, strings.Join(lr.GetRuntimes(), ", "))
 		}
 
-		triggerHTTP, err := cmd.Flags().GetBool("trigger-http")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
-		schedule, err := cmd.Flags().GetString("schedule")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		if schedule != "" {
-			if _, err := cron.ParseStandard(schedule); err != nil {
-				logrus.Fatalf("Invalid value for --schedule. " + err.Error())
-			}
-		}
-
-		topic, err := cmd.Flags().GetString("trigger-topic")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
 		labels, err := cmd.Flags().GetStringSlice("label")
 		if err != nil {
 			logrus.Fatal(err)
@@ -149,44 +127,34 @@ var updateCmd = &cobra.Command{
 			}
 			funcDeps = string(bytes)
 		}
-		var headless *bool = nil
-		var port *int32 = nil
-		cmd.Flags().Visit(func(flag *pflag.Flag) {
-			switch flag.Name {
-			case "headless":
-				val, err := cmd.Flags().GetBool("headless")
-				headless = &val
-				if err != nil {
-					logrus.Fatal(err)
-				}
-			case "port":
-				val, err := cmd.Flags().GetInt32("port")
-				port = &val
-				if err != nil {
-					logrus.Fatal(err)
-				}
-			}
-		})
+		headless, err := cmd.Flags().GetBool("headless")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		port, err := cmd.Flags().GetInt32("port")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		if port <= 0 || port > 65535 {
+			logrus.Fatalf("Invalid port number %d specified", port)
+		}
 
 		previousFunction, err := utils.GetFunction(funcName, ns)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		if port != nil && (*port <= 0 || *port > 65535) {
-			logrus.Fatalf("Invalid port number %d specified", *port)
-		}
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, topic, schedule, runtimeImage, mem, cpu, timeout, triggerHTTP, headless, port, envs, labels, secrets, previousFunction)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, port, headless, envs, labels, secrets, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		kubelessClient, err := utils.GetFunctionClientOutCluster()
+		kubelessClient, err := utils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
 		logrus.Infof("Redeploying function...")
-		err = utils.UpdateK8sCustomResource(kubelessClient, f)
+		err = utils.PatchFunctionCustomResource(kubelessClient, f)
 		if err != nil {
 			logrus.Fatal(err)
 		}

@@ -30,7 +30,7 @@ local controllerEnv = [
 ];
 
 local controllerContainer =
-  container.default("kubeless-controller", "bitnami/kubeless-controller:latest") +
+  container.default("kubeless-controller-manager", "bitnami/kubeless-controller-manager:latest") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(controllerEnv);
 
@@ -40,19 +40,42 @@ local controllerAccount =
   serviceAccount.default(controller_account_name, namespace);
 
 local controllerDeployment =
-  deployment.default("kubeless-controller", controllerContainer, namespace) +
+  deployment.default("kubeless-controller-manager", controllerContainer, namespace) +
   {metadata+:{labels: kubelessLabel}} +
   {spec+: {selector: {matchLabels: kubelessLabel}}} +
   {spec+: {template+: {spec+: {serviceAccountName: controllerAccount.metadata.name}}}} +
   {spec+: {template+: {metadata: {labels: kubelessLabel}}}};
 
-local crd = {
-  apiVersion: "apiextensions.k8s.io/v1beta1",
-  kind: "CustomResourceDefinition",
-  metadata: objectMeta.name("functions.kubeless.io"),
-  spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "functions", singular: "function", kind: "Function"}},
-  description: "Kubernetes Native Serverless Framework",
-};
+local crd = [
+  {
+    apiVersion: "apiextensions.k8s.io/v1beta1",
+    kind: "CustomResourceDefinition",
+    metadata: objectMeta.name("functions.kubeless.io"),
+    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "functions", singular: "function", kind: "Function"}},
+    description: "Kubernetes Native Serverless Framework",
+  },
+  {
+    apiVersion: "apiextensions.k8s.io/v1beta1",
+    kind: "CustomResourceDefinition",
+    metadata: objectMeta.name("kafkatriggers.kubeless.io"),
+    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "kafkatriggers", singular: "kafkatrigger", kind: "KafkaTrigger"}},
+    description: "CRD object for Kafka trigger type",
+  },
+  {
+    apiVersion: "apiextensions.k8s.io/v1beta1",
+    kind: "CustomResourceDefinition",
+    metadata: objectMeta.name("httptriggers.kubeless.io"),
+    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "httptriggers", singular: "httptrigger", kind: "HTTPTrigger"}},
+    description: "CRD object for HTTP trigger type",
+  },
+  {
+    apiVersion: "apiextensions.k8s.io/v1beta1",
+    kind: "CustomResourceDefinition",
+    metadata: objectMeta.name("cronjobtriggers.kubeless.io"),
+    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "cronjobtriggers", singular: "cronjobtrigger", kind: "CronJobTrigger"}},
+    description: "CRD object for HTTP trigger type",
+  }
+];
 
 local deploymentConfig = '{}';
 
@@ -63,22 +86,19 @@ local runtime_images ='[
       {
         "name": "python27",
         "version": "2.7",
-        "httpImage": "kubeless/python@sha256:0f3b64b654df5326198e481cd26e73ecccd905aae60810fc9baea4dcbb61f697",
-        "pubsubImage": "kubeless/python-event-consumer@sha256:1aeb6cef151222201abed6406694081db26fa2235d7ac128113dcebd8d73a6cb",
-        "initImage": "tuna/python-pillow:2.7.11-alpine"
+        "runtimeImage": "kubeless/python@sha256:565bebecb08d9a7b804c588105677a3572f10ff2032cef7727975061a653fb98",
+        "initImage": "python:2.7"
       },
       {
         "name": "python34",
         "version": "3.4",
-        "httpImage": "kubeless/python@sha256:e502078dc9580bb73f823504a6765dfc98f000979445cdf071900350b938c292",
-        "pubsubImage": "kubeless/python-event-consumer@sha256:d963e4cd58229d662188d618cd87503b3c749b126b359ce724a19a375e4b3040",
+        "runtimeImage": "kubeless/python@sha256:4eead12b5631d91130fde8740eab9ff96d7f231c1da45c8d30db7ada523b70b1",
         "initImage": "python:3.4"
       },
       {
         "name": "python36",
         "version": "3.6",
-        "httpImage": "kubeless/python@sha256:6300c2513ca51653ae698a31eacf6b2b8a16d2737dd3e244a8c9c11f6408fd35",
-        "pubsubImage": "kubeless/python-event-consumer@sha256:0a2f9162de56b7966b02b70a5a0bcff03badfd9d87b8ae3d13e5381abd00220f",
+        "runtimeImage": "kubeless/python@sha256:5a84245496452ce87e8c9a4f120357dce842f293e3ce9252a30fd9141045c7ca",
         "initImage": "python:3.6"
       }
     ],
@@ -91,15 +111,13 @@ local runtime_images ='[
       {
         "name": "node6",
         "version": "6",
-        "httpImage": "kubeless/nodejs@sha256:2b25d7380d6ed06ad817f4ee1e177340a282788596b34464173bb8a967d83c02",
-        "pubsubImage": "kubeless/nodejs-event-consumer@sha256:1861c32d6a46b2fdfc3e3996daf690ff2c3d5ca19a605abd2af503011d68e221",
+        "runtimeImage": "kubeless/nodejs@sha256:9231b3a983407a1538375f508dc7dc8e30770f2633e0cd0a0e642ef6b7f0fbea",
         "initImage": "node:6.10"
       },
       {
         "name": "node8",
         "version": "8",
-        "httpImage": "kubeless/nodejs@sha256:f1426efe274ea8480d95270c98f6007ac64645e36291dbfa36d759b5c8b7b733",
-        "pubsubImage": "kubeless/nodejs-event-consumer@sha256:b301b02e463b586d9a32d5c1cb5a68c2a11e4fba9514e28d900fc50a78759af9",
+        "runtimeImage": "kubeless/nodejs@sha256:2fc2e4b8d6e2bb1bda75e431082a998e623dabe51cfb6cab19edfce835289622",
         "initImage": "node:8"
       }
     ],
@@ -112,8 +130,7 @@ local runtime_images ='[
       {
         "name": "ruby24",
         "version": "2.4",
-        "httpImage": "kubeless/ruby@sha256:738e4cdeb5f5feece236bbf4e46902024e4b9fc16db4f3791404fa27e8b0db15",
-        "pubsubImage": "kubeless/ruby-event-consumer@sha256:f9f50be51d93a98ae30689d87b067c181905a8757d339fb0fa9a81c6268c4eea",
+        "runtimeImage": "kubeless/ruby@sha256:a0c5700b9dd1bf14917a6be3dc05d18f059c045a89ef4252b3048fbb902e4624",
         "initImage": "bitnami/ruby:2.4"
       }
     ],
@@ -121,27 +138,12 @@ local runtime_images ='[
     "fileNameSuffix": ".rb"
   },
   {
-    "ID": "dotnetcore",
-    "versions": [
-      {
-        "name": "dotnetcore2",
-        "version": "2.0",
-        "httpImage": "allantargino/kubeless-dotnetcore@sha256:d321dc4b2c420988d98cdaa22c733743e423f57d1153c89c2b99ff0d944e8a63",
-        "pubsubImage": "kubeless/ruby-event-consumer@sha256:f9f50be51d93a98ae30689d87b067c181905a8757d339fb0fa9a81c6268c4eea",
-        "initImage": "microsoft/aspnetcore-build:2.0"
-      }
-    ],
-    "depName": "requirements.xml",
-    "fileNameSuffix": ".cs"
-  },
-    {
     "ID": "php",
     "versions": [
       {
         "name": "php72",
         "version": "7.2",
-        "httpImage": "paolomainardi/kubeless-php@sha256:34285a739b6fa0730b8ac349740d20305ae629095dab85cfb10b874f6a14fe45",
-        "pubsubImage": "",
+        "runtimeImage": "kubeless/php@sha256:6be0b60b54a2a945a0a95fd4453f197af5ce306be7c921e9ab1c785652f6e618",
         "initImage": "composer:1.6"
       }
     ],

@@ -1,16 +1,14 @@
 get-python:
 	kubeless function deploy get-python --trigger-http --runtime python2.7 --handler helloget.foo --from-file python/helloget.py
-	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python/"
 
 get-python-verify:
 	kubeless function call get-python |egrep hello.world
 
 get-python-update:
 	$(eval TMPDIR := $(shell mktemp -d))
-	printf 'def foo():\n%4sreturn "hello world updated"\n' > $(TMPDIR)/hello-updated.py
+	printf 'def foo(event, context):\n%4sreturn "hello world updated"\n' > $(TMPDIR)/hello-updated.py
 	kubeless function update get-python --from-file $(TMPDIR)/hello-updated.py
 	rm -rf $(TMPDIR)
-	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python/"
 
 get-python-update-verify:
 	kubeless function call get-python |egrep hello.world.updated
@@ -25,6 +23,7 @@ get-python-custom-port:
 	kubeless function deploy get-python-custom-port --trigger-http --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --port 8081
 
 get-python-custom-port-verify:
+	kubectl get svc get-python-custom-port -o yaml | grep 'targetPort: 8081'
 	kubeless function call get-python-custom-port |egrep hello.world
 
 get-python-deps-update:
@@ -39,14 +38,12 @@ get-python-deps-update-verify:
 
 get-python-34:
 	kubeless function deploy get-python --trigger-http --runtime python3.4 --handler helloget.foo --from-file python/helloget.py
-	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python/"
 
 get-python-34-verify:
 	kubeless function call get-python |egrep hello.world
 
 get-python-36:
 	kubeless function deploy get-python-36 --trigger-http --runtime python3.6 --handler helloget.foo --from-file python/helloget.py
-	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python-36/"
 
 get-python-36-verify:
 	kubeless function call get-python-36 |egrep hello.world
@@ -72,7 +69,7 @@ scheduled-get-python-verify:
 
 timeout-python:
 	$(eval TMPDIR := $(shell mktemp -d))
-	printf 'def foo():\n%4swhile 1: pass\n%4sreturn "hello world"\n' > $(TMPDIR)/hello-loop.py
+	printf 'def foo(event, context):\n%4swhile 1: pass\n%4sreturn "hello world"\n' > $(TMPDIR)/hello-loop.py
 	kubeless function deploy timeout-python --trigger-http --runtime python2.7 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.py --timeout 3
 	rm -rf $(TMPDIR)
 
@@ -82,21 +79,20 @@ timeout-python-verify:
 
 get-nodejs:
 	kubeless function deploy get-nodejs --trigger-http --runtime nodejs6 --handler helloget.foo --from-file nodejs/helloget.js
-	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-nodejs/"
 
 get-nodejs-verify:
 	kubeless function call get-nodejs |egrep hello.world
 
 get-nodejs-custom-port:
 	kubeless function deploy get-nodejs-custom-port --trigger-http --runtime nodejs6 --handler helloget.foo --from-file nodejs/helloget.js --port 8083
-	echo "curl localhost:8083/api/v1/proxy/namespaces/default/services/get-nodejs-custom-port/"
 
 get-nodejs-custom-port-verify:
+	kubectl get svc get-nodejs-custom-port -o yaml | grep 'targetPort: 8083'
 	kubeless function call get-nodejs-custom-port |egrep hello.world
 
 timeout-nodejs:
 	$(eval TMPDIR := $(shell mktemp -d))
-	printf 'module.exports = { foo: function (req, res) { while(true) {} } }\n' > $(TMPDIR)/hello-loop.js
+	printf 'module.exports = { foo: function (event, context) { while(true) {} } }\n' > $(TMPDIR)/hello-loop.js
 	kubeless function deploy timeout-nodejs --trigger-http --runtime nodejs6 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.js --timeout 4
 	rm -rf $(TMPDIR)
 
@@ -108,7 +104,7 @@ get-nodejs-deps:
 	kubeless function deploy get-nodejs-deps --trigger-http --runtime nodejs6 --handler helloget.handler --from-file nodejs/hellowithdeps.js --dependencies nodejs/package.json
 
 get-nodejs-deps-verify:
-	kubeless function call get-nodejs-deps --data '{"hello": "world"}' | grep -q '"hello":"world","date"'
+	kubeless function call get-nodejs-deps --data '{"hello": "world"}' | grep -q 'hello.*world.*date.*UTC'
 
 get-nodejs-multi:
 	cd nodejs; zip helloFunctions.zip *js
@@ -120,42 +116,37 @@ get-nodejs-multi-verify:
 
 get-python-metadata:
 	kubeless function deploy get-python-metadata --trigger-http --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --env foo:bar,bar=foo,foo --memory 128Mi --label foo:bar,bar=foo,foobar
-	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-python-metadata/"
 
 get-python-metadata-verify:
 	kubeless function call get-python-metadata |egrep hello.world
 
 get-ruby:
 	kubeless function deploy get-ruby --trigger-http --runtime ruby2.4 --handler helloget.foo --from-file ruby/helloget.rb
-	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-ruby/"
 
 get-ruby-verify:
 	kubeless function call get-ruby |egrep hello.world
 
 get-ruby-deps:
 	kubeless function deploy get-ruby-deps --trigger-http --runtime ruby2.4 --handler hellowithdeps.foo --from-file ruby/hellowithdeps.rb --dependencies ruby/Gemfile
-	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-ruby-deps/"
 
 get-ruby-deps-verify:
 	kubeless function call get-ruby-deps |egrep hello.world
 
 get-ruby-custom-port:
 	kubeless function deploy get-ruby-custom-port --trigger-http --runtime ruby2.4 --handler helloget.foo --from-file ruby/helloget.rb --port 8082
-	echo "curl localhost:8082/api/v1/proxy/namespaces/default/services/get-ruby-custom-port/"
 
 get-ruby-custom-port-verify:
+	kubectl get svc get-ruby-custom-port -o yaml | grep 'targetPort: 8082'
 	kubeless function call get-ruby-custom-port |egrep hello.world
 
 get-php:
 	kubeless function deploy get-php --trigger-http --runtime php7.2 --handler helloget.foo --from-file php/helloget.php
-	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-php/"
 
 get-php-update:
 	$(eval TMPDIR := $(shell mktemp -d))
-	printf '<?php\n function foo() { echo "hello world updated"; } \n' > $(TMPDIR)/hello-updated.php
+	printf '<?php\n function foo() { return "hello world updated"; } \n' > $(TMPDIR)/hello-updated.php
 	kubeless function update get-php --from-file $(TMPDIR)/hello-updated.php
 	rm -rf $(TMPDIR)
-	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-php/"
 
 get-php-update-verify:
 	kubeless function call get-php | egrep "hello.world.updated"
@@ -165,7 +156,6 @@ get-php-verify:
 
 get-php-deps:
 	kubeless function deploy get-php-deps --trigger-http --runtime php7.2 --handler hellowithdeps.foo --from-file php/hellowithdeps.php --dependencies php/composer.json
-	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-php-deps/"
 
 get-php-deps-verify:
 	kubeless function call get-php-deps &> /dev/null
@@ -182,7 +172,6 @@ get-php-deps-update-verify:
 
 post-php:
 	kubeless function deploy post-php --trigger-http --runtime php7.2 --handler hellowithdata.foo --from-file php/hellowithdata.php
-	echo "curl --data '{\"hello\":\"world\"}' localhost:8080/api/v1/proxy/namespaces/default/services/post-php/ --header \"Content-Type:application/json\""
 
 post-php-verify:
 	kubeless function call post-php --data '{"it-s": "alive"}'| egrep "it.*alive"
@@ -199,7 +188,7 @@ timeout-php-verify:
 
 timeout-ruby:
 	$(eval TMPDIR := $(shell mktemp -d))
-	printf 'def foo(c)\n%4swhile true do;sleep(1);end\n%4s"hello world"\nend' > $(TMPDIR)/hello-loop.rb
+	printf 'def foo(event, context)\n%4swhile true do;sleep(1);end\n%4s"hello world"\nend' > $(TMPDIR)/hello-loop.rb
 	kubeless function deploy timeout-ruby --trigger-http --runtime ruby2.4 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.rb --timeout 4
 	rm -rf $(TMPDIR)
 
@@ -210,7 +199,6 @@ timeout-ruby-verify:
 
 get-dotnetcore:
 	kubeless function deploy get-dotnetcore --trigger-http --runtime dotnetcore2.0 --handler helloget.foo --from-file dotnetcore/helloget.cs
-	echo "curl localhost:8080/api/v1/proxy/namespaces/default/services/get-dotnetcore/"
 
 get-dotnetcore-verify:
 	kubeless function call get-dotnetcore |egrep hello.world
@@ -231,31 +219,49 @@ get: get-python get-nodejs get-python-metadata get-ruby get-ruby-deps get-python
 
 post-python:
 	kubeless function deploy post-python --trigger-http --runtime python2.7 --handler hellowithdata.handler --from-file python/hellowithdata.py
-	echo "curl --data '{\"hello\":\"world\"}' localhost:8080/api/v1/proxy/namespaces/default/services/post-python/ --header \"Content-Type:application/json\""
 
 post-python-verify:
 	kubeless function call post-python --data '{"it-s": "alive"}'|egrep "it.*alive"
+	# Verify event context
+	logs=`kubectl logs -l function=post-python`; \
+	echo $$logs | grep -q "it.*alive" && \
+	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-type.*application/json" && \
+	echo $$logs | grep -q "event-namespace.*cli.kubeless.io" && \
+	echo $$logs | grep -q "event-id.*"
 
 post-python-custom-port:
 	kubeless function deploy post-python-custom-port --trigger-http --runtime python2.7 --handler hellowithdata.handler --from-file python/hellowithdata.py --port 8081
-	echo "curl --data '{\"hello\":\"world\"}' localhost:8081/api/v1/proxy/namespaces/default/services/post-python-custom-port/ --header \"Content-Type:application/json\""
 
 post-python-custom-port-verify:
+	kubectl get svc post-python-custom-port -o yaml | grep 'targetPort: 8081'
 	kubeless function call post-python-custom-port --data '{"it-s": "alive"}'|egrep "it.*alive"
 
 post-nodejs:
 	kubeless function deploy post-nodejs --trigger-http --runtime nodejs6 --handler hellowithdata.handler --from-file nodejs/hellowithdata.js
-	echo "curl --data '{\"hello\":\"world\"}' localhost:8080/api/v1/proxy/namespaces/default/services/post-nodejs/ --header \"Content-Type:application/json\""
 
 post-nodejs-verify:
 	kubeless function call post-nodejs --data '{"it-s": "alive"}'|egrep "it.*alive"
+	# Verify event context
+	logs=`kubectl logs -l function=post-nodejs`; \
+	echo $$logs | grep -q "it.*alive" && \
+	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-type.*application/json" && \
+	echo $$logs | grep -q "event-namespace.*cli.kubeless.io" && \
+	echo $$logs | grep -q "event-id.*"
 
 post-ruby:
 	kubeless function deploy post-ruby --trigger-http --runtime ruby2.4 --handler hellowithdata.handler --from-file ruby/hellowithdata.rb
-	echo "curl --data '{\"hello\":\"world\"}' localhost:8080/api/v1/proxy/namespaces/default/services/post-ruby/ --header \"Content-Type:application/json\""
 
 post-ruby-verify:
 	kubeless function call post-ruby --data '{"it-s": "alive"}'|egrep "it.*alive"
+	# Verify event context
+	logs=`kubectl logs -l function=post-ruby`; \
+	echo $$logs | grep -q "it.*alive" && \
+	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-type.*application/json" && \
+	echo $$logs | grep -q "event-namespace.*cli.kubeless.io" && \
+	echo $$logs | grep -q "event-id.*"
 
 post-dotnetcore:
 	kubeless function deploy post-dotnetcore --runtime dotnetcore2.0 --handler hellowithdata.handler --from-file dotnetcore/hellowithdata.cs --trigger-http
@@ -267,13 +273,13 @@ post: post-python post-nodejs post-ruby post-python-custom-port
 
 pubsub-python:
 	kubeless topic create s3-python || true
-	kubeless function deploy pubsub-python --trigger-topic s3-python --runtime python2.7 --handler pubsub.handler --from-file python/pubsub.py
+	kubeless function deploy pubsub-python --trigger-topic s3-python --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py
 
 # Generate a random string to inject into s3 topic,
 # then "tail -f" until it shows (with timeout)
 pubsub-python-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
-	kubeless topic publish --topic s3-python --data "$(DATA)"
+	kubeless topic publish --topic s3-python --data '{"payload":"$(DATA)"}'
 	number="1"; \
 	timeout="60"; \
 	found=false; \
@@ -291,11 +297,11 @@ pubsub-python-verify:
 
 pubsub-python34:
 	kubeless topic create s3-python34 || true
-	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/pubsub.py
+	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/hellowithdata34.py
 
 pubsub-python34-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
-	kubeless topic publish --topic s3-python34 --data "$(DATA)"
+	kubeless topic publish --topic s3-python34 --data '{"payload":"$(DATA)"}'
 	number="1"; \
 	timeout="60"; \
 	found=false; \
@@ -317,7 +323,7 @@ pubsub-python36:
 
 pubsub-python36-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
-	kubeless topic publish --topic s3-python36 --data "$(DATA)"
+	kubeless topic publish --topic s3-python36 --data '{"payload":"$(DATA)"}'
 	number="1"; \
 	timeout="60"; \
 	found=false; \
@@ -335,7 +341,7 @@ pubsub-python36-verify:
 
 pubsub-nodejs:
 	kubeless topic create s3-nodejs || true
-	kubeless function deploy pubsub-nodejs --trigger-topic s3-nodejs --runtime nodejs6 --handler pubsub-nodejs.handler --from-file nodejs/helloevent.js
+	kubeless function deploy pubsub-nodejs --trigger-topic s3-nodejs --runtime nodejs6 --handler pubsub-nodejs.handler --from-file nodejs/hellowithdata.js
 
 pubsub-nodejs-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
@@ -360,15 +366,15 @@ pubsub-nodejs-update:
 	kubeless function update pubsub-nodejs --trigger-topic s3-nodejs-2
 
 pubsub-nodejs-update-verify:
-	kubectl describe $$(kubectl get po -oname|grep pubsub-nodejs) | grep -e "TOPIC_NAME:\s*s3-nodejs-2"
+	kubectl describe $$(kubectl get -o yaml KafkaTrigger pubsub-nodejs) | grep -e "topic:\s*s3-nodejs-2"
 
 pubsub-ruby:
 	kubeless topic create s3-ruby || true
-	kubeless function deploy pubsub-ruby --trigger-topic s3-ruby --runtime ruby2.4 --handler pubsub-ruby.handler --from-file ruby/helloevent.rb
+	kubeless function deploy pubsub-ruby --trigger-topic s3-ruby --runtime ruby2.4 --handler pubsub-ruby.handler --from-file ruby/hellowithdata.rb
 
 pubsub-ruby-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
-	kubeless topic publish --topic s3-ruby --data "$(DATA)"
+	kubeless topic publish --topic s3-ruby --data '{"payload":"$(DATA)"}'
 	number="1"; \
 	timeout="60"; \
 	found=false; \
@@ -384,4 +390,4 @@ pubsub-ruby-verify:
 	done; \
 	$$found
 
-post: pubsub-python pubsub-nodejs pubsub-ruby
+pubsub: pubsub-python pubsub-nodejs pubsub-ruby

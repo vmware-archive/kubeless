@@ -45,16 +45,16 @@ var autoscaleDeleteCmd = &cobra.Command{
 
 		if function.Spec.HorizontalPodAutoscaler.Name != "" {
 			function.Spec.HorizontalPodAutoscaler = v2beta1.HorizontalPodAutoscaler{}
-			kubelessClient, err := utils.GetFunctionClientOutCluster()
+			kubelessClient, err := utils.GetKubelessClientOutCluster()
 			if err != nil {
 				logrus.Fatal(err)
 			}
-			logrus.Infof("Removing autoscaling rule to the function...")
-			err = utils.UpdateK8sCustomResource(kubelessClient, &function)
+			logrus.Infof("Removing autoscaling rule from the function...")
+			err = utils.UpdateFunctionCustomResource(kubelessClient, &function)
 			if err != nil {
 				logrus.Fatal(err)
 			}
-			logrus.Infof("Removed Autoscaling rule for %s", funcName)
+			logrus.Infof("Removed Autoscaling rule from %s", funcName)
 		} else {
 			logrus.Fatalf("Not found an auto scale definition for %s", funcName)
 		}

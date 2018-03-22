@@ -160,6 +160,9 @@ wait_for_kubeless_kafka_server_ready() {
     [[ $(kubectl get pod -n kubeless kafka-0 -ojsonpath='{.metadata.annotations.ready}') == true ]] && return 0
     echo_info "Waiting for kafka-0 to be ready ..."
     k8s_wait_for_pod_logline "Kafka.*Server.*started" -n kubeless kafka-0
+    echo_info "Waiting for kafka-trigger-controller pod to be ready ..."
+    k8s_wait_for_pod_ready -n kubeless -l kubeless=kafka-trigger-controller
+    _wait_for_cmd_ok kubectl get kafkatriggers 2>/dev/null
     kubectl annotate pods --overwrite -n kubeless kafka-0 ready=true
 }
 _wait_for_kubeless_kafka_topic_ready() {
@@ -258,7 +261,7 @@ verify_function() {
     k8s_wait_for_pod_ready -l function=${func}
     case "${func}" in
         *pubsub*)
-            func_topic=$(kubeless function describe "${func}" -o yaml|sed -n 's/topic: //p')
+            func_topic=$(kubectl get kafkatrigger "${func}" -o yaml|sed -n 's/topic: //p')
             echo_info "FUNC TOPIC: $func_topic"
     esac
     local -i counter=0
@@ -292,12 +295,12 @@ test_kubeless_function_update() {
 test_kubeless_ingress() {
     local func=${1:?} domain=example.com act_ingress exp_ingress
     echo_info "TEST: ingress ${func}"
-    kubeless route create ing-${func} --function ${func} --hostname ${func}.${domain}
+    kubeless route create ing-${func} --http-trigger ${func} --hostname ${func}.${domain}
     kubeless route list | fgrep -w ing-${func}
     act_ingress=$(kubectl get ingress ing-${func} -ojsonpath='{range .spec.rules[*]}{@.host}:{@.http.paths[*].backend.serviceName}')
     exp_ingress="${func}.${domain}:${func}"
     [[ ${act_ingress} == ${exp_ingress} ]]
-    kubeless route delete ing-${func}
+    kubeless route delete ing-${func} --http-trigger ${func}
 }
 test_kubeless_autoscale() {
     local func=${1:?} exp_autoscale act_autoscale

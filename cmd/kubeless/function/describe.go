@@ -87,8 +87,6 @@ func print(f kubelessApi.Function, name, output string) error {
 		table.AddRow("Namespace:", fmt.Sprintf(f.ObjectMeta.Namespace))
 		table.AddRow("Handler:", fmt.Sprintf(f.Spec.Handler))
 		table.AddRow("Runtime:", fmt.Sprintf(f.Spec.Runtime))
-		table.AddRow("Type:", fmt.Sprintf(f.Spec.Type))
-		table.AddRow("Topic:", fmt.Sprintf(f.Spec.Topic))
 		table.AddRow("Label:", fmt.Sprintf(string(label)))
 		table.AddRow("Envvar:", fmt.Sprintf(string(env)))
 		table.AddRow("Memory:", fmt.Sprintf(f.Spec.Deployment.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()))

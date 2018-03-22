@@ -1,37 +1,15 @@
 'use strict';
 
 const fs = require('fs');
-const path = require('path');
-const Module = require('module');
-const Vm = require('vm');
 
-function loadFunc(name, additionalCode) {
-  const modRootPath = process.env.MOD_ROOT_PATH ? process.env.MOD_ROOT_PATH : '/kubeless/';
-  const modPath = path.join(modRootPath, `${name}.js`);
-  console.log('Loading', modPath);
-  const mod = new Module(modPath);
-  mod.paths = module.paths;
-  const functionCode = fs.readFileSync(modPath, { encoding: 'utf-8' });
-  console.log(functionCode);
-  const script = additionalCode ? `${functionCode}\n${additionalCode}` : functionCode;
-  const vmscript = new Vm.Script(script, {
-    filename: modPath,
-    displayErrors: true,
-  });
-  const sandbox = {
-    module: mod,
-    __filename: modPath,
-    __dirname: path.dirname(modPath),
-    Buffer,
-    setInterval, setTimeout, setImmediate,
-    clearInterval, clearTimeout, clearImmediate,
-    console: console,
-    require: function (p) {
-      const absPath = p.indexOf("./") === 0 ? path.join(path.dirname(modPath), p) : p;
-      return mod.require(absPath);
-    },
-  };
-  return { vmscript, sandbox };
+function readDependencies(pkgFile) {
+  try {
+    const data = JSON.parse(fs.readFileSync(pkgFile));
+    const deps = data.dependencies;
+    return (deps && typeof deps === 'object') ? Object.getOwnPropertyNames(deps) : [];
+  } catch(e) {
+    return [];
+  }
 }
 
 function prepareStatistics(label, promClient) {
@@ -72,7 +50,7 @@ function routeMetrics(expressApp, promClient) {
 }
 
 module.exports = {
-  loadFunc,
+  readDependencies,
   prepareStatistics,
   routeLivenessProbe,
   routeMetrics,
