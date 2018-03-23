@@ -839,9 +839,9 @@ func TestCreateIngressResourceWithBasicAuthNginx(t *testing.T) {
 			Namespace: "myns",
 			UID:       "1234",
 			Annotations: map[string]string{
-				"ingress.kubernetes.io/auth-type": "basic",
+				"ingress.kubernetes.io/auth-type":   "basic",
 				"ingress.kubernetes.io/auth-secret": "basic-auth-secret",
-				"ingress.kubernetes.io/auth-realm": "Authentication Required",
+				"ingress.kubernetes.io/auth-realm":  "Authentication Required",
 			},
 		},
 		Spec: kubelessApi.HTTPTriggerSpec{
