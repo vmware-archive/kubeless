@@ -246,48 +246,85 @@ func TestEnsureService(t *testing.T) {
 	}
 }
 
-func TestEnsureDeployment(t *testing.T) {
+func TestEnsureImage(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
+	langruntime.AddFakeConfig(clientset)
+	lr := langruntime.SetupLangRuntime(clientset)
+	lr.ReadConfigMap()
+	ns := "default"
+	f1Name := "f1"
 	or := []metav1.OwnerReference{
 		{
 			Kind:       "Function",
 			APIVersion: "kubeless.io/v1beta1",
 		},
 	}
-	ns := "default"
-	funcLabels := map[string]string{
-		"foo": "bar",
-	}
-	funcAnno := map[string]string{
-		"bar": "foo",
-	}
-
-	langruntime.AddFakeConfig(clientset)
-	lr := langruntime.SetupLangRuntime(clientset)
-	lr.ReadConfigMap()
-
-	f1Name := "f1"
-	f1Port := int32(8080)
 	f1 := &kubelessApi.Function{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
-			Labels:    funcLabels,
 		},
 		Spec: kubelessApi.FunctionSpec{
 			Function: "function",
 			Deps:     "deps",
 			Handler:  "foo.bar",
 			Runtime:  "python2.7",
-			Deployment: v1beta1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: funcAnno,
+		},
+	}
+	// Testing happy path
+	err := EnsureFuncImage(clientset, f1, lr, or, "user/image", "4840d87600137157493ba43a24f0b4bb6cf524ebbf095ce96c79f85bf5a3ff5a", "kubeless/builder", "registry.docker.io", "registry-creds")
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	jobs, err := clientset.BatchV1().Jobs(ns).List(metav1.ListOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if len(jobs.Items) != 1 {
+		t.Errorf("It should have created the build job")
+	}
+	buildContainer := jobs.Items[0].Spec.Template.Spec.Containers[0]
+	if buildContainer.Image != "kubeless/builder" {
+		t.Errorf("Image %s of build job is not recognised", jobs.Items[0].Spec.Template.Spec.Containers[0].Image)
+	}
+	dockerConfigFolder := ""
+	for _, envvar := range buildContainer.Env {
+		if envvar.Name == "DOCKER_CONFIG_FOLDER" {
+			dockerConfigFolder = envvar.Value
+		}
+	}
+	if dockerConfigFolder == "" {
+		t.Error("Builder image relies on the env var DOCKER_CONFIG_FOLDER to authenticate")
+	}
+}
+
+func getDefaultFunc(name, ns string) *kubelessApi.Function {
+	fPort := int32(8080)
+	f := kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: kubelessApi.FunctionSpec{
+			Function: "function",
+			Deps:     "deps",
+			Handler:  "foo.bar",
+			Runtime:  "python2.7",
+			ServiceSpec: v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{
+						Name:       "http-function-port",
+						Port:       fPort,
+						TargetPort: intstr.FromInt(int(fPort)),
+						NodePort:   0,
+						Protocol:   v1.ProtocolTCP,
+					},
 				},
+				Type: v1.ServiceTypeClusterIP,
+			},
+			Deployment: v1beta1.Deployment{
 				Spec: v1beta1.DeploymentSpec{
 					Template: v1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Annotations: funcAnno,
-						},
 						Spec: v1.PodSpec{
 							Containers: []v1.Container{
 								{
@@ -305,8 +342,40 @@ func TestEnsureDeployment(t *testing.T) {
 			},
 		},
 	}
+	return &f
+}
+func TestEnsureDeployment(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	or := []metav1.OwnerReference{
+		{
+			Kind:       "Function",
+			APIVersion: "k8s.io",
+		},
+	}
+	ns := "default"
+	funcLabels := map[string]string{
+		"foo": "bar",
+	}
+	funcAnno := map[string]string{
+		"bar": "foo",
+	}
+
+	langruntime.AddFakeConfig(clientset)
+	lr := langruntime.SetupLangRuntime(clientset)
+	lr.ReadConfigMap()
+
+	f1Name := "f1"
+	f1 := getDefaultFunc(f1Name, ns)
+	f1Port := f1.Spec.ServiceSpec.Ports[0].Port
+	f1.ObjectMeta.Labels = funcLabels
+	f1.Spec.Deployment.ObjectMeta = metav1.ObjectMeta{
+		Annotations: funcAnno,
+	}
+	f1.Spec.Deployment.Spec.Template.ObjectMeta = metav1.ObjectMeta{
+		Annotations: funcAnno,
+	}
 	// Testing happy path
-	err := EnsureFuncDeployment(clientset, f1, or, lr)
+	err := EnsureFuncDeployment(clientset, f1, or, lr, "")
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -412,12 +481,10 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If no handler and function is given it should not fail
-	f2 := kubelessApi.Function{}
-	f2 = *f1
-	f2.ObjectMeta.Name = "func2"
+	f2 := getDefaultFunc("func2", ns)
 	f2.Spec.Function = ""
 	f2.Spec.Handler = ""
-	err = EnsureFuncDeployment(clientset, &f2, or, lr)
+	err = EnsureFuncDeployment(clientset, f2, or, lr, "")
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -427,11 +494,9 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If the Image has been already provided it should not resolve it
-	f3 := kubelessApi.Function{}
-	f3 = *f1
-	f3.ObjectMeta.Name = "func3"
+	f3 := getDefaultFunc("func3", ns)
 	f3.Spec.Deployment.Spec.Template.Spec.Containers[0].Image = "test-image"
-	err = EnsureFuncDeployment(clientset, &f3, or, lr)
+	err = EnsureFuncDeployment(clientset, f3, or, lr, "")
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -444,12 +509,10 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If no function is given it should not use an init container
-	f4 := kubelessApi.Function{}
-	f4 = *f1
-	f4.ObjectMeta.Name = "func4"
+	f4 := getDefaultFunc("func4", ns)
 	f4.Spec.Function = ""
 	f4.Spec.Deps = ""
-	err = EnsureFuncDeployment(clientset, &f4, or, lr)
+	err = EnsureFuncDeployment(clientset, f4, or, lr, "")
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -466,7 +529,7 @@ func TestEnsureDeployment(t *testing.T) {
 	f6 = *f1
 	f6.Spec.Handler = "foo.bar2"
 	f6.Spec.Deployment.ObjectMeta.Annotations["new-key"] = "value"
-	err = EnsureFuncDeployment(clientset, &f6, or, lr)
+	err = EnsureFuncDeployment(clientset, &f6, or, lr, "")
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -482,23 +545,19 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// It should return an error if some dependencies are given but the runtime is not supported
-	f7 := kubelessApi.Function{}
-	f7 = *f1
-	f7.ObjectMeta.Name = "func7"
+	f7 := getDefaultFunc("func7", ns)
 	f7.Spec.Deps = "deps"
 	f7.Spec.Runtime = "cobol"
-	err = EnsureFuncDeployment(clientset, &f7, or, lr)
+	err = EnsureFuncDeployment(clientset, f7, or, lr, "")
 
 	if err == nil {
-		t.Errorf("An error should be thrown")
+		t.Fatal("An error should be thrown")
 	}
 
 	// If a timeout is specified it should set an environment variable FUNC_TIMEOUT
-	f8 := kubelessApi.Function{}
-	f8 = *f1
-	f8.ObjectMeta.Name = "func8"
+	f8 := getDefaultFunc("func8", ns)
 	f8.Spec.Timeout = "10"
-	err = EnsureFuncDeployment(clientset, &f8, or, lr)
+	err = EnsureFuncDeployment(clientset, f8, or, lr, "")
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -508,6 +567,23 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 	if getEnvValueFromList("FUNC_TIMEOUT", dpm.Spec.Template.Spec.Containers[0].Env) != "10" {
 		t.Error("Unable to set timeout")
+	}
+
+	// If a prebuilt image is specified it should not build the function using init containers
+	f9 := getDefaultFunc("func9", ns)
+	err = EnsureFuncDeployment(clientset, f9, or, lr, "user/image:test")
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func9", metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if dpm.Spec.Template.Spec.Containers[0].Image != "user/image:test" {
+		t.Errorf("Unexpected image %s, expecting prebuilt user/image:test", dpm.Spec.Template.Spec.Containers[0].Image)
+	}
+	if len(dpm.Spec.Template.Spec.InitContainers) != 0 {
+		t.Error("Unexpected init containers")
 	}
 }
 

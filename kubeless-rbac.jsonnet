@@ -22,14 +22,20 @@ local controller_roles = [
     verbs: ["list", "delete"],
   },
   {
+    apiGroups: [""],
+    resources: ["secrets"],
+    resourceNames: ["kubeless-registry-credentials"],
+    verbs: ["get"],
+  },
+  {
     apiGroups: ["kubeless.io"],
     resources: ["functions", "kafkatriggers", "httptriggers", "cronjobtriggers"],
     verbs: ["get", "list", "watch", "update"],
   },
   {
     apiGroups: ["batch"],
-    resources: ["cronjobs"],
-    verbs: ["create", "get", "delete", "list", "update", "patch"],
+    resources: ["cronjobs", "jobs"],
+    verbs: ["create", "get", "delete", "deletecollection", "list", "update", "patch"],
   },
   {
     apiGroups: ["autoscaling"],

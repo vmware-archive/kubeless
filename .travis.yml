@@ -21,8 +21,10 @@ env:
     - TEST_TARGET=GKE
   global:
     - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller-manager
+    - BUILDER_IMAGE_NAME=kubeless/function-image-builder
     - CONTROLLER_TAG=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID}
     - CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
+    - BUILDER_IMAGE=${BUILDER_IMAGE_NAME}:${CONTROLLER_TAG}
     - KAFKA_CONTROLLER_IMAGE_NAME=bitnami/kafka-trigger-controller
     - KAFKA_CONTROLLER_IMAGE=${KAFKA_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
     - CGO_ENABLED=0
@@ -94,6 +96,7 @@ script:
     if [[ "$SHOULD_TEST" == "1" ]]; then
       make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
       make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
+      make function-image-builder FUNCTION_IMAGE_BUILDER=$BUILDER_IMAGE
       make kafka-controller-image KAFKA_CONTROLLER_IMAGE=$KAFKA_CONTROLLER_IMAGE
       make all-yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless.yaml
@@ -116,6 +119,7 @@ script:
       GKE)
         docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
         docker push $CONTROLLER_IMAGE
+        docker push $BUILDER_IMAGE
         docker push $KAFKA_CONTROLLER_IMAGE
         echo "Waiting for the GKE cluster to be ready"
         tail -f $TRAVIS_BUILD_DIR/gke-start.log &
