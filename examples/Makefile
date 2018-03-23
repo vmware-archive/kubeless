@@ -294,6 +294,14 @@ pubsub-python-verify:
 		number=`expr $$number + 1`; \
 	done; \
 	$$found
+	# Verify event context
+	logs=`kubectl logs -l function=pubsub-python`; \
+	echo $$logs | grep -q "it.*alive" && \
+	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-type.*application/json" && \
+	echo $$logs | grep -q "event-namespace.*cli.kubeless.io" && \
+	echo $$logs | grep -q "event-id.*"
+
 
 pubsub-python34:
 	kubeless topic create s3-python34 || true
