@@ -268,10 +268,18 @@ func (c *CronJobTriggerController) functionAddedDeletedUpdated(obj interface{}, 
 	c.logger.Infof("Processing update to function object %s Namespace: %s", functionObj.Name, functionObj.Namespace)
 	if deleted {
 		c.logger.Infof("Function %s deleted. Removing associated cronjob trigger", functionObj.Name)
-		err := c.kubelessclient.KubelessV1beta1().CronJobTriggers(functionObj.Namespace).Delete(functionObj.Name, &metav1.DeleteOptions{})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			c.logger.Errorf("Failed to delete cronjobtrigger created for the function %s in namespace %s, Error: %s", functionObj.ObjectMeta.Name, functionObj.ObjectMeta.Namespace, err)
+		cjtList, err := c.kubelessclient.KubelessV1beta1().CronJobTriggers(functionObj.Namespace).List(metav1.ListOptions{})
+		if err != nil {
 			return err
+		}
+		for _, cjt := range cjtList.Items {
+			if cjt.Spec.FunctionName == functionObj.Name {
+				err = c.kubelessclient.KubelessV1beta1().CronJobTriggers(functionObj.Namespace).Delete(cjt.Name, &metav1.DeleteOptions{})
+				if err != nil && !k8sErrors.IsNotFound(err) {
+					c.logger.Errorf("Failed to delete cronjobtrigger created for the function %s in namespace %s, Error: %s", functionObj.ObjectMeta.Name, functionObj.ObjectMeta.Namespace, err)
+					return err
+				}
+			}
 		}
 	}
 	return nil
@@ -320,12 +328,11 @@ func cronJobTriggerObjChanged(oldObj, newObj *kubelessApi.CronJobTrigger) bool {
 	}
 	// If the new and old CronJob trigger object's resource version is same
 	if oldObj.ResourceVersion != newObj.ResourceVersion {
-		return false
+		return true
 	}
 	newSpec := newObj.Spec
 	oldSpec := oldObj.Spec
 	if newSpec.Schedule != oldSpec.Schedule {
-		logrus.Info("changed!")
 		return true
 	}
 

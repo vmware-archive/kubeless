@@ -65,7 +65,13 @@ func TestFunctionDeleted(t *testing.T) {
 	}
 
 	cjtrigger := kubelessApi.CronJobTrigger{
-		ObjectMeta: myNsFoo,
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "myns",
+			Name:      "foo-trigger",
+		},
+		Spec: kubelessApi.CronJobTriggerSpec{
+			FunctionName: "foo",
+		},
 	}
 
 	triggerClientset := kubelessFake.NewSimpleClientset(&f, &cjtrigger)
@@ -117,6 +123,11 @@ func TestCronJobTriggerObjChanged(t *testing.T) {
 		{
 			old:             &kubelessApi.CronJobTrigger{ObjectMeta: metav1.ObjectMeta{DeletionTimestamp: &t1}},
 			new:             &kubelessApi.CronJobTrigger{ObjectMeta: metav1.ObjectMeta{DeletionTimestamp: &t2}},
+			expectedChanged: true,
+		},
+		{
+			old:             &kubelessApi.CronJobTrigger{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1"}},
+			new:             &kubelessApi.CronJobTrigger{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "2"}},
 			expectedChanged: true,
 		},
 		{
