@@ -30,7 +30,7 @@ else
 fi
 
 if [ -z "$3" ]; then
-    TARGET="kubeless-controller"
+    TARGET="kubeless-controller-manager"
 else
     TARGET=($3)
 fi
