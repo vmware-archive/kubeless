@@ -767,7 +767,6 @@ func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
 		},
 		Spec: kubelessApi.HTTPTriggerSpec{
 			HostName:     "foo",
-			RouteName:    "foo",
 			TLSAcme:      true,
 			FunctionName: f1.Name,
 		},

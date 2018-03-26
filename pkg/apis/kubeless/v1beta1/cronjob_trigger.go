@@ -23,14 +23,14 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// CronJobTrigger object
+// CronJobTrigger is Kubeless resource representing cron job event source
 type CronJobTrigger struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	Spec              CronJobTriggerSpec `json:"spec"`
 }
 
-// CronJobTriggerSpec contains func specification
+// CronJobTriggerSpec defines specification for CronJobTrigger
 type CronJobTriggerSpec struct {
 	Schedule     string `json:"schedule"`      // Scheduled time (for Schedule type)
 	FunctionName string `json:"function-name"` // Name of the associated function
@@ -38,7 +38,7 @@ type CronJobTriggerSpec struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// CronJobTriggerList contains map of functions
+// CronJobTriggerList is list of CronJobTrigger's
 type CronJobTriggerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`

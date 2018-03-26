@@ -31,8 +31,16 @@ load ../script/libtest
   verify_function pubsub-python34
   kubeless_function_delete pubsub-python34
 }
+@test "Test 1:n association between Kafka trigger and functions" {
+  deploy_function pubsub-python-func1-topic-s3-python
+  deploy_function pubsub-python-func2-topic-s3-python
+  deploy_kafka_trigger s3-python-kafka-trigger
+  verify_function pubsub-python-func1-topic-s3-python
+  verify_function pubsub-python-func2-topic-s3-python
+  kubeless_function_delete pubsub-python-func1-topic-s3-python
+  kubeless_function_delete pubsub-python-func2-topic-s3-python
+}
 @test "Test function: pubsub-nodejs" {
-  skip "Will cover this test case as part of new IT tests when `kubeless trigger create/update/delete` is added"
   deploy_function pubsub-nodejs
   verify_function pubsub-nodejs
   test_kubeless_function_update pubsub-nodejs

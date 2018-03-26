@@ -68,5 +68,18 @@ until kubectl --context=minikube get pods >& /dev/null; do
     ((cnt=cnt-1)) || exit 1
     sleep 1
 done
+
+sudo -E ${MINIKUBE_BIN} update-context
+
+# Enable Nginx Ingress
+echo "INFO: Enabling ingress addon to minikube..."
+sudo -E ${MINIKUBE_BIN} addons enable ingress
+sudo -E ${MINIKUBE_BIN} config set WantUpdateNotification false
+echo "INFO: Waiting until Nginx pod is ready ..."
+typeset -i cnt=120
+until kubectl get pods -l name=nginx-ingress-controller -n kube-system>& /dev/null; do
+    ((cnt=cnt-1)) || exit 1
+    sleep 1
+done
 exit 0
 # vim: sw=4 ts=4 et si

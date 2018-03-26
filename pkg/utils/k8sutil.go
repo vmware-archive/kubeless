@@ -464,14 +464,14 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 		return err
 	}
 
-	funcSvc, err := client.CoreV1().Services(httpTriggerObj.ObjectMeta.Namespace).Get(httpTriggerObj.ObjectMeta.Name, metav1.GetOptions{})
+	funcSvc, err := client.CoreV1().Services(httpTriggerObj.ObjectMeta.Namespace).Get(httpTriggerObj.Spec.FunctionName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("Unable to find the function internal service: %v", funcSvc)
 	}
 
 	ingress := &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            httpTriggerObj.Spec.RouteName,
+			Name:            httpTriggerObj.Name,
 			Namespace:       httpTriggerObj.Namespace,
 			OwnerReferences: or,
 			Labels:          httpTriggerObj.ObjectMeta.Labels,
@@ -484,9 +484,9 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 						HTTP: &v1beta1.HTTPIngressRuleValue{
 							Paths: []v1beta1.HTTPIngressPath{
 								{
-									Path: httpTriggerObj.Spec.Path,
+									Path: "/" + httpTriggerObj.Spec.Path,
 									Backend: v1beta1.IngressBackend{
-										ServiceName: httpTriggerObj.ObjectMeta.Name,
+										ServiceName: funcSvc.Name,
 										ServicePort: funcSvc.Spec.Ports[0].TargetPort,
 									},
 								},
@@ -498,22 +498,25 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 		},
 	}
 
-	if httpTriggerObj.Spec.TLSAcme {
-		// add annotations and TLS configuration for kube-lego
-		ingressAnnotations := map[string]string{
-			"kubernetes.io/tls-acme":             "true",
-			"ingress.kubernetes.io/ssl-redirect": "true",
-		}
-		ingress.ObjectMeta.Annotations = ingressAnnotations
+	ingressAnnotations := make(map[string]string)
 
+	// If exposed URL in the backend service differs from the specified path in the Ingress rule.
+	// Without a rewrite any request will return 404. Set the annotation ingress.kubernetes.io/rewrite-target
+	// to the path expected by the service
+	ingressAnnotations["ingress.kubernetes.io/rewrite-target"] = "/"
+
+	// add annotations and TLS configuration for kube-lego
+	if httpTriggerObj.Spec.TLSAcme {
+		ingressAnnotations["kubernetes.io/tls-acme"] = "true"
+		ingressAnnotations["ingress.kubernetes.io/ssl-redirect"] = "true"
 		ingress.Spec.TLS = []v1beta1.IngressTLS{
 			{
 				Hosts:      []string{httpTriggerObj.Spec.HostName},
-				SecretName: httpTriggerObj.Spec.RouteName + "-tls",
+				SecretName: httpTriggerObj.Name + "-tls",
 			},
 		}
 	}
-
+	ingress.ObjectMeta.Annotations = ingressAnnotations
 	_, err = client.ExtensionsV1beta1().Ingresses(httpTriggerObj.Namespace).Create(ingress)
 	if err != nil {
 		return err

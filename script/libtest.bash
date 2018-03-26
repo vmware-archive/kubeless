@@ -142,6 +142,11 @@ kubeless_function_delete() {
     echo_info "Deleting function "${func}" in case still present ... "
     kubeless function ls |grep -w "${func}" && kubeless function delete "${func}" >& /dev/null || true
 }
+kubeless_kafka_trigger_delete() {
+    local trigger=${1:?}; shift
+    echo_info "Deleting kafka trigger "${trigger}" in case still present ... "
+    kubeless trigger kafka list |grep -w "${trigger}" && kubeless trigger kafka delete "${trigger}" >& /dev/null || true
+}
 kubeless_function_deploy() {
     local func=${1:?}; shift
     echo_info "Deploying function ..."
@@ -255,6 +260,14 @@ deploy_function() {
     kubeless_function_delete ${func}
     make -sC examples ${func}
 }
+
+deploy_kafka_trigger() {
+    local trigger=${1:?}
+    echo_info "TEST: $trigger"
+    kubeless_kafka_trigger_delete ${trigger}
+    make -sC examples ${trigger}
+}
+
 verify_function() {
     local func=${1:?}
     local make_task=${2:-${func}-verify}
@@ -295,12 +308,20 @@ test_kubeless_function_update() {
 test_kubeless_ingress() {
     local func=${1:?} domain=example.com act_ingress exp_ingress
     echo_info "TEST: ingress ${func}"
-    kubeless route create ing-${func} --http-trigger ${func} --hostname ${func}.${domain}
-    kubeless route list | fgrep -w ing-${func}
+    kubeless trigger http create ing-${func} --hostname ${func}.${domain} --function-name ${func}
     act_ingress=$(kubectl get ingress ing-${func} -ojsonpath='{range .spec.rules[*]}{@.host}:{@.http.paths[*].backend.serviceName}')
     exp_ingress="${func}.${domain}:${func}"
     [[ ${act_ingress} == ${exp_ingress} ]]
-    kubeless route delete ing-${func} --http-trigger ${func}
+    kubeless trigger http delete ing-${func}
+}
+test_kubeless_ingress_path() {
+    local func=${1:?}
+    echo_info "TEST: ingress path ${func}"
+    kubeless trigger http create ing-${func} --function-name ${func} --path ${func}
+    minikube_ip=$(minikube ip)
+    host=$(kubectl get ingress ing-get-python -ojsonpath='{range .spec.rules[*]}{@.host}')
+    curl --header "Host: $host" $minikube_ip\/${func}
+    kubeless trigger http delete ing-${func}
 }
 test_kubeless_autoscale() {
     local func=${1:?} exp_autoscale act_autoscale
