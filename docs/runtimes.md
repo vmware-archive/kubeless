@@ -13,7 +13,7 @@ Runtimes have a maximum timeout set by the environment variable FUNC_TIMEOUT. Th
 
 ## Runtimes inteface
 
-Every function receives as arguments two objects: `event` and `context`. The first argument contains information about the source of the event that the function has received. The second contains general information about the function like its name or timeout. This is a representation in YAML of a Kafka event:
+Every function receives two arguments: `event` and `context`. The first argument contains information about the source of the event that the function has received. The second contains general information about the function like its name or maximum timeout. This is a representation in YAML of a Kafka event:
 
 ```yaml
 event:                                  
