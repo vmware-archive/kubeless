@@ -503,12 +503,12 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 	// If exposed URL in the backend service differs from the specified path in the Ingress rule.
 	// Without a rewrite any request will return 404. Set the annotation ingress.kubernetes.io/rewrite-target
 	// to the path expected by the service
-	ingressAnnotations["ingress.kubernetes.io/rewrite-target"] = "/"
+	ingressAnnotations["nginx.ingress.kubernetes.io/rewrite-target"] = "/"
 
 	// add annotations and TLS configuration for kube-lego
 	if httpTriggerObj.Spec.TLSAcme {
 		ingressAnnotations["kubernetes.io/tls-acme"] = "true"
-		ingressAnnotations["ingress.kubernetes.io/ssl-redirect"] = "true"
+		ingressAnnotations["nginx.ingress.kubernetes.io/ssl-redirect"] = "true"
 		ingress.Spec.TLS = []v1beta1.IngressTLS{
 			{
 				Hosts:      []string{httpTriggerObj.Spec.HostName},

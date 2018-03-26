@@ -54,7 +54,7 @@ var updateCmd = &cobra.Command{
 			ns = utils.GetDefaultNamespace()
 		}
 
-		functionName, err := cmd.Flags().GetString("function-name")
+		functionName, err := cmd.Flags().GetString("function")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -86,5 +86,5 @@ var updateCmd = &cobra.Command{
 func init() {
 	updateCmd.Flags().StringP("namespace", "", "", "Specify namespace of the cronjob trigger")
 	updateCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
-	updateCmd.Flags().StringP("function-name", "", "", "Name of the function to be associated with trigger")
+	updateCmd.Flags().StringP("function", "", "", "Name of the function to be associated with trigger")
 }

@@ -75,6 +75,12 @@ basic)
 kafka)
     bats tests/integration-tests-kafka.bats
     ;;
+http)
+    bats tests/integration-tests-http.bats
+    ;;
+cronjob)
+    bats tests/integration-tests-cronjob.bats
+    ;;
 *)
     bats tests/deployment-tests.bats && bats tests/integration-tests.bats && bats tests/integration-tests-kafka.bats
     ;;

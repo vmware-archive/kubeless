@@ -54,7 +54,7 @@ var createCmd = &cobra.Command{
 			ns = utils.GetDefaultNamespace()
 		}
 
-		functionName, err := cmd.Flags().GetString("function-name")
+		functionName, err := cmd.Flags().GetString("function")
 		if err != nil {
 			logrus.Fatal(err)
 		}

@@ -113,6 +113,8 @@ script:
       minikube)
         ./script/integration-tests minikube deployment
         ./script/integration-tests minikube basic
+        ./script/integration-tests minikube http
+        ./script/integration-tests minikube cronjob
         ;;
       minikube_kafka)
         ./script/integration-tests minikube deployment
