@@ -25,7 +25,7 @@ touch ~/.kube/config
 export KUBECONFIG=$HOME/.kube/config
 export PATH=${PATH}:${GOPATH:?}/bin
 
-MINIKUBE_VERSION=v0.24.1
+MINIKUBE_VERSION=${MINIKUBE_VERSION:?}
 
 install_bin() {
     local exe=${1:?}
