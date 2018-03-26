@@ -11,7 +11,7 @@ Each runtime is encapsulated in a container image. The reference to these images
 
 Runtimes have a maximum timeout set by the environment variable FUNC_TIMEOUT. This environment variable can be set using the CLI option `--timeout`. The default value is 180 seconds. If a function takes more than that in being executed, the process will be terminated.
 
-## Runtimes inteface
+## Runtimes interface
 
 Every function receives two arguments: `event` and `context`. The first argument contains information about the source of the event that the function has received. The second contains general information about the function like its name or maximum timeout. This is a representation in YAML of a Kafka event:
 
@@ -33,7 +33,7 @@ context:
     memory-limit: "128M"
 ```
 
-You can check basic examples of every language supported in the [examples](https://github.com/kubeless/kubeless/examples) folder.
+You can check basic examples of every language supported in the [examples](https://github.com/kubeless/kubeless/tree/master/examples) folder.
 
 ## Configuring Default Runtime Container Images
 
