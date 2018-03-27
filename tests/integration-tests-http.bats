@@ -24,9 +24,9 @@ load ../script/libtest
     deploy_function get-python
     verify_function get-python
     create_http_trigger get-python "test.domain"
-    verify_http_trigger get-python $(minikube ip) "hello world" "test.domain"
+    verify_http_trigger get-python $(minikube ip) "hello.*world" "test.domain"
     update_http_trigger get-python "test.domain-updated"
-    verify_http_trigger get-python $(minikube ip) "hello world" "test.domain-updated"
+    verify_http_trigger get-python $(minikube ip) "hello.*world" "test.domain-updated"
     delete_http_trigger get-python
     verify_clean_object httptrigger ing-get-python
     verify_clean_object ingress ing-get-python
@@ -36,9 +36,9 @@ load ../script/libtest
     deploy_function get-python
     verify_function get-python
     create_http_trigger get-python "test.domain" "get-python"
-    verify_http_trigger get-python $(minikube ip) "hello world" "test.domain" "get-python"
+    verify_http_trigger get-python $(minikube ip) "hello.*world" "test.domain" "get-python"
     update_http_trigger get-python "test.domain" "get-python-updated"
-    verify_http_trigger get-python $(minikube ip) "hello world" "test.domain"
+    verify_http_trigger get-python $(minikube ip) "hello.*world" "test.domain"
     delete_http_trigger get-python
     verify_clean_object httptrigger ing-get-python
     verify_clean_object ingress ing-get-python
