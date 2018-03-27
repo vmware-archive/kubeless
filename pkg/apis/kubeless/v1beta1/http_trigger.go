@@ -32,12 +32,11 @@ type HTTPTrigger struct {
 
 // HTTPTriggerSpec contains func specification
 type HTTPTriggerSpec struct {
-	FunctionName  string `json:"function-name"` // Name of the associated function
-	HostName      string `json:"host-name"`
-	TLSAcme       bool   `json:"tls"`
-	RouteName     string `json:"route-name"`
-	EnableIngress bool   `json:"ingress-enabled"`
-	Path          string `json:"path"`
+	FunctionName string `json:"function-name"` // Name of the associated function
+	HostName     string `json:"host-name"`
+	TLSAcme      bool   `json:"tls"`
+	RouteName    string `json:"route-name"`
+	Path         string `json:"path"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
