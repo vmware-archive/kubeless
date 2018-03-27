@@ -297,18 +297,18 @@ pubsub-python-verify:
 	done; \
 	$$found
 
-pubsub-python-func1-topic-s3-python:
+kafka-python-func1-topic-s3-python:
 	kubeless topic create s3-python || true
-	kubeless function deploy pubsub-python-func1-topic-s3-python --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py --label topic=s3-python
+	kubeless function deploy kafka-python-func1-topic-s3-python --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py --label topic=s3-python
 
-pubsub-python-func1-topic-s3-python-verify:
+kafka-python-func1-topic-s3-python-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	kubeless topic publish --topic s3-python --data '{"payload":"$(DATA)"}'
 	number="1"; \
 	timeout="60"; \
 	found=false; \
 	while [ $$number -le $$timeout ] ; do \
-		pod=`kubectl get po -oname -l function=pubsub-python-func1-topic-s3-python`; \
+		pod=`kubectl get po -oname -l function=kafka-python-func1-topic-s3-python`; \
 		logs=`kubectl logs $$pod | grep $(DATA)`; \
 		if [ "$$logs" != "" ]; then \
 			found=true; \
@@ -319,18 +319,18 @@ pubsub-python-func1-topic-s3-python-verify:
 	done; \
 	$$found
 
-pubsub-python-func2-topic-s3-python:
+kafka-python-func2-topic-s3-python:
 	kubeless topic create s3-python || true
-	kubeless function deploy pubsub-python-func2-topic-s3-python --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py --label topic=s3-python
+	kubeless function deploy kafka-python-func2-topic-s3-python --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py --label topic=s3-python
 
-pubsub-python-func2-topic-s3-python-verify:
+kafka-python-func2-topic-s3-python-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	kubeless topic publish --topic s3-python --data '{"payload":"$(DATA)"}'
 	number="1"; \
 	timeout="60"; \
 	found=false; \
 	while [ $$number -le $$timeout ] ; do \
-		pod=`kubectl get po -oname -l function=pubsub-python-func2-topic-s3-python`; \
+		pod=`kubectl get po -oname -l function=kafka-python-func2-topic-s3-python`; \
 		logs=`kubectl logs $$pod | grep $(DATA)`; \
 		if [ "$$logs" != "" ]; then \
 			found=true; \
