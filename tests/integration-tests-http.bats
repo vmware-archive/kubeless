@@ -37,8 +37,6 @@ load ../script/libtest
     verify_function get-python
     create_http_trigger get-python "test.domain" "get-python"
     verify_http_trigger get-python $(minikube ip) "hello.*world" "test.domain" "get-python"
-    update_http_trigger get-python "test.domain" "get-python-updated"
-    verify_http_trigger get-python $(minikube ip) "hello.*world" "test.domain"
     delete_http_trigger get-python
     verify_clean_object httptrigger ing-get-python
     verify_clean_object ingress ing-get-python

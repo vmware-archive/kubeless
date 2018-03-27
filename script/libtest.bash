@@ -352,7 +352,7 @@ verify_http_trigger(){
     kubeless trigger http list | grep ${func}
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     echo_info "Waiting for ingress to be ready..."
-    until kubectl get ingress | grep $func | awk '{print $3}' | grep "$ip"; do
+    until kubectl get ingress | grep $func | grep "$domain" | awk '{print $3}' | grep "$ip"; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
