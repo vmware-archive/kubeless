@@ -383,7 +383,7 @@ verify_cronjob_trigger(){
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     kubeless trigger cronjob list | grep ${func} | grep "${schedule}"
     echo_info "Waiting for CronJob to be executed..."
-    until kubectl logs -l function=${func} | grep $expected_log; do
+    until kubectl logs -l function=${func} | grep "$expected_log"; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done

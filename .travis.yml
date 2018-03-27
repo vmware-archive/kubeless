@@ -17,6 +17,7 @@ env:
   matrix:
     - TEST_TARGET=unit
     - TEST_TARGET=minikube
+    - TEST_TARGET=minikube_core_triggers
     - TEST_TARGET=minikube_kafka
     - TEST_TARGET=GKE
   global:
@@ -44,7 +45,7 @@ before_install:
   - |
     case $TEST_TARGET in
     # We will always build assets when doing unit tests or minikube end-2-end tests
-    unit|minikube)
+    unit|minikube|minikube_core_triggers)
       export SHOULD_TEST=1
       ;;
     # In case of GKE we will only want to build if it is
@@ -112,9 +113,12 @@ script:
         ;;
       minikube)
         ./script/integration-tests minikube deployment
+        ./script/integration-tests minikube basic
+        ;;
+      minikube_core_triggers)
+        ./script/integration-tests minikube deployment
         ./script/integration-tests minikube cronjob
         ./script/integration-tests minikube http
-        ./script/integration-tests minikube basic
         ;;
       minikube_kafka)
         ./script/integration-tests minikube deployment
