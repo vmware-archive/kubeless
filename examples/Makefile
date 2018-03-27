@@ -349,7 +349,7 @@ kafka-python-func2-topic-s3-python-verify:
 	$$found
 
 s3-python-kafka-trigger:
-    kubeless trigger kafka create s3-python-kafka-trigger --function-selector created-by=kubeless,topic=s3-python --trigger-topic s3-python
+	kubeless trigger kafka create s3-python-kafka-trigger --function-selector created-by=kubeless,topic=s3-python --trigger-topic s3-python
 
 pubsub-python34:
 	kubeless topic create s3-python34 || true
