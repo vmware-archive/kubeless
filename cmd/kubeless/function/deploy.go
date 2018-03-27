@@ -230,6 +230,7 @@ var deployCmd = &cobra.Command{
 				"function":   funcName,
 			}
 			httpTrigger.Spec.FunctionName = funcName
+			httpTrigger.Spec.RouteName = funcName
 
 			err = utils.CreateHTTPTriggerCustomResource(kubelessClient, &httpTrigger)
 			if err != nil {
