@@ -58,8 +58,7 @@ MINIKUBE_BIN=$(which minikube)
 # Start minikube
 sudo -E ${MINIKUBE_BIN} start --vm-driver=none \
     --extra-config=apiserver.Authorization.Mode=RBAC \
-    --memory 4096 \
-    --kubernetes-version v1.8.0
+    --memory 4096
 
 # Wait til settles
 echo "INFO: Waiting for minikube cluster to be ready ..."

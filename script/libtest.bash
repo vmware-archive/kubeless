@@ -258,6 +258,7 @@ deploy_function() {
 verify_function() {
     local func=${1:?}
     local make_task=${2:-${func}-verify}
+    echo_info "Init logs: $(kubectl logs -l function=${func} -c prepare)"
     k8s_wait_for_pod_ready -l function=${func}
     case "${func}" in
         *pubsub*)

@@ -394,8 +394,9 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 	// Prepare Function file and dependencies
 	if strings.Contains(contentType, "base64") {
 		// File is encoded in base64
-		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("base64 -d < %s > %s.decoded", originFile, originFile))
-		originFile = originFile + ".decoded"
+		decodedFile := "/tmp/func.decoded"
+		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("base64 -d < %s > %s", originFile, decodedFile))
+		originFile = decodedFile
 	} else if strings.Contains(contentType, "text") || contentType == "" {
 		// Assumming that function is plain text
 		// So we don't need to preprocess it
