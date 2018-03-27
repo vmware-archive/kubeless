@@ -28,7 +28,7 @@ var updateCmd = &cobra.Command{
 	Long:  `Update a http trigger`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 1 {
-			logrus.Fatal("Need exactly one argument - cronjob trigger name")
+			logrus.Fatal("Need exactly one argument - http trigger name")
 		}
 		triggerName := args[0]
 
@@ -63,14 +63,26 @@ var updateCmd = &cobra.Command{
 			httpTrigger.Spec.FunctionName = functionName
 		}
 
-		port, err := cmd.Flags().GetInt32("port")
+		path, err := cmd.Flags().GetString("path")
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		if port <= 0 || port > 65535 {
-			logrus.Fatalf("Invalid port number %d specified", port)
+		if path != "" {
+			httpTrigger.Spec.Path = path
 		}
 
+		hostName, err := cmd.Flags().GetString("hostname")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		if hostName != "" {
+			httpTrigger.Spec.HostName = hostName
+		}
+		enableTLSAcme, err := cmd.Flags().GetBool("enableTLSAcme")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		httpTrigger.Spec.TLSAcme = enableTLSAcme
 		err = utils.UpdateHTTPTriggerCustomResource(kubelessClient, httpTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to deploy HTTP trigger %s in namespace %s. Error: %s", triggerName, ns, err)
@@ -80,8 +92,8 @@ var updateCmd = &cobra.Command{
 }
 
 func init() {
-	updateCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 	updateCmd.Flags().StringP("function-name", "", "", "Name of the function to be associated with trigger")
-	updateCmd.Flags().Bool("headless", false, "Deploy http-based function without a single service IP and load balancing support from Kubernetes. See: https://kubernetes.io/docs/concepts/services-networking/service/#headless-services")
-	updateCmd.Flags().Int32("port", 8080, "Deploy http-based function with a custom port")
+	updateCmd.Flags().StringP("path", "", "", "Ingress path for the function")
+	updateCmd.Flags().StringP("hostname", "", "", "Specify a valid hostname for the function")
+	updateCmd.Flags().BoolP("enableTLSAcme", "", false, "If true, routing rule will be configured for use with kube-lego")
 }
