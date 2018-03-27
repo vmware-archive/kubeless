@@ -80,7 +80,6 @@ var routeCreateCmd = &cobra.Command{
 		httpTrigger.Spec.HostName = hostName
 		httpTrigger.Spec.TLSAcme = enableTLSAcme
 		httpTrigger.Spec.RouteName = ingressName
-		httpTrigger.Spec.EnableIngress = true
 		httpTrigger.Spec.Path = "/"
 
 		err = utils.UpdateHTTPTriggerCustomResource(kubelessClient, httpTrigger)
