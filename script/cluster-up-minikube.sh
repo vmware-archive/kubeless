@@ -74,5 +74,9 @@ sudo -E ${MINIKUBE_BIN} update-context
 echo "INFO: Enabling ingress addon to minikube..."
 sudo -E ${MINIKUBE_BIN} addons enable ingress
 sudo -E ${MINIKUBE_BIN} config set WantUpdateNotification false
+
+# Give some time for the cluster to become healthy
+sleep 10
+
 exit 0
 # vim: sw=4 ts=4 et si
