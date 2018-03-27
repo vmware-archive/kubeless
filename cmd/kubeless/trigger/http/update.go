@@ -92,6 +92,7 @@ var updateCmd = &cobra.Command{
 }
 
 func init() {
+	updateCmd.Flags().StringP("namespace", "", "", "Specify namespace for the HTTP trigger")
 	updateCmd.Flags().StringP("function-name", "", "", "Name of the function to be associated with trigger")
 	updateCmd.Flags().StringP("path", "", "", "Ingress path for the function")
 	updateCmd.Flags().StringP("hostname", "", "", "Specify a valid hostname for the function")
