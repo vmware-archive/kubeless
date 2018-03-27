@@ -317,6 +317,7 @@ create_http_trigger(){
     local func=${1:?}; shift
     local domain=${1-""};
     local subpath=${2-""};
+    delete_http_trigger ${func}
     echo_info "TEST: Creating HTTP trigger"
     local command="kubeless trigger http create ing-${func} --function-name ${func}"
     if [ -n "$domain" ]; then
@@ -348,7 +349,13 @@ verify_http_trigger(){
     local domain=${1:?}; shift
     local subpath=${1:-""};
     kubeless trigger http list | grep ${func}
-    curl --header "Host: $domain" $ip/$subpath | grep $expected_response
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    echo_info "Waiting for ingress to be ready..."
+    until kubectl get ingress | grep $func; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
+    curl -vv --header "Host: $domain" $ip\/$subpath | grep "${expected_response}"
 }
 delete_http_trigger() {
     local func=${1:?}; shift
