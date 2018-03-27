@@ -359,11 +359,12 @@ verify_http_trigger(){
 }
 delete_http_trigger() {
     local func=${1:?}; shift
-    kubeless trigger http delete ing-${func}
+    kubeless trigger http list |grep -w ing-${func} && kubeless trigger http delete ing-${func} >& /dev/null || true
 }
 create_cronjob_trigger(){
     local func=${1:?}; shift
     local schedule=${1:?};
+    delete_cronjob_trigger ${func}
     echo_info "TEST: Creating CronJob trigger"
     kubeless trigger cronjob create ${func} --function ${func} --schedule ${schedule}
 }
@@ -387,7 +388,7 @@ verify_cronjob_trigger(){
 }
 delete_cronjob_trigger() {
     local func=${1:?}; shift
-    kubeless trigger cronjob delete ${func}
+    kubeless trigger cronjob list |grep -w ${func} && kubeless trigger cronjob delete ${func} >& /dev/null || true
 }
 test_kubeless_autoscale() {
     local func=${1:?} exp_autoscale act_autoscale
