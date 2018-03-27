@@ -99,8 +99,9 @@ func getHorizontalAutoscaleDefinition(name, ns, metric string, min, max int32, v
 		},
 		Spec: v2beta1.HorizontalPodAutoscalerSpec{
 			ScaleTargetRef: v2beta1.CrossVersionObjectReference{
-				Kind: "Deployment",
-				Name: name,
+				APIVersion: "apps/v1beta1",
+				Kind:       "Deployment",
+				Name:       name,
 			},
 			MinReplicas: &min,
 			MaxReplicas: max,
