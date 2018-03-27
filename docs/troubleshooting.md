@@ -20,9 +20,9 @@ choose to ignore these errors, turn validation off with --validate=false
 You probably have an older version of Kubernetes. Make sure
 you are using at least version `1.7`.
 
-## Kafka and Zookeper Persistent Volume creation
+## Kafka and Zookeeper Persistent Volume creation
 
-Since Kubeless 0.5, there is a standalone manifest for deploying Kafka and Zookeeper. In some platforms, the Persisten Volumes that these applications require are not automatically generated. If that is your case you will see the deployments and Persistent Volume Claims as Pending:
+Since Kubeless 0.5, there is a standalone manifest for deploying Kafka and Zookeeper. In some platforms, the Persistent Volumes that these applications require are not automatically generated. If that is your case you will see the deployments and Persistent Volume Claims as Pending:
 
 ```
 $ kubectl get pods -n kubeless
@@ -38,4 +38,4 @@ zookeeper-zoo-0   Pending                                                     2m
 
 ```
 
-If you are running Kubernetes in GKE check the specific guide [here](./GKE-deployment.md) to create the required disks and PVs. In other case, check the provider documentation of how to create these required volumes. Note that `kafka` and `zookeper` are only needed when working with Kafka events, you can still use Kubeless to trigger functions using HTTP requests.
+If you are running Kubernetes in GKE check the specific guide [here](./GKE-deployment.md) to create the required disks and PVs. In other case, check the provider documentation of how to create these required volumes. Note that `kafka` and `zookeeper` are only needed when working with Kafka events, you can still use Kubeless to trigger functions using HTTP requests.
