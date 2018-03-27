@@ -519,10 +519,24 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 	}
 	ingress.ObjectMeta.Annotations = ingressAnnotations
 	_, err = client.ExtensionsV1beta1().Ingresses(httpTriggerObj.Namespace).Create(ingress)
-	if err != nil {
-		return err
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		var newIngress *v1beta1.Ingress
+		newIngress, err = client.ExtensionsV1beta1().Ingresses(httpTriggerObj.Namespace).Get(ingress.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if len(ingress.ObjectMeta.Labels) > 0 {
+			newIngress.ObjectMeta.Labels = ingress.ObjectMeta.Labels
+		}
+		newIngress.ObjectMeta.OwnerReferences = or
+		newIngress.Spec = ingress.Spec
+		_, err = client.ExtensionsV1beta1().Ingresses(httpTriggerObj.Namespace).Update(newIngress)
+		if err != nil && k8sErrors.IsAlreadyExists(err) {
+			// The configmap may already exist and there is nothing to update
+			return nil
+		}
 	}
-	return nil
+	return err
 }
 
 // GetLocalHostname returns hostname

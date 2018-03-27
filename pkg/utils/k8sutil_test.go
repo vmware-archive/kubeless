@@ -831,6 +831,62 @@ func fakeConfig() *rest.Config {
 	}
 }
 
+func TestUpdateIngressResource(t *testing.T) {
+	fakeSvc := v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "myns",
+			Name:      "foo",
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{TargetPort: intstr.FromInt(8080)},
+			},
+		},
+	}
+	fakeIngress := v1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "myns",
+			Name:      "foo",
+			Labels: map[string]string{
+				"test": "foo",
+			},
+		},
+	}
+	clientset := fake.NewSimpleClientset(&fakeSvc, &fakeIngress)
+	f1 := &kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "myns",
+			UID:       "1234",
+		},
+		Spec: kubelessApi.FunctionSpec{},
+	}
+	httpTrigger := &kubelessApi.HTTPTrigger{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "myns",
+			UID:       "1234",
+		},
+		Spec: kubelessApi.HTTPTriggerSpec{
+			FunctionName: f1.Name,
+			HostName:     "test.domain",
+		},
+	}
+	if err := CreateIngress(clientset, httpTrigger); err != nil {
+		t.Fatalf("Creating ingress returned err: %v", err)
+	}
+	newIngress, err := clientset.ExtensionsV1beta1().Ingresses("myns").Get("foo", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Unexpected errors: %v", err)
+	}
+	if newIngress.ObjectMeta.Labels["test"] != "foo" {
+		t.Errorf("Unexpected labels: %v", newIngress.ObjectMeta.Labels)
+	}
+	if newIngress.Spec.Rules[0].Host != "test.domain" {
+		t.Errorf("Unexpected hostname: %s", newIngress.Spec.Rules[0].Host)
+	}
+}
+
 func TestGetLocalHostname(t *testing.T) {
 	config := fakeConfig()
 	expectedHostName := "foobar.example.com.nip.io"
