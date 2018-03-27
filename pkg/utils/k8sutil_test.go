@@ -733,9 +733,6 @@ func TestCreateIngressResource(t *testing.T) {
 			t.Fatalf("Expect object is already exists, got %v", err)
 		}
 	}
-	if err := CreateIngress(clientset, httpTrigger); err == nil {
-		t.Fatal("Expect create ingress fails, got success")
-	}
 }
 
 func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
