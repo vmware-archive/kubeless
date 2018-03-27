@@ -75,8 +75,7 @@ $ kubeless function deploy myFunction --runtime nodejs6 \
                                 --env NPM_SCOPE=@myorg \
                                 --dependencies package.json \
                                 --handler test.foobar \
-                                --from-file test.js \
-                                --trigger-http
+                                --from-file test.js
 ```
 
 ### Python HTTP Trigger
@@ -152,7 +151,7 @@ $ kubeless function deploy \
   --from-file ./handler.py \
   --handler handler.hello \
   --runtime python2.7 \
-  --trigger-http hello
+  hello
 $ kubeless function ls
 NAME      	NAMESPACE	HANDLER     	RUNTIME  	TYPE	TOPIC
 get-python	default  	foo.foo	      python2.7	HTTP

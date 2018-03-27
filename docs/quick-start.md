@@ -71,8 +71,7 @@ You create it with:
 ```console
 $ kubeless function deploy get-python --runtime python2.7 \
                                 --from-file test.py \
-                                --handler test.foobar \
-                                --trigger-http
+                                --handler test.foobar
 INFO[0000] Deploying function...
 INFO[0000] Function get-python submitted for deployment
 INFO[0000] Check the deployment status executing 'kubeless function ls get-python'
@@ -85,11 +84,9 @@ Let's dissect the command:
 * `--from-file test.py`: This is the file containing the function code. It is supported to specify a zip file as far as it doesn't exceed the maximum size for an etcd entry (1 MB).
 * `--handler test.foobar`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `foobar` from the file `test.py`.
 * `--env` to pass env vars to the function like `--env foo=bar,bar=foo`. See the [detail](https://github.com/kubeless/kubeless/pull/316#issuecomment-332172876)
-* `--trigger-http`: This sets the function trigger.
 
 Other available options are:
 
-* `--trigger-http` to trigger the function using HTTP requests.
 * `--trigger-topic` to trigger the function with a certain Kafka topic. See the [next example](#pubsub-function).
 * `--timeout` to specify the timeout (in seconds) for the function to complete its execution (default "180")
 * `--schedule` to trigger the function following a certain schedule using Cron notation. F.e. `--schedule "*/10 * * * *"` would trigger the function every 10 minutes.

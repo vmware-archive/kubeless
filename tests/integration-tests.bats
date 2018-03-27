@@ -57,9 +57,6 @@ load ../script/libtest
   test_kubeless_function_update get-python-deps
   kubeless_function_delete get-python-deps
 }
-@test "Test function ingress: get-python" {
-  test_kubeless_ingress get-python
-}
 @test "Test function autoscale: get-python" {
   if kubectl api-versions | tr '\n' ' ' | grep -q -v "autoscaling/v2beta1"; then
     skip "Autoscale is only supported for Kubernetes >= 1.8"

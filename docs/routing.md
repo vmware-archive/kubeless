@@ -15,7 +15,6 @@ Try our example:
 ```console
 $ cd examples
 $ kubeless function deploy get-python \
-                    --trigger-http \
                     --runtime python2.7 \
                     --handler helloget.foo \
                     --from-file python/helloget.py

@@ -55,11 +55,6 @@ var deployCmd = &cobra.Command{
 		}
 		funcName := args[0]
 
-		triggerHTTP, err := cmd.Flags().GetBool("trigger-http")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
 		schedule, err := cmd.Flags().GetString("schedule")
 		if err != nil {
 			logrus.Fatal(err)
@@ -198,46 +193,7 @@ var deployCmd = &cobra.Command{
 		logrus.Infof("Function %s submitted for deployment", funcName)
 		logrus.Infof("Check the deployment status executing 'kubeless function ls %s'", funcName)
 
-		triggers := []bool{triggerHTTP, topic != "", schedule != ""}
-		triggerCount := 0
-		for _, v := range triggers {
-			if v {
-				triggerCount++
-			}
-		}
-		if triggerCount > 1 {
-			logrus.Fatal("exactly one of --trigger-http, --trigger-topic, --schedule must be specified")
-		}
-
-		// Specifying trigger is not mandatory, if no trigger is specified then just return
-		if triggerCount == 0 {
-			return
-		}
-
-		switch {
-		case triggerHTTP:
-			httpTrigger := kubelessApi.HTTPTrigger{}
-			httpTrigger.TypeMeta = metav1.TypeMeta{
-				Kind:       "HTTPTrigger",
-				APIVersion: "kubeless.io/v1beta1",
-			}
-			httpTrigger.ObjectMeta = metav1.ObjectMeta{
-				Name:      funcName,
-				Namespace: ns,
-			}
-			httpTrigger.ObjectMeta.Labels = map[string]string{
-				"created-by": "kubeless",
-				"function":   funcName,
-			}
-			httpTrigger.Spec.FunctionName = funcName
-			httpTrigger.Spec.RouteName = funcName
-
-			err = utils.CreateHTTPTriggerCustomResource(kubelessClient, &httpTrigger)
-			if err != nil {
-				logrus.Fatalf("Failed to deploy HTTP job trigger %s. Received:\n%s", funcName, err)
-			}
-			break
-		case schedule != "":
+		if schedule != "" {
 			cronJobTrigger := kubelessApi.CronJobTrigger{}
 			cronJobTrigger.TypeMeta = metav1.TypeMeta{
 				Kind:       "CronJobTrigger",
@@ -257,8 +213,8 @@ var deployCmd = &cobra.Command{
 			if err != nil {
 				logrus.Fatalf("Failed to deploy cron job trigger %s. Received:\n%s", funcName, err)
 			}
-			break
-		case topic != "":
+		}
+		if topic != "" {
 			kafkaTrigger := kubelessApi.KafkaTrigger{}
 			kafkaTrigger.TypeMeta = metav1.TypeMeta{
 				Kind:       "KafkaTrigger",
@@ -278,7 +234,6 @@ var deployCmd = &cobra.Command{
 			if err != nil {
 				logrus.Fatalf("Failed to deploy Kafka trigger %s. Received:\n%s", funcName, err)
 			}
-			break
 		}
 	},
 }
@@ -296,7 +251,6 @@ func init() {
 	deployCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory, which is measured in bytes, for the function. It is expressed as a plain integer or a fixed-point interger with one of these suffies: E, P, T, G, M, K, Ei, Pi, Ti, Gi, Mi, Ki")
 	deployCmd.Flags().StringP("cpu", "", "", "Request amount of cpu for the function, which is measured in units of cores. Please see the following link for more information: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-cpu")
-	deployCmd.Flags().Bool("trigger-http", false, "Deploy a http-based function to Kubeless")
 	deployCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
 	deployCmd.Flags().StringP("timeout", "", "180", "Maximum timeout (in seconds) for the function to complete its execution")
 	deployCmd.Flags().Bool("headless", false, "Deploy http-based function without a single service IP and load balancing support from Kubernetes. See: https://kubernetes.io/docs/concepts/services-networking/service/#headless-services")
