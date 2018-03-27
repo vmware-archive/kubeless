@@ -58,6 +58,14 @@ def foobar(event, context):
   return event['data']
 ```
 
+Functions in Kubeless have the same format regardless of the language of the function or the event source. In general, every function:
+
+ - Receives an object `event` as their first parameter. This parameter includes all the information regarding the event source. In particular, the key 'data' should contain the body of the function request.
+ - Receives a second object `context` with general information about the function.
+ - Returns a string/object that will be used as response for the caller.
+
+You can find more details about the function interface [here](./runtimes#runtimes-interface)
+
 You create it with:
 
 ```console
