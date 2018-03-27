@@ -783,7 +783,7 @@ func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
 	annotations := ingress.ObjectMeta.Annotations
 	if annotations == nil || len(annotations) == 0 ||
 		annotations["kubernetes.io/tls-acme"] != "true" ||
-		annotations["ingress.kubernetes.io/ssl-redirect"] != "true" {
+		annotations["nginx.ingress.kubernetes.io/ssl-redirect"] != "true" {
 		t.Fatal("Missing or wrong annotations!")
 	}
 
