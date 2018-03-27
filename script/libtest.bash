@@ -356,6 +356,7 @@ verify_http_trigger(){
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
+    sleep 3
     curl -vv --header "Host: $domain" $ip\/$subpath | grep "${expected_response}"
 }
 delete_http_trigger() {
