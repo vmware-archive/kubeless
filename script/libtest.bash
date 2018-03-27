@@ -368,13 +368,13 @@ create_cronjob_trigger(){
     local schedule=${1:?};
     delete_cronjob_trigger ${func}
     echo_info "TEST: Creating CronJob trigger"
-    kubeless trigger cronjob create ${func} --function ${func} --schedule ${schedule}
+    kubeless trigger cronjob create ${func} --function ${func} --schedule "${schedule}"
 }
 update_cronjob_trigger(){
     local func=${1:?}; shift
     local schedule=${1:?};
     echo_info "TEST: Updating CronJob trigger"
-    kubeless trigger cronjob update ${func} --function ${func} --schedule ${schedule}
+    kubeless trigger cronjob update ${func} --function ${func} --schedule "${schedule}"
 }
 verify_cronjob_trigger(){
     local func=${1:?}; shift
