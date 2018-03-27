@@ -23,6 +23,9 @@ import (
 	"github.com/kubeless/kubeless/pkg/client/informers/externalversions"
 	kubelessInformers "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
 	"github.com/sirupsen/logrus"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -205,9 +208,7 @@ func (c *HTTPTriggerController) syncHTTPTrigger(key string) error {
 		}
 
 		// remove ingress resource if any. Ignore any error, as ingress resource will be GC'ed
-		if httpTriggerObj.Spec.EnableIngress {
-			_ = utils.DeleteIngress(c.clientset, httpTriggerObj.Name, httpTriggerObj.Namespace)
-		}
+		_ = utils.DeleteIngress(c.clientset, httpTriggerObj.Name, httpTriggerObj.Namespace)
 
 		err = c.httpTriggerObjRemoveFinalizer(httpTriggerObj)
 		if err != nil {
@@ -228,42 +229,54 @@ func (c *HTTPTriggerController) syncHTTPTrigger(key string) error {
 	}
 
 	// create ingress resource if required
-	if httpTriggerObj.Spec.EnableIngress {
-		c.logger.Infof("Adding ingress resource for http trigger Obj: %s ", key)
-		err = utils.CreateIngress(c.clientset, httpTriggerObj)
-		if err != nil {
-			c.logger.Errorf("Failed to create ingress rule %s corresponding to http trigger Obj: %s due to: %v: ", httpTriggerObj.Name, key, err)
-		}
+	c.logger.Infof("Adding ingress resource for http trigger Obj: %s ", key)
+	err = utils.CreateIngress(c.clientset, httpTriggerObj)
+	if err != nil && !k8sErrors.IsAlreadyExists(err) {
+		c.logger.Errorf("Failed to create ingress rule %s corresponding to http trigger Obj: %s due to: %v: ", httpTriggerObj.Name, key, err)
 	}
 
 	// delete ingress resource if not required
-	if !httpTriggerObj.Spec.EnableIngress {
-		c.logger.Infof("Deleting ingress resource for http trigger Obj: %s ", key)
-		err = utils.DeleteIngress(c.clientset, httpTriggerObj.Name, httpTriggerObj.Namespace)
-		if err != nil {
-			c.logger.Errorf("Failed to remove ingress rule %s corresponding to http trigger Obj: %s due to: %v: ", httpTriggerObj.Name, key, err)
-		}
-	}
 	c.logger.Infof("Processed update to HTTPTrigger: %s", key)
 	return nil
 }
 
 // FunctionAddedDeletedUpdated process the updates to Function objects
-func (c *HTTPTriggerController) functionAddedDeletedUpdated(obj interface{}, deleted bool) {
+func (c *HTTPTriggerController) functionAddedDeletedUpdated(obj interface{}, deleted bool) error {
 	functionObj, ok := obj.(*kubelessApi.Function)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			c.logger.Errorf("Couldn't get object from tombstone %#v", obj)
-			return
+			err := fmt.Errorf("Couldn't get object from tombstone %#v", obj)
+			c.logger.Errorf(err.Error())
+			return err
 		}
 		functionObj, ok = tombstone.Obj.(*kubelessApi.Function)
 		if !ok {
-			c.logger.Errorf("Tombstone contained object that is not a Function object %#v", obj)
-			return
+			err := fmt.Errorf("Tombstone contained object that is not a Pod %#v", obj)
+			c.logger.Errorf(err.Error())
+			return err
 		}
 	}
+
+	if deleted {
+		c.logger.Infof("Function %s deleted. Removing associated http trigger", functionObj.Name)
+		httptList, err := c.kubelessclient.KubelessV1beta1().HTTPTriggers(functionObj.Namespace).List(metav1.ListOptions{})
+		if err != nil {
+			return err
+		}
+		for _, httpTrigger := range httptList.Items {
+			if httpTrigger.Spec.FunctionName == functionObj.Name {
+				err = c.kubelessclient.KubelessV1beta1().HTTPTriggers(functionObj.Namespace).Delete(httpTrigger.Name, &metav1.DeleteOptions{})
+				if err != nil && !k8sErrors.IsNotFound(err) {
+					c.logger.Errorf("Failed to delete httptrigger created for the function %s in namespace %s, Error: %s", functionObj.ObjectMeta.Name, functionObj.ObjectMeta.Namespace, err)
+					return err
+				}
+			}
+		}
+	}
+
 	c.logger.Infof("Successfully processed update to function object %s Namespace: %s", functionObj.Name, functionObj.Namespace)
+	return nil
 }
 
 func (c *HTTPTriggerController) httpTriggerObjHasFinalizer(triggerObj *kubelessApi.HTTPTrigger) bool {
@@ -314,7 +327,7 @@ func httpTriggerObjChanged(oldObj, newObj *kubelessApi.HTTPTrigger) bool {
 	newSpec := &newObj.Spec
 	oldSpec := &oldObj.Spec
 
-	if newSpec.HostName != oldSpec.HostName || newSpec.TLSAcme != oldSpec.TLSAcme {
+	if !apiequality.Semantic.DeepEqual(newSpec, oldSpec) {
 		return true
 	}
 	return false

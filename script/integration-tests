@@ -96,6 +96,8 @@ if [ ${exit_code} -ne 0 -o -n "${TRAVIS_DUMP_LOGS}" ]; then
         echo "### LOGs: namespace: ${ns} ###"
         kubectl get pod -n ${ns} -oname|xargs -I@ sh -xc "kubectl logs -n ${ns} @|sed 's|^|@: |'"
     done
+    echo "INFO: Description"
+    kubectl describe pod -l created-by=kubeless
     echo "INFO: LOGs: pod: kube-dns ###"
     kubectl logs -n kube-system -l k8s-app=kube-dns -c kubedns
     echo "INFO: LOGs: END"

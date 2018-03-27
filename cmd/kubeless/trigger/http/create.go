@@ -104,7 +104,6 @@ var createCmd = &cobra.Command{
 		}
 		httpTrigger.Spec.HostName = hostName
 
-		httpTrigger.Spec.EnableIngress = true
 		err = utils.CreateHTTPTriggerCustomResource(kubelessClient, &httpTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to deploy HTTP trigger %s in namespace %s. Error: %s", triggerName, ns, err)
