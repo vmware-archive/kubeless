@@ -475,7 +475,6 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 			Namespace:       httpTriggerObj.Namespace,
 			OwnerReferences: or,
 			Labels:          httpTriggerObj.ObjectMeta.Labels,
-			Annotations:     httpTriggerObj.ObjectMeta.Annotations,
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
@@ -497,6 +496,19 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 				},
 			},
 		},
+	}
+
+	if len(httpTriggerObj.Spec.BasicAuthSecret) > 0 {
+		if len(ingress.ObjectMeta.Annotations) == 0 {
+			ingress.ObjectMeta.Annotations = make(map[string]string)
+		}
+		switch httpTriggerObj.Spec.BasicAuthType {
+		case "Traefik":
+			ingress.ObjectMeta.Annotations["kubernetes.io/ingress.class"] = "traefic"
+		default: // Nginx
+			ingress.ObjectMeta.Annotations["ingress.kubernetes.io/auth-type"] = "basic"
+			ingress.ObjectMeta.Annotations["ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
+		}
 	}
 
 	if httpTriggerObj.Spec.TLSAcme {

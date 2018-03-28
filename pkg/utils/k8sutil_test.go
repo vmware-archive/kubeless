@@ -838,18 +838,15 @@ func TestCreateIngressResourceWithBasicAuthNginx(t *testing.T) {
 			Name:      "foo",
 			Namespace: "myns",
 			UID:       "1234",
-			Annotations: map[string]string{
-				"ingress.kubernetes.io/auth-type":   "basic",
-				"ingress.kubernetes.io/auth-secret": "basic-auth-secret",
-				"ingress.kubernetes.io/auth-realm":  "Authentication Required",
-			},
 		},
 		Spec: kubelessApi.HTTPTriggerSpec{
-			HostName:     "foo",
-			RouteName:    "foo",
-			Path:         "/foo",
-			TLSAcme:      true,
-			FunctionName: f1.Name,
+			HostName:        "foo",
+			RouteName:       "foo",
+			Path:            "/foo",
+			TLSAcme:         true,
+			FunctionName:    f1.Name,
+			BasicAuthType:   "Nginx",
+			BasicAuthSecret: "basic-auth-secret",
 		},
 	}
 	if err := CreateIngress(clientset, httpTrigger); err != nil {
@@ -866,8 +863,7 @@ func TestCreateIngressResourceWithBasicAuthNginx(t *testing.T) {
 		annotations["kubernetes.io/tls-acme"] != "true" ||
 		annotations["ingress.kubernetes.io/ssl-redirect"] != "true" ||
 		annotations["ingress.kubernetes.io/auth-type"] != "basic" ||
-		annotations["ingress.kubernetes.io/auth-secret"] != "basic-auth-secret" ||
-		annotations["ingress.kubernetes.io/auth-realm"] != "Authentication Required" {
+		annotations["ingress.kubernetes.io/auth-secret"] != "basic-auth-secret" {
 		t.Fatal("Missing or wrong annotations!")
 	}
 
