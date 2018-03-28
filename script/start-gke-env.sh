@@ -64,8 +64,7 @@ if gcloud container clusters list | grep -q $CLUSTER; then
     kubectl delete crd kafkatriggers.kubeless.io   || true
 else
     echo "Creating cluster $CLUSTER in $ZONE (v$VERSION)"
-    # Bypass the warning about using alpha features
-    echo 'y' | gcloud container clusters create --cluster-version=$VERSION --zone $ZONE $CLUSTER --num-nodes 5 --no-enable-legacy-authorization --enable-kubernetes-alpha --machine-type=n1-standard-2
+    gcloud container clusters create --cluster-version=$VERSION --zone $ZONE $CLUSTER --num-nodes 5 --machine-type=n1-standard-2
     # Wait for the cluster to respond
     cnt=20
     until kubectl get pods; do

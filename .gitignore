@@ -147,6 +147,7 @@ bats/
 bundles/
 docker/controller-manager/kubeless-controller-manager
 docker/kafka-controller/kafka-controller
+docker/function-image-builder/imbuilder
 ksonnet-lib/
 kubeless-openshift.yaml
 kubeless-rbac.yaml

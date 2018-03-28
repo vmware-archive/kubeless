@@ -16,7 +16,6 @@ import (
 	"github.com/kubeless/kubeless/pkg/langruntime"
 
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
-	batchv2alpha1 "k8s.io/api/batch/v2alpha1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	xv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -26,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/apimachinery"
 	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
@@ -246,48 +244,85 @@ func TestEnsureService(t *testing.T) {
 	}
 }
 
-func TestEnsureDeployment(t *testing.T) {
+func TestEnsureImage(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
+	langruntime.AddFakeConfig(clientset)
+	lr := langruntime.SetupLangRuntime(clientset)
+	lr.ReadConfigMap()
+	ns := "default"
+	f1Name := "f1"
 	or := []metav1.OwnerReference{
 		{
 			Kind:       "Function",
 			APIVersion: "kubeless.io/v1beta1",
 		},
 	}
-	ns := "default"
-	funcLabels := map[string]string{
-		"foo": "bar",
-	}
-	funcAnno := map[string]string{
-		"bar": "foo",
-	}
-
-	langruntime.AddFakeConfig(clientset)
-	lr := langruntime.SetupLangRuntime(clientset)
-	lr.ReadConfigMap()
-
-	f1Name := "f1"
-	f1Port := int32(8080)
 	f1 := &kubelessApi.Function{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      f1Name,
 			Namespace: ns,
-			Labels:    funcLabels,
 		},
 		Spec: kubelessApi.FunctionSpec{
 			Function: "function",
 			Deps:     "deps",
 			Handler:  "foo.bar",
 			Runtime:  "python2.7",
-			Deployment: v1beta1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: funcAnno,
+		},
+	}
+	// Testing happy path
+	err := EnsureFuncImage(clientset, f1, lr, or, "user/image", "4840d87600137157493ba43a24f0b4bb6cf524ebbf095ce96c79f85bf5a3ff5a", "kubeless/builder", "registry.docker.io", "registry-creds")
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	jobs, err := clientset.BatchV1().Jobs(ns).List(metav1.ListOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if len(jobs.Items) != 1 {
+		t.Errorf("It should have created the build job")
+	}
+	buildContainer := jobs.Items[0].Spec.Template.Spec.Containers[0]
+	if buildContainer.Image != "kubeless/builder" {
+		t.Errorf("Image %s of build job is not recognised", jobs.Items[0].Spec.Template.Spec.Containers[0].Image)
+	}
+	dockerConfigFolder := ""
+	for _, envvar := range buildContainer.Env {
+		if envvar.Name == "DOCKER_CONFIG_FOLDER" {
+			dockerConfigFolder = envvar.Value
+		}
+	}
+	if dockerConfigFolder == "" {
+		t.Error("Builder image relies on the env var DOCKER_CONFIG_FOLDER to authenticate")
+	}
+}
+
+func getDefaultFunc(name, ns string) *kubelessApi.Function {
+	fPort := int32(8080)
+	f := kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: kubelessApi.FunctionSpec{
+			Function: "function",
+			Deps:     "deps",
+			Handler:  "foo.bar",
+			Runtime:  "python2.7",
+			ServiceSpec: v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{
+						Name:       "http-function-port",
+						Port:       fPort,
+						TargetPort: intstr.FromInt(int(fPort)),
+						NodePort:   0,
+						Protocol:   v1.ProtocolTCP,
+					},
 				},
+				Type: v1.ServiceTypeClusterIP,
+			},
+			Deployment: v1beta1.Deployment{
 				Spec: v1beta1.DeploymentSpec{
 					Template: v1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Annotations: funcAnno,
-						},
 						Spec: v1.PodSpec{
 							Containers: []v1.Container{
 								{
@@ -305,8 +340,40 @@ func TestEnsureDeployment(t *testing.T) {
 			},
 		},
 	}
+	return &f
+}
+func TestEnsureDeployment(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	or := []metav1.OwnerReference{
+		{
+			Kind:       "Function",
+			APIVersion: "k8s.io",
+		},
+	}
+	ns := "default"
+	funcLabels := map[string]string{
+		"foo": "bar",
+	}
+	funcAnno := map[string]string{
+		"bar": "foo",
+	}
+
+	langruntime.AddFakeConfig(clientset)
+	lr := langruntime.SetupLangRuntime(clientset)
+	lr.ReadConfigMap()
+
+	f1Name := "f1"
+	f1 := getDefaultFunc(f1Name, ns)
+	f1Port := f1.Spec.ServiceSpec.Ports[0].Port
+	f1.ObjectMeta.Labels = funcLabels
+	f1.Spec.Deployment.ObjectMeta = metav1.ObjectMeta{
+		Annotations: funcAnno,
+	}
+	f1.Spec.Deployment.Spec.Template.ObjectMeta = metav1.ObjectMeta{
+		Annotations: funcAnno,
+	}
 	// Testing happy path
-	err := EnsureFuncDeployment(clientset, f1, or, lr)
+	err := EnsureFuncDeployment(clientset, f1, or, lr, "")
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -412,12 +479,10 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If no handler and function is given it should not fail
-	f2 := kubelessApi.Function{}
-	f2 = *f1
-	f2.ObjectMeta.Name = "func2"
+	f2 := getDefaultFunc("func2", ns)
 	f2.Spec.Function = ""
 	f2.Spec.Handler = ""
-	err = EnsureFuncDeployment(clientset, &f2, or, lr)
+	err = EnsureFuncDeployment(clientset, f2, or, lr, "")
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -427,11 +492,9 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If the Image has been already provided it should not resolve it
-	f3 := kubelessApi.Function{}
-	f3 = *f1
-	f3.ObjectMeta.Name = "func3"
+	f3 := getDefaultFunc("func3", ns)
 	f3.Spec.Deployment.Spec.Template.Spec.Containers[0].Image = "test-image"
-	err = EnsureFuncDeployment(clientset, &f3, or, lr)
+	err = EnsureFuncDeployment(clientset, f3, or, lr, "")
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -444,12 +507,10 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// If no function is given it should not use an init container
-	f4 := kubelessApi.Function{}
-	f4 = *f1
-	f4.ObjectMeta.Name = "func4"
+	f4 := getDefaultFunc("func4", ns)
 	f4.Spec.Function = ""
 	f4.Spec.Deps = ""
-	err = EnsureFuncDeployment(clientset, &f4, or, lr)
+	err = EnsureFuncDeployment(clientset, f4, or, lr, "")
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -466,7 +527,7 @@ func TestEnsureDeployment(t *testing.T) {
 	f6 = *f1
 	f6.Spec.Handler = "foo.bar2"
 	f6.Spec.Deployment.ObjectMeta.Annotations["new-key"] = "value"
-	err = EnsureFuncDeployment(clientset, &f6, or, lr)
+	err = EnsureFuncDeployment(clientset, &f6, or, lr, "")
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -482,23 +543,19 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	// It should return an error if some dependencies are given but the runtime is not supported
-	f7 := kubelessApi.Function{}
-	f7 = *f1
-	f7.ObjectMeta.Name = "func7"
+	f7 := getDefaultFunc("func7", ns)
 	f7.Spec.Deps = "deps"
 	f7.Spec.Runtime = "cobol"
-	err = EnsureFuncDeployment(clientset, &f7, or, lr)
+	err = EnsureFuncDeployment(clientset, f7, or, lr, "")
 
 	if err == nil {
-		t.Errorf("An error should be thrown")
+		t.Fatal("An error should be thrown")
 	}
 
 	// If a timeout is specified it should set an environment variable FUNC_TIMEOUT
-	f8 := kubelessApi.Function{}
-	f8 = *f1
-	f8.ObjectMeta.Name = "func8"
+	f8 := getDefaultFunc("func8", ns)
 	f8.Spec.Timeout = "10"
-	err = EnsureFuncDeployment(clientset, &f8, or, lr)
+	err = EnsureFuncDeployment(clientset, f8, or, lr, "")
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -508,6 +565,23 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 	if getEnvValueFromList("FUNC_TIMEOUT", dpm.Spec.Template.Spec.Containers[0].Env) != "10" {
 		t.Error("Unable to set timeout")
+	}
+
+	// If a prebuilt image is specified it should not build the function using init containers
+	f9 := getDefaultFunc("func9", ns)
+	err = EnsureFuncDeployment(clientset, f9, or, lr, "user/image:test")
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func9", metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if dpm.Spec.Template.Spec.Containers[0].Image != "user/image:test" {
+		t.Errorf("Unexpected image %s, expecting prebuilt user/image:test", dpm.Spec.Template.Spec.Containers[0].Image)
+	}
+	if len(dpm.Spec.Template.Spec.InitContainers) != 0 {
+		t.Error("Unexpected init containers")
 	}
 }
 
@@ -560,145 +634,55 @@ func TestEnsureCronJob(t *testing.T) {
 			Timeout: "120",
 		},
 	}
-	c := &kubelessApi.CronJobTrigger{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      f1Name,
-			Namespace: ns,
-		},
-		Spec: kubelessApi.CronJobTriggerSpec{
-			Schedule:     "*/10 * * * *",
-			FunctionName: f1Name,
-		},
-	}
 	expectedMeta := metav1.ObjectMeta{
 		Name:            "trigger-" + f1Name,
 		Namespace:       ns,
 		OwnerReferences: or,
 	}
 
-	client := fakeRESTClient(func(req *http.Request) (*http.Response, error) {
-		header := http.Header{}
-		header.Set("Content-Type", runtime.ContentTypeJSON)
-		listObj := batchv2alpha1.CronJobList{}
-		if req.Method == "POST" {
-			reqCronJobBytes, err := ioutil.ReadAll(req.Body)
-			if err != nil {
-				t.Fatal(err)
-			}
-			cronJob := batchv2alpha1.CronJob{}
-			err = json.Unmarshal(reqCronJobBytes, &cronJob)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !reflect.DeepEqual(expectedMeta, cronJob.ObjectMeta) {
-				t.Errorf("Unexpected metadata metadata. Expecting\n%+v \nReceived:\n%+v", expectedMeta, cronJob.ObjectMeta)
-			}
-			if *cronJob.Spec.SuccessfulJobsHistoryLimit != int32(3) {
-				t.Errorf("Unexpected SuccessfulJobsHistoryLimit: %d", *cronJob.Spec.SuccessfulJobsHistoryLimit)
-			}
-			if *cronJob.Spec.FailedJobsHistoryLimit != int32(1) {
-				t.Errorf("Unexpected FailedJobsHistoryLimit: %d", *cronJob.Spec.FailedJobsHistoryLimit)
-			}
-			if *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds != int64(120) {
-				t.Errorf("Unexpected ActiveDeadlineSeconds: %d", *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds)
-			}
-			expectedCommand := []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", f1Name, ns)}
-			args := cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args
-			// skip event headers data (i.e  -H "event-id: cronjob-controller-2018-03-05T05:55:41.990784027Z" etc)
-			foundCommand := []string{args[0], args[1], args[len(args)-1]}
-			if !reflect.DeepEqual(foundCommand, expectedCommand) {
-				t.Errorf("Unexpected command %s expexted %s", foundCommand, expectedCommand)
-			}
-		} else {
-			t.Fatalf("unexpected verb %s", req.Method)
-		}
-		switch req.URL.Path {
-		case "/apis/batch/v2alpha1/namespaces/default/cronjobs":
-			return &http.Response{
-				StatusCode: 200,
-				Header:     header,
-				Body:       objBody(&listObj),
-			}, nil
-		default:
-			t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
-			return nil, nil
-		}
-	})
-	err := EnsureCronJob(client, f1, c, or, "batch/v2alpha1")
+	clientset := fake.NewSimpleClientset()
+
+	err := EnsureCronJob(clientset, f1, "* * * * *", or)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
+	}
+	cronJob, err := clientset.BatchV1beta1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", f1.Name), metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if !reflect.DeepEqual(expectedMeta, cronJob.ObjectMeta) {
+		t.Errorf("Unexpected metadata metadata. Expecting\n%+v \nReceived:\n%+v", expectedMeta, cronJob.ObjectMeta)
+	}
+	if *cronJob.Spec.SuccessfulJobsHistoryLimit != int32(3) {
+		t.Errorf("Unexpected SuccessfulJobsHistoryLimit: %d", *cronJob.Spec.SuccessfulJobsHistoryLimit)
+	}
+	if *cronJob.Spec.FailedJobsHistoryLimit != int32(1) {
+		t.Errorf("Unexpected FailedJobsHistoryLimit: %d", *cronJob.Spec.FailedJobsHistoryLimit)
+	}
+	if *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds != int64(120) {
+		t.Errorf("Unexpected ActiveDeadlineSeconds: %d", *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds)
+	}
+	expectedCommand := []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", f1Name, ns)}
+	args := cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args
+	// skip event headers data (i.e  -H "event-id: cronjob-controller-2018-03-05T05:55:41.990784027Z" etc)
+	foundCommand := []string{args[0], args[1], args[len(args)-1]}
+	if !reflect.DeepEqual(foundCommand, expectedCommand) {
+		t.Errorf("Unexpected command %s expexted %s", foundCommand, expectedCommand)
 	}
 
 	// It should update the existing cronJob if it is already created
-	updateCalled := false
-	client = fakeRESTClient(func(req *http.Request) (*http.Response, error) {
-		header := http.Header{}
-		header.Set("Content-Type", runtime.ContentTypeJSON)
-		switch req.Method {
-		case "POST":
-			return &http.Response{
-				StatusCode: http.StatusConflict,
-				Header:     header,
-				Body:       objBody(nil),
-			}, nil
-		case "GET":
-			previousCronJob := batchv2alpha1.CronJob{
-				ObjectMeta: metav1.ObjectMeta{
-					ResourceVersion: "123456",
-				},
-			}
-			return &http.Response{
-				StatusCode: 200,
-				Header:     header,
-				Body:       objBody(&previousCronJob),
-			}, nil
-		case "PUT":
-			updateCalled = true
-			reqCronJobBytes, err := ioutil.ReadAll(req.Body)
-			if err != nil {
-				t.Fatal(err)
-			}
-			cronJob := batchv2alpha1.CronJob{}
-			err = json.Unmarshal(reqCronJobBytes, &cronJob)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if cronJob.ObjectMeta.ResourceVersion != "123456" {
-				t.Error("Expecting that the object to update contains the previous information")
-			}
-			listObj := batchv2alpha1.CronJobList{}
-			return &http.Response{
-				StatusCode: 200,
-				Header:     header,
-				Body:       objBody(&listObj),
-			}, nil
-		default:
-			t.Fatalf("unexpected request: %#v\n%#v", req.URL, req)
-			return nil, nil
-		}
-	})
-	err = EnsureCronJob(client, f1, c, or, "batch/v2alpha1")
+	newSchedule := "*/10 * * * *"
+	err = EnsureCronJob(clientset, f1, newSchedule, or)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	if !updateCalled {
-		t.Errorf("Expect the update method to be called")
+	updatedCronJob, err := clientset.BatchV1beta1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", f1.Name), metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
 	}
-
-	// IT should change the endpoint
-	client = fakeRESTClient(func(req *http.Request) (*http.Response, error) {
-		header := http.Header{}
-		header.Set("Content-Type", runtime.ContentTypeJSON)
-		if req.URL.Path != "/apis/batch/v1beta1/namespaces/default/cronjobs" {
-			t.Errorf("Unexpected URL %s", req.URL.Path)
-		}
-		return &http.Response{
-			StatusCode: 200,
-			Header:     header,
-			Body:       objBody(nil),
-		}, nil
-	})
-	err = EnsureCronJob(client, f1, c, or, "batch/v1beta1")
+	if updatedCronJob.Spec.Schedule != newSchedule {
+		t.Errorf("Unexpected schedule %s expecting %s", updatedCronJob.Spec.Schedule, newSchedule)
+	}
 }
 
 func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
@@ -999,7 +983,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	if !strings.HasPrefix(c.Args[0], "base64 -d < /deps/test.func > /deps/test.func.decoded") {
+	if !strings.HasPrefix(c.Args[0], "base64 -d < /deps/test.func > /tmp/func.decoded") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 
@@ -1023,7 +1007,7 @@ func TestGetProvisionContainer(t *testing.T) {
 
 	// It should extract the file in case it is a Zip
 	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64+zip", "python2.7", rvol, dvol, lr)
-	if !strings.Contains(c.Args[0], "unzip -o /deps/test.zip.decoded -d /runtime") {
+	if !strings.Contains(c.Args[0], "unzip -o /tmp/func.decoded -d /runtime") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 

@@ -58,7 +58,6 @@ var routeDeleteCmd = &cobra.Command{
 		}
 
 		httpTrigger.Spec.RouteName = routeName
-		httpTrigger.Spec.EnableIngress = false
 		err = utils.UpdateHTTPTriggerCustomResource(kubelessClient, httpTrigger)
 		if err != nil {
 			logrus.Fatalf("Can't create route: %v", err)

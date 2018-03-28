@@ -11,6 +11,30 @@ Each runtime is encapsulated in a container image. The reference to these images
 
 Runtimes have a maximum timeout set by the environment variable FUNC_TIMEOUT. This environment variable can be set using the CLI option `--timeout`. The default value is 180 seconds. If a function takes more than that in being executed, the process will be terminated.
 
+## Runtimes interface
+
+Every function receives two arguments: `event` and `context`. The first argument contains information about the source of the event that the function has received. The second contains general information about the function like its name or maximum timeout. This is a representation in YAML of a Kafka event:
+
+```yaml
+event:                                  
+  data:                                         # Event data
+    foo: "bar"                                  # The data is parsed as JSON when required
+  event-id: "2ebb072eb24264f55b3fff"            # Event ID
+  event-type: "application/json"                # Event content type
+  event-time: "2009-11-10 23:00:00 +0000 UTC"   # Timestamp of the event source
+  event-namespace: "kafkatriggers.kubeless.io"  # Event emitter
+  extensions:                                   # Optional parameters
+    request: ...                                # Reference to the request received 
+                                                # (specific properties will depend on the function language)
+context:
+    function-name: "pubsub-nodejs"
+    timeout: "180"
+    runtime: "nodejs6"
+    memory-limit: "128M"
+```
+
+You can check basic examples of every language supported in the [examples](https://github.com/kubeless/kubeless/tree/master/examples) folder.
+
 ## Configuring Default Runtime Container Images
 
 The Kubeless controller defines a set of default container images per supported runtime variant.
@@ -51,8 +75,7 @@ $ kubeless function deploy myFunction --runtime nodejs6 \
                                 --env NPM_SCOPE=@myorg \
                                 --dependencies package.json \
                                 --handler test.foobar \
-                                --from-file test.js \
-                                --trigger-http
+                                --from-file test.js
 ```
 
 ### Python HTTP Trigger
@@ -128,7 +151,7 @@ $ kubeless function deploy \
   --from-file ./handler.py \
   --handler handler.hello \
   --runtime python2.7 \
-  --trigger-http hello
+  hello
 $ kubeless function ls
 NAME      	NAMESPACE	HANDLER     	RUNTIME  	TYPE	TOPIC
 get-python	default  	foo.foo	      python2.7	HTTP

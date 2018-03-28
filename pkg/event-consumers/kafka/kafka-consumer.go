@@ -1,3 +1,19 @@
+/*
+Copyright (c) 2016-2017 Bitnami
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package kafka
 
 import (
@@ -64,12 +80,20 @@ func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, 
 		case msg, more := <-consumer.Messages():
 			if more {
 				logrus.Infof("Received Kafka message Partition: %d Offset: %d Key: %s Value: %s ", msg.Partition, msg.Offset, string(msg.Key), string(msg.Value))
-				//forward msg to function
-				err = sendMessage(clientset, funcName, ns, string(msg.Value))
+				logrus.Infof("Sending message %s to function %s", msg, funcName)
+				req, err := getHTTPReq(clientset, funcName, ns, "POST", string(msg.Value))
 				if err != nil {
-					logrus.Errorf("Failed to send message to function: %v", err)
+					logrus.Errorf("Unable to elaborate request: %v", err)
+				} else {
+					//forward msg to function
+					err = sendMessage(req)
+					if err != nil {
+						logrus.Errorf("Failed to send message to function: %v", err)
+					} else {
+						logrus.Infof("Message has sent to function %s successfully", funcName)
+					}
+					consumer.MarkOffset(msg, "")
 				}
-				consumer.MarkOffset(msg, "")
 			}
 		case ntf, more := <-consumer.Notifications():
 			if more {
@@ -91,33 +115,35 @@ func isJSON(s string) bool {
 
 }
 
-func sendMessage(clientset kubernetes.Interface, funcName, ns, msg string) error {
-	svc, err := clientset.CoreV1().Services(ns).Get(funcName, metav1.GetOptions{})
+func getHTTPReq(clientset kubernetes.Interface, funcName, namespace, method, body string) (*http.Request, error) {
+	svc, err := clientset.CoreV1().Services(namespace).Get(funcName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("Unable to find the service for function %s", funcName)
+		return nil, fmt.Errorf("Unable to find the service for function %s", funcName)
 	}
-	logrus.Infof("Sending message %s to function %s", msg, funcName)
 	funcPort := strconv.Itoa(int(svc.Spec.Ports[0].Port))
-
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s.%s.svc.cluster.local:%s", funcName, ns, funcPort), strings.NewReader(msg))
+	req, err := http.NewRequest(method, fmt.Sprintf("http://%s.%s.svc.cluster.local:%s", funcName, namespace, funcPort), strings.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("Failed to create a request %v", req)
+		return nil, fmt.Errorf("Unable to create request %v", err)
 	}
 	timestamp := time.Now().UTC()
 	eventID, err := utils.GetRandString(11)
 	if err != nil {
-		return fmt.Errorf("Failed to create a event-ID %v", err)
+		return nil, fmt.Errorf("Failed to create a event-ID %v", err)
 	}
 	req.Header.Add("event-id", eventID)
 	req.Header.Add("event-time", timestamp.String())
 	req.Header.Add("event-namespace", "kafkatriggers.kubeless.io")
-	if isJSON(msg) {
+	if isJSON(body) {
 		req.Header.Add("Content-Type", "application/json")
 		req.Header.Add("event-type", "application/json")
 	} else {
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		req.Header.Add("event-type", "application/x-www-form-urlencoded")
 	}
+	return req, nil
+}
+
+func sendMessage(req *http.Request) error {
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
@@ -126,8 +152,6 @@ func sendMessage(clientset kubernetes.Interface, funcName, ns, msg string) error
 	if res.StatusCode != 200 {
 		return fmt.Errorf("Error: received error code %d: %s", res.StatusCode, res.Status)
 	}
-
-	logrus.Infof("Message has sent to function %s successfully", funcName)
 	return nil
 }
 
