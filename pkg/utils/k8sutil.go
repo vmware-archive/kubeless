@@ -499,13 +499,26 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 		},
 	}
 
+	if len(httpTriggerObj.Spec.BasicAuthSecret) > 0 {
+		if len(ingress.ObjectMeta.Annotations) == 0 {
+			ingress.ObjectMeta.Annotations = make(map[string]string)
+		}
+		switch httpTriggerObj.Spec.BasicAuthType {
+		case "Traefik":
+			ingress.ObjectMeta.Annotations["kubernetes.io/ingress.class"] = "traefic"
+		default: // Nginx
+			ingress.ObjectMeta.Annotations["ingress.kubernetes.io/auth-type"] = "basic"
+			ingress.ObjectMeta.Annotations["ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
+		}
+	}
+
 	if httpTriggerObj.Spec.TLSAcme {
 		// add annotations and TLS configuration for kube-lego
-		ingressAnnotations := map[string]string{
-			"kubernetes.io/tls-acme":             "true",
-			"ingress.kubernetes.io/ssl-redirect": "true",
+		if len(ingress.ObjectMeta.Annotations) == 0 {
+			ingress.ObjectMeta.Annotations = make(map[string]string)
 		}
-		ingress.ObjectMeta.Annotations = ingressAnnotations
+		ingress.ObjectMeta.Annotations["kubernetes.io/tls-acme"] = "true"
+		ingress.ObjectMeta.Annotations["ingress.kubernetes.io/ssl-redirect"] = "true"
 
 		ingress.Spec.TLS = []v1beta1.IngressTLS{
 			{
