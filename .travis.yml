@@ -125,6 +125,7 @@ script:
         ./script/integration-tests minikube kafka
         ;;
       GKE)
+        make function-image-builder FUNCTION_IMAGE_BUILDER=$BUILDER_IMAGE
         make kafka-controller-image KAFKA_CONTROLLER_IMAGE=$KAFKA_CONTROLLER_IMAGE
         docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
         docker push $CONTROLLER_IMAGE
