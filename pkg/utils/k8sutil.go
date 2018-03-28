@@ -499,40 +499,60 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 		},
 	}
 
+	ingressAnnotations := make(map[string]string)
+
+	// If exposed URL in the backend service differs from the specified path in the Ingress rule.
+	// Without a rewrite any request will return 404. Set the annotation ingress.kubernetes.io/rewrite-target
+	// to the path expected by the service
+	ingressAnnotations["nginx.ingress.kubernetes.io/rewrite-target"] = "/"
+
 	if len(httpTriggerObj.Spec.BasicAuthSecret) > 0 {
-		if len(ingress.ObjectMeta.Annotations) == 0 {
-			ingress.ObjectMeta.Annotations = make(map[string]string)
-		}
-		switch httpTriggerObj.Spec.BasicAuthType {
-		case "Traefik":
-			ingress.ObjectMeta.Annotations["kubernetes.io/ingress.class"] = "traefic"
-		default: // Nginx
-			ingress.ObjectMeta.Annotations["ingress.kubernetes.io/auth-type"] = "basic"
-			ingress.ObjectMeta.Annotations["ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
+		switch gateway := httpTriggerObj.Spec.Gateway; gateway {
+		case "nginx":
+			ingressAnnotations["kubernetes.io/ingress.class"] = "nginx"
+			ingressAnnotations["ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
+			ingressAnnotations["ingress.kubernetes.io/auth-type"] = "basic"
+			break
+		case "traefik":
+			ingressAnnotations["kubernetes.io/ingress.class"] = "traefik"
+			ingressAnnotations["ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
+			ingressAnnotations["ingress.kubernetes.io/auth-type"] = "basic"
+			break
 		}
 	}
 
+	// add annotations and TLS configuration for kube-lego
 	if httpTriggerObj.Spec.TLSAcme {
-		// add annotations and TLS configuration for kube-lego
-		if len(ingress.ObjectMeta.Annotations) == 0 {
-			ingress.ObjectMeta.Annotations = make(map[string]string)
-		}
-		ingress.ObjectMeta.Annotations["kubernetes.io/tls-acme"] = "true"
-		ingress.ObjectMeta.Annotations["ingress.kubernetes.io/ssl-redirect"] = "true"
-
+		ingressAnnotations["kubernetes.io/tls-acme"] = "true"
+		ingressAnnotations["nginx.ingress.kubernetes.io/ssl-redirect"] = "true"
 		ingress.Spec.TLS = []v1beta1.IngressTLS{
 			{
 				Hosts:      []string{httpTriggerObj.Spec.HostName},
-				SecretName: httpTriggerObj.Spec.RouteName + "-tls",
+				SecretName: httpTriggerObj.Name + "-tls",
 			},
 		}
 	}
 
+	ingress.ObjectMeta.Annotations = ingressAnnotations
 	_, err = client.ExtensionsV1beta1().Ingresses(httpTriggerObj.Namespace).Create(ingress)
-	if err != nil {
-		return err
+	if err != nil && k8sErrors.IsAlreadyExists(err) {
+		var newIngress *v1beta1.Ingress
+		newIngress, err = client.ExtensionsV1beta1().Ingresses(httpTriggerObj.Namespace).Get(ingress.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if len(ingress.ObjectMeta.Labels) > 0 {
+			newIngress.ObjectMeta.Labels = ingress.ObjectMeta.Labels
+		}
+		newIngress.ObjectMeta.OwnerReferences = or
+		newIngress.Spec = ingress.Spec
+		_, err = client.ExtensionsV1beta1().Ingresses(httpTriggerObj.Namespace).Update(newIngress)
+		if err != nil && k8sErrors.IsAlreadyExists(err) {
+			// The configmap may already exist and there is nothing to update
+			return nil
+		}
 	}
-	return nil
+	return err
 }
 
 // GetLocalHostname returns hostname

@@ -829,7 +829,7 @@ func TestCreateIngressResourceWithBasicAuthNginx(t *testing.T) {
 			Path:            "/foo",
 			TLSAcme:         true,
 			FunctionName:    f1.Name,
-			BasicAuthType:   "Nginx",
+			Gateway:   "Nginx",
 			BasicAuthSecret: "basic-auth-secret",
 		},
 	}
@@ -846,6 +846,7 @@ func TestCreateIngressResourceWithBasicAuthNginx(t *testing.T) {
 	if annotations == nil || len(annotations) == 0 ||
 		annotations["kubernetes.io/tls-acme"] != "true" ||
 		annotations["ingress.kubernetes.io/ssl-redirect"] != "true" ||
+		annotations["kubernetes.io/ingress.class"] != "nginx" ||
 		annotations["ingress.kubernetes.io/auth-type"] != "basic" ||
 		annotations["ingress.kubernetes.io/auth-secret"] != "basic-auth-secret" {
 		t.Fatal("Missing or wrong annotations!")

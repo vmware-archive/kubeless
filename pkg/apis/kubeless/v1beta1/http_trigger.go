@@ -38,7 +38,7 @@ type HTTPTriggerSpec struct {
 	RouteName       string `json:"route-name"`
 	Path            string `json:"path"`
 	BasicAuthSecret string `json:"basic-auth-secret"`
-	BasicAuthType   string `json:"basic-auth-type"`
+	Gateway         string `json:"gateway"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
