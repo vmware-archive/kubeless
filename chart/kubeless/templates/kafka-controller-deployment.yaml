@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: kafka-trigger-controller
+  labels:
+{{ include "labels.standard" . | indent 4 }}
+    kubeless: kafka-trigger-controller
+spec:
+  replicas: {{ .Values.kafkaController.deployment.replicaCount }}
+  template:
+    metadata:
+      labels:
+        kubeless: kafka-trigger-controller
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: kafka-trigger-controller
+        image: "{{ .Values.kafkaController.deployment.image.repository }}:{{ .Values.kafkaController.deployment.image.tag }}"
+        imagePullPolicy: {{ .Values.kafkaController.deployment.image.pullPolicy }}
