@@ -158,7 +158,7 @@ local kubelessConfig  = configMap.default("kubeless-config", namespace) +
     configMap.data({"deployment": std.toString(deploymentConfig)})+
     configMap.data({"runtime-images": std.toString(runtime_images)})+
     configMap.data({"enable-build-step": "false"})+
-    configMap.data({"builder-image": "andresmgot/kubeless-function-image-builder:latest"});
+    configMap.data({"builder-image": "kubeless/function-image-builder:latest"});
 
 {
   controllerAccount: k.util.prune(controllerAccount),
