@@ -6,6 +6,7 @@ VERSION = dev-$(shell date +%FT%T%z)
 KUBECFG = kubecfg
 DOCKER = docker
 CONTROLLER_IMAGE = kubeless-controller-manager:latest
+FUNCTION_IMAGE_BUILDER = kubeless-function-image-builder:latest
 KAFKA_CONTROLLER_IMAGE = kafka-trigger-controller:latest
 OS = linux
 ARCH = amd64
@@ -56,6 +57,15 @@ controller-build:
 
 controller-image: docker/controller-manager
 	$(DOCKER) build -t $(CONTROLLER_IMAGE) $<
+
+docker/function-image-builder: function-image-builder-build
+	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/imbuilder $@
+
+function-image-builder-build:
+	./script/binary-controller -os=$(OS) -arch=$(ARCH) imbuilder github.com/kubeless/kubeless/pkg/function-image-builder
+
+function-image-builder: docker/function-image-builder
+	$(DOCKER) build -t $(FUNCTION_IMAGE_BUILDER) $<
 
 docker/kafka-controller: kafka-controller-build
 	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/kafka-controller $@

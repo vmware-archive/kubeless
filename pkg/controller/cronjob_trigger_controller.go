@@ -203,13 +203,10 @@ func (c *CronJobTriggerController) syncCronJobTrigger(key string) error {
 		}
 
 		// CronJob Trigger object should be deleted, so remove associated cronjob and remove the finalizer
-		_, err := c.clientset.BatchV2alpha1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", name), metav1.GetOptions{})
-		if err == nil {
-			err = c.clientset.BatchV2alpha1().CronJobs(ns).Delete(fmt.Sprintf("trigger-%s", name), &metav1.DeleteOptions{})
-			if err != nil && !k8sErrors.IsNotFound(err) {
-				c.logger.Errorf("Failed to remove CronJob created for CronJobTrigger Obj: %s due to: %v: ", key, err)
-				return err
-			}
+		err = c.clientset.BatchV1beta1().CronJobs(ns).Delete(name, &metav1.DeleteOptions{})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			c.logger.Errorf("Failed to remove CronJob created for CronJobTrigger Obj: %s due to: %v: ", key, err)
+			return err
 		}
 
 		// remove finalizer from the cronjob trigger object, so that we dont have to process any further and object can be deleted
@@ -237,18 +234,12 @@ func (c *CronJobTriggerController) syncCronJobTrigger(key string) error {
 		return err
 	}
 
-	restIface := c.clientset.BatchV2alpha1().RESTClient()
-	groupVersion, err := c.getResouceGroupVersion("cronjobs")
-	if err != nil {
-		return err
-	}
-
 	functionObj, err := c.functionInformer.Lister().Functions(ns).Get(cronJobtriggerObj.Spec.FunctionName)
 	if err != nil {
 		c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", cronJobtriggerObj.Spec.FunctionName, ns, err)
 		return err
 	}
-	err = utils.EnsureCronJob(restIface, functionObj, cronJobtriggerObj, or, groupVersion)
+	err = utils.EnsureCronJob(c.clientset, functionObj, cronJobtriggerObj.Spec.Schedule, or)
 	if err != nil {
 		return err
 	}
@@ -257,53 +248,41 @@ func (c *CronJobTriggerController) syncCronJobTrigger(key string) error {
 	return nil
 }
 
-func (c *CronJobTriggerController) getResouceGroupVersion(target string) (string, error) {
-	resources, err := c.clientset.Discovery().ServerResources()
-	if err != nil {
-		return "", err
-	}
-	groupVersion := ""
-	for _, resource := range resources {
-		for _, apiResource := range resource.APIResources {
-			if apiResource.Name == target {
-				groupVersion = resource.GroupVersion
-				break
-			}
-		}
-	}
-	if groupVersion == "" {
-		return "", fmt.Errorf("Resource %s not found in any group", target)
-	}
-	return groupVersion, nil
-}
-
-func (c *CronJobTriggerController) functionAddedDeletedUpdated(obj interface{}, deleted bool) {
+func (c *CronJobTriggerController) functionAddedDeletedUpdated(obj interface{}, deleted bool) error {
 	functionObj, ok := obj.(*kubelessApi.Function)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			c.logger.Errorf("Couldn't get object from tombstone %#v", obj)
-			return
+			err := fmt.Errorf("Couldn't get object from tombstone %#v", obj)
+			c.logger.Errorf(err.Error())
+			return err
 		}
 		functionObj, ok = tombstone.Obj.(*kubelessApi.Function)
 		if !ok {
-			c.logger.Errorf("Tombstone contained object that is not a Pod %#v", obj)
-			return
+			err := fmt.Errorf("Tombstone contained object that is not a Pod %#v", obj)
+			c.logger.Errorf(err.Error())
+			return err
 		}
 	}
 
 	c.logger.Infof("Processing update to function object %s Namespace: %s", functionObj.Name, functionObj.Namespace)
 	if deleted {
-		//check if func is scheduled or not
-		cronJobName := fmt.Sprintf("trigger-%s", functionObj.ObjectMeta.Name)
-		_, err := c.clientset.BatchV2alpha1().CronJobs(functionObj.ObjectMeta.Namespace).Get(cronJobName, metav1.GetOptions{})
-		if err == nil {
-			err = c.clientset.BatchV2alpha1().CronJobs(functionObj.ObjectMeta.Namespace).Delete(cronJobName, &metav1.DeleteOptions{})
-			if err != nil && !k8sErrors.IsNotFound(err) {
-				c.logger.Errorf("Failed to delete cronjob %s created for the function %s in namespace %s, Error: %s", cronJobName, functionObj.ObjectMeta.Name, functionObj.ObjectMeta.Namespace, err)
+		c.logger.Infof("Function %s deleted. Removing associated cronjob trigger", functionObj.Name)
+		cjtList, err := c.kubelessclient.KubelessV1beta1().CronJobTriggers(functionObj.Namespace).List(metav1.ListOptions{})
+		if err != nil {
+			return err
+		}
+		for _, cjt := range cjtList.Items {
+			if cjt.Spec.FunctionName == functionObj.Name {
+				err = c.kubelessclient.KubelessV1beta1().CronJobTriggers(functionObj.Namespace).Delete(cjt.Name, &metav1.DeleteOptions{})
+				if err != nil && !k8sErrors.IsNotFound(err) {
+					c.logger.Errorf("Failed to delete cronjobtrigger created for the function %s in namespace %s, Error: %s", functionObj.ObjectMeta.Name, functionObj.ObjectMeta.Namespace, err)
+					return err
+				}
 			}
 		}
 	}
+	return nil
 }
 
 func (c *CronJobTriggerController) cronJobTriggerObjHasFinalizer(triggerObj *kubelessApi.CronJobTrigger) bool {
@@ -351,9 +330,8 @@ func cronJobTriggerObjChanged(oldObj, newObj *kubelessApi.CronJobTrigger) bool {
 	if oldObj.ResourceVersion != newObj.ResourceVersion {
 		return true
 	}
-	newSpec := &newObj.Spec
-	oldSpec := &oldObj.Spec
-
+	newSpec := newObj.Spec
+	oldSpec := oldObj.Spec
 	if newSpec.Schedule != oldSpec.Schedule {
 		return true
 	}

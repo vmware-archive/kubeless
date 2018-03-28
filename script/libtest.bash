@@ -21,7 +21,7 @@ KAFKA_MANIFEST=kafka-zookeeper.yaml
 KUBECTL_BIN=$(which kubectl)
 : ${KUBECTL_BIN:?ERROR: missing binary: kubectl}
 
-export TEST_MAX_WAIT_SEC=600
+export TEST_MAX_WAIT_SEC=300
 
 # Workaround 'bats' lack of forced output support, dup() stderr fd
 exec 9>&2
@@ -258,6 +258,7 @@ deploy_function() {
 verify_function() {
     local func=${1:?}
     local make_task=${2:-${func}-verify}
+    echo_info "Init logs: $(kubectl logs -l function=${func} -c prepare)"
     k8s_wait_for_pod_ready -l function=${func}
     case "${func}" in
         *pubsub*)
@@ -334,5 +335,17 @@ sts_restart() {
     k8s_wait_for_uniq_pod -l kubeless=zookeeper -n kubeless
     k8s_wait_for_uniq_pod -l kubeless=kafka -n kubeless
     wait_for_kubeless_kafka_server_ready
+}
+verify_clean_object() {
+    local type=${1:?}; shift
+    local name=${1:?}; shift
+    echo_info "Checking if "${type}" exists for function "${name}"... "
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    until [[ ! $(kubectl get ${type} 2>&1 | grep ${name}) ]]; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+        echo_info "$(kubectl get ${type} 2>&1 | grep ${name})"
+    done
+    echo_info "${type}/${name} is gone"
 }
 # vim: sw=4 ts=4 et si

@@ -57,9 +57,6 @@ load ../script/libtest
   test_kubeless_function_update get-python-deps
   kubeless_function_delete get-python-deps
 }
-@test "Test function ingress: get-python" {
-  test_kubeless_ingress get-python
-}
 @test "Test function autoscale: get-python" {
   if kubectl api-versions | tr '\n' ' ' | grep -q -v "autoscaling/v2beta1"; then
     skip "Autoscale is only supported for Kubernetes >= 1.8"
@@ -161,6 +158,8 @@ load ../script/libtest
   # without having to wait
   verify_function scheduled-get-python
   kubeless_function_delete scheduled-get-python
+  verify_clean_object cronjobtrigger scheduled-get-python
+  verify_clean_object cronjob trigger-scheduled-get-python
 }
 @test "Test no-errors" {
   if kubectl logs -n kubeless -l kubeless=controller | grep "level=error"; then

@@ -3,4 +3,5 @@ FROM kubeless/python@sha256:ba948a6783b93d75037b7b1806a3925d441401ae6fba18282f71
 ENV FUNC_HANDLER=foo \
     MOD_NAME=helloget
 ADD helloget.py /
+RUN mkdir -p /kubeless/
 ENTRYPOINT [ "bash", "-c", "mv /helloget.py /kubeless/ && python /kubeless.py"]

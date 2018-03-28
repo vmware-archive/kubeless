@@ -156,7 +156,9 @@ local kubelessConfig  = configMap.default("kubeless-config", namespace) +
     configMap.data({"ingress-enabled": "false"}) +
     configMap.data({"service-type": "ClusterIP"})+
     configMap.data({"deployment": std.toString(deploymentConfig)})+
-    configMap.data({"runtime-images": std.toString(runtime_images)});
+    configMap.data({"runtime-images": std.toString(runtime_images)})+
+    configMap.data({"enable-build-step": "false"})+
+    configMap.data({"builder-image": "andresmgot/kubeless-function-image-builder:latest"});
 
 {
   controllerAccount: k.util.prune(controllerAccount),

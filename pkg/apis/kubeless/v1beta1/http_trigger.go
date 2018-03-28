@@ -36,7 +36,6 @@ type HTTPTriggerSpec struct {
 	HostName        string `json:"host-name"`
 	TLSAcme         bool   `json:"tls"`
 	RouteName       string `json:"route-name"`
-	EnableIngress   bool   `json:"ingress-enabled"`
 	Path            string `json:"path"`
 	BasicAuthSecret string `json:"basic-auth-secret"`
 	BasicAuthType   string `json:"basic-auth-type"`

@@ -39,16 +39,28 @@ There are other solutions, like [fission](http://fission.io) and [funktion](http
 
 Kubeless uses k8s primitives, there is no additional API server or API router/gateway. Kubernetes users will quickly understand how it works and be able to leverage their existing logging and monitoring setup as well as their troubleshooting skills.
 
+## Compatibility Matrix with Kubernetes
+
+Kubeless fully supports two major versions of Kubernetes (1.8 and 1.9) at the moment. For other versions some of the features in Kubeless may not be available. Our CI run tests against two different platforms: GKE (1.8) and Minikube (1.9). Other platforms are supported but fully compatibiliy cannot be assured. This is the summary of the features and versions supported:
+
+| Platform | Kubernetes Version | HTTP functions | Scheduled functions | PubSub (Kafka) functions | Autoscaling (CPU) |
+| ------------- | ----- | - | - | - | - |
+| GKE           | 1.7.X | ✓ | X | ✓ | X |
+| GKE (CI)      | 1.8.X | ✓ | ✓ | ✓ | ✓ |
+| GKE           | 1.9.X | ✓ | ✓ | ✓ | ✓ |
+| Minikube      | 1.7.X | ✓ | X | ✓ | ✓ |
+| Minikube      | 1.8.X | ✓ | ✓ | ✓ | ✓ |
+| Minikube (CI) | 1.9.X | ✓ | ✓ | ✓ | ✓ |
+
 ## _Roadmap_
 
 We would love to get your help, feel free to lend a hand. We are currently looking to implement the following high level features:
 
-* Add other runtimes, currently Python, NodeJS, Ruby, PHP and .Net Core are supported. We are also providing a way to use custom runtime. Please check [this doc](./docs/runtimes.md) for more details.
+* Add other runtimes, currently Python, NodeJS, Ruby and PHP are supported. We are also providing a way to use custom runtime. Please check [this doc](./docs/runtimes.md) for more details.
 * Investigate other messaging bus (e.g nats.io)
 * Use a standard interface for events
 * Optimize for functions startup time
 * Add distributed tracing (maybe using istio)
-* Decouple the triggers and runtimes
 
 ## Community
 

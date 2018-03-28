@@ -17,7 +17,9 @@ limitations under the License.
 package controller
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"net/url"
 	"time"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
@@ -39,6 +41,7 @@ import (
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	kv1beta1 "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/langruntime"
+	"github.com/kubeless/kubeless/pkg/registry"
 	"github.com/kubeless/kubeless/pkg/utils"
 )
 
@@ -251,6 +254,42 @@ func (c *FunctionController) processItem(key string) error {
 	return nil
 }
 
+// startImageBuildJob creates (if necessary) a job that will build an image for the given function
+// returns the name of the image, a boolean indicating if the build job has been created and an error
+func (c *FunctionController) startImageBuildJob(funcObj *kubelessApi.Function, or []metav1.OwnerReference) (string, bool, error) {
+	imagePullSecret, err := c.clientset.CoreV1().Secrets(funcObj.ObjectMeta.Namespace).Get("kubeless-registry-credentials", metav1.GetOptions{})
+	if err != nil {
+		return "", false, fmt.Errorf("Unable to locate registry credentials to build function image: %v", err)
+	}
+	reg, err := registry.New(*imagePullSecret)
+	if err != nil {
+		return "", false, fmt.Errorf("Unable to retrieve registry information: %v", err)
+	}
+	// Use function content and deps as tag (digested)
+	tag := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%v%v", funcObj.Spec.Function, funcObj.Spec.Deps))))
+	imageName := fmt.Sprintf("%s/%s", reg.Creds.Username, funcObj.ObjectMeta.Name)
+	// Check if image already exists
+	exists, err := reg.ImageExists(imageName, tag)
+	if err != nil {
+		return "", false, fmt.Errorf("Unable to check is target image exists: %v", err)
+	}
+	image := fmt.Sprintf("%s:%s", imageName, tag)
+	if !exists {
+		regURL, err := url.Parse(reg.Endpoint)
+		if err != nil {
+			return "", false, fmt.Errorf("Unable to parse registry URL: %v", err)
+		}
+		err = utils.EnsureFuncImage(c.clientset, funcObj, c.langRuntime, or, imageName, tag, c.config.Data["builder-image"], regURL.Host, imagePullSecret.Name)
+		if err != nil {
+			return "", false, fmt.Errorf("Unable to create image build job: %v", err)
+		}
+	} else {
+		// Image already exists
+		return image, false, nil
+	}
+	return image, true, nil
+}
+
 // ensureK8sResources creates/updates k8s objects (deploy, svc, configmap) for the function
 func (c *FunctionController) ensureK8sResources(funcObj *kubelessApi.Function) error {
 	if len(funcObj.ObjectMeta.Labels) == 0 {
@@ -287,7 +326,30 @@ func (c *FunctionController) ensureK8sResources(funcObj *kubelessApi.Function) e
 		return err
 	}
 
-	err = utils.EnsureFuncDeployment(c.clientset, funcObj, or, c.langRuntime)
+	prebuiltImage := ""
+	if len(funcObj.Spec.Deployment.Spec.Template.Spec.Containers) > 0 && funcObj.Spec.Deployment.Spec.Template.Spec.Containers[0].Image != "" {
+		prebuiltImage = funcObj.Spec.Deployment.Spec.Template.Spec.Containers[0].Image
+	}
+	// Skip image build step if using a custom runtime
+	if prebuiltImage == "" {
+		if c.config.Data["enable-build-step"] == "true" {
+			var isBuilding bool
+			prebuiltImage, isBuilding, err = c.startImageBuildJob(funcObj, or)
+			if err != nil {
+				logrus.Errorf("Unable to build function: %v", err)
+			} else {
+				if isBuilding {
+					logrus.Infof("Started build process for function %s", funcObj.ObjectMeta.Name)
+				} else {
+					logrus.Infof("Found existing image %s", prebuiltImage)
+				}
+			}
+		}
+	} else {
+		logrus.Infof("Skipping image-build step for %s", funcObj.ObjectMeta.Name)
+	}
+
+	err = utils.EnsureFuncDeployment(c.clientset, funcObj, or, c.langRuntime, prebuiltImage)
 	if err != nil {
 		return err
 	}
@@ -354,6 +416,14 @@ func (c *FunctionController) deleteK8sResources(ns, name string) error {
 
 	// delete service monitor
 	err = c.deleteAutoscale(ns, name)
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+
+	// delete build job
+	err = c.clientset.BatchV1().Jobs(ns).DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("created-by=kubeless,function=%s", name),
+	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
