@@ -20,7 +20,6 @@ load ../script/libtest
 @test "Deploy functions to evaluate" {
   deploy_function get-python
   deploy_function get-python-deps
-  deploy_function scheduled-get-python
   deploy_function get-python-custom-port
   deploy_function get-nodejs
   deploy_function get-nodejs-custom-port
@@ -152,14 +151,6 @@ load ../script/libtest
 @test "Test function: get-python-metadata" {
   verify_function get-python-metadata
   kubeless_function_delete get-python-metadata
-}
-@test "Test function: scheduled-get-python" {
-  # Now we can verify the scheduled function
-  # without having to wait
-  verify_function scheduled-get-python
-  kubeless_function_delete scheduled-get-python
-  verify_clean_object cronjobtrigger scheduled-get-python
-  verify_clean_object cronjob trigger-scheduled-get-python
 }
 @test "Test no-errors" {
   if kubectl logs -n kubeless -l kubeless=controller | grep "level=error"; then

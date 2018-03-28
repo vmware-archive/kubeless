@@ -23,25 +23,24 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// HTTPTrigger object
+// HTTPTrigger is Kubeless resource representing HTTP trigger event source
 type HTTPTrigger struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	Spec              HTTPTriggerSpec `json:"spec"`
 }
 
-// HTTPTriggerSpec contains func specification
+// HTTPTriggerSpec defines specification for HTTP trigger
 type HTTPTriggerSpec struct {
 	FunctionName string `json:"function-name"` // Name of the associated function
 	HostName     string `json:"host-name"`
 	TLSAcme      bool   `json:"tls"`
-	RouteName    string `json:"route-name"`
 	Path         string `json:"path"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// HTTPTriggerList contains map of functions
+// HTTPTriggerList is list of HTTPTrigger's
 type HTTPTriggerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`

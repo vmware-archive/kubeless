@@ -142,6 +142,11 @@ kubeless_function_delete() {
     echo_info "Deleting function "${func}" in case still present ... "
     kubeless function ls |grep -w "${func}" && kubeless function delete "${func}" >& /dev/null || true
 }
+kubeless_kafka_trigger_delete() {
+    local trigger=${1:?}; shift
+    echo_info "Deleting kafka trigger "${trigger}" in case still present ... "
+    kubeless trigger kafka list |grep -w "${trigger}" && kubeless trigger kafka delete "${trigger}" >& /dev/null || true
+}
 kubeless_function_deploy() {
     local func=${1:?}; shift
     echo_info "Deploying function ..."
@@ -155,6 +160,14 @@ _wait_for_kubeless_controller_ready() {
 _wait_for_kubeless_controller_logline() {
     local string="${1:?}"
     k8s_wait_for_pod_logline "${string}" -n kubeless -l kubeless=controller
+}
+wait_for_ingress() {
+    echo_info "Waiting until Nginx pod is ready ..."
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    until kubectl get pods -l name=nginx-ingress-controller -n kube-system>& /dev/null; do
+        ((cnt=cnt-1)) || exit 1
+        sleep 1
+    done
 }
 wait_for_kubeless_kafka_server_ready() {
     [[ $(kubectl get pod -n kubeless kafka-0 -ojsonpath='{.metadata.annotations.ready}') == true ]] && return 0
@@ -255,6 +268,14 @@ deploy_function() {
     kubeless_function_delete ${func}
     make -sC examples ${func}
 }
+
+deploy_kafka_trigger() {
+    local trigger=${1:?}
+    echo_info "TEST: $trigger"
+    kubeless_kafka_trigger_delete ${trigger}
+    make -sC examples ${trigger}
+}
+
 verify_function() {
     local func=${1:?}
     local make_task=${2:-${func}-verify}
@@ -293,15 +314,83 @@ test_kubeless_function_update() {
     update_function $func
     verify_function $func ${func}-update-verify
 }
-test_kubeless_ingress() {
-    local func=${1:?} domain=example.com act_ingress exp_ingress
-    echo_info "TEST: ingress ${func}"
-    kubeless route create ing-${func} --http-trigger ${func} --hostname ${func}.${domain}
-    kubeless route list | fgrep -w ing-${func}
-    act_ingress=$(kubectl get ingress ing-${func} -ojsonpath='{range .spec.rules[*]}{@.host}:{@.http.paths[*].backend.serviceName}')
-    exp_ingress="${func}.${domain}:${func}"
-    [[ ${act_ingress} == ${exp_ingress} ]]
-    kubeless route delete ing-${func} --http-trigger ${func}
+create_http_trigger(){
+    local func=${1:?}; shift
+    local domain=${1-""};
+    local subpath=${2-""};
+    delete_http_trigger ${func}
+    echo_info "TEST: Creating HTTP trigger"
+    local command="kubeless trigger http create ing-${func} --function-name ${func}"
+    if [ -n "$domain" ]; then
+        command="$command --hostname ${domain}"
+    fi
+    if [ -n "$subpath" ]; then
+        command="$command --path ${subpath}"
+    fi
+    eval $command
+}
+update_http_trigger(){
+    local func=${1:?}; shift
+    local domain=${1:-""}
+    local subpath=${2:-""};
+    echo_info "TEST: Updating HTTP trigger"
+    local command="kubeless trigger http update ing-${func} --function-name ${func}"
+    if [ -n "$domain" ]; then
+        command="$command --hostname ${domain}"
+    fi
+    if [ -n "$subpath" ]; then
+        command="$command --path ${subpath}"
+    fi
+    eval $command
+}
+verify_http_trigger(){
+    local func=${1:?}; shift
+    local ip=${1:?}; shift
+    local expected_response=${1:?}; shift
+    local domain=${1:?}; shift
+    local subpath=${1:-""};
+    kubeless trigger http list | grep ${func}
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    echo_info "Waiting for ingress to be ready..."
+    until kubectl get ingress | grep $func | grep "$domain" | awk '{print $3}' | grep "$ip"; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
+    sleep 3
+    curl -vv --header "Host: $domain" $ip\/$subpath | grep "${expected_response}"
+}
+delete_http_trigger() {
+    local func=${1:?}; shift
+    kubeless trigger http list |grep -w ing-${func} && kubeless trigger http delete ing-${func} >& /dev/null || true
+}
+create_cronjob_trigger(){
+    local func=${1:?}; shift
+    local schedule=${1:?};
+    delete_cronjob_trigger ${func}
+    echo_info "TEST: Creating CronJob trigger"
+    kubeless trigger cronjob create ${func} --function ${func} --schedule "${schedule}"
+}
+update_cronjob_trigger(){
+    local func=${1:?}; shift
+    local schedule=${1:?};
+    echo_info "TEST: Updating CronJob trigger"
+    kubeless trigger cronjob update ${func} --function ${func} --schedule "${schedule}"
+}
+verify_cronjob_trigger(){
+    local func=${1:?}; shift
+    local schedule=${1:?}; shift
+    local expected_log=${1:?}
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    kubeless trigger cronjob list | grep ${func} | grep "${schedule}"
+    echo_info "Waiting for CronJob to be executed..."
+    until kubectl logs -l function=${func} | grep "$expected_log"; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
+}
+delete_cronjob_trigger() {
+    local func=${1:?}; shift
+    kubeless trigger cronjob list |grep -w ${func} && kubeless trigger cronjob delete ${func} >& /dev/null || true
 }
 test_kubeless_autoscale() {
     local func=${1:?} exp_autoscale act_autoscale
