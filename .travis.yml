@@ -138,7 +138,10 @@ script:
           echo "Waiting for a previous installation to be cleaned"
           bash -c 'grep -q "No resources found" <(timeout 60 kubectl get pods -n kubeless -w 2>&1)'
         fi
-        ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER}
+        ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER} deployment
+        ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER} basic
+        ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER} cronjob
+        ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER} kafka
         ;;
       esac
     else
