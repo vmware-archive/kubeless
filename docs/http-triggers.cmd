@@ -1,4 +1,4 @@
-# Add route to Kubeless function
+# HTTP triggers
 
 Kubeless leverages [Kubernetes ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) to provide routing for functions. By default, a deployed function will be matched to a Kubernetes service using ClusterIP as the service. That means that the function is not exposed publicly. Because of that, we provide the `kubeless route` command that can make a function publicly available. This guide provides a quick sample on how to do it.
 
@@ -28,59 +28,58 @@ NAME         CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
 get-python   10.0.0.26    <none>        8080/TCP   44s
 ```
 
-## Create route
+## Create HTTP trigger
 
-Kubeless support ingress command to create route to function.
+Kubeless support command to create HTTP trigger using which you can control route to function.
 
 ```console
-$ kubeless route --help
-ingress command allows user to list, create, delete routing rule for function on Kubeless
+$ kubeless trigger http create --help
+Create a http trigger
 
 Usage:
-  kubeless route SUBCOMMAND [flags]
-  kubeless route [command]
+  kubeless trigger http create <http_trigger_name> FLAG [flags]
 
-Available Commands:
-  create      create a route to function
-  delete      delete a route from Kubeless
-  list        list all routes in Kubeless
-
-Use "kubeless route [command] --help" for more information about a command.
+Flags:
+      --enableTLSAcme          If true, routing rule will be configured for use with kube-lego
+      --function-name string   Name of the function to be associated with trigger
+  -h, --help                   help for create
+      --hostname string        Specify a valid hostname for the function
+      --namespace string       Specify namespace for the function
+      --path string            Ingress path for the function
 ```
 
-We will create a route to `get-python` function:
+We will create a http trigger to `get-python` function:
 
 ```console
-$ kubeless route create route1 --function get-python
+$ kubeless trigger http create get-python --function-name get-python --path get-python
 ```
 
 This command will create an ingress object. We can see it with kubectl (this guide is run on minikube):
 
 ```console
 $ kubectl get ing
-NAME      HOSTS                              ADDRESS          PORTS     AGE
-route1    get-python.192.168.99.100.nip.io   192.168.99.100   80        59s
+NAME           HOSTS                              ADDRESS          PORTS     AGE
+get-python    get-python.192.168.99.100.nip.io    192.168.99.100   80        59s
 ```
 
 Kubeless creates a default hostname in form of <function-name>.<master-address>.nip.io. Alternatively, you can provide a real hostname with `--hostname` flag like this:
 
 ```console
-$ kubeless route create route2 --function get-python --hostname example.com
+$ kubeless trigger http create get-python --function-name get-python --path get-python --hostname example.com
 $ kubectl get ing
-NAME      HOSTS                              ADDRESS          PORTS     AGE
-route1    get-python.192.168.99.100.nip.io   192.168.99.100   80        3m
-route2    example.com                                         80        6s
+NAME          HOSTS                              ADDRESS          PORTS     AGE
+get-python    example.com                                          80        6s
 ```
 
 But you have to make sure your hostname is configured properly.
 
-You can test the new route with the following command:
+You can test the created HTTP trigger with the following command:
 
 ```console
 $ curl --data '{"Another": "Echo"}' \
   --header "Host: get-python.192.168.99.100.nip.io" \
   --header "Content-Type:application/json" \
-  192.168.99.100/
+  192.168.99.100/get-python
 {"Another": "Echo"}
 ```
 
@@ -89,7 +88,7 @@ $ curl --data '{"Another": "Echo"}' \
 By default, Kubeless doesn't take care of setting up TLS for its functions. You can do it manually by following the [standard procedure](https://kubernetes.io/docs/concepts/services-networking/ingress/#tls) of securing ingress. There is also a [general guideline](https://docs.bitnami.com/kubernetes/how-to/secure-kubernetes-services-with-ingress-tls-letsencrypt/) to enable TLS for your Kubernetes services using LetsEncrypt and Kube-lego written by Bitnami folks. When you have running Kube-lego, you can deploy function and create route with flag `--enableTLSAcme` enabled as below:
 
 ```console
-$ kubeless route create route1 --function get-python --enableTLSAcme
+$ kubeless trigger http create get-python --function-name get-python --path get-python --enableTLSAcme
 ```
 
 Running the above command, Kubeless will automatically create a ingress object with annotation `kubernetes.io/tls-acme: 'true'` set which will be used by Kube-lego to configure the service certificate.

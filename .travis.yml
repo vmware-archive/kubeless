@@ -17,6 +17,7 @@ env:
   matrix:
     - TEST_TARGET=unit
     - TEST_TARGET=minikube
+    - TEST_TARGET=minikube_core_triggers
     - TEST_TARGET=minikube_kafka
     - TEST_TARGET=GKE
   global:
@@ -44,7 +45,7 @@ before_install:
   - |
     case $TEST_TARGET in
     # We will always build assets when doing unit tests or minikube end-2-end tests
-    unit|minikube)
+    unit|minikube|minikube_core_triggers)
       export SHOULD_TEST=1
       ;;
     # In case of GKE we will only want to build if it is
@@ -98,8 +99,6 @@ script:
     if [[ "$SHOULD_TEST" == "1" ]]; then
       make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
       make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
-      make function-image-builder FUNCTION_IMAGE_BUILDER=$BUILDER_IMAGE
-      make kafka-controller-image KAFKA_CONTROLLER_IMAGE=$KAFKA_CONTROLLER_IMAGE
       make all-yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless.yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless-rbac.yaml
@@ -111,14 +110,22 @@ script:
         make validation
         ;;
       minikube)
+        make function-image-builder FUNCTION_IMAGE_BUILDER=$BUILDER_IMAGE
         ./script/integration-tests minikube deployment
         ./script/integration-tests minikube basic
         ;;
+      minikube_core_triggers)
+        ./script/integration-tests minikube deployment
+        ./script/integration-tests minikube cronjob
+        ./script/integration-tests minikube http
+        ;;
       minikube_kafka)
+        make kafka-controller-image KAFKA_CONTROLLER_IMAGE=$KAFKA_CONTROLLER_IMAGE
         ./script/integration-tests minikube deployment
         ./script/integration-tests minikube kafka
         ;;
       GKE)
+        make kafka-controller-image KAFKA_CONTROLLER_IMAGE=$KAFKA_CONTROLLER_IMAGE
         docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
         docker push $CONTROLLER_IMAGE
         docker push $BUILDER_IMAGE

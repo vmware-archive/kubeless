@@ -208,7 +208,7 @@ func (c *HTTPTriggerController) syncHTTPTrigger(key string) error {
 		}
 
 		// remove ingress resource if any. Ignore any error, as ingress resource will be GC'ed
-		_ = utils.DeleteIngress(c.clientset, httpTriggerObj.Spec.RouteName, httpTriggerObj.Namespace)
+		_ = utils.DeleteIngress(c.clientset, httpTriggerObj.Name, httpTriggerObj.Namespace)
 
 		err = c.httpTriggerObjRemoveFinalizer(httpTriggerObj)
 		if err != nil {
@@ -232,7 +232,7 @@ func (c *HTTPTriggerController) syncHTTPTrigger(key string) error {
 	c.logger.Infof("Adding ingress resource for http trigger Obj: %s ", key)
 	err = utils.CreateIngress(c.clientset, httpTriggerObj)
 	if err != nil && !k8sErrors.IsAlreadyExists(err) {
-		c.logger.Errorf("Failed to create ingress rule %s corresponding to http trigger Obj: %s due to: %v: ", httpTriggerObj.Spec.RouteName, key, err)
+		c.logger.Errorf("Failed to create ingress rule %s corresponding to http trigger Obj: %s due to: %v: ", httpTriggerObj.Name, key, err)
 	}
 
 	// delete ingress resource if not required

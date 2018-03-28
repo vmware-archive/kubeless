@@ -465,14 +465,14 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 		return err
 	}
 
-	funcSvc, err := client.CoreV1().Services(httpTriggerObj.ObjectMeta.Namespace).Get(httpTriggerObj.ObjectMeta.Name, metav1.GetOptions{})
+	funcSvc, err := client.CoreV1().Services(httpTriggerObj.ObjectMeta.Namespace).Get(httpTriggerObj.Spec.FunctionName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("Unable to find the function internal service: %v", funcSvc)
 	}
 
 	ingress := &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            httpTriggerObj.Spec.RouteName,
+			Name:            httpTriggerObj.Name,
 			Namespace:       httpTriggerObj.Namespace,
 			OwnerReferences: or,
 			Labels:          httpTriggerObj.ObjectMeta.Labels,
@@ -485,9 +485,9 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 						HTTP: &v1beta1.HTTPIngressRuleValue{
 							Paths: []v1beta1.HTTPIngressPath{
 								{
-									Path: httpTriggerObj.Spec.Path,
+									Path: "/" + httpTriggerObj.Spec.Path,
 									Backend: v1beta1.IngressBackend{
-										ServiceName: httpTriggerObj.ObjectMeta.Name,
+										ServiceName: funcSvc.Name,
 										ServicePort: funcSvc.Spec.Ports[0].TargetPort,
 									},
 								},

@@ -304,6 +304,53 @@ pubsub-python-verify:
 	echo $$logs | grep -q "event-id.*"
 
 
+kafka-python-func1-topic-s3-python:
+	kubeless topic create s3-python || true
+	kubeless function deploy kafka-python-func1-topic-s3-python --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py --label topic=s3-python
+
+kafka-python-func1-topic-s3-python-verify:
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
+	kubeless topic publish --topic s3-python --data '{"payload":"$(DATA)"}'
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=kafka-python-func1-topic-s3-python`; \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+		if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
+
+kafka-python-func2-topic-s3-python:
+	kubeless topic create s3-python || true
+	kubeless function deploy kafka-python-func2-topic-s3-python --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py --label topic=s3-python
+
+kafka-python-func2-topic-s3-python-verify:
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
+	kubeless topic publish --topic s3-python --data '{"payload":"$(DATA)"}'
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=kafka-python-func2-topic-s3-python`; \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+		if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
+
+s3-python-kafka-trigger:
+	kubeless trigger kafka create s3-python-kafka-trigger --function-selector created-by=kubeless,topic=s3-python --trigger-topic s3-python
+
 pubsub-python34:
 	kubeless topic create s3-python34 || true
 	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/hellowithdata34.py
@@ -372,10 +419,25 @@ pubsub-nodejs-verify:
 
 pubsub-nodejs-update:
 	kubeless topic create s3-nodejs-2 || true
-	kubeless function update pubsub-nodejs --trigger-topic s3-nodejs-2
+	kubeless trigger kafka update pubsub-nodejs --trigger-topic s3-nodejs-2
 
 pubsub-nodejs-update-verify:
-	kubectl describe $$(kubectl get -o yaml KafkaTrigger pubsub-nodejs) | grep -e "topic:\s*s3-nodejs-2"
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
+	kubeless topic publish --topic s3-nodejs-2  --data '{"test": "$(DATA)"}'
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=pubsub-nodejs`; \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+        if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
 
 pubsub-ruby:
 	kubeless topic create s3-ruby || true

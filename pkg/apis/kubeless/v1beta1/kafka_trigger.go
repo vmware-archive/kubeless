@@ -23,14 +23,14 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// KafkaTrigger object
+// KafkaTrigger is Kubeless resource representing Kafka event source
 type KafkaTrigger struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	Spec              KafkaTriggerSpec `json:"spec"`
 }
 
-// KafkaTriggerSpec contains func specification
+// KafkaTriggerSpec defines specification for KafkaTrigger
 type KafkaTriggerSpec struct {
 	Topic            string               `json:"topic"` // Trigger topic (for PubSub type)
 	FunctionSelector metav1.LabelSelector `json:"functionSelector"`
@@ -38,7 +38,7 @@ type KafkaTriggerSpec struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// KafkaTriggerList contains map of functions
+// KafkaTriggerList is list of KafkaTrigger's
 type KafkaTriggerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
