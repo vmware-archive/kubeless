@@ -160,7 +160,7 @@ Function-controller on receiving Function CRD object deletion event, cleans up a
 
 When you install kubeless, there is a CRD `httptriggers.kubeless.io` created to represent HTTP triggers:
 
-```yaml
+```console
 $  kubectl get customresourcedefinition httptriggers.kubeless.io -o yaml
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -182,7 +182,7 @@ spec:
 
 HTTP trigger custom objects will be created under `httptriggers.kubeless.io` CRD endpoint. An example HTTP trigger object looks like this:
 
-``` yaml
+```console
 $ kubectl get httptrigger get-python -o yaml
 apiVersion: kubeless.io/v1beta1
 kind: HTTPTrigger
@@ -209,7 +209,7 @@ HTTP trigger object spec contains below fields:
 
 ### Cronjob triggers
 
-```yaml
+```console
 $ kubectl get customresourcedefinition cronjobtriggers.kubeless.io -o yaml
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -229,7 +229,7 @@ spec:
 
 Cronjob trigger custom objects will be created under `cronjobtriggers.kubeless.io` CRD endpoint. An example Cronjob trigger object looks like this:
 
-```yaml
+```console
 $ kubectl get cronjobtrigger scheduled-get-python -o yaml
 apiVersion: kubeless.io/v1beta1
 kind: CronJobTrigger
@@ -253,7 +253,7 @@ Cronjob trigger object spec contains below fields:
 
 ### Kafka triggers
 
-```yaml
+```console
  kubectl get customresourcedefinition kafkatriggers.kubeless.io -o yaml
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -274,7 +274,7 @@ spec:
 
 Kafka trigger custom objects will be created under `kafkatriggers.kubeless.io` CRD endpoint. An example Kafka trigger object looks like this:
 
-```yaml
+```console
  $ kubectl get kafkatrigger s3-python-kafka-trigger -o yaml
 apiVersion: kubeless.io/v1beta1
 kind: KafkaTrigger

@@ -1,18 +1,18 @@
-# Kubeless building process for functions
+# Build process for functions
 
 > **Warning**: This feature is still under heavy development
 
 Kubeless includes a way of building and storing functions as docker images. This can be used to:
 
- - Persistent function storage.
- - Speed the process of redeploying the same function. This is specicially useful for scalling your function.
+ - Persist function: Functions now become docker images that can be safely stored in a docker registry.
+ - Speed up the process of redeploying the same function. This is specicially useful for scaling up your function.
  - Generate immutable function deployments. Once a function image is generated, the same image will be used every time the function is used.
 
 ## Setup the build process
 
 In order to setup the build process the only steps needed are:
 
- 1. Generate a Kubernetes [secret](https://kubernetes.io/docs/concepts/configuration/secret) with the credentials required to push images to the docker registry and enable the build st. In order to do so, `kubectl` has an utility that allows you to create this secret in just one command:
+ - Generate a Kubernetes [secret](https://kubernetes.io/docs/concepts/configuration/secret) with the credentials required to push images to the docker registry and enable the build st. In order to do so, `kubectl` has an utility that allows you to create this secret in just one command:
 
 | **Note**: The command below will generate the correct secret only if the version of `kubectl` is 1.9+ 
 
@@ -32,13 +32,13 @@ $ kubectl get secret kubeless-registry-credentials --output="jsonpath={.data.\.d
 {"auths":{"https://index.docker.io/v1/":{"username":"user","password":"password","email":"user@example.com","auth":"dGVfdDpwYZNz"}}}
 ```
 
- 2. Enable the build step in the Kubeless configuration. If you have already deploy Kubeless you can enable it editing the configmap. You will need to set the property `enable-build-step: "false"` to `"true"`:
+ - Enable the build step in the Kubeless configuration. If you have already deploy Kubeless you can enable it editing the configmap. You will need to set the property `enable-build-step: "false"` to `"true"`:
 
  ```console
  kubectl edit configmaps -n kubeless kubeless-config
  ```
 
- 3. Once the build step is enabled you need to restart the controller in order for the changes to take effect:
+ - Once the build step is enabled you need to restart the controller in order for the changes to take effect:
 
  ```console
  kubectl delete pod -n kubeless -l kubeless=controller

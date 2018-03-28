@@ -1,10 +1,10 @@
-# HTTP triggers
+# Expose a Kubeless function
 
-Kubeless leverages [Kubernetes ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) to provide routing for functions. By default, a deployed function will be matched to a Kubernetes service using ClusterIP as the service. That means that the function is not exposed publicly. Because of that, we provide the `kubeless route` command that can make a function publicly available. This guide provides a quick sample on how to do it.
+Kubeless leverages [Kubernetes ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) to provide routing for functions. By default, a deployed function will be matched to a Kubernetes service using ClusterIP as the service. That means that the function is not exposed publicly. Because of that, we provide the `kubeless trigger http` command that can make a function publicly available. This guide provides a quick sample on how to do it.
 
 ## Ingress controller
 
-In order to create routes for functions in Kubeless, you must have an Ingress controller running. There are several options to deploy it. You can deploy it manually via the [manifest](https://github.com/kubeless/kubeless/blob/master/manifests/ingress/ingress-controller-http-only.yaml) we provide.
+In order to create routes for functions in Kubeless, you must have an Ingress controller running. There are several options to deploy it.
 
 If you are on GKE, you can try [this](https://github.com/kubernetes/ingress-gce). Minikube also provide an addon for ingress, you can enable it executing `minikube addons enable ingress`. Please note that if you're intending to use our provided manifest on minikube, please disable the ingress addon.
 
