@@ -40,8 +40,10 @@ Usage:
   kubeless trigger http create <http_trigger_name> FLAG [flags]
 
 Flags:
+      --basic-auth-secret      Specify an existing secret name for basic authentication
       --enableTLSAcme          If true, routing rule will be configured for use with kube-lego
       --function-name string   Name of the function to be associated with trigger
+      --gateway                Specify a valid gateway for the Ingress
   -h, --help                   help for create
       --hostname string        Specify a valid hostname for the function
       --namespace string       Specify namespace for the function
@@ -92,3 +94,24 @@ $ kubeless trigger http create get-python --function-name get-python --path get-
 ```
 
 Running the above command, Kubeless will automatically create a ingress object with annotation `kubernetes.io/tls-acme: 'true'` set which will be used by Kube-lego to configure the service certificate.
+
+## Enable Basic Authentication
+
+By default, Kubeless doesn't take care about securing its exposed functions.
+You can do it manually depending on your Ingress controller, some examples are:
+* [Nginx](https://github.com/kubernetes/ingress-nginx/blob/master/docs/examples/auth/basic/README.md)
+* [Traefik](https://docs.traefik.io/user-guide/kubernetes/#basic-authentication)
+
+When you have a running Nginx or Traefik ingress controller, you can deploy function and create a basic authentication secured route as shown below:
+The Kubernetes secret specified by `--basic-auth-secret` must exist and located within the same namespace as the http trigger.
+
+```console
+$ kubeless trigger http create get-python --function-name get-python --path get-python --basic-auth-secret get-python-secret --gateway nginx
+```
+
+Running the above command, Kubeless will automatically create an ingress object with annotations:
+* `kubernetes.io/ingress.class: nginx`
+* `ingress.kubernetes.io/auth-secret: get-python-secret`
+* `ingress.kubernetes.io/auth-type: basic`
+
+
