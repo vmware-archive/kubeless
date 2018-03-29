@@ -40,8 +40,10 @@ Usage:
   kubeless trigger http create <http_trigger_name> FLAG [flags]
 
 Flags:
+      --basic-auth-secret      Specify an existing secret name for basic authentication
       --enableTLSAcme          If true, routing rule will be configured for use with kube-lego
       --function-name string   Name of the function to be associated with trigger
+      --gateway                Specify a valid gateway for the Ingress
   -h, --help                   help for create
       --hostname string        Specify a valid hostname for the function
       --namespace string       Specify namespace for the function
