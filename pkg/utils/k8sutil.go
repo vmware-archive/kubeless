@@ -506,6 +506,21 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 	// to the path expected by the service
 	ingressAnnotations["nginx.ingress.kubernetes.io/rewrite-target"] = "/"
 
+	if len(httpTriggerObj.Spec.BasicAuthSecret) > 0 {
+		switch gateway := httpTriggerObj.Spec.Gateway; gateway {
+		case "nginx":
+			ingressAnnotations["kubernetes.io/ingress.class"] = "nginx"
+			ingressAnnotations["ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
+			ingressAnnotations["ingress.kubernetes.io/auth-type"] = "basic"
+			break
+		case "traefik":
+			ingressAnnotations["kubernetes.io/ingress.class"] = "traefik"
+			ingressAnnotations["ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
+			ingressAnnotations["ingress.kubernetes.io/auth-type"] = "basic"
+			break
+		}
+	}
+
 	// add annotations and TLS configuration for kube-lego
 	if httpTriggerObj.Spec.TLSAcme {
 		ingressAnnotations["kubernetes.io/tls-acme"] = "true"

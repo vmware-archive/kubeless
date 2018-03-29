@@ -735,6 +735,68 @@ func TestCreateIngressResource(t *testing.T) {
 	}
 }
 
+func TestCreateIngressResourceWithNginxGateway(t *testing.T) {
+	fakeSvc := v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "myns",
+			Name:      "foo",
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{TargetPort: intstr.FromInt(8080)},
+			},
+		},
+	}
+	clientset := fake.NewSimpleClientset(&fakeSvc)
+	f1 := &kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "myns",
+			UID:       "1234",
+		},
+		Spec: kubelessApi.FunctionSpec{},
+	}
+	httpTrigger := &kubelessApi.HTTPTrigger{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "myns",
+			UID:       "1234",
+		},
+		Spec: kubelessApi.HTTPTriggerSpec{
+			HostName:        "foo",
+			TLSAcme:         true,
+			FunctionName:    f1.Name,
+			BasicAuthSecret: "foo-secret",
+			Gateway:         "nginx",
+		},
+	}
+	if err := CreateIngress(clientset, httpTrigger); err != nil {
+		t.Fatalf("Creating ingress returned err: %v", err)
+	}
+
+	ingress, err := clientset.ExtensionsV1beta1().Ingresses("myns").Get("foo", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Getting Ingress returned err: %v", err)
+	}
+
+	annotations := ingress.ObjectMeta.Annotations
+	if annotations == nil || len(annotations) == 0 ||
+		annotations["kubernetes.io/ingress.class"] != "nginx" ||
+		annotations["ingress.kubernetes.io/auth-secret"] != "foo-secret" ||
+		annotations["ingress.kubernetes.io/auth-type"] != "basic" ||
+		annotations["kubernetes.io/tls-acme"] != "true" ||
+		annotations["nginx.ingress.kubernetes.io/ssl-redirect"] != "true" {
+		t.Fatal("Missing or wrong annotations!")
+	}
+
+	tls := ingress.Spec.TLS
+	if tls == nil || len(tls) != 1 ||
+		tls[0].SecretName == "" ||
+		tls[0].Hosts == nil || len(tls[0].Hosts) != 1 || tls[0].Hosts[0] == "" {
+		t.Fatal("Missing or incomplete TLS spec!")
+	}
+}
+
 func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
 	fakeSvc := v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
