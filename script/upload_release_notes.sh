@@ -33,6 +33,12 @@ curl -sL https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-$t
 kubectl create ns kubeless\\n\
 curl -sL https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-rbac-$tag.yaml | kubectl create -f -\\n\
 \`\`\`\\n\
+**KAFKA:**\\n\
+\\n\
+\`\`\`console\\n\
+kubectl create ns kubeless\\n\
+curl -sL https://github.com/kubeless/kubeless/releases/download/$tag/kafka-zookeeper-$tag.yaml | kubectl create -f -\\n\
+\`\`\`\\n\
 **OPENSHIFT:**\\n\
 \\n\
 \`\`\`console\\n\
