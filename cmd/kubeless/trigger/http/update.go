@@ -83,6 +83,19 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		httpTrigger.Spec.TLSAcme = enableTLSAcme
+
+		gateway, err := cmd.Flags().GetString("gateway")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		httpTrigger.Spec.Gateway = gateway
+
+		basicAuthSecret, err := cmd.Flags().GetString("basic-auth-secret")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		httpTrigger.Spec.BasicAuthSecret = basicAuthSecret
+
 		err = utils.UpdateHTTPTriggerCustomResource(kubelessClient, httpTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to deploy HTTP trigger %s in namespace %s. Error: %s", triggerName, ns, err)
@@ -97,4 +110,7 @@ func init() {
 	updateCmd.Flags().StringP("path", "", "", "Ingress path for the function")
 	updateCmd.Flags().StringP("hostname", "", "", "Specify a valid hostname for the function")
 	updateCmd.Flags().BoolP("enableTLSAcme", "", false, "If true, routing rule will be configured for use with kube-lego")
+	updateCmd.Flags().StringP("gateway", "", "", "Specify a valid gateway for the Ingress")
+	updateCmd.Flags().StringP("basic-auth-secret", "", "", "Specify an existing secret name for basic authentication")
+
 }
