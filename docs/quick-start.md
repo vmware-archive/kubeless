@@ -20,16 +20,18 @@ $ kubectl create ns kubeless
 $ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 
 $ kubectl get pods -n kubeless
-NAME                                   READY     STATUS    RESTARTS   AGE
-kubeless-controller-3331951411-d60km   1/1       Running   0          1m
+NAME                                           READY     STATUS    RESTARTS   AGE
+kubeless-controller-manager-567dcb6c48-ssx8x   1/1       Running   0          1h
 
 $ kubectl get deployment -n kubeless
-NAME                  DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
-kubeless-controller   1         1         1            1           1m
+NAME                          DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+kubeless-controller-manager   1         1         1            1           1h
 
 $ kubectl get customresourcedefinition
-NAME                    AGE
-functions.kubeless.io   1h
+NAME                          AGE
+cronjobtriggers.kubeless.io   1h
+functions.kubeless.io         1h
+httptriggers.kubeless.io      1h
 
 $ kubectl get functions
 NAME         AGE
