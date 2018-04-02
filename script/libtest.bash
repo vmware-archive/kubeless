@@ -245,6 +245,15 @@ wait_for_autoscale() {
         sleep 1
     done
 }
+wait_for_job() {
+    local func=${1:?}
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    echo_info "Waiting for build job of ${func} to be finished ..."
+    until kubectl get job -l function=${func} -o yaml | grep "succeeded: 1"; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
+}
 test_must_fail_without_rbac_roles() {
     echo_info "RBAC TEST: function deploy/call must fail without RBAC roles"
     _delete_simple_function
@@ -307,6 +316,12 @@ update_function() {
     echo_info "UPDATE: $func"
     make -sC examples ${func}-update
     sleep 10
+    k8s_wait_for_uniq_pod -l function=${func}
+}
+restart_function() {
+    local func=${1:?}
+    echo_info "Restarting: $func"
+    kubectl delete pod -l function=${func}
     k8s_wait_for_uniq_pod -l function=${func}
 }
 test_kubeless_function_update() {

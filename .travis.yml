@@ -1,6 +1,4 @@
 sudo: required
-dist: trusty
-group: deprecated-2017Q4
 language: go
 
 os:
@@ -18,6 +16,7 @@ env:
     - TEST_TARGET=unit
     - TEST_TARGET=minikube
     - TEST_TARGET=minikube_core_triggers
+    - TEST_TARGET=minikube_build_functions
     - TEST_TARGET=minikube_kafka
     - TEST_TARGET=GKE
   global:
@@ -47,6 +46,14 @@ before_install:
     # We will always build assets when doing unit tests or minikube end-2-end tests
     unit|minikube|minikube_core_triggers)
       export SHOULD_TEST=1
+      ;;
+    minikube_build_functions)
+      export SHOULD_TEST=1
+      # Restart docker with an insecure registry
+      sudo bash -c "echo '{\"host\": \"unix:///var/run/docker.sock\", \"storage-driver\": \"overlay2\", \"insecure-registries\" : [\"0.0.0.0/0\"]}' > /etc/docker/daemon.json"
+      sudo service docker restart
+      docker info
+      docker run -d -p 5000:5000 --restart=always --name registry -v /data/docker-registry:/var/lib/registry registry:2
       ;;
     # In case of GKE we will only want to build if it is
     # a build of a branch in the kubeless/kubeless repository
@@ -110,7 +117,6 @@ script:
         make validation
         ;;
       minikube)
-        make function-image-builder FUNCTION_IMAGE_BUILDER=$BUILDER_IMAGE
         ./script/integration-tests minikube deployment
         ./script/integration-tests minikube basic
         ;;
@@ -119,6 +125,13 @@ script:
         ./script/integration-tests minikube cronjob
         ./script/integration-tests minikube http
         ;;
+      minikube_build_functions)
+        make function-image-builder FUNCTION_IMAGE_BUILDER=$BUILDER_IMAGE
+        sed -i.bak 's/enable-build-step: "false"/enable-build-step: "true"/g' kubeless-rbac.yaml
+        sed -i.bak 's/function-registry-tls-verify: "true"/function-registry-tls-verify: "false"/g' kubeless-rbac.yaml
+        ./script/integration-tests minikube deployment
+        ./script/integration-tests minikube prebuilt_functions
+        ;;       
       minikube_kafka)
         make kafka-controller-image KAFKA_CONTROLLER_IMAGE=$KAFKA_CONTROLLER_IMAGE
         ./script/integration-tests minikube deployment

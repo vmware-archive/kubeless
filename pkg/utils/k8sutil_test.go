@@ -270,7 +270,7 @@ func TestEnsureImage(t *testing.T) {
 		},
 	}
 	// Testing happy path
-	err := EnsureFuncImage(clientset, f1, lr, or, "user/image", "4840d87600137157493ba43a24f0b4bb6cf524ebbf095ce96c79f85bf5a3ff5a", "kubeless/builder", "registry.docker.io", "registry-creds")
+	err := EnsureFuncImage(clientset, f1, lr, or, "user/image", "4840d87600137157493ba43a24f0b4bb6cf524ebbf095ce96c79f85bf5a3ff5a", "kubeless/builder", "registry.docker.io", "registry-creds", true)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}

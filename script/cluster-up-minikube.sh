@@ -60,6 +60,9 @@ sudo -E ${MINIKUBE_BIN} start --vm-driver=none \
     --extra-config=apiserver.Authorization.Mode=RBAC \
     --memory 4096
 
+echo "Config?"
+cat $HOME/.minikube/machines/minikube/config.json
+
 # Wait til settles
 echo "INFO: Waiting for minikube cluster to be ready ..."
 typeset -i cnt=120
