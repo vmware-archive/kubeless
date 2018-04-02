@@ -79,7 +79,7 @@ local zookeeperPorts = [
 ];
 
 local kafkaContainer =
-  container.default("broker", "bitnami/kafka:1.0.1-r1") +
+  container.default("broker", "bitnami/kafka:1.1.0-r0") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(kafkaEnv) +
   container.ports({containerPort: 9092}) +
