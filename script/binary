@@ -23,7 +23,7 @@ else
 fi
 
 GITCOMMIT=$(git rev-parse --short HEAD)
-BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/cmd/kubeless/version.VERSION=${VERSION} -X github.com/kubeless/kubeless/cmd/kubeless/version.GITCOMMIT=${GITCOMMIT}")
+BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/pkg/version.VERSION=${VERSION} -X github.com/kubeless/kubeless/pkg/version.GITCOMMIT=${GITCOMMIT}")
 
 # Get rid of existing binary
 rm -f ${GOPATH%%:*}/bin/kubeless*

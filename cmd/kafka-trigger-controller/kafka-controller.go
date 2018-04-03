@@ -24,6 +24,7 @@ import (
 
 	"github.com/kubeless/kubeless/pkg/controller"
 	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/kubeless/kubeless/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -61,6 +62,7 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
+	logrus.Infof("Starting Kafka controller version: " + version.VERSION + " (" + version.GITCOMMIT + ")")
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

@@ -29,6 +29,7 @@ import (
 	"github.com/kubeless/kubeless/pkg/client/informers/externalversions"
 	"github.com/kubeless/kubeless/pkg/controller"
 	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/kubeless/kubeless/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/rest"
@@ -92,6 +93,7 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
+	logrus.Infof("Starting Kubeless controller manager version: " + version.VERSION + " (" + version.GITCOMMIT + ")")
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
