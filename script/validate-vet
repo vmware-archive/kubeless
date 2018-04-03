@@ -17,7 +17,7 @@
 source "$(dirname "$BASH_SOURCE")/.validate"
 
 IFS=$'\n'
-files=( $(validate_diff --diff-filter=ACMR --name-only -- '*.go' | grep -v '^vendor/' || true) )
+files=( $(validate_diff --diff-filter=ACMR --name-only -- '*.go' | grep -v '^vendor/\|kubeless.tpl.go' || true) )
 unset IFS
 
 failed=0

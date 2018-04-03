@@ -37,6 +37,7 @@ type ImageSecret struct {
 // and the supported versions
 type RuntimeInfo struct {
 	ID             string           `yaml:"ID"`
+	Compiled       bool             `yaml:"compiled"`
 	Versions       []RuntimeVersion `yaml:"versions"`
 	DepName        string           `yaml:"depName"`
 	FileNameSuffix string           `yaml:"fileNameSuffix"`
@@ -210,6 +211,8 @@ func (l *Langruntimes) GetBuildContainer(runtime string, env []v1.EnvVar, instal
 
 	case strings.Contains(runtime, "php"):
 		command = "composer install -d " + installVolume.MountPath
+	case strings.Contains(runtime, "go"):
+		command = "cd $GOPATH/src/kubeless && dep ensure"
 	}
 
 	return v1.Container{
@@ -248,4 +251,42 @@ func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runti
 			Value: "/usr/bin/",
 		})
 	}
+}
+
+// RequiresCompilation returns if the given runtime requires compilation
+func (l *Langruntimes) RequiresCompilation(runtime string) bool {
+	required := false
+	for _, runtimeInf := range l.AvailableRuntimes {
+		if strings.Contains(runtime, runtimeInf.ID) {
+			required = runtimeInf.Compiled
+			break
+		}
+	}
+	return required
+}
+
+// GetCompilationContainer returns a Container definition based on a runtime
+func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, installVolume v1.VolumeMount) (v1.Container, error) {
+	versionInf, err := l.findRuntimeVersion(runtime)
+	if err != nil {
+		return v1.Container{}, err
+	}
+	var command string
+	switch {
+	case strings.Contains(runtime, "go"):
+		command = fmt.Sprintf(
+			"sed 's/<<FUNCTION>>/%s/g' $GOPATH/src/controller/kubeless.tpl.go > $GOPATH/src/controller/kubeless.go && "+
+				"go build -o %s/server $GOPATH/src/controller/kubeless.go", funcName, installVolume.MountPath)
+	default:
+		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
+	}
+	return v1.Container{
+		Name:            "compile",
+		Image:           versionInf.InitImage,
+		Command:         []string{"sh", "-c"},
+		Args:            []string{command},
+		VolumeMounts:    []v1.VolumeMount{installVolume},
+		ImagePullPolicy: v1.PullIfNotPresent,
+		WorkingDir:      installVolume.MountPath,
+	}, nil
 }

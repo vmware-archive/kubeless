@@ -104,6 +104,7 @@ install:
 script:
   - |
     if [[ "$SHOULD_TEST" == "1" ]]; then
+      git fetch --unshallow
       make VERSION=${TRAVIS_TAG:-build-$TRAVIS_BUILD_ID} binary
       make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
       make all-yaml

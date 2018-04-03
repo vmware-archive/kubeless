@@ -86,6 +86,24 @@ For python we use [Bottle](https://bottlepy.org) and we also add routes for heal
 
 For the case of Ruby we use [Sinatra](http://www.sinatrarb.com) as web framework and we add the routes required for the function and the health check. Monitoring is currently not supported yet for this framework. PR is welcome :-)
 
+### Go HTTP Trigger
+
+The Go HTTP server doesn't include any framework since the native packages includes enough functionality to fit our needs. Since there is not a standard package that manages server logs it is implemented in the same server. It is also required to implement the `ResponseWritter` interface in order to retrieve the Status Code of the response.
+
+One peculiarity of the Go runtime is that the user has a `Context` object as part of the `Event.Extensions` parameter. This can be used to handle timeouts in the function. For example:
+
+```go
+func Foo(event functions.Event, context functions.Context) (string, error) {
+	select {
+	case <-event.Extensions.Context.Done():
+		return "", nil
+  case <-time.After(5 * time.Second):
+	}
+	return "Function returned after 5 seconds", nil
+}
+```
+
+If the function has a timeout smaller than 5 seconds it will exit and the code after the `select{}` won't be executed. 
 
 # Scheduled Trigger
 

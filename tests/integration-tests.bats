@@ -32,12 +32,17 @@ load ../script/libtest
   deploy_function get-php
   deploy_function get-php-deps
   deploy_function timeout-php
+  deploy_function get-go
+  deploy_function get-go-custom-port
+  deploy_function get-go-deps
+  deploy_function timeout-go
   deploy_function get-python-metadata
   deploy_function post-python
   deploy_function post-python-custom-port
   deploy_function post-nodejs
   deploy_function post-ruby
   deploy_function post-php
+  deploy_function post-go
   deploy_function custom-get-python
 }
 @test "Test function: get-python" {
@@ -112,6 +117,25 @@ load ../script/libtest
 @test "Test function: timeout-php" {
   verify_function timeout-php
   kubeless_function_delete timeout-php
+}
+@test "Test function: get-go" {
+  verify_function get-go
+  kubeless_function_delete get-go
+}
+@test "Test function: get-go-deps" {
+  verify_function get-go-deps
+}
+@test "Test function: get-go-custom-port" {
+  verify_function get-go-custom-port
+  kubeless_function_delete get-go-custom-port
+}
+@test "Test function: timeout-go" {
+  verify_function timeout-go
+  kubeless_function_delete timeout-go
+}
+@test "Test function: post-go" {
+  verify_function post-go
+  kubeless_function_delete post-go
 }
 @test "Test function: get-dotnetcore" {
   skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"

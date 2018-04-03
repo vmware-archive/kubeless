@@ -1,0 +1,17 @@
+FROM golang:1.10
+
+# Install dep
+RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+RUN go get golang.org/x/net/context
+
+# Prepare function environment
+RUN ln -s /kubeless $GOPATH/src/kubeless 
+
+# Install controller
+RUN mkdir -p $GOPATH/src/github.com/kubeless/kubeless/pkg/functions
+ADD pkg/functions/* $GOPATH/src/github.com/kubeless/kubeless/pkg/functions
+RUN mkdir -p $GOPATH/src/controller
+ADD docker/runtime/golang/Gopkg.toml $GOPATH/src/controller/
+WORKDIR $GOPATH/src/controller/
+ADD docker/runtime/golang/kubeless.tpl.go $GOPATH/src/controller/
+RUN dep ensure

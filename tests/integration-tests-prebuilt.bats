@@ -38,6 +38,15 @@ load ../script/libtest
   kubectl get deployment -o yaml get-python | grep image | grep $(minikube ip):5000
 }
 
+@test "Deploy a Golang function using the build system" {
+  deploy_function get-go-deps
+  wait_for_job get-go-deps
+  # Speed up pod start when the image is ready
+  restart_function get-go-deps
+  verify_function get-go-deps
+  kubectl get deployment -o yaml get-go-deps | grep image | grep $(minikube ip):5000
+}
+
 @test "Test no-errors" {
   if kubectl logs -n kubeless -l kubeless=controller | grep "level=error"; then
     echo "Found errors in the controller logs"
