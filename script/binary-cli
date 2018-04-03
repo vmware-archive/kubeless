@@ -19,14 +19,9 @@ set -e
 OS_PLATFORM_ARG=(-os="darwin linux windows")
 OS_ARCH_ARG=(-arch="386 amd64")
 
-if [ -z "$1" ]; then
-    VERSION=dev-$(shell date +%FT%T%z)
-else
-    VERSION=$1
-fi
-
-GITCOMMIT=$(git rev-parse --short HEAD)
-BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/pkg/version/version.VERSION=${VERSION} -X github.com/kubeless/kubeless/pkg/version/version.GITCOMMIT=${GITCOMMIT}")
+GIT_COMMIT=$(git describe --tags --dirty)
+BUILD_DATE=$(date)
+BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/pkg/version.Version=${GIT_COMMIT}")
 
 # Get rid of existing binaries
 rm -rf bundles/kubeless*

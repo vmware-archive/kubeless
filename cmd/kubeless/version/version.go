@@ -29,6 +29,6 @@ var VersionCmd = &cobra.Command{
 	Short: "Print the version of Kubeless",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Kubeless version: " + version.VERSION + " (" + version.GITCOMMIT + ")")
+		fmt.Println("Kubeless version: " + version.Version)
 	},
 }

@@ -16,14 +16,8 @@
 
 set -e
 
-if [ -z "$1" ]; then
-    VERSION=dev-$(date +%FT%T%z)
-else
-    VERSION=$1
-fi
-
-GITCOMMIT=$(git rev-parse --short HEAD)
-BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/pkg/version.VERSION=${VERSION} -X github.com/kubeless/kubeless/pkg/version.GITCOMMIT=${GITCOMMIT}")
+GIT_COMMIT=$(git describe --tags --dirty)
+BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/pkg/version.Version=${GIT_COMMIT}")
 
 # Get rid of existing binary
 rm -f ${GOPATH%%:*}/bin/kubeless*

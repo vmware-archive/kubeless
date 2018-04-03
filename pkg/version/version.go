@@ -17,9 +17,6 @@ limitations under the License.
 package version
 
 var (
-	// VERSION will be overwritten automatically by the build system
-	VERSION = "devel"
-
-	// GITCOMMIT will be overwritten automatically by the build system
-	GITCOMMIT = "HEAD"
+	// Version will be set automatically by the build system via -ldflags
+	Version string
 )

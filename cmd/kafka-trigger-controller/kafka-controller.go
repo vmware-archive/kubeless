@@ -62,7 +62,7 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
-	logrus.Infof("Starting Kafka controller version: " + version.VERSION + " (" + version.GITCOMMIT + ")")
+	logrus.Infof("Running Kafka controller version: %v", version.Version)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
