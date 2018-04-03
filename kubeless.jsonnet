@@ -57,13 +57,6 @@ local crd = [
   {
     apiVersion: "apiextensions.k8s.io/v1beta1",
     kind: "CustomResourceDefinition",
-    metadata: objectMeta.name("kafkatriggers.kubeless.io"),
-    spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "kafkatriggers", singular: "kafkatrigger", kind: "KafkaTrigger"}},
-    description: "CRD object for Kafka trigger type",
-  },
-  {
-    apiVersion: "apiextensions.k8s.io/v1beta1",
-    kind: "CustomResourceDefinition",
     metadata: objectMeta.name("httptriggers.kubeless.io"),
     spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "httptriggers", singular: "httptrigger", kind: "HTTPTrigger"}},
     description: "CRD object for HTTP trigger type",
