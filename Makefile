@@ -1,8 +1,6 @@
 GO = go
 GO_FLAGS =
 GOFMT = gofmt
-VERSION = dev-$(shell date +%FT%T%z)
-
 KUBECFG = kubecfg
 DOCKER = docker
 CONTROLLER_IMAGE = kubeless-controller-manager:latest
@@ -29,10 +27,10 @@ all:
 	CGO_ENABLED=1 ./script/make.sh
 
 binary:
-	CGO_ENABLED=1 ./script/binary $(VERSION)
+	CGO_ENABLED=1 ./script/binary
 
 binary-cross:
-	./script/binary-cli $(VERSION)
+	./script/binary-cli
 
 
 %.yaml: %.jsonnet

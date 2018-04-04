@@ -16,19 +16,7 @@ limitations under the License.
 
 package version
 
-import (
-	"fmt"
-
-	"github.com/kubeless/kubeless/pkg/version"
-	"github.com/spf13/cobra"
+var (
+	// Version will be set automatically by the build system via -ldflags
+	Version string
 )
-
-//VersionCmd contains first-class command for version
-var VersionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print the version of Kubeless",
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Kubeless version: " + version.Version)
-	},
-}

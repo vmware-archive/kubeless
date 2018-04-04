@@ -29,8 +29,10 @@ else
     OS_ARCH_ARG=($2)
 fi
 
-GITCOMMIT=$(git rev-parse --short HEAD)
-BUILD_FLAGS=(-ldflags="-w -X version.GITCOMMIT=${GITCOMMIT}")
+
+GIT_COMMIT=$(git describe --tags --dirty)
+BUILD_DATE=$(date)
+BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/pkg/version.Version=${GIT_COMMIT}")
 
 # Get rid of existing binaries
 rm -rf bundles/kubeless*
