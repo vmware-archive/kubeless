@@ -31,6 +31,7 @@ import (
 var globalUsage = `` //TODO: add explanation
 
 func init() {
+	layerCmd.Flags().Bool("insecure", false, "Disable TLS verification.")
 	layerCmd.Flags().StringP("src", "", "", "Source image reference. F.e. dir://path/to/image")
 	layerCmd.Flags().StringP("src-creds", "", "", "Source image credentials in case it is a private registry. F.e. user:my_pass")
 	layerCmd.Flags().StringP("dst", "", "", "Destination image reference. F.e. docker://user/image")
@@ -61,14 +62,17 @@ func runCommand(command string, args []string) error {
 	return cmd.Wait()
 }
 
-func skopeoCopy(src, dst, srcCreds, dstCreds string) error {
+func skopeoCopy(src, dst, srcCreds, dstCreds string, insecure bool) error {
 	command := "skopeo"
 	args := []string{"copy"}
 	if srcCreds != "" {
 		args = append(args, "--src-creds", srcCreds)
 	}
 	if dstCreds != "" {
-		args = append(args, "--dst-creds", dstCreds)
+		args = append(args, "--dest-creds", dstCreds)
+	}
+	if insecure {
+		args = append(args, "--src-tls-verify=false", "--dest-tls-verify=false")
 	}
 	args = append(args, src, dst)
 	return runCommand(command, args)
@@ -122,8 +126,13 @@ var layerCmd = &cobra.Command{
 			}
 		}
 
+		insecure, err := cmd.Flags().GetBool("insecure")
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		// Store src image
-		err = skopeoCopy(srcImage, fmt.Sprintf("dir://%s", workDir), srcCreds, dstCreds)
+		err = skopeoCopy(srcImage, fmt.Sprintf("dir://%s", workDir), srcCreds, dstCreds, insecure)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -137,7 +146,7 @@ var layerCmd = &cobra.Command{
 		log.Println("Added layer ", layerTar, " in ", workDir)
 
 		// Publish new image
-		err = skopeoCopy(fmt.Sprintf("dir://%s", workDir), dstImage, srcCreds, dstCreds)
+		err = skopeoCopy(fmt.Sprintf("dir://%s", workDir), dstImage, srcCreds, dstCreds, insecure)
 		if err != nil {
 			log.Fatal(err)
 		}

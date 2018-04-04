@@ -273,13 +273,17 @@ func (c *FunctionController) startImageBuildJob(funcObj *kubelessApi.Function, o
 	if err != nil {
 		return "", false, fmt.Errorf("Unable to check is target image exists: %v", err)
 	}
-	image := fmt.Sprintf("%s:%s", imageName, tag)
+	regURL, err := url.Parse(reg.Endpoint)
+	if err != nil {
+		return "", false, fmt.Errorf("Unable to parse registry URL: %v", err)
+	}
+	image := fmt.Sprintf("%s/%s:%s", regURL.Host, imageName, tag)
 	if !exists {
-		regURL, err := url.Parse(reg.Endpoint)
-		if err != nil {
-			return "", false, fmt.Errorf("Unable to parse registry URL: %v", err)
+		tlsVerify := true
+		if c.config.Data["function-registry-tls-verify"] == "false" {
+			tlsVerify = false
 		}
-		err = utils.EnsureFuncImage(c.clientset, funcObj, c.langRuntime, or, imageName, tag, c.config.Data["builder-image"], regURL.Host, imagePullSecret.Name)
+		err = utils.EnsureFuncImage(c.clientset, funcObj, c.langRuntime, or, imageName, tag, c.config.Data["builder-image"], regURL.Host, imagePullSecret.Name, tlsVerify)
 		if err != nil {
 			return "", false, fmt.Errorf("Unable to create image build job: %v", err)
 		}

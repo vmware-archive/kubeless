@@ -799,7 +799,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 }
 
 // EnsureFuncImage creates a Job to build a function image
-func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function, lr *langruntime.Langruntimes, or []metav1.OwnerReference, imageName, tag, builderImage, registryHost, imagePullSecretName string) error {
+func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function, lr *langruntime.Langruntimes, or []metav1.OwnerReference, imageName, tag, builderImage, registryHost, imagePullSecretName string, registryTLSEnabled bool) error {
 	if len(tag) < 64 {
 		return fmt.Errorf("Expecting sha256 as image tag")
 	}
@@ -869,6 +869,18 @@ func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function,
 	}
 	buildJob.Spec.Template.Spec.Volumes = append(buildJob.Spec.Template.Spec.Volumes, registryCredsVolume)
 
+	args := []string{
+		"/imbuilder",
+		"add-layer",
+	}
+	if !registryTLSEnabled {
+		args = append(args, "--insecure")
+	}
+	args = append(args,
+		"--src", fmt.Sprintf("docker://%s", baseImage),
+		"--dst", fmt.Sprintf("docker://%s/%s:%s", registryHost, imageName, tag),
+		fmt.Sprintf("%s/bundle.tar", podSpec.InitContainers[0].VolumeMounts[0].MountPath),
+	)
 	// Add main container
 	buildJob.Spec.Template.Spec.Containers = []v1.Container{
 		{
@@ -886,13 +898,7 @@ func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function,
 					Value: dockerCredsVolMountPath,
 				},
 			},
-			Args: []string{
-				"/imbuilder",
-				"add-layer",
-				"--src", fmt.Sprintf("docker://%s/%s", registryHost, baseImage),
-				"--dst", fmt.Sprintf("docker://%s/%s:%s", registryHost, imageName, tag),
-				fmt.Sprintf("%s/bundle.tar", podSpec.InitContainers[0].VolumeMounts[0].MountPath),
-			},
+			Args: args,
 		},
 	}
 

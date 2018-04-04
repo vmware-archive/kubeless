@@ -158,6 +158,7 @@ local kubelessConfig  = configMap.default("kubeless-config", namespace) +
     configMap.data({"deployment": std.toString(deploymentConfig)})+
     configMap.data({"runtime-images": std.toString(runtime_images)})+
     configMap.data({"enable-build-step": "false"})+
+    configMap.data({"function-registry-tls-verify": "true"})+
     configMap.data({"builder-image": "kubeless/function-image-builder:latest"});
 
 {

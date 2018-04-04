@@ -81,6 +81,9 @@ http)
 cronjob)
     bats tests/integration-tests-cronjob.bats
     ;;
+prebuilt_functions)
+    bats tests/integration-tests-prebuilt.bats
+    ;;
 *)
     bats tests/deployment-tests.bats && \
     bats tests/integration-tests.bats && \
