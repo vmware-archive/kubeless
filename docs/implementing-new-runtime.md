@@ -16,11 +16,11 @@ If you want to extend it and make another language available it is necessary to 
 
 ## 1. [Optional] Create an Init image for installing deps and compiling
 
-The first step is to create an image if required for installing dependencies for your functions or compile them. This step is optional since depending on the target language. If the runtime doesn't require compilation and there is already an available image with the necessary packages to install dependencies you can skip this step.
+The first step is to create an image for installing function dependencies or compile source code. This step is optional depending on the target language. If the runtime doesn't require compilation and there is already an available image with the necessary packages to install dependencies you can skip this step.
 
 In case a custom init image is required, create a Dockefile under the folder `docker/runtime/<language>/Dockerfile.<version>.init`. Note that you can skip `<version>` if just one version is supported.
 
-The goal of this image is to have available any tools or files necessary to compile a function or install dependencies. It is not necessary to specify the specific `CMD` to compile or install dependencies, that will be specified in the Kubeless source code.
+The goal of this image is to have available any tools or files necessary to compile a function or install dependencies. It is not necessary to specify the `CMD` to compile or install dependencies, that will be specified in the Kubeless source code.
 
 In case that the function server needs to be compiled at this step, see the requirements [in the next section](create-a-runtime-image).
 
@@ -39,27 +39,27 @@ Note that you can skip `<version>` if just one version is supported.
 
 The HTTP server should satisfy the following requirements:
 
- - The file to load can be specified using an environment variabel `MOD_NAME`.
+ - The file to load can be specified using an environment variable `MOD_NAME`.
  - The function to load can be specified using an environment variable `FUNC_HANDLER`.
- - The port used to expose the service can be specified using an environment variable `FUNC_PORT`.
- - The server should return `200 - OK` to request at `/healthz`.
+ - The port used to expose the service can be modified using an environment variable `FUNC_PORT`.
+ - The server should return `200 - OK` to requests at `/healthz`.
  - Functions should run `FUNC_TIMEOUT` as maximum. If, due to language limitations, it is not possible not stop the user function, at least a `408 - Timeout` response should be returned to the HTTP request.
  - Functions should receive two parameters: `event` and `context` and should return the value that will be used as HTTP response. See [the functions standard signature](./runtimes#runtimes-interface) for more information. The information that will be available in `event` parameter will be received as HTTP headers.
  - Requests should be served in parallel.
  - Requests should be logged to stdout including date, HTTP method, requested path and status code of the reponse.
- - Errors in the function should be catched. The server should not exit due to a function error.
+ - Exceptions in the function should be catched. The server should not exit due to a function error.
  - [Optional] The function should expose Prometheus statistics in the path `/metrics`. At least it should expose:
    - Calls per HTTP method
    - Errors per HTTP method
-   - Histogram with the function execution time per HTTP method
+   - Histogram with the execution time per HTTP method
 
 See an example of an runtime image for [Python](https://github.com/kubeless/kubeless/blob/master/docker/runtime/python/Dockerfile.2.7).
 
 ## 3. Update the kubeless-config configmap
 
-In this configmap there is a set of images corresponding to the ones describe in the previous sections. You need to update this set with the new images.
+In this configmap there is a set of images corresponding to the ones described in the previous sections. You need to add the references to these images along with general information about the language that will be added.
 
-There are two entries - one for runtime image and another for the Init container that will be used to install dependencies or compile the function in the build process.
+There are two entries - one for the runtime image and another for the init container that will be used to install dependencies or compile the function in the build process.
 
 In the example below, a custom image for `go` has been added. You can optionally add `imagePullSecrets` if they are necessary to pull the image from a private Docker registry.
 
@@ -76,7 +76,7 @@ runtime-images
 +            "runtimeImage": "andresmgot/go:1",
 +            "initImage": "andresmgot/go-init:19",
 +            "imagePullSecrets": [
-+	           {
++	             {
 +                "imageSecret": "Secret"
 +              }
 +            ]
@@ -87,7 +87,7 @@ runtime-images
 +      }
 ``` 
 
-Restart the controller after updating the configmap. In case that you want to submit the new runtime specify the new images in the file `kubeless.jsonnet` at the root of the repository.
+Restart the controller after updating the configmap. In case that you want to submit the new runtime specify the new images in the file `kubeless.jsonnet` at the root of this repository.
 
 ## 4. Add the instructions to intall dependencies in the runtime
 

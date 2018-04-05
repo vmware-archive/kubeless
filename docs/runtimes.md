@@ -88,7 +88,7 @@ For the case of Ruby we use [Sinatra](http://www.sinatrarb.com) as web framework
 
 ### Go HTTP Trigger
 
-The Go HTTP server doesn't include any framework since the native packages includes enough functionality to fit our needs. Since there is not a standard package that manages server logs it is implemented in the same server. It is also required to implement the `ResponseWritter` interface in order to retrieve the Status Code of the response.
+The Go HTTP server doesn't include any framework since the native packages includes enough functionality to fit our needs. Since there is not a standard package that manages server logs that functionality is implemented in the same server. It is also required to implement the `ResponseWritter` interface in order to retrieve the Status Code of the response.
 
 One peculiarity of the Go runtime is that the user has a `Context` object as part of the `Event.Extensions` parameter. This can be used to handle timeouts in the function. For example:
 
@@ -103,7 +103,7 @@ func Foo(event functions.Event, context functions.Context) (string, error) {
 }
 ```
 
-If the function has a timeout smaller than 5 seconds it will exit and the code after the `select{}` won't be executed. 
+If the function above has a timeout smaller than 5 seconds it will exit and the code after the `select{}` won't be executed. 
 
 # Scheduled Trigger
 

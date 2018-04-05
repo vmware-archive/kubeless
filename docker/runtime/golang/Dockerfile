@@ -1,5 +1,5 @@
 FROM bitnami/minideb:jessie
 
-# Change user
+USER 1000
 
 CMD [ "/kubeless/server" ]

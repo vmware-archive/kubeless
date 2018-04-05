@@ -154,8 +154,8 @@ local runtime_images ='[
       {
         "name": "go1.10",
         "version": "1.10",
-        "runtimeImage": "andresmgot/go@sha256:38a37e644087284fc9c131d14f6fbeae8e15fe6d2afca639910b5804bbeb6129",
-        "initImage": "andresmgot/go-init@sha256:bf73cf3be02b38f308e89abb043e219a2f5f4ae2effc5ca2cd51fc14f266b378"
+        "runtimeImage": "kubeless/go@sha256:bf72622344a54e4360f31d3fea5eb9dca2c96fbedc6f0ad7c54f3eb8fb7bd353",
+        "initImage": "kubeless/go-init@sha256:d73058d6622c3b5b1a046b83e3d455405f7a9f11cca2504adfd32ab0a01bb761"
       }
     ],
     "depName": "Gopkg.toml",

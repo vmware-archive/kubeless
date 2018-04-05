@@ -33,25 +33,27 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-var funcHandler = os.Getenv("FUNC_HANDLER")
-var timeout = os.Getenv("FUNC_TIMEOUT")
-var funcPort = os.Getenv("FUNC_PORT")
-var runtime = os.Getenv("FUNC_RUNTIME")
-var memoryLimit = os.Getenv("FUNC_MEMORY_LIMIT")
-var intTimeout int
-var funcContext functions.Context
-var funcHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-	Name: "function_duration_seconds",
-	Help: "Duration of user function in seconds",
-}, []string{"method"})
-var funcCalls = prometheus.NewCounterVec(prometheus.CounterOpts{
-	Name: "function_calls_total",
-	Help: "Number of calls to user function",
-}, []string{"method"})
-var funcErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
-	Name: "function_failures_total",
-	Help: "Number of exceptions in user function",
-}, []string{"method"})
+var (
+	funcHandler = os.Getenv("FUNC_HANDLER")
+	timeout = os.Getenv("FUNC_TIMEOUT")
+	funcPort = os.Getenv("FUNC_PORT")
+	runtime = os.Getenv("FUNC_RUNTIME")
+	memoryLimit = os.Getenv("FUNC_MEMORY_LIMIT")
+	intTimeout int
+	funcContext functions.Context
+	funcHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "function_duration_seconds",
+		Help: "Duration of user function in seconds",
+	}, []string{"method"})
+	funcCalls = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "function_calls_total",
+		Help: "Number of calls to user function",
+	}, []string{"method"})
+	funcErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "function_failures_total",
+		Help: "Number of exceptions in user function",
+	}, []string{"method"})
+)
 
 func init() {
 	if timeout == "" {
@@ -120,12 +122,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			Context: ctx,
 		},
 	}
-	funcCalls.With(prometheus.Labels{"method": r.Method}).Inc()
 	funcChannel := make(chan struct {
 		res string
 		err error
 	}, 1)
 	go func() {
+		funcCalls.With(prometheus.Labels{"method": r.Method}).Inc()
 		start := time.Now()
 		res, err := kubeless.<<FUNCTION>>(event, funcContext)
 		funcHistogram.With(prometheus.Labels{"method": r.Method}).Observe(time.Since(start).Seconds())
