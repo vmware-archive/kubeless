@@ -45,7 +45,7 @@ load ../script/libtest
 @test "Create HTTP Trigger with basic auth" {
     deploy_function get-python
     verify_function get-python
-    create_basic_auth_secret
+    create_basic_auth_secret "basic-auth"
     create_http_trigger get-python "test.domain"  "get-python" "basic-auth" "nginx"
     verify_http_trigger_basic_auth get-python $(minikube ip) "hello.*world" "test.domain" "get-python" "foo:bar"
     delete_http_trigger get-python

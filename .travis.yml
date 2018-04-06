@@ -100,6 +100,7 @@ install:
       ./script/start-gke-env.sh $ESCAPED_GKE_CLUSTER $ZONE $GKE_VERSION $GKE_ADMIN > $TRAVIS_BUILD_DIR/gke-start.log 2>&1 &
       GKE_START_PID=$!
     fi
+    sudo apt-get install apache2-utils
 
 script:
   - |
