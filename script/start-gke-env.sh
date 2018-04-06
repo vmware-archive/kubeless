@@ -29,6 +29,12 @@ if gcloud container clusters list | grep -q $CLUSTER; then
         clean $res
     done
 
+    echo "Removing clusterroles"  >&9
+    kubectl delete clusterrole kubeless-controller-deployer || true
+    kubectl delete clusterrole kafka-controller-deployer || true
+    kubectl delete clusterrolebindings kubeless-controller-deployer || true
+    kubectl delete clusterrolebindings kafka-controller-deployer || true
+
     echo "Removing customresourcecleanup.apiextensions.k8s.io finalizer from CRD's"  >&9
     kubectl patch crd/functions.kubeless.io -p '{"metadata":{"finalizers":[]}}' --type=merge       || true
     kubectl patch crd/cronjobtriggers.kubeless.io -p '{"metadata":{"finalizers":[]}}' --type=merge || true
