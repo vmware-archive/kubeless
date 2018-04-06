@@ -42,6 +42,17 @@ load ../script/libtest
     verify_clean_object ingress ing-get-python
 }
 
+@test "Create HTTP Trigger with basic auth" {
+    deploy_function get-python
+    verify_function get-python
+    create_basic_auth_secret
+    create_http_trigger get-python "test.domain"  "get-python" "basic-auth" "nginx"
+    verify_http_trigger_basic_auth get-python $(minikube ip) "hello.*world" "test.domain" "get-python" "foo:bar"
+    delete_http_trigger get-python
+    verify_clean_object httptrigger ing-get-python
+    verify_clean_object ingress ing-get-python
+}
+
 @test "Test no-errors" {
   if kubectl logs -n kubeless -l kubeless=controller | grep "level=error"; then
     echo "Found errors in the controller logs"
