@@ -212,7 +212,7 @@ func (l *Langruntimes) GetBuildContainer(runtime string, env []v1.EnvVar, instal
 	case strings.Contains(runtime, "php"):
 		command = "composer install -d " + installVolume.MountPath
 	case strings.Contains(runtime, "go"):
-		command = "cd $GOPATH/src/kubeless && dep ensure"
+		command = "cd $GOPATH/src/kubeless && dep ensure > /dev/termination-log 2>&1"
 	}
 
 	return v1.Container{
@@ -276,7 +276,7 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 	case strings.Contains(runtime, "go"):
 		command = fmt.Sprintf(
 			"sed 's/<<FUNCTION>>/%s/g' $GOPATH/src/controller/kubeless.tpl.go > $GOPATH/src/controller/kubeless.go && "+
-				"go build -o %s/server $GOPATH/src/controller/kubeless.go", funcName, installVolume.MountPath)
+				"go build -o %s/server $GOPATH/src/controller/kubeless.go > /dev/termination-log 2>&1", funcName, installVolume.MountPath)
 	default:
 		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
 	}
