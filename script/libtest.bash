@@ -329,10 +329,17 @@ test_kubeless_function_update() {
     update_function $func
     verify_function $func ${func}-update-verify
 }
+create_basic_auth_secret() {
+    local secret=${1:?}; shift
+    htpasswd -cb basic-auth foo bar
+    kubectl create secret generic $secret --from-file=basic-auth
+}
 create_http_trigger(){
     local func=${1:?}; shift
     local domain=${1-""};
     local subpath=${2-""};
+    local basicauth=${3-""};
+    local gateway=${4-""};
     delete_http_trigger ${func}
     echo_info "TEST: Creating HTTP trigger"
     local command="kubeless trigger http create ing-${func} --function-name ${func}"
@@ -341,6 +348,12 @@ create_http_trigger(){
     fi
     if [ -n "$subpath" ]; then
         command="$command --path ${subpath}"
+    fi
+    if [ -n "$basicauth" ]; then
+        command="$command --basic-auth-secret ${basicauth}"
+    fi
+    if [ -n "$gateway" ]; then
+        command="$command --gateway ${gateway}"
     fi
     eval $command
 }
@@ -373,6 +386,23 @@ verify_http_trigger(){
     done
     sleep 3
     curl -vv --header "Host: $domain" $ip\/$subpath | grep "${expected_response}"
+}
+verify_http_trigger_basic_auth(){
+    local func=${1:?}; shift
+    local ip=${1:?}; shift
+    local expected_response=${1:?}; shift
+    local domain=${1:?}; shift
+    local subpath=${1:?}; shift
+    local auth=${1:-""};
+    kubeless trigger http list | grep ${func}
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    echo_info "Waiting for ingress to be ready..."
+    until kubectl get ingress | grep $func | grep "$domain" | awk '{print $3}' | grep "$ip"; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
+    sleep 3
+    curl -vv --header "Host: $domain" -u $auth $ip\/$subpath | grep "${expected_response}"
 }
 delete_http_trigger() {
     local func=${1:?}; shift
