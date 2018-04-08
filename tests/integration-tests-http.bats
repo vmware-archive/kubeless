@@ -42,6 +42,17 @@ load ../script/libtest
     verify_clean_object ingress ing-get-python
 }
 
+@test "Create HTTP Trigger with TLS private key and certificate" {
+    deploy_function get-python
+    verify_function get-python
+    create_tls_secret_from_key_cert foo-secret
+    create_http_trigger_with_tls_secret get-python "foo.bar.com" "get-python" "foo-secret"
+    verify_https_trigger get-python $(minikube ip) "hello.*world" "foo.bar.com" "get-python"
+    delete_http_trigger get-python
+    verify_clean_object httptrigger ing-get-python
+    verify_clean_object ingress ing-get-python
+}
+
 @test "Create HTTP Trigger with basic auth" {
     deploy_function get-python
     verify_function get-python

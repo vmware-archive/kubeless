@@ -334,6 +334,30 @@ create_basic_auth_secret() {
     htpasswd -cb basic-auth foo bar
     kubectl create secret generic $secret --from-file=basic-auth
 }
+create_tls_secret_from_key_cert() {
+    local secret=${1:?}; shift
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /tmp/tls.key -out /tmp/tls.crt -subj "/CN=foo.bar.com"
+    kubectl create secret tls $secret --key /tmp/tls.key --cert /tmp/tls.crt
+}
+create_http_trigger_with_tls_secret(){
+    local func=${1:?}; shift
+    local domain=${1-""};
+    local subpath=${2-""};
+    local secret=${3-""};
+    delete_http_trigger ${func}
+    echo_info "TEST: Creating HTTP trigger"
+    local command="kubeless trigger http create ing-${func} --function-name ${func}"
+    if [ -n "$domain" ]; then
+        command="$command --hostname ${domain}"
+    fi
+    if [ -n "$subpath" ]; then
+        command="$command --path ${subpath}"
+    fi
+    if [ -n "$secret" ]; then
+        command="$command --tls-secret ${secret}"
+    fi
+    eval $command
+}
 create_http_trigger(){
     local func=${1:?}; shift
     local domain=${1-""};
@@ -403,6 +427,22 @@ verify_http_trigger_basic_auth(){
     done
     sleep 3
     curl -vv --header "Host: $domain" -u $auth $ip\/$subpath | grep "${expected_response}"
+}
+verify_https_trigger(){
+    local func=${1:?}; shift
+    local ip=${1:?}; shift
+    local expected_response=${1:?}; shift
+    local domain=${1:?}; shift
+    local subpath=${1:-""};
+    kubeless trigger http list | grep ${func}
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    echo_info "Waiting for ingress to be ready..."
+    until kubectl get ingress | grep $func | grep "$domain" | awk '{print $3}' | grep "$ip"; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
+    sleep 3
+    curl -k -vv --header "Host: $domain" https:\/\/$ip\/$subpath | grep "${expected_response}"
 }
 delete_http_trigger() {
     local func=${1:?}; shift

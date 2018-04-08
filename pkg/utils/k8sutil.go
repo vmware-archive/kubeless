@@ -522,6 +522,20 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 		}
 	}
 
+	if len(httpTriggerObj.Spec.TLSSecret) > 0 && httpTriggerObj.Spec.TLSAcme {
+		return fmt.Errorf("Can not create ingress object from HTTP trigger spec with both TLSSecret and IngressTLS specified")
+	}
+
+	//  secure an Ingress by specified secret that contains a TLS private key and certificate
+	if len(httpTriggerObj.Spec.TLSSecret) > 0 {
+		ingress.Spec.TLS = []v1beta1.IngressTLS{
+			{
+				SecretName: httpTriggerObj.Spec.TLSSecret,
+				Hosts:      []string{httpTriggerObj.Spec.HostName},
+			},
+		}
+	}
+
 	// add annotations and TLS configuration for kube-lego
 	if httpTriggerObj.Spec.TLSAcme {
 		ingressAnnotations["kubernetes.io/tls-acme"] = "true"
