@@ -9,4 +9,6 @@ RUN npm install
 ADD lib/helper.js /lib/
 ADD kubeless.js /
 
+USER 1000
+
 CMD ["node", "/kubeless.js"]

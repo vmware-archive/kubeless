@@ -8,5 +8,6 @@ RUN pip install bottle==0.12.13 cherrypy==8.9.1 wsgi-request-logger prometheus_c
 
 ADD kubeless.py /
 
-EXPOSE 8080
+USER 1000
+
 CMD ["python2.7", "/kubeless.py"]

@@ -1088,6 +1088,15 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	}
 	dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
 
+	// Add security context
+	runtimeUser := int64(1000)
+	if dpm.Spec.Template.Spec.SecurityContext == nil {
+		dpm.Spec.Template.Spec.SecurityContext = &v1.PodSecurityContext{
+			RunAsUser: &runtimeUser,
+			FSGroup:   &runtimeUser,
+		}
+	}
+
 	_, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		// In case the Deployment already exists we should update
