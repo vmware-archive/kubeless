@@ -14,8 +14,8 @@
 
 # k8s and kubeless helpers, specially "wait"-ers on pod ready/deleted/etc
 
-KUBELESS_MANIFEST=kubeless.yaml
-KUBELESS_MANIFEST_RBAC=kubeless-rbac.yaml
+KUBELESS_MANIFEST=kubeless-non-rbac.yaml
+KUBELESS_MANIFEST_RBAC=kubeless.yaml
 KAFKA_MANIFEST=kafka-zookeeper.yaml
 
 KUBECTL_BIN=$(which kubectl)

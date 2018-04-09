@@ -150,6 +150,6 @@ docker/kafka-controller/kafka-controller
 docker/function-image-builder/imbuilder
 ksonnet-lib/
 kubeless-openshift.yaml
-kubeless-rbac.yaml
+kubeless-non-rbac.yaml
 kubeless.yaml
 kafka-zookeeper.yaml

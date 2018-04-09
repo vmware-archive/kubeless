@@ -102,16 +102,18 @@ make all-yaml
 If everything is ok, you'll have generated manifests file under the `$KUBELESS_WORKING_DIR` root directory:
 
 ```
+kafka-zookeeper.yaml
 kubeless-openshift.yaml
-kubeless-rbac.yaml
+kubeless-non-rbac.yaml
 kubeless.yaml
 ```
 
 You can also generate them separated using the following commands:
 
 ```bash
+make kafka-zookeeper.yaml
 make kubeless-openshift.yaml
-make kubeless-rbac.yaml
+make kubeless-non-rbac.yaml
 make kubeless.yaml
 ```
 
