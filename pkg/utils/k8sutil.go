@@ -734,14 +734,14 @@ func getRuntimeVolumeMount(name string) v1.VolumeMount {
 func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes, podSpec *v1.PodSpec, runtimeVolumeMount v1.VolumeMount) error {
 	depsVolumeName := funcObj.ObjectMeta.Name + "-deps"
 	result := podSpec
-	result.Volumes = []v1.Volume{
-		{
+	result.Volumes = append(podSpec.Volumes,
+		v1.Volume{
 			Name: runtimeVolumeMount.Name,
 			VolumeSource: v1.VolumeSource{
 				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},
 		},
-		{
+		v1.Volume{
 			Name: depsVolumeName,
 			VolumeSource: v1.VolumeSource{
 				ConfigMap: &v1.ConfigMapVolumeSource{
@@ -751,7 +751,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 				},
 			},
 		},
-	}
+	)
 	// prepare init-containers if some function is specified
 	if funcObj.Spec.Function != "" {
 		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime, lr)

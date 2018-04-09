@@ -164,6 +164,14 @@ get-python-metadata:
 get-python-metadata-verify:
 	kubeless function call get-python-metadata |egrep hello.world
 
+get-python-secrets:
+	kubectl create secret generic test-secret --from-literal=key=MY_KEY || true
+	kubeless function deploy get-python-secrets --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --secrets test-secret
+
+get-python-secrets-verify:
+	$(eval pod := $(shell kubectl get pod -l function=get-python-secrets -o go-template -o custom-columns=:metadata.name --no-headers=true))
+	kubectl exec -it $(pod) cat /test-secret/key | egrep "MY_KEY"
+
 get-ruby:
 	kubeless function deploy get-ruby --runtime ruby2.4 --handler helloget.foo --from-file ruby/helloget.rb
 
