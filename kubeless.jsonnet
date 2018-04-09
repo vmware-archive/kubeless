@@ -155,7 +155,7 @@ local runtime_images ='[
         "name": "go1.10",
         "version": "1.10",
         "runtimeImage": "kubeless/go@sha256:bf72622344a54e4360f31d3fea5eb9dca2c96fbedc6f0ad7c54f3eb8fb7bd353",
-        "initImage": "kubeless/go-init@sha256:d73058d6622c3b5b1a046b83e3d455405f7a9f11cca2504adfd32ab0a01bb761"
+        "initImage": "kubeless/go-init@sha256:ec60becbac57ef775e42191739ee003fd1ce72a49b10da64065ee3ef984f63fd"
       }
     ],
     "depName": "Gopkg.toml",

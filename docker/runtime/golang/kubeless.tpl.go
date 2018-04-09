@@ -34,13 +34,13 @@ import (
 )
 
 var (
-	funcHandler = os.Getenv("FUNC_HANDLER")
-	timeout = os.Getenv("FUNC_TIMEOUT")
-	funcPort = os.Getenv("FUNC_PORT")
-	runtime = os.Getenv("FUNC_RUNTIME")
-	memoryLimit = os.Getenv("FUNC_MEMORY_LIMIT")
-	intTimeout int
-	funcContext functions.Context
+	funcHandler   = os.Getenv("FUNC_HANDLER")
+	timeout       = os.Getenv("FUNC_TIMEOUT")
+	funcPort      = os.Getenv("FUNC_PORT")
+	runtime       = os.Getenv("FUNC_RUNTIME")
+	memoryLimit   = os.Getenv("FUNC_MEMORY_LIMIT")
+	intTimeout    int
+	funcContext   functions.Context
 	funcHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "function_duration_seconds",
 		Help: "Duration of user function in seconds",
@@ -96,6 +96,13 @@ func logReq(handler http.Handler) http.Handler {
 		lrw := newLoggingResponseWriter(w)
 		handler.ServeHTTP(lrw, r)
 		log.Printf("%s \"%s %s %s\" %d %s", r.RemoteAddr, r.Method, r.RequestURI, r.Proto, lrw.statusCode, r.UserAgent())
+		if lrw.statusCode == 408 {
+			go func() {
+				// Give time to return timeout response
+				time.Sleep(time.Second)
+				log.Fatal("Request timeout. Forcing exit")
+			}()
+		}
 	})
 }
 
