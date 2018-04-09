@@ -93,7 +93,7 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if enableTLSAcme && len(tlsSecret) > 0 {
-			logrus.Fatalf("Either --enableTLSAcme or --tls-secret must be specified ")
+			logrus.Fatalf("Cannot specify both --enableTLSAcme and --tls-secret")
 		}
 		httpTrigger.Spec.TLSSecret = tlsSecret
 
