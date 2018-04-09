@@ -84,6 +84,15 @@ var updateCmd = &cobra.Command{
 		}
 		httpTrigger.Spec.TLSAcme = enableTLSAcme
 
+		tlsSecret, err := cmd.Flags().GetString("tls-secret")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		if enableTLSAcme && len(tlsSecret) > 0 {
+			logrus.Fatalf("Cannot specify both --enableTLSAcme and --tls-secret")
+		}
+		httpTrigger.Spec.TLSSecret = tlsSecret
+
 		gateway, err := cmd.Flags().GetString("gateway")
 		if err != nil {
 			logrus.Fatal(err)
@@ -112,5 +121,5 @@ func init() {
 	updateCmd.Flags().BoolP("enableTLSAcme", "", false, "If true, routing rule will be configured for use with kube-lego")
 	updateCmd.Flags().StringP("gateway", "", "", "Specify a valid gateway for the Ingress")
 	updateCmd.Flags().StringP("basic-auth-secret", "", "", "Specify an existing secret name for basic authentication")
-
+	updateCmd.Flags().StringP("tls-secret", "", "", "Specify an existing secret that contains a TLS private key and certificate to secure ingress")
 }
