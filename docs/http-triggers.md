@@ -87,13 +87,25 @@ $ curl --data '{"Another": "Echo"}' \
 
 ## Enable TLS
 
-By default, Kubeless doesn't take care of setting up TLS for its functions. You can do it manually by following the [standard procedure](https://kubernetes.io/docs/concepts/services-networking/ingress/#tls) of securing ingress. There is also a [general guideline](https://docs.bitnami.com/kubernetes/how-to/secure-kubernetes-services-with-ingress-tls-letsencrypt/) to enable TLS for your Kubernetes services using LetsEncrypt and Kube-lego written by Bitnami folks. When you have running Kube-lego, you can deploy function and create route with flag `--enableTLSAcme` enabled as below:
+By default, Kubeless doesn't take care of setting up TLS for its functions. You can do it manually by following the [standard procedure](https://kubernetes.io/docs/concepts/services-networking/ingress/#tls) of securing ingress. There is also a [general guideline](https://docs.bitnami.com/kubernetes/how-to/secure-kubernetes-services-with-ingress-tls-letsencrypt/) to enable TLS for your Kubernetes services using LetsEncrypt and Kube-lego written by Bitnami folks.
+
+### Using Let’s Encrypt’s CA
+
+When you have running Kube-lego, you can deploy function and create route with flag `--enableTLSAcme` enabled as below:
 
 ```console
 $ kubeless trigger http create get-python --function-name get-python --path get-python --enableTLSAcme
 ```
 
 Running the above command, Kubeless will automatically create a ingress object with annotation `kubernetes.io/tls-acme: 'true'` set which will be used by Kube-lego to configure the service certificate.
+
+### Using existing Certificate and Private Key
+
+If you have existing certificate, you can use them to setup TLS for ingress, there by securing functions. You need to create a [secret](https://kubernetes.io/docs/concepts/configuration/secret/) using the TLS private key and certificate as per Kubernetes ingress TLS [guideline](https://kubernetes.io/docs/concepts/services-networking/ingress/#tls). You can use created secret with kubeless CLI as below.
+
+```console
+kubeless trigger http create get-python --function-name get-python --path get-python --tls-secret secret-name
+```
 
 ## Enable Basic Authentication
 
