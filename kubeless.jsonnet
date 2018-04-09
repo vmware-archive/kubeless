@@ -75,6 +75,7 @@ local deploymentConfig = '{}';
 local runtime_images ='[
   {
     "ID": "python",
+    "compiled": false,
     "versions": [
       {
         "name": "python27",
@@ -100,6 +101,7 @@ local runtime_images ='[
   },
   {
     "ID": "nodejs",
+    "compiled": false,
     "versions": [
       {
         "name": "node6",
@@ -119,6 +121,7 @@ local runtime_images ='[
   },
   {
     "ID": "ruby",
+    "compiled": false,
     "versions": [
       {
         "name": "ruby24",
@@ -132,6 +135,7 @@ local runtime_images ='[
   },
   {
     "ID": "php",
+    "compiled": false,
     "versions": [
       {
         "name": "php72",
@@ -142,6 +146,20 @@ local runtime_images ='[
     ],
     "depName": "composer.json",
     "fileNameSuffix": ".php"
+  },
+  {
+    "ID": "go",
+    "compiled": true,
+    "versions": [
+      {
+        "name": "go1.10",
+        "version": "1.10",
+        "runtimeImage": "kubeless/go@sha256:bf72622344a54e4360f31d3fea5eb9dca2c96fbedc6f0ad7c54f3eb8fb7bd353",
+        "initImage": "kubeless/go-init@sha256:ec60becbac57ef775e42191739ee003fd1ce72a49b10da64065ee3ef984f63fd"
+      }
+    ],
+    "depName": "Gopkg.toml",
+    "fileNameSuffix": ".go"
   }
 ]';
 

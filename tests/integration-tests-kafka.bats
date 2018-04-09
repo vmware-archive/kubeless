@@ -51,6 +51,11 @@ load ../script/libtest
   verify_function pubsub-ruby
   kubeless_function_delete pubsub-ruby
 }
+@test "Test function: pubsub-go" {
+  deploy_function pubsub-go
+  verify_function pubsub-go
+  kubeless_function_delete pubsub-go
+}
 @test "Test topic list" {
   wait_for_kubeless_kafka_server_ready
   for topic in topic1 topic2; do

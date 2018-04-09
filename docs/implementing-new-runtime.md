@@ -5,7 +5,8 @@ As of today, Kubeless supports the following languages:
 * Ruby
 * Node.js
 * Python
-* .NET
+* PHP
+* Golang
 
 Each language interpreter is implemented as an image of a Docker container, dispatched by the Kubeless controller.
 
@@ -13,38 +14,92 @@ All the structures that implement  language support are coded in the file `langr
 
 If you want to extend it and make another language available it is necessary to change the following components:
 
-## 1. Update the kubeless-config configmap
+## 1. [Optional] Create an Init image for installing deps and compiling
 
-In this configmap there is a set of runtime images. You need to update this set with an entry pointing to the repository of the Docker container image for the runtime of the new language.
+The first step is to create an image for installing function dependencies or compile source code. This step is optional depending on the target language. If the runtime doesn't require compilation and there is already an available image with the necessary packages to install dependencies you can skip this step.
 
-Usually there are three entries - one for HTTP triggers, another for event based functions and another one for the Init container that will be used to install dependencies in the build process. If your new runtime implementation will support only HTTP triggers, then create only two entries as follows:
+In case a custom init image is required, create a Dockefile under the folder `docker/runtime/<language>/Dockerfile.<version>.init`. Note that you can skip `<version>` if just one version is supported.
 
-In the example below, a custom image for `dotnetcore` has been added. You can optionally add `imagePullSecrets` if they are necessary to pull the image from a private Docker registry.
+The goal of this image is to have available any tools or files necessary to compile a function or install dependencies. It is not necessary to specify the `CMD` to compile or install dependencies, that will be specified in the Kubeless source code.
+
+In case that the function server needs to be compiled at this step, see the requirements [in the next section](create-a-runtime-image).
+
+See an example of an init image for [Go](https://github.com/kubeless/kubeless/blob/master/docker/runtime/golang/Dockerfile.init).
+
+## 2. Create a runtime image
+
+The second step is to generate the image that will be used to run the HTTP server that will load and execute functions. Usually  at least a Dockerfile and a source code file written in the target language will be needed. Those files will be placed at:
+
+```
+docker/runtime/<language>/Dockerfile.<version>
+docker/runtime/<language>/kubeless.<language_extension>
+```
+
+Note that you can skip `<version>` if just one version is supported.
+
+The HTTP server should satisfy the following requirements:
+
+ - The file to load can be specified using an environment variable `MOD_NAME`.
+ - The function to load can be specified using an environment variable `FUNC_HANDLER`.
+ - The port used to expose the service can be modified using an environment variable `FUNC_PORT`.
+ - The server should return `200 - OK` to requests at `/healthz`.
+ - Functions should run `FUNC_TIMEOUT` as maximum. If, due to language limitations, it is not possible not stop the user function, at least a `408 - Timeout` response should be returned to the HTTP request.
+ - Functions should receive two parameters: `event` and `context` and should return the value that will be used as HTTP response. See [the functions standard signature](./runtimes#runtimes-interface) for more information. The information that will be available in `event` parameter will be received as HTTP headers.
+ - Requests should be served in parallel.
+ - Requests should be logged to stdout including date, HTTP method, requested path and status code of the reponse.
+ - Exceptions in the function should be catched. The server should not exit due to a function error.
+ - [Optional] The function should expose Prometheus statistics in the path `/metrics`. At least it should expose:
+   - Calls per HTTP method
+   - Errors per HTTP method
+   - Histogram with the execution time per HTTP method
+
+See an example of an runtime image for [Python](https://github.com/kubeless/kubeless/blob/master/docker/runtime/python/Dockerfile.2.7).
+
+## 3. Update the kubeless-config configmap
+
+In this configmap there is a set of images corresponding to the ones described in the previous sections. You need to add the references to these images along with general information about the language that will be added.
+
+There are two entries - one for the runtime image and another for the init container that will be used to install dependencies or compile the function in the build process.
+
+In the example below, a custom image for `go` has been added. You can optionally add `imagePullSecrets` if they are necessary to pull the image from a private Docker registry.
 
 ```patch
 runtime-images
 ...
-+        - ID: "dotnetcore"
-+		  versions:
-+		  - name: "dotnetcore2"
-+		    version: "2.0"
-+			httpImage: "mydocker/kubeless-netcore:latest"
-+           initImage: "mydocker/kubeless-netcore-build:latest"
-+           imagePullSecrets:
-+           - imageSecret: "Secret"
-+         depName: "requirements.xml"
-+         fileNameSuffix: ".cs"
++      {
++        "ID": "go",
++        "compiled": true,
++        "versions": [
++          {
++            "name": "go1.10",
++            "version": "1.10",
++            "runtimeImage": "andresmgot/go:1",
++            "initImage": "andresmgot/go-init:19",
++            "imagePullSecrets": [
++	             {
++                "imageSecret": "Secret"
++              }
++            ]
++          }
++        ],
++        "depName": "Gopkg.toml",
++        "fileNameSuffix": ".go"
++      }
 ``` 
 
-Restart the controller after updating the configmap.
+Restart the controller after updating the configmap. In case that you want to submit the new runtime specify the new images in the file `kubeless.jsonnet` at the root of this repository.
 
-## 2. Add the build instructions to include dependencies in the runtime
+## 4. Add the instructions to intall dependencies in the runtime
 
 Each runtime has specific instructions to install its dependencies. These instructions are specified in the method `GetBuildContainer()`. About this method you should know:
- - The folder with the function and the dependency files is mounted at `depsVolume.MountPath`
- - Dependencies should be installed in the folder `runtimeVolume.MountPath`
+ - The runtime is specified as a string in the form of `<name><version>` e.g. `go1.10`
+ - The folder with the function and the dependency files is mounted at `installVolume.MountPath`. This is the path in which the function dependencies should be installed. Any change outside this folder will be ignored.
 
-## 3. Update the deployment to load requirements for the runtime image
+## 5. [Optional] Add the instructions to compile the runtime
+
+In case it is a compiled language you will need to add the required instructions to compile the source code in the method `GetCompilationContainer()`. As in `GetBuildContainer()` the result should be stored in the folder that `installVolume.MountPath` points to. Anything outside that folder will be ignored.
+
+## 6. [Optional] Update the deployment to load requirements for the runtime image
 
 Some languages require to specify an environment variable in order to load dependencies from a certain path. If that is the case, update the function `updateDeployment()` to include the required environment variable:
 
@@ -63,7 +118,7 @@ func UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runtime string) {
 
 This function is called if there are requirements to be injected in your runtime or if it is a custom runtime.
 
-## 4. Add examples
+## 6. Add examples
 
 In order to demonstrate the usage of the new runtime it will be necessary to add at least three different examples:
 
@@ -73,7 +128,7 @@ In order to demonstrate the usage of the new runtime it will be necessary to add
 
  The examples should be added to the folder `examples/<language_id>/` and should be added as well to the Makefile present in `examples/Makefile`. Note that the target should be `get-<language_id>`, `post-<language_id>` and `get-<language_id>-deps` for three examples above.
 
-## 5. Add tests
+## 7. Add tests
 
 For each new runtime, there should be integration tests that deploys the three examples above and check that the function is successfully deployed and that the output of the function is the expected one. For doing so add the counterpart `get-<language_id>-verify`, `post-<language_id>-verify` and `get-<language_id>-deps-verify` in the `examples/Makefile` and enable the execution of these tests in the script `test/integration-tests.bats`:
 

@@ -86,6 +86,62 @@ For python we use [Bottle](https://bottlepy.org) and we also add routes for heal
 
 For the case of Ruby we use [Sinatra](http://www.sinatrarb.com) as web framework and we add the routes required for the function and the health check. Monitoring is currently not supported yet for this framework. PR is welcome :-)
 
+### Go HTTP Trigger
+
+The Go HTTP server doesn't include any framework since the native packages includes enough functionality to fit our needs. Since there is not a standard package that manages server logs that functionality is implemented in the same server. It is also required to implement the `ResponseWritter` interface in order to retrieve the Status Code of the response.
+
+### Debugging compilation
+
+If there is an error during the compilation of a function, the error message will be dumped to the termination log. If you see that the pod is crashed in a init container:
+
+```
+NAME                      READY     STATUS                  RESTARTS   AGE
+get-go-6774465f95-x55lw   0/1       Init:CrashLoopBackOff   1          1m
+```
+
+That can mean that the compilation failed. You can obtain the compilation logs executing:
+
+```console
+$ kubectl get pod -l function=get-go -o yaml
+...
+    - containerID: docker://253fb677da4c3106780d8be225eeb5abf934a961af0d64168afe98159e0338c0
+      image: andresmgot/go-init:1.10
+      lastState:
+        terminated:
+          containerID: docker://253fb677da4c3106780d8be225eeb5abf934a961af0d64168afe98159e0338c0
+          exitCode: 2
+          finishedAt: 2018-04-06T09:01:16Z
+          message: |
+            # kubeless
+            /go/src/kubeless/handler.go:6:1: syntax error: non-declaration statement outside function body
+...
+```
+
+You can see there that there is a syntax error in the line 6 of the function. You can also retrieve the same information with this one-liner:
+
+```console
+$ kubectl get pod -l function=get-go -o go-template="{{range .items}}{{range .status.initContainerStatuses}}{{.lastState.terminated.message}}{{end}}{{end}}"
+
+<no value># kubeless
+/go/src/kubeless/handler.go:6:1: syntax error: non-declaration statement outside function body
+```
+
+### Timeout handling
+
+One peculiarity of the Go runtime is that the user has a `Context` object as part of the `Event.Extensions` parameter. This can be used to handle timeouts in the function. For example:
+
+```go
+func Foo(event functions.Event, context functions.Context) (string, error) {
+	select {
+	case <-event.Extensions.Context.Done():
+		return "", nil
+  case <-time.After(5 * time.Second):
+	}
+	return "Function returned after 5 seconds", nil
+}
+```
+
+If the function above has a timeout smaller than 5 seconds it will exit and the code after the `select{}` won't be executed. 
 
 # Scheduled Trigger
 

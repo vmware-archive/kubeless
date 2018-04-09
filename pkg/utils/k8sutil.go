@@ -809,6 +809,19 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 			depsInstallContainer,
 		)
 	}
+
+	// add compilation init container if needed
+	if lr.RequiresCompilation(funcObj.Spec.Runtime) {
+		_, funcName, err := splitHandler(funcObj.Spec.Handler)
+		compContainer, err := lr.GetCompilationContainer(funcObj.Spec.Runtime, funcName, runtimeVolumeMount)
+		if err != nil {
+			return err
+		}
+		result.InitContainers = append(
+			result.InitContainers,
+			compContainer,
+		)
+	}
 	return nil
 }
 

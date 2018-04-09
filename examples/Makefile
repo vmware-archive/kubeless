@@ -116,6 +116,48 @@ get-nodejs-multi:
 get-nodejs-multi-verify:
 	kubeless function call get-nodejs-multi |egrep hello.world
 
+get-go:
+	kubeless function deploy get-go --runtime go1.10 --handler handler.Foo --from-file golang/helloget.go
+
+get-go-verify:
+	kubeless function call get-go |egrep Hello.world
+
+get-go-custom-port:
+	kubeless function deploy get-go-custom-port --runtime go1.10 --handler helloget.Foo --from-file golang/helloget.go --port 8083
+
+get-go-custom-port-verify:
+	kubectl get svc get-go-custom-port -o yaml | grep 'targetPort: 8083'
+	kubeless function call get-go-custom-port |egrep Hello.world
+
+timeout-go:
+	$(eval TMPDIR := $(shell mktemp -d))
+	printf 'package kubeless\nimport "github.com/kubeless/kubeless/pkg/functions"\nfunc Foo(event functions.Event, context functions.Context) (string, error) {\nfor{\n}\nreturn "", nil\n}' > $(TMPDIR)/hello-loop.js
+	kubeless function deploy timeout-go --runtime go1.10 --handler helloget.Foo  --from-file $(TMPDIR)/hello-loop.js --timeout 4
+	rm -rf $(TMPDIR)
+
+timeout-go-verify:
+	$(eval MSG := $(shell kubeless function call timeout-go 2>&1 || true))
+	echo $(MSG) | egrep Request.timeout.exceeded
+
+get-go-deps:
+	kubeless function deploy get-go-deps --runtime go1.10 --handler helloget.Hello --from-file golang/hellowithdeps.go --dependencies golang/Gopkg.toml
+
+get-go-deps-verify:
+	kubeless function call get-go-deps --data '{"hello": "world"}'
+	kubectl logs -l function=get-go-deps | grep -q 'level=info msg=.*hello.*world'
+
+post-go:
+	kubeless function deploy post-go --runtime go1.10 --handler hellowithdata.Handler --from-file golang/hellowithdata.go
+
+post-go-verify:
+	kubeless function call post-go --data '{"it-s": "alive"}'| egrep "it.*alive"
+	# Verify event context
+	logs=`kubectl logs -l function=post-go`; \
+	echo $$logs | grep -q "it.*alive" && \
+	echo $$logs | grep -q "UTC" && \
+	echo $$logs | grep -q "application/json" && \
+	echo $$logs | grep -q "cli.kubeless.io"
+
 get-python-metadata:
 	kubeless function deploy get-python-metadata --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --env foo:bar,bar=foo,foo --memory 128Mi --label foo:bar,bar=foo,foobar
 
@@ -460,5 +502,28 @@ pubsub-ruby-verify:
 		number=`expr $$number + 1`; \
 	done; \
 	$$found
+
+pubsub-go:
+	kubeless topic create s3-go || true
+	kubeless function deploy pubsub-go --trigger-topic s3-go --runtime go1.10 --handler pubsub-go.Handler --from-file golang/hellowithdata.go
+
+pubsub-go-verify:
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
+	kubeless topic publish --topic s3-go --data '{"payload":"$(DATA)"}'
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=pubsub-go`; \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+    	if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
+
 
 pubsub: pubsub-python pubsub-nodejs pubsub-ruby
