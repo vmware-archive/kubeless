@@ -73,6 +73,7 @@ local crd = [
 local deploymentConfig = '{}';
 
 local runtime_images ='[
+  {
     "ID": "python",
     "compiled": false,
     "versions": [
