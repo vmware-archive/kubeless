@@ -24,26 +24,28 @@ To install this latest version, use the manifest that is part of the release:\\n
 \\n\
 \`\`\`console\\n\
 kubectl create ns kubeless\\n\
-curl -sL https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-$tag.yaml | kubectl create -f -\\n\
+kubectl create -f https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-$tag.yaml \\n\
 \`\`\`\\n\
 \\n\
 **WITHOUT RBAC:**\\n\
 \\n\
 \`\`\`console\\n\
 kubectl create ns kubeless\\n\
-curl -sL https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-non-rbac-$tag.yaml | kubectl create -f -\\n\
+kubectl create -f https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-non-rbac-$tag.yaml \\n\
 \`\`\`\\n\
 **KAFKA:**\\n\
 \\n\
 \`\`\`console\\n\
 kubectl create ns kubeless\\n\
-curl -sL https://github.com/kubeless/kubeless/releases/download/$tag/kafka-zookeeper-$tag.yaml | kubectl create -f -\\n\
+kubectl create -f https://github.com/kubeless/kubeless/releases/download/$tag/kafka-zookeeper-$tag.yaml \\n\
 \`\`\`\\n\
 **OPENSHIFT:**\\n\
 \\n\
 \`\`\`console\\n\
 oc create ns kubeless\\n\
-curl -sL https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-openshift-$tag.yaml | oc create -f -\\n\
+oc create -f https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-openshift-$tag.yaml \\n\
+# Kafka
+oc create -f https://github.com/kubeless/kubeless/releases/download/$tag/kafka-zookeeper-openshift-$tag.yaml \\n\
 \`\`\`\\n\
 ")
   echo "${notes}"
