@@ -195,6 +195,7 @@ before_deploy:
       sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-non-rbac.yaml > kubeless-non-rbac-${TRAVIS_TAG}.yaml
       sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
       cp kafka-zookeeper.yaml kafka-zookeeper-${TRAVIS_TAG}.yaml
+      cp kafka-zookeeper-openshift.yaml kafka-zookeeper-openshift-${TRAVIS_TAG}.yaml
     fi
 
 deploy:
@@ -207,6 +208,7 @@ deploy:
     - kubeless-non-rbac-${TRAVIS_TAG}.yaml
     - kubeless-openshift-${TRAVIS_TAG}.yaml
     - kafka-zookeeper-${TRAVIS_TAG}.yaml
+    - kafka-zookeeper-openshift-${TRAVIS_TAG}.yaml
     - bundles/kubeless_*.zip
   skip_cleanup: true
   overwrite: true
