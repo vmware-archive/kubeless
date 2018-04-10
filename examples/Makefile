@@ -33,10 +33,9 @@ get-python-deps-update:
 	rm -rf $(TMPDIR)
 
 get-python-deps-update-verify:
-	$(eval pod := $(shell kubectl get pod -l function=get-python-deps -o go-template -o custom-columns=:metadata.name --no-headers=true))
-	echo "Checking updated deps of $(pod)"
-	kubectl exec -it $(pod) pip freeze
-	kubectl exec -it $(pod) pip freeze | grep -q "twitter=="
+	pod=`kubectl get pod -l function=get-python-deps -o go-template -o custom-columns=:metadata.name --no-headers=true`; \
+	echo "Checking updated deps of $$pod"; \
+	kubectl exec -it $$pod pip freeze | grep -q "twitter=="
 
 get-python-34:
 	kubeless function deploy get-python --runtime python3.4 --handler helloget.foo --from-file python/helloget.py
