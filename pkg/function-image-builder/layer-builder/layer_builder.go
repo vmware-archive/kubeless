@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 	"strings"
@@ -70,7 +71,7 @@ func getLayer(file string) (*Layer, error) {
 }
 
 func saveNewDescription(content []byte, dir, contentChecksum string) error {
-	dLayerFile := path.Join(dir, fmt.Sprintf("%s.tar", contentChecksum))
+	dLayerFile := path.Join(dir, contentChecksum)
 	return copyReader(bytes.NewReader(content), dLayerFile)
 }
 
@@ -93,10 +94,12 @@ func AddTarToLayer(imageDir, tarFile string) error {
 	if err != nil {
 		return err
 	}
-	err = copyFile(tarFile, path.Join(imageDir, fmt.Sprintf("%s.tar", tarLayer.Sha256)))
+	destFile := path.Join(imageDir, tarLayer.Sha256)
+	err = copyFile(tarFile, destFile)
 	if err != nil {
 		return fmt.Errorf("Failed to copy tar file: %v", err)
 	}
+	log.Printf("Copied source %s to %s", tarFile, destFile)
 
 	// Parse manifest
 	manifestPath := path.Join(imageDir, "manifest.json")
@@ -109,9 +112,10 @@ func AddTarToLayer(imageDir, tarFile string) error {
 	if err != nil {
 		return fmt.Errorf("Failed to parse image manifest: %v", err)
 	}
+	log.Printf("Parsed manifest")
 
 	// Update description
-	descriptionPath := path.Join(imageDir, fmt.Sprintf("%s.tar", strings.Replace(m.Config.Digest, "sha256:", "", -1)))
+	descriptionPath := path.Join(imageDir, strings.Replace(m.Config.Digest, "sha256:", "", -1))
 	descriptionFile, err := os.Open(descriptionPath)
 	if err != nil {
 		return err
@@ -132,6 +136,7 @@ func AddTarToLayer(imageDir, tarFile string) error {
 	if err != nil {
 		return err
 	}
+	log.Printf("Added layer to description at %s", descriptionLayer.Sha256)
 
 	// Update manifest
 	m.UpdateConfig(descriptionLayer)
@@ -144,6 +149,7 @@ func AddTarToLayer(imageDir, tarFile string) error {
 	if err != nil {
 		return err
 	}
+	log.Printf("Updated manifest")
 
 	return nil
 }
