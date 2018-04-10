@@ -20,18 +20,18 @@ This release includes the following commits and features:\\n\
 $commits\\n\\n\
 To install this latest version, use the manifest that is part of the release:\\n\
 \\n\
-**NO RBAC:**\\n\
+**WITH RBAC ENABLED:**\\n\
 \\n\
 \`\`\`console\\n\
 kubectl create ns kubeless\\n\
 curl -sL https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-$tag.yaml | kubectl create -f -\\n\
 \`\`\`\\n\
 \\n\
-**WITH RBAC ENABLED:**\\n\
+**WITHOUT RBAC:**\\n\
 \\n\
 \`\`\`console\\n\
 kubectl create ns kubeless\\n\
-curl -sL https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-rbac-$tag.yaml | kubectl create -f -\\n\
+curl -sL https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-non-rbac-$tag.yaml | kubectl create -f -\\n\
 \`\`\`\\n\
 **KAFKA:**\\n\
 \\n\
