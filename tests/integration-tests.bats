@@ -37,6 +37,7 @@ load ../script/libtest
   deploy_function get-go-deps
   deploy_function timeout-go
   deploy_function get-python-metadata
+  deploy_function get-python-secrets
   deploy_function post-python
   deploy_function post-python-custom-port
   deploy_function post-nodejs
@@ -175,6 +176,10 @@ load ../script/libtest
 @test "Test function: get-python-metadata" {
   verify_function get-python-metadata
   kubeless_function_delete get-python-metadata
+}
+@test "Test function: get-python-secrets" {
+  verify_function get-python-secrets
+  kubeless_function_delete get-python-secrets
 }
 @test "Test no-errors" {
   if kubectl logs -n kubeless -l kubeless=controller | grep "level=error"; then

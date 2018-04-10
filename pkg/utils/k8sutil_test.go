@@ -583,6 +583,32 @@ func TestEnsureDeployment(t *testing.T) {
 	if len(dpm.Spec.Template.Spec.InitContainers) != 0 {
 		t.Error("Unexpected init containers")
 	}
+
+	// It should include existing volumes
+	f10 := getDefaultFunc("func10", ns)
+	f10.Spec.Deployment.Spec.Template.Spec.Volumes = []v1.Volume{
+		{
+			Name:         "test",
+			VolumeSource: v1.VolumeSource{},
+		},
+	}
+	f10.Spec.Deployment.Spec.Template.Spec.Containers[0].VolumeMounts = []v1.VolumeMount{
+		{
+			Name:      "test",
+			MountPath: "/tmp/test",
+		},
+	}
+	err = EnsureFuncDeployment(clientset, f10, or, lr, "")
+	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func10", metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if dpm.Spec.Template.Spec.Volumes[0].Name != "test" {
+		t.Error("Should maintain volumen test")
+	}
+	if dpm.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name != "test" {
+		t.Error("Should maintain volumen test")
+	}
 }
 
 func fakeRESTClient(f func(req *http.Request) (*http.Response, error)) *restFake.RESTClient {
