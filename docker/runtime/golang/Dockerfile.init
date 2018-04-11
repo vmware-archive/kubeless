@@ -3,11 +3,13 @@ FROM golang:1.10
 # Install dep
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 RUN go get golang.org/x/net/context
+RUN mkdir -p /go/pkg/dep && chown 1000:1000 /go/pkg/dep
 
 # Prepare function environment
 RUN ln -s /kubeless $GOPATH/src/kubeless 
 
 # Install controller
+USER 1000
 RUN mkdir -p $GOPATH/src/github.com/kubeless/kubeless/pkg/functions
 ADD pkg/functions/* $GOPATH/src/github.com/kubeless/kubeless/pkg/functions
 RUN mkdir -p $GOPATH/src/controller

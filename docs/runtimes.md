@@ -35,6 +35,10 @@ context:
 
 You can check basic examples of every language supported in the [examples](https://github.com/kubeless/kubeless/tree/master/examples) folder.
 
+### Runtime user
+
+As a [Security Context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/) functions are configured to run with an unprivileged user (UID 1000) by default. This prevent functions from having root privileges and ensure compatibility with OpenShift clusters. This default behaviour can be overriden specifying a different Security Context in the `Deployment` template that is part of the Function Spec.
+
 ## Configuring Default Runtime Container Images
 
 The Kubeless controller defines a set of default container images per supported runtime variant.

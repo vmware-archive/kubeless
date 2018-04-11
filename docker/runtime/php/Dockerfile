@@ -44,6 +44,12 @@ RUN composer install --prefer-dist --optimize-autoloader
 COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY config/default.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 8080
+# Prepare service to run as non root
+RUN rm /etc/nginx/sites-available/default && \
+    mkdir -p /app && \
+    touch /run/nginx.pid && \
+    chown 1000:1000 -R /run/nginx.pid /app /var/lib/nginx /var/log/nginx
+USER 1000
+
 ENTRYPOINT [ "" ]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
