@@ -426,7 +426,7 @@ verify_http_trigger_basic_auth(){
         sleep 1
     done
     sleep 3
-    curl -vv --header "Host: $domain" | grep "401 Authorization Required"
+    curl -vv --header "Host: $domain" $ip\/$subpath | grep "401 Authorization Required"
     curl -vv --header "Host: $domain" -u $auth $ip\/$subpath | grep "${expected_response}"
 }
 verify_https_trigger(){
