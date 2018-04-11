@@ -160,6 +160,20 @@ local runtime_images ='[
     ],
     "depName": "Gopkg.toml",
     "fileNameSuffix": ".go"
+  },
+    {
+    "ID": "dotnetcore",
+    "compiled": false,
+    "versions": [
+      {
+        "name": "dotnetcore2.0",
+        "version": "2.0",
+        "runtimeImage": "allantargino/kubeless-dotnetcore@sha256:d321dc4b2c420988d98cdaa22c733743e423f57d1153c89c2b99ff0d944e8a63",
+        "initImage": "microsoft/aspnetcore-build"
+      }
+    ],
+    "depName": "project.csproj",
+    "fileNameSuffix": ".cs"
   }
 ]';
 

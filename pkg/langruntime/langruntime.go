@@ -213,6 +213,8 @@ func (l *Langruntimes) GetBuildContainer(runtime string, env []v1.EnvVar, instal
 		command = "composer install -d " + installVolume.MountPath
 	case strings.Contains(runtime, "go"):
 		command = "cd $GOPATH/src/kubeless && dep ensure > /dev/termination-log 2>&1"
+	case strings.Contains(runtime, "dotnetcore"):
+		command = "dotnet restore --packages " + installVolume.MountPath
 	}
 
 	return v1.Container{
