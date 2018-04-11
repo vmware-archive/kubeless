@@ -511,8 +511,8 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 		switch gateway := httpTriggerObj.Spec.Gateway; gateway {
 		case "nginx":
 			ingressAnnotations["kubernetes.io/ingress.class"] = "nginx"
-			ingressAnnotations["ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
-			ingressAnnotations["ingress.kubernetes.io/auth-type"] = "basic"
+			ingressAnnotations["nginx.ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
+			ingressAnnotations["nginx.ingress.kubernetes.io/auth-type"] = "basic"
 			break
 		case "traefik":
 			ingressAnnotations["kubernetes.io/ingress.class"] = "traefik"
