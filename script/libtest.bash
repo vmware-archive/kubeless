@@ -331,8 +331,8 @@ test_kubeless_function_update() {
 }
 create_basic_auth_secret() {
     local secret=${1:?}; shift
-    htpasswd -cb basic-auth foo bar
-    kubectl create secret generic $secret --from-file=basic-auth
+    htpasswd -cb auth foo bar
+    kubectl create secret generic $secret --from-file=auth
 }
 create_tls_secret_from_key_cert() {
     local secret=${1:?}; shift
@@ -426,8 +426,8 @@ verify_http_trigger_basic_auth(){
         sleep 1
     done
     sleep 3
-    curl -vv --header "Host: $domain" $ip\/$subpath | grep "401 Authorization Required"
-    curl -vv --header "Host: $domain" -u $auth $ip\/$subpath | grep "${expected_response}"
+    curl -v --header "Host: $domain" $ip\/$subpath | grep "401 Authorization Required"
+    curl -v --header "Host: $domain" -u $auth $ip\/$subpath | grep "${expected_response}"
 }
 verify_https_trigger(){
     local func=${1:?}; shift
