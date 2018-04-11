@@ -70,4 +70,4 @@ We would love to get your help, feel free to lend a hand. We are currently looki
 
 Meeting notes and agenda can be found [here](https://docs.google.com/document/d/1-OsikjjQVHVFoXBHUbkRogrzzZijQ9MumFpLfWCCjwk/edit). Meeting records can be found [here](https://www.youtube.com/user/bitrock5/)
 
-**Slack**: We're fairly active on [slack](http://slack.oss.bitnami.com) and you can find us in the #kubeless channel.
+**Slack**: We're fairly active on [slack](http://slack.k8s.io) and you can find us in the #kubeless channel.

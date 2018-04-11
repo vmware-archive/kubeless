@@ -38,4 +38,4 @@ zookeeper-zoo-0   Pending                                                     2m
 
 ```
 
-If you are running Kubernetes in GKE check the specific guide [here](./GKE-deployment.md) to create the required disks and PVs. In other case, check the provider documentation of how to create these required volumes. Note that `kafka` and `zookeeper` are only needed when working with Kafka events, you can still use Kubeless to trigger functions using HTTP requests.
+If you are running Kubernetes in GKE check the specific guide [here](/docs/GKE-deployment) to create the required disks and PVs. In other case, check the provider documentation of how to create these required volumes. Note that `kafka` and `zookeeper` are only needed when working with Kafka events, you can still use Kubeless to trigger functions using HTTP requests.

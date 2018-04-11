@@ -22,14 +22,14 @@ In order to get Kubeless up and running on top of ACS of course you'll need an A
 
 ## 3. Installing "Kubeless-Controller"
 
-Assuming that the Kubernetes cluster is up and running on top of ACS, its time to install kubeless-controller on master VM. To accomplish, please, follow the steps described on Kubeless documentation, available [here](./quick-start#installation).
+Assuming that the Kubernetes cluster is up and running on top of ACS, its time to install kubeless-controller on master VM. To accomplish, please, follow the steps described on Kubeless documentation, available [here](/docs/quick-start#installation).
 
 ## 4. Installing "Kubeless Client CLI"
 
 Kubeless-Controller is the agent in charge to manage the requests from Kubernetes cluster side. The same way, there's an agent in charge to manage the occurrences from the client side (for instance: register a new function to be executed, call an existing function, etc.). This way, you'll need to install de Kubeless CLI.
 
-Currently there's two different ways to accomplish that: manually (generating binaries manually) or in a automatized way (using a pre-compiled package provided by Bitnami). Follow the [installation instructions](./quick-start#installation) in order to set it up as well.
+Currently there's two different ways to accomplish that: manually (generating binaries manually) or in a automatized way (using a pre-compiled package provided by Bitnami). Follow the [installation instructions](/docs/quick-start#installation) in order to set it up as well.
 
 ## 5. Usage and initial tests
 
-Please follow Kubeless oficial documentation, available [here](./quick-start#usage).
+Please follow Kubeless oficial documentation, available [here](/docs/quick-start#usage).

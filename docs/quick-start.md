@@ -38,7 +38,7 @@ NAME         AGE
 get-python   1d
 ```
 
-### Details on [installing kubeless in a different namespace](./function-controller-configuration.md) can be found here.  
+> Details on [installing kubeless in a different namespace](/docs/function-controller-configuration) can be found here.  
 
 You are now ready to create functions.
 
@@ -66,7 +66,7 @@ Functions in Kubeless have the same format regardless of the language of the fun
  - Receives a second object `context` with general information about the function.
  - Returns a string/object that will be used as response for the caller.
 
-You can find more details about the function interface [here](./runtimes#runtimes-interface)
+You can find more details about the function interface [here](/docs/runtimes#runtimes-interface)
 
 You create it with:
 
@@ -129,11 +129,11 @@ $ curl -L --data '{"Another": "Echo"}' \
 {"Another": "Echo"}
 ```
 
-Kubeless also supports [ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) which means you can provide your custom URL to the function. Please refer to [this doc](./routing) for more details.
+Kubeless also supports [ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) which means you can provide your custom URL to the function. Please refer to [this doc](/docs/routing) for more details.
 
 ## PubSub function
 
-We provide several [PubSub runtimes](https://hub.docker.com/r/kubeless/), which has suffix `event-consumer`, which help you to quickly deploy your function with PubSub mechanism. The PubSub function will expect to consume input messages from a predefined Kafka topic which means Kafka is required. In Kubeless [release page](https://github.com/kubeless/kubeless/releases), you can find the manifest to quickly deploy a collection of Kafka and Zookeeper statefulsets. If you have a Kafka cluster already running in the same Kubernetes environment, you can also deploy PubSub function with it. Check out [this tutorial](./use-existing-kafka.md) for more details how to do that.
+We provide several [PubSub runtimes](https://hub.docker.com/r/kubeless/), which has suffix `event-consumer`, which help you to quickly deploy your function with PubSub mechanism. The PubSub function will expect to consume input messages from a predefined Kafka topic which means Kafka is required. In Kubeless [release page](https://github.com/kubeless/kubeless/releases), you can find the manifest to quickly deploy a collection of Kafka and Zookeeper statefulsets. If you have a Kafka cluster already running in the same Kubernetes environment, you can also deploy PubSub function with it. Check out [this tutorial](/docs/use-existing-kafka) for more details how to do that.
 
 If you want to deploy the manifest we provide to deploy Kafka and Zookeper execute the following command:
 

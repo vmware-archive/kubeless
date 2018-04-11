@@ -44,7 +44,7 @@ The HTTP server should satisfy the following requirements:
  - The port used to expose the service can be modified using an environment variable `FUNC_PORT`.
  - The server should return `200 - OK` to requests at `/healthz`.
  - Functions should run `FUNC_TIMEOUT` as maximum. If, due to language limitations, it is not possible not stop the user function, at least a `408 - Timeout` response should be returned to the HTTP request.
- - Functions should receive two parameters: `event` and `context` and should return the value that will be used as HTTP response. See [the functions standard signature](./runtimes#runtimes-interface) for more information. The information that will be available in `event` parameter will be received as HTTP headers.
+ - Functions should receive two parameters: `event` and `context` and should return the value that will be used as HTTP response. See [the functions standard signature](/docs/runtimes#runtimes-interface) for more information. The information that will be available in `event` parameter will be received as HTTP headers.
  - Requests should be served in parallel.
  - Requests should be logged to stdout including date, HTTP method, requested path and status code of the reponse.
  - Exceptions in the function should be catched. The server should not exit due to a function error.
