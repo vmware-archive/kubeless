@@ -54,7 +54,12 @@ k8s_wait_for_pod_count() {
     local pod_cnt=${1:?}; shift
     echo_info "Waiting for pod '${@}' to have count==${pod_cnt} running ... "
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
-    until [[ $(kubectl get pod "${@}" -ogo-template='{{.items|len}}') == ${pod_cnt} ]]; do
+    # Retries just in case it is not stable
+    local -i successCount=0
+    while [ "$successCount" -lt "3" ]; do
+        if [[ $(kubectl get pod "${@}" -ogo-template='{{.items|len}}') == ${pod_cnt} ]]; then
+            ((successCount=successCount+1))
+        fi
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
@@ -141,6 +146,12 @@ kubeless_function_delete() {
     local func=${1:?}; shift
     echo_info "Deleting function "${func}" in case still present ... "
     kubeless function ls |grep -w "${func}" && kubeless function delete "${func}" >& /dev/null || true
+    echo_info "Wait for function "${func}" to be deleted "
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    while kubectl get functions "${func}" >& /dev/null; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
 }
 kubeless_kafka_trigger_delete() {
     local trigger=${1:?}; shift
