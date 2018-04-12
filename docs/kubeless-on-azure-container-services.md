@@ -32,4 +32,4 @@ Currently there's two different ways to accomplish that: manually (generating bi
 
 ## 5. Usage and initial tests
 
-Please follow Kubeless oficial documentation, available [here](/docs/quick-start#usage).
+Please follow Kubeless official documentation, available [here](/docs/quick-start#usage).

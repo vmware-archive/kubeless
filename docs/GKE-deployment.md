@@ -29,7 +29,7 @@ gcloud container clusters create \
 
 At the moment of writing this document, the CI/CD system is testing Kubeless against GKE 1.8 so that's the one we are specifying as the desired version. You can check the current version tested in [the Travis file](../.travis.yml).
 
-The default number of nodes is 3. That default number is enough for small deployments but it is recommened to use at least 5 or 7 nodes so you don't run out of resources after deploying a few functions.
+The default number of nodes is 3. That default number is enough for small deployments but it is recommended to use at least 5 or 7 nodes so you don't run out of resources after deploying a few functions.
 
 After a few minutes you should be able to see your cluster running:
 
