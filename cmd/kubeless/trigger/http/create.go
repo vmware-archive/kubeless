@@ -97,11 +97,22 @@ var createCmd = &cobra.Command{
 		}
 		httpTrigger.Spec.TLSSecret = tlsSecret
 
+		gateway, err := cmd.Flags().GetString("gateway")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		if gateway != "nginx" && gateway != "traefik" && gateway != "kong" {
+			logrus.Fatalf("Unsupported gateway %s", gateway)
+		}
+		httpTrigger.Spec.Gateway = gateway
+
 		hostName, err := cmd.Flags().GetString("hostname")
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		if hostName == "" {
+		if hostName == "" && gateway == "nginx" {
+			// We assume that Nginx will be listening in the port 80
+			// of the cluster plublic IP
 			config, err := utils.BuildOutOfClusterConfig()
 			if err != nil {
 				logrus.Fatal(err)
@@ -111,13 +122,10 @@ var createCmd = &cobra.Command{
 				logrus.Fatal(err)
 			}
 		}
-		httpTrigger.Spec.HostName = hostName
-
-		gateway, err := cmd.Flags().GetString("gateway")
-		if err != nil {
-			logrus.Fatal(err)
+		if hostName == "" {
+			logrus.Fatalf("The --hostname flag is required")
 		}
-		httpTrigger.Spec.Gateway = gateway
+		httpTrigger.Spec.HostName = hostName
 
 		basicAuthSecret, err := cmd.Flags().GetString("basic-auth-secret")
 		if err != nil {
@@ -139,7 +147,7 @@ func init() {
 	createCmd.Flags().StringP("path", "", "", "Ingress path for the function")
 	createCmd.Flags().StringP("hostname", "", "", "Specify a valid hostname for the function")
 	createCmd.Flags().BoolP("enableTLSAcme", "", false, "If true, routing rule will be configured for use with kube-lego")
-	createCmd.Flags().StringP("gateway", "", "", "Specify a valid gateway for the Ingress")
+	createCmd.Flags().StringP("gateway", "", "nginx", "Specify a valid gateway for the Ingress. Supported: nginx, traefik, kong")
 	createCmd.Flags().StringP("basic-auth-secret", "", "", "Specify an existing secret name for basic authentication")
 	createCmd.Flags().StringP("tls-secret", "", "", "Specify an existing secret that contains a TLS private key and certificate to secure ingress")
 	createCmd.MarkFlagRequired("function-name")

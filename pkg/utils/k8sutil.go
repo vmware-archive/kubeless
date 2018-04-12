@@ -519,6 +519,8 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 			ingressAnnotations["ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
 			ingressAnnotations["ingress.kubernetes.io/auth-type"] = "basic"
 			break
+		case "kong":
+			return fmt.Errorf("Setting basic authentication with Kong is not yet supported")
 		}
 	}
 

@@ -130,11 +130,15 @@ $ curl --data '{"Another": "Echo"}' \
 
 ## Enable TLS
 
-By default, Kubeless doesn't take care of setting up TLS for its functions. You can do it manually by following the [standard procedure](https://kubernetes.io/docs/concepts/services-networking/ingress/#tls) of securing ingress. There is also a [general guideline](https://docs.bitnami.com/kubernetes/how-to/secure-kubernetes-services-with-ingress-tls-letsencrypt/) to enable TLS for your Kubernetes services using LetsEncrypt and Kube-lego written by Bitnami folks.
+Once you have one of the supported Ingress Controller it is possible to enable TLS using a certificate:
+
+ - Automatically generated using Let's Encrypt and [cert-manager](https://github.com/jetstack/cert-manager)
+ - Self signed
+ - Provided by a certificate issuer
 
 ### Using Let’s Encrypt’s CA
 
-When you have running Kube-lego, you can deploy function and create route with flag `--enableTLSAcme` enabled as below:
+When you have running Kube-lego, you can deploy function and create an HTTP trigger with flag `--enableTLSAcme` enabled as below:
 
 ```console
 $ kubeless trigger http create get-python --function-name get-python --path get-python --enableTLSAcme
@@ -142,9 +146,7 @@ $ kubeless trigger http create get-python --function-name get-python --path get-
 
 Running the above command, Kubeless will automatically create a ingress object with annotation `kubernetes.io/tls-acme: 'true'` set which will be used by Kube-lego to configure the service certificate.
 
-### Using existing Certificate and Private Key
-
-#### Create a self-signed certificate
+### Create a self-signed certificate
 
 If you don't have a working certificate it is possible to generate a dummy one to be able to use TLS with your functions. To generate the certificate and its secret execute the following:
 
@@ -159,15 +161,15 @@ $ kubectl create secret tls tls-secret --key tls.key --cert tls.crt
 secret "tls-secret" created
 ```
 
-#### Use an existing certificate
+### Use an existing certificate
 
-Now that you have a certificate, you can use them to setup TLS for ingress, there by securing functions:
+Now that you have a certificate, you can use it to setup TLS for the HTTP trigger, there by securing functions:
 
 ```console
 $ kubeless trigger http create get-python --function-name get-python --hostname foo.bar.com --tls-secret secret-name
 ```
 
-Once the Ingress rule has been deployed you can verify that the function is accessible trough https:
+Once the Ingress rule has been deployed you can verify that the function is accessible trough HTTPS:
 
 ```console
 $ kubectl get ingress
@@ -179,21 +181,137 @@ hello world
 
 ## Enable Basic Authentication
 
-By default, Kubeless doesn't take care about securing its exposed functions.
-You can do it manually depending on your Ingress controller, some examples are:
-* [Nginx](https://github.com/kubernetes/ingress-nginx/blob/master/docs/examples/auth/basic/README.md)
-* [Traefik](https://docs.traefik.io/user-guide/kubernetes/#basic-authentication)
+Once you have one of the supported Ingress Controller it is possible to enable Basic Authentication either:
 
-When you have a running Nginx or Traefik ingress controller, you can deploy function and create a basic authentication secured route as shown below:
-The Kubernetes secret specified by `--basic-auth-secret` must exist and located within the same namespace as the http trigger.
+ - Creating a secret with the content of the user to authenticate. This is valid for the Nginx and Traefik controllers.
+ - Adding the Kong plugin for basic authentication.
+
+### Enable Basic Authentication with Nginx or Traefik
+
+For enabling authentication for a function, the first thing is creating a secret with the user and password:
 
 ```console
-$ kubeless trigger http create get-python --function-name get-python --path get-python --basic-auth-secret get-python-secret --gateway nginx
+$ htpasswd -cb auth foo bar
+Adding password for user foo
+$ kubectl create secret generic basic-auth --from-file=auth
+secret "basic-auth" created
 ```
 
-Running the above command, Kubeless will automatically create an ingress object with annotations:
-* `kubernetes.io/ingress.class: nginx`
-* `ingress.kubernetes.io/auth-secret: get-python-secret`
-* `ingress.kubernetes.io/auth-type: basic`
+Now you just need to create a HTTP trigger using that secret.
 
+```console
+$ kubeless trigger http create get-python --function-name get-python --basic-auth-secret basic-auth --gateway nginx
+INFO[0000] HTTP trigger get-python created in namespace default successfully!
+```
 
+> Note: The command is the same for the case of Traefik, for that case just use `--gateway traefik`
+
+Once the Ingress rule has been deployed you can verify that the function is accessible just for the proper user and password:
+
+```console
+$ kubectl get ingress
+NAME         HOSTS                              ADDRESS          PORTS     AGE
+get-python   get-python.192.168.99.100.nip.io   192.168.99.100   80        1m
+$ curl --header 'Host: get-python.192.168.99.100.nip.io' 192.168.99.100
+<html>
+<head><title>401 Authorization Required</title></head>
+<body bgcolor="white">
+<center><h1>401 Authorization Required</h1></center>
+<hr><center>nginx/1.13.7</center>
+</body>
+</html>
+$ curl -u foo:bar --header 'Host: get-python.192.168.99.100.nip.io' 192.168.99.100
+hello world
+```
+
+### Enable Basic Authentication with Kong
+
+It is not supported yet to create an HTTP trigger with basic authentication using Kong as backend but the steps to do it manually are pretty simple. It is possible to do so using Kong plugins. In the [next](??) section we explain how to enable any of the available Kong plugins and in particular we explain how to enable the basic-auth plugin.
+
+## Enable Kong Security plugins
+
+Kong has available several free [plugins](https://konghq.com/plugins/) that can be used along with the Kong Ingress controller for securing the access to Kubeless functions. In particular, the list of security plugins that can be used is:
+
+ - OAuth 2.0
+ - JWT
+ - Basic Authentication
+ - ACL
+ - Key Authentication
+ - HMAC Authentication
+ - LDAP Authentication
+
+Once you have Kong and its Ingress controller deployed in your cluster the generic steps to use the plugin are:
+
+ - Deploy a basic HTTP trigger for the target function using `--gateway kong`.
+ - Create a Kubernetes object for the plugin we want to use.
+ - Create a Kong Consumer.
+ - Create the specific credentials and follow any additional steps that the plugin may have.
+ - Associate the credentials/plugin with the Ingress object created in the first step.
+
+The specific steps that are required to use a plugin can be found in the [plugins](https://konghq.com/plugins/) page. As an example we will configure the plugin [basic-auth](https://getkong.org/plugins/basic-authentication/) for our function `get-python`.
+
+### Deploy a basic HTTP trigger
+
+First we need to create a HTTP trigger to generate the Ingress object that will expose our function.
+
+```console
+$ kubeless trigger http create get-python --function-name get-python --gateway kong --hostname foo.bar.com
+INFO[0000] HTTP trigger get-python created in namespace default successfully!
+```
+
+### Add the basic-auth plugin
+
+The next step is creating the Kong plugin related to basic authentication. You can see the possible configuration options available in the [plugin documentation](https://getkong.org/plugins/basic-authentication).
+
+```console
+$ echo "
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: basic-auth
+config:
+  hide_credentials: false
+" | kubectl create -f -
+kongplugin "basic-auth" created
+```
+
+#### Create a Consumer
+
+Now we need a [`Consumer`](https://getkong.org/docs/0.13.x/getting-started/adding-consumers/#adding-consumers) for the plugin. It is necessary to do a POST to the Kong API adding the new consumer. The commands below works for a Minikube environment. In case you are using a different environment you need to discover which are the IP and port that the Kong backend is using.
+
+```console
+$ export KONG_ADMIN_PORT=$(minikube service -n kong kong-ingress-controller --url --format "{{ .Port }}")
+$ export KONG_ADMIN_IP=$(minikube service   -n kong kong-ingress-controller --url --format "{{ .IP }}")
+$ curl ${KONG_ADMIN_IP}:${KONG_ADMIN_PORT}/consumers/ --data "username=foo"
+{"created_at":1523519403000,"username":"foo","id":"a204a55f-cdd1-462e-88a9-306782d5c0d8"}
+```
+
+#### Create user credentials
+
+Now that we have a consumer we need to create the basic authentication credentials that the function is going to use. This should be done with another API call to the Kong endpoint:
+
+```console
+curl ${KONG_ADMIN_IP}:${KONG_ADMIN_PORT}/consumers/foo/basic-auth --data "username=user" --data "password=pass"
+{"created_at":1523519716000,"id":"f438cec3-c51f-4660-a63b-b381c854d3c3","username":"user","password":"d4d7681d6bb73f3002188509c5bd8447cd430d58","consumer_id":"a204a55f-cdd1-462e-88a9-306782d5c0d8"}
+```
+
+#### Associate the credentials with the Ingress object
+
+The final step is to enable the credentials and the plugin for the function. For doing so we just need to add an `Annotation` in the Ingress object that we generated in the first step:
+
+```console
+$ kubectl patch ingress get-python \
+ -p '{"metadata":{"annotations":{"basic-auth.plugin.konghq.com":"basic-auth"}}}'
+ingress "get-python" patched
+```
+
+Now that the plugin has been enabled we can verify that it is working:
+
+```console
+$ export PROXY_IP=$(minikube   service -n kong kong-proxy --url --format "{{ .IP }}" | head -1)
+$ export HTTP_PORT=$(minikube  service -n kong kong-proxy --url --format "{{ .Port }}" | head -1)
+$ curl --header "Host: foo.bar.com" ${PROXY_IP}:${HTTP_PORT}
+{"message":"Unauthorized"}
+$ curl -u user:pass --header "Host: foo.bar.com" ${PROXY_IP}:${HTTP_PORT}
+hello world
+```
