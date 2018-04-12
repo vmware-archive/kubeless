@@ -159,6 +159,11 @@ kubeless_kafka_trigger_delete() {
     echo_info "Deleting kafka trigger "${trigger}" in case still present ... "
     kubeless trigger kafka list |grep -w "${trigger}" && kubeless trigger kafka delete "${trigger}" >& /dev/null || true
 }
+kubeless_nats_trigger_delete() {
+    local trigger=${1:?}; shift
+    echo_info "Deleting NATS trigger "${trigger}" in case still present ... "
+    kubeless trigger nats list |grep -w "${trigger}" && kubeless trigger nats delete "${trigger}" >& /dev/null || true
+}    
 kubeless_function_deploy() {
     local func=${1:?}; shift
     echo_info "Deploying function ..."
@@ -325,6 +330,13 @@ deploy_kafka_trigger() {
     local trigger=${1:?}
     echo_info "TEST: $trigger"
     kubeless_kafka_trigger_delete ${trigger}
+    make -sC examples ${trigger}
+}
+
+deploy_nats_trigger() {
+    local trigger=${1:?}
+    echo_info "TEST: $trigger"
+    kubeless_nats_trigger_delete ${trigger}
     make -sC examples ${trigger}
 }
 
