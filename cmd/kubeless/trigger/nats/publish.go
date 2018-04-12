@@ -60,9 +60,8 @@ func publishTopic(topic, message, url string) error {
 	nc.Flush()
 	if err := nc.LastError(); err != nil {
 		return err
-	} else {
-		logrus.Infof("Published [%s] : '%s'\n", topic, message)
 	}
+	logrus.Infof("Published [%s] : '%s'\n", topic, message)
 	return nil
 }
 

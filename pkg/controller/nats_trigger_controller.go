@@ -40,8 +40,8 @@ import (
 )
 
 const (
-	natsTriggerMaxRetries     = 5
-	natsTriggerFinalizer = "kubeless.io/natstrigger"
+	natsTriggerMaxRetries = 5
+	natsTriggerFinalizer  = "kubeless.io/natstrigger"
 )
 
 // NatsTriggerController object
@@ -96,7 +96,7 @@ func NewNatsTriggerController(cfg NatsTriggerConfig) *NatsTriggerController {
 		logger:           logrus.WithField("controller", "nats-trigger-controller"),
 		kubelessclient:   cfg.TriggerClient,
 		kubernetesClient: utils.GetClient(),
-		natsInformer:    natsInformer,
+		natsInformer:     natsInformer,
 		functionInformer: functionInformer,
 		queue:            queue,
 	}
