@@ -30,59 +30,59 @@ import (
 	time "time"
 )
 
-// FunctionInformer provides access to a shared informer and lister for
-// Functions.
-type FunctionInformer interface {
+// NATSTriggerInformer provides access to a shared informer and lister for
+// NATSTriggers.
+type NATSTriggerInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1beta1.FunctionLister
+	Lister() v1beta1.NATSTriggerLister
 }
 
-type functionInformer struct {
+type nATSTriggerInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewFunctionInformer constructs a new informer for Function type.
+// NewNATSTriggerInformer constructs a new informer for NATSTrigger type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFunctionInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredFunctionInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewNATSTriggerInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredNATSTriggerInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredFunctionInformer constructs a new informer for Function type.
+// NewFilteredNATSTriggerInformer constructs a new informer for NATSTrigger type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredFunctionInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredNATSTriggerInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.KubelessV1beta1().Functions(namespace).List(options)
+				return client.KubelessV1beta1().NATSTriggers(namespace).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.KubelessV1beta1().Functions(namespace).Watch(options)
+				return client.KubelessV1beta1().NATSTriggers(namespace).Watch(options)
 			},
 		},
-		&kubeless_v1beta1.Function{},
+		&kubeless_v1beta1.NATSTrigger{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *functionInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredFunctionInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *nATSTriggerInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredNATSTriggerInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *functionInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&kubeless_v1beta1.Function{}, f.defaultInformer)
+func (f *nATSTriggerInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&kubeless_v1beta1.NATSTrigger{}, f.defaultInformer)
 }
 
-func (f *functionInformer) Lister() v1beta1.FunctionLister {
-	return v1beta1.NewFunctionLister(f.Informer().GetIndexer())
+func (f *nATSTriggerInformer) Lister() v1beta1.NATSTriggerLister {
+	return v1beta1.NewNATSTriggerLister(f.Informer().GetIndexer())
 }
