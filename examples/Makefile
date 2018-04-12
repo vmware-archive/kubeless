@@ -352,6 +352,35 @@ pubsub-python-verify:
 	echo $$logs | grep -q "event-namespace.*kafkatriggers.kubeless.io" && \
 	echo $$logs | grep -q "event-id.*"
 
+pubsub-python-nats:
+	kubeless function deploy pubsub-python-nats --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py
+	kubeless trigger nats create pubsub-python-nats --function-selector created-by=kubeless,function=pubsub-python-nats --trigger-topic test
+
+pubsub-python-nats-verify:
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
+	$(eval NODEPORT := $(shell kubectl get svc nats -n nats-io -o jsonpath="{.spec.ports[0].nodePort}"))
+	echo $(NODEPORT) >&9
+	kubeless trigger nats publish --url nats://192.168.99.100:$(NODEPORT) --topic test --message '{"payload":"$(DATA)"}'
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=pubsub-python-nats`; \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+		if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
+	# Verify event context
+	logs=`kubectl logs -l function=pubsub-python`; \
+	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-type.*application/json" && \
+	echo $$logs | grep -q "event-namespace.*kafkatriggers.kubeless.io" && \
+	echo $$logs | grep -q "event-id.*"
 
 kafka-python-func1-topic-s3-python:
 	kubeless topic create s3-python || true
