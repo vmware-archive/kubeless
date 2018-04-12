@@ -6,7 +6,7 @@ Kubeless leverages [Kubernetes ingress](https://kubernetes.io/docs/concepts/serv
 
 In order to create routes for functions in Kubeless, you must have an Ingress controller running. There are several options to deploy it. In this document we point to several different solutions that you can choose:
 
-> Note: In case Kubeless is running in a GKE cluster you will need to disable the default Ingress controller provided by GKE since it doesn't work with service with a type different than NodePort (see [this issue](https://github.com/kubernetes/ingress-nginx/issues/1417)). In order to expose a Kubeless function, disable the default controller and deploy one of the options described below.
+> Note: In case Kubeless is running in a GKE cluster you will need to disable the default Ingress controller provided by GKE. The native controller doesn't work with services that have a type different  than NodePort (see [this issue](https://github.com/kubernetes/ingress-nginx/issues/1417)). In order to expose a Kubeless function, disable the default controller and deploy one of the options described below.
 
 ### Minikube Ingress addon
 
@@ -42,7 +42,7 @@ postgres-0                                 1/1       Running   1          22h
 
 ### Traefik Ingress
 
-[Traefik](http://traefik.io) provides an Ingress Controller as well. To deploy it follow the steps described at [this guide](https://docs.traefik.io/user-guide/kubernetes/). As a result you will be able to see the traefik controller running in the `kube-system` namespace:
+[Traefik](http://traefik.io) provides an Ingress controller as well. To deploy it follow the steps described at [this guide](https://docs.traefik.io/user-guide/kubernetes/). As a result, you will be able to see the traefik controller running in the `kube-system` namespace:
 
 ```console
 kubectl get pod -n kube-system -l name=traefik-ingress-lb
@@ -204,7 +204,7 @@ $ kubeless trigger http create get-python --function-name get-python --basic-aut
 INFO[0000] HTTP trigger get-python created in namespace default successfully!
 ```
 
-> Note: The command is the same for the case of Traefik, for that case just use `--gateway traefik`
+> Note: The command is the same for the case of Traefik, just use `--gateway traefik` instead
 
 Once the Ingress rule has been deployed you can verify that the function is accessible just for the proper user and password:
 
@@ -226,26 +226,26 @@ hello world
 
 ### Enable Basic Authentication with Kong
 
-It is not supported yet to create an HTTP trigger with basic authentication using Kong as backend but the steps to do it manually are pretty simple. It is possible to do so using Kong plugins. In the [next](??) section we explain how to enable any of the available Kong plugins and in particular we explain how to enable the basic-auth plugin.
+It is not yet supported to create an HTTP trigger with basic authentication using Kong as backend but the steps to do it manually are pretty simple. It is possible to do so using Kong plugins. In the [next section](#enable-kong-security-plugins) we explain how to enable any of the available Kong plugins and in particular we explain how to enable the basic-auth plugin.
 
 ## Enable Kong Security plugins
 
 Kong has available several free [plugins](https://konghq.com/plugins/) that can be used along with the Kong Ingress controller for securing the access to Kubeless functions. In particular, the list of security plugins that can be used is:
 
+ - Basic Authentication
+ - Key Authentication
  - OAuth 2.0
  - JWT
- - Basic Authentication
  - ACL
- - Key Authentication
  - HMAC Authentication
  - LDAP Authentication
 
-Once you have Kong and its Ingress controller deployed in your cluster the generic steps to use the plugin are:
+Once you have Kong and its Ingress controller running in your cluster the generic steps to use any plugin are:
 
  - Deploy a basic HTTP trigger for the target function using `--gateway kong`.
- - Create a Kubernetes object for the plugin we want to use.
- - Create a Kong Consumer.
- - Create the specific credentials and follow any additional steps that the plugin may have.
+ - Create a Kubernetes object for the plugin you want to use.
+ - Add a Kong Consumer.
+ - Create the specific credentials or follow any additional steps that the plugin may require.
  - Associate the credentials/plugin with the Ingress object created in the first step.
 
 The specific steps that are required to use a plugin can be found in the [plugins](https://konghq.com/plugins/) page. As an example we will configure the plugin [basic-auth](https://getkong.org/plugins/basic-authentication/) for our function `get-python`.
@@ -261,7 +261,7 @@ INFO[0000] HTTP trigger get-python created in namespace default successfully!
 
 ### Add the basic-auth plugin
 
-The next step is creating the Kong plugin related to basic authentication. You can see the possible configuration options available in the [plugin documentation](https://getkong.org/plugins/basic-authentication).
+The next step is creating the Custom Resource related to the Kong basic authentication plugin. You can see the possible configuration options available in the [plugin documentation](https://getkong.org/plugins/basic-authentication).
 
 ```console
 $ echo "
@@ -277,7 +277,7 @@ kongplugin "basic-auth" created
 
 #### Create a Consumer
 
-Now we need a [`Consumer`](https://getkong.org/docs/0.13.x/getting-started/adding-consumers/#adding-consumers) for the plugin. It is necessary to do a POST to the Kong API adding the new consumer. The commands below works for a Minikube environment. In case you are using a different environment you need to discover which are the IP and port that the Kong backend is using.
+Now we need a [`Consumer`](https://getkong.org/docs/0.13.x/getting-started/adding-consumers/#adding-consumers) for the plugin. It is necessary to do a POST to the Kong API adding the new consumer. Note that the same plugin can be reused for different plugins. The commands below works for a Minikube environment. In case you are using a different cluster you need to discover which are the IP and port that the Kong backend is using.
 
 ```console
 $ export KONG_ADMIN_PORT=$(minikube service -n kong kong-ingress-controller --url --format "{{ .Port }}")
