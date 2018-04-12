@@ -1,0 +1,3 @@
+testdata/object_comp_illegal:1:15-18 Object comprehension can only have one field.
+
+{ local x = 5 for y in [1, 2, 3] }

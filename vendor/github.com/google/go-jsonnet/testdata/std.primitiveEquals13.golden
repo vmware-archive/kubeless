@@ -1,0 +1,6 @@
+RUNTIME ERROR: primitiveEquals operates on primitive types, got array
+-------------------------------------------------
+	<builtin>	builtin function <primitiveEquals>
+
+-------------------------------------------------
+	During evaluation
