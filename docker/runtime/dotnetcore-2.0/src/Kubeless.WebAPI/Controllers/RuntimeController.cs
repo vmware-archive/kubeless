@@ -42,6 +42,9 @@ namespace Kubeless.WebAPI.Controllers
                 _compiler.Compile(_function);
             return _invoker.Execute(_function, Request);
         }
+
+	    [HttpGet("/healthz")]
+	    public IActionResult Health() => Ok();
         
     }
 }
