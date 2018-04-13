@@ -68,7 +68,7 @@ func publishTopic(topic, message, url string) error {
 func init() {
 	publishCmd.Flags().StringP("message", "", "", "Specify message to be published")
 	publishCmd.Flags().StringP("topic", "", "kubeless", "Specify topic name")
-	publishCmd.Flags().StringP("url", "", "", "Specifi NATS server details for e.g nats://localhost:4222)")
+	publishCmd.Flags().StringP("url", "", "", "Specify NATS server details for e.g nats://localhost:4222)")
 	publishCmd.MarkFlagRequired("url")
 	publishCmd.MarkFlagRequired("topic")
 	publishCmd.MarkFlagRequired("message")

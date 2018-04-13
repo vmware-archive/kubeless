@@ -57,7 +57,7 @@ var createCmd = &cobra.Command{
 
 		labelSelector, err := metav1.ParseToLabelSelector(functionSelector)
 		if err != nil {
-			logrus.Fatal("Invalid lable selector specified " + err.Error())
+			logrus.Fatal("Invalid label selector specified " + err.Error())
 		}
 
 		kubelessClient, err := utils.GetKubelessClientOutCluster()

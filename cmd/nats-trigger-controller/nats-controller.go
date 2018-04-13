@@ -29,14 +29,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	globalUsage = `` //TODO: adding explanation
-)
-
 var rootCmd = &cobra.Command{
 	Use:   "nats-controller",
 	Short: "NATS controller",
-	Long:  globalUsage,
+	Long: `NATS trigger CRD controller that watches for the creation/deletion/update events
+				  of natstrigger API object from the Kubernetes API server and creates/deletes NATS subsciber to
+				  requested topics. On recieving message from the topic from NATS fowards the message tp appropraiate
+				  functions`,
 	Run: func(cmd *cobra.Command, args []string) {
 		kubelessClient, err := utils.GetFunctionClientInCluster()
 		if err != nil {

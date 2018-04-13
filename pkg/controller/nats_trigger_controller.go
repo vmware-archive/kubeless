@@ -364,11 +364,11 @@ func (c *NatsTriggerController) natsTriggerObjRemoveFinalizer(triggercObj *kubel
 }
 
 func natsTriggerObjChanged(oldNatsTriggerObj, newNatsTriggerObj *kubelessApi.NATSTrigger) bool {
-	// If the NATS trigger object's deletion timestamp is set, then process
+	// If the NATS trigger object's deletion timestamp is set, then process the update
 	if oldNatsTriggerObj.DeletionTimestamp != newNatsTriggerObj.DeletionTimestamp {
 		return true
 	}
-	// If the new and old NATS trigger object's resource version is same
+	// If the new and old NATS trigger object's resource version is same, then skip processing the update
 	if oldNatsTriggerObj.ResourceVersion == newNatsTriggerObj.ResourceVersion {
 		return false
 	}

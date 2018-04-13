@@ -69,7 +69,7 @@ var updateCmd = &cobra.Command{
 		if functionSelector != "" {
 			labelSelector, err := metav1.ParseToLabelSelector(functionSelector)
 			if err != nil {
-				logrus.Fatal("Invalid lable selector specified " + err.Error())
+				logrus.Fatal("Invalid label selector specified " + err.Error())
 			}
 			natsTrigger.Spec.FunctionSelector.MatchLabels = labelSelector.MatchLabels
 		}

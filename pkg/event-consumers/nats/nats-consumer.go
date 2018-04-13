@@ -131,12 +131,13 @@ func getHTTPReq(clientset kubernetes.Interface, funcName, namespace, method, bod
 
 func sendMessage(req *http.Request) error {
 	client := &http.Client{}
-	res, err := client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
-	if res.StatusCode != 200 {
-		return fmt.Errorf("Error: received error code %d: %s", res.StatusCode, res.Status)
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Error: received error code %d: %s", resp.StatusCode, resp.Status)
 	}
 	return nil
 }
