@@ -5,6 +5,9 @@ using System;
 using System.Runtime.InteropServices;
 using System.IO;
 using System.Reflection;
+using System.Linq;
+using Kubeless.Core.Filters;
+
 
 namespace Kubeless.Core.Models
 {
@@ -16,7 +19,13 @@ namespace Kubeless.Core.Models
 
         public MetadataReference[] GetReferences()
         {
-            var dlls = Directory.EnumerateFiles(StorePath, "*.dll", SearchOption.AllDirectories);
+            var dlls = Directory
+                .EnumerateFiles(StorePath, "*.dll", SearchOption.AllDirectories)
+                .ApplyFilterOnDllVersion();
+
+
+
+            var dllFiles = from d in dlls select new FileInfo(d);
 
             var references = new List<MetadataReference>();
 
@@ -29,7 +38,13 @@ namespace Kubeless.Core.Models
                     var assembly = Assembly.LoadFile(dll);
                     references.Add(MetadataReference.CreateFromFile(dll));
                 }
-                catch { }
+                catch (BadImageFormatException ex) {
+
+                }
+                catch
+                {
+                    throw;
+                }
             }
 
             return references.ToArray();

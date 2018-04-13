@@ -10,9 +10,11 @@ namespace Kubeless.Core.Models
 {
     public class SharedReferencesManager : IReferencesManager
     {
+        private static readonly string DotNetCoreSharedRefVersion = Environment.GetEnvironmentVariable("DOTNETCORESHAREDREF_VERSION");
+
         private static readonly string SharedPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
-            Path.Combine(Environment.GetEnvironmentVariable("ProgramFiles"), @"dotnet\shared\Microsoft.NETCore.App\2.0.0\") :
-            Path.Combine("/usr/share", @"dotnet/shared/Microsoft.NETCore.App/2.0.0/");
+            Path.Combine(Environment.GetEnvironmentVariable("ProgramFiles"), $@"dotnet\shared\Microsoft.NETCore.App\{DotNetCoreSharedRefVersion}\") :
+            Path.Combine("/usr/share", $@"dotnet/shared/Microsoft.NETCore.App/{DotNetCoreSharedRefVersion}/");
 
         public MetadataReference[] GetReferences()
         {

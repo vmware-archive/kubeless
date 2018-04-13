@@ -1,16 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Kubeless.Core.Interfaces;
 using Kubeless.WebAPI.Utils;
 using Kubeless.Core.Models;
+using System.Reflection;
 
 namespace kubeless_netcore_runtime
 {
@@ -25,6 +21,12 @@ namespace kubeless_netcore_runtime
                 //Set fixed enviroment variables for example function:
                 Environment.SetEnvironmentVariable("MOD_NAME", "mycode");
                 Environment.SetEnvironmentVariable("FUNC_HANDLER", "execute");
+                Environment.SetEnvironmentVariable("DOTNETCORE_HOME", @"C:\Users\altargin\Desktop\packages");
+                Environment.SetEnvironmentVariable("DOTNETCORESHAREDREF_VERSION", "2.0.6"); //TODO: Get Higher available version
+            }
+            else
+            {
+                Environment.SetEnvironmentVariable("DOTNETCORESHAREDREF_VERSION", "2.0.0");
             }
         }
 
@@ -35,8 +37,14 @@ namespace kubeless_netcore_runtime
         {
             services.AddMvc();
 
-            services.AddSingleton<IFunction>(FunctionFactory.BuildFunction(Configuration));
-            services.AddSingleton<ICompiler>(new DefaultCompiler(new DefaultParser(), new DefaultReferencesManager()));
+            //Compile Function.
+            var function = FunctionFactory.BuildFunction(Configuration);
+            var compiler = new DefaultCompiler(new DefaultParser(), new DefaultReferencesManager());
+
+            if (!function.IsCompiled())
+                compiler.Compile(function);
+
+            services.AddSingleton<IFunction>(function);
             services.AddSingleton<IInvoker>(new DefaultInvoker());
         }
 

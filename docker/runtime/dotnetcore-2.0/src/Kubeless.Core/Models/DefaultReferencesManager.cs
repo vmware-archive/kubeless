@@ -14,7 +14,8 @@ namespace Kubeless.Core.Models
             referencesManager = new List<IReferencesManager>()
             {
                 new SharedReferencesManager(),
-                new StoreReferencesManager()
+                new StoreReferencesManager(),
+                new KubelessReferencesManager()
             };
         }
 
