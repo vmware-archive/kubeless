@@ -37,7 +37,7 @@ You can check basic examples of every language supported in the [examples](https
 
 ### Runtime user
 
-As a [Security Context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/) functions are configured to run with an unprivileged user (UID 1000) by default. This prevent functions from having root privileges and ensure compatibility with OpenShift clusters. This default behaviour can be overriden specifying a different Security Context in the `Deployment` template that is part of the Function Spec.
+As a [Security Context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/) functions are configured to run with an unprivileged user (UID 1000) by default. This prevent functions from having root privileges and ensure compatibility with OpenShift clusters. This default behaviour can be overridden specifying a different Security Context in the `Deployment` template that is part of the Function Spec.
 
 ## Configuring Default Runtime Container Images
 
@@ -92,7 +92,7 @@ For the case of Ruby we use [Sinatra](http://www.sinatrarb.com) as web framework
 
 ### Go HTTP Trigger
 
-The Go HTTP server doesn't include any framework since the native packages includes enough functionality to fit our needs. Since there is not a standard package that manages server logs that functionality is implemented in the same server. It is also required to implement the `ResponseWritter` interface in order to retrieve the Status Code of the response.
+The Go HTTP server doesn't include any framework since the native packages includes enough functionality to fit our needs. Since there is not a standard package that manages server logs that functionality is implemented in the same server. It is also required to implement the `ResponseWriter` interface in order to retrieve the Status Code of the response.
 
 ### Debugging compilation
 

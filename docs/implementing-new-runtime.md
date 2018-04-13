@@ -18,7 +18,7 @@ If you want to extend it and make another language available it is necessary to 
 
 The first step is to create an image for installing function dependencies or compile source code. This step is optional depending on the target language. If the runtime doesn't require compilation and there is already an available image with the necessary packages to install dependencies you can skip this step.
 
-In case a custom init image is required, create a Dockefile under the folder `docker/runtime/<language>/Dockerfile.<version>.init`. Note that you can skip `<version>` if just one version is supported.
+In case a custom init image is required, create a Dockerfile under the folder `docker/runtime/<language>/Dockerfile.<version>.init`. Note that you can skip `<version>` if just one version is supported.
 
 The goal of this image is to have available any tools or files necessary to compile a function or install dependencies. It is not necessary to specify the `CMD` to compile or install dependencies, that will be specified in the Kubeless source code.
 
@@ -46,8 +46,8 @@ The HTTP server should satisfy the following requirements:
  - Functions should run `FUNC_TIMEOUT` as maximum. If, due to language limitations, it is not possible not stop the user function, at least a `408 - Timeout` response should be returned to the HTTP request.
  - Functions should receive two parameters: `event` and `context` and should return the value that will be used as HTTP response. See [the functions standard signature](/docs/runtimes#runtimes-interface) for more information. The information that will be available in `event` parameter will be received as HTTP headers.
  - Requests should be served in parallel.
- - Requests should be logged to stdout including date, HTTP method, requested path and status code of the reponse.
- - Exceptions in the function should be catched. The server should not exit due to a function error.
+ - Requests should be logged to stdout including date, HTTP method, requested path and status code of the response.
+ - Exceptions in the function should be caught. The server should not exit due to a function error.
  - [Optional] The function should expose Prometheus statistics in the path `/metrics`. At least it should expose:
    - Calls per HTTP method
    - Errors per HTTP method
@@ -89,7 +89,7 @@ runtime-images
 
 Restart the controller after updating the configmap. In case that you want to submit the new runtime specify the new images in the file `kubeless.jsonnet` at the root of this repository.
 
-## 4. Add the instructions to intall dependencies in the runtime
+## 4. Add the instructions to install dependencies in the runtime
 
 Each runtime has specific instructions to install its dependencies. These instructions are specified in the method `GetBuildContainer()`. About this method you should know:
  - The runtime is specified as a string in the form of `<name><version>` e.g. `go1.10`
