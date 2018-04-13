@@ -125,14 +125,8 @@ To do so, run the commands:
 
 ```bash
 docker login -u=<dockerhubuser> -e=<e-mail>
-docker tag kubeless-controller <your-docker-hub-repo>/kubeless-test:latest
-docker push <your-docker-hub-repo>/MyKubelessController:latest
-```
-
-In order to upload your kubeless controller image to Kubernetes, you should use kubectl as follows, informing the yaml file with the required descriptions of your deployment.
-
-```bash
-kubectl create -f <path-to-yaml-file>
+docker tag kubeless-controller-manager <your-docker-hub-repo>/kubeless-test:latest
+docker push <your-docker-hub-repo>/kubeless-test:latest
 ```
 
 Make sure your image repository is correctly referenced in the "containers" session on the yaml file.
@@ -146,6 +140,19 @@ Make sure your image repository is correctly referenced in the "containers" sess
 ```
 
 **Hint:** take a look at the `imagePullPolicy` configuration if you are sending images with tags (e. g. "latest") to the Kubernetes cluster. This option controls the image caching mechanism for Kubernetes and you may encounter problems if new images enters the cluster with the same name. They might not be properly pulled for example.
+
+In order to upload your kubeless controller image to Kubernetes, you should use kubectl as follows, informing the yaml file with the required descriptions of your deployment.
+
+```bash
+kubectl create ns kubeless
+kubectl create -f <path-to-yaml-file>/kubeless.yaml
+```
+
+To deploy kafka and zookeeper
+
+```bash
+kubectl create -f <path-to-yaml-file>/kafka-zookeeper.yaml
+```
 
 ### Working on your local branch
 
