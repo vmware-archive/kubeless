@@ -808,8 +808,8 @@ func TestCreateIngressResourceWithNginxGateway(t *testing.T) {
 	annotations := ingress.ObjectMeta.Annotations
 	if annotations == nil || len(annotations) == 0 ||
 		annotations["kubernetes.io/ingress.class"] != "nginx" ||
-		annotations["ingress.kubernetes.io/auth-secret"] != "foo-secret" ||
-		annotations["ingress.kubernetes.io/auth-type"] != "basic" ||
+		annotations["nginx.ingress.kubernetes.io/auth-secret"] != "foo-secret" ||
+		annotations["nginx.ingress.kubernetes.io/auth-type"] != "basic" ||
 		annotations["kubernetes.io/tls-acme"] != "true" ||
 		annotations["nginx.ingress.kubernetes.io/ssl-redirect"] != "true" {
 		t.Fatal("Missing or wrong annotations!")
