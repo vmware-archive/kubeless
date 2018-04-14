@@ -8,6 +8,7 @@ using Kubeless.WebAPI.Utils;
 using Kubeless.Core.References;
 using Kubeless.Core.Compilers;
 using Kubeless.Core.Invokers;
+using System.IO;
 
 namespace kubeless_netcore_runtime
 {
@@ -34,7 +35,15 @@ namespace kubeless_netcore_runtime
 
             //Compile Function on startup time:
             var function = FunctionFactory.BuildFunction(Configuration);
-            var compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
+
+
+            ICompiler compiler;
+
+            string directory = Environment.GetEnvironmentVariable("DOTNETCORE_HOME");
+            if(Directory.Exists(directory))
+                compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
+            else
+                compiler = new DefaultCompiler(new DefaultParser(), new WithoutDependencyReferencesManager());
 
             if (!function.IsCompiled())
                 compiler.Compile(function);
