@@ -1,6 +1,6 @@
 using System;
 using Microsoft.AspNetCore.Http;
-using Newtonsoft.Json;
+using YamlDotNet.Serialization;
 
 public class module
 {
@@ -12,7 +12,8 @@ public class module
             Age = 56
         };
 
-        return JsonConvert.SerializeObject(person);
+        var serializer = new SerializerBuilder().Build();
+        return serializer.Serialize(person); // yaml
     }
 }
 

@@ -8,8 +8,8 @@ public class module
     {
         var person = new Person()
         {
-            Name = "Allan",
-            Age = 24
+            Name = "Michael J. Fox",
+            Age = 56
         };
 
         var serializer = new SerializerBuilder().Build();
