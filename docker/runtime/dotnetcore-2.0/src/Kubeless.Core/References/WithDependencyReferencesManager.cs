@@ -3,13 +3,13 @@ using System;
 using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
 
-namespace Kubeless.Core.Models
+namespace Kubeless.Core.References
 {
-    public class DefaultReferencesManager : IReferencesManager
+    public class WithDependencyReferencesManager : IReferencesManager
     {
         private IEnumerable<IReferencesManager> referencesManager;
 
-        public DefaultReferencesManager()
+        public WithDependencyReferencesManager()
         {
             referencesManager = new List<IReferencesManager>()
             {

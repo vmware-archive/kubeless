@@ -6,9 +6,9 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-namespace Kubeless.Core.Models
+namespace Kubeless.Core.References
 {
-    public class SharedReferencesManager : IReferencesManager
+    internal class SharedReferencesManager : IReferencesManager
     {
         private static readonly string DotNetCoreSharedRefVersion = Environment.GetEnvironmentVariable("DOTNETCORESHAREDREF_VERSION");
 

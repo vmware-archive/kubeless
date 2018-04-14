@@ -7,6 +7,7 @@ using Kubeless.Core.Interfaces;
 using Kubeless.WebAPI.Utils;
 using Kubeless.Core.Models;
 using System.Reflection;
+using Kubeless.Core.References;
 
 namespace kubeless_netcore_runtime
 {
@@ -39,7 +40,7 @@ namespace kubeless_netcore_runtime
 
             //Compile Function.
             var function = FunctionFactory.BuildFunction(Configuration);
-            var compiler = new DefaultCompiler(new DefaultParser(), new DefaultReferencesManager());
+            var compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
 
             if (!function.IsCompiled())
                 compiler.Compile(function);

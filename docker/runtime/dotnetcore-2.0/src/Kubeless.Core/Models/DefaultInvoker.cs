@@ -11,8 +11,8 @@ namespace Kubeless.Core.Models
         public DefaultInvoker()
         {
             Assembly.LoadFrom(@"C:\Users\altargin\Desktop\packages\yamldotnet\4.3.1\lib\netstandard1.3\YamlDotNet.dll");
-
         }
+
         public object Execute(IFunction function, params object[] parameters)
         {
             AppDomain domain = AppDomain.CurrentDomain;

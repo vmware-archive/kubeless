@@ -9,9 +9,9 @@ using System.Linq;
 using Kubeless.Core.Filters;
 
 
-namespace Kubeless.Core.Models
+namespace Kubeless.Core.References
 {
-    class StoreReferencesManager : IReferencesManager
+    internal class StoreReferencesManager : IReferencesManager
     {
         private static readonly string StorePath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
             Path.Combine(Environment.GetEnvironmentVariable("ProgramFiles"), @"dotnet\store\x64\netcoreapp2.0\") :
@@ -38,9 +38,7 @@ namespace Kubeless.Core.Models
                     var assembly = Assembly.LoadFile(dll);
                     references.Add(MetadataReference.CreateFromFile(dll));
                 }
-                catch (BadImageFormatException ex) {
-
-                }
+                catch (BadImageFormatException) { }
                 catch
                 {
                     throw;
