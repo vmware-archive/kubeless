@@ -22,12 +22,6 @@ namespace kubeless_netcore_runtime
                 //Set fixed enviroment variables for example function:
                 Environment.SetEnvironmentVariable("MOD_NAME", "mycode");
                 Environment.SetEnvironmentVariable("FUNC_HANDLER", "execute");
-                Environment.SetEnvironmentVariable("DOTNETCORE_HOME", @"C:\Users\altargin\Desktop\packages");
-                Environment.SetEnvironmentVariable("DOTNETCORESHAREDREF_VERSION", "2.0.6"); //TODO: Get Higher available version
-            }
-            else
-            {
-                Environment.SetEnvironmentVariable("DOTNETCORESHAREDREF_VERSION", "2.0.0");
             }
         }
 
@@ -38,7 +32,7 @@ namespace kubeless_netcore_runtime
         {
             services.AddMvc();
 
-            //Compile Function.
+            //Compile Function on startup time:
             var function = FunctionFactory.BuildFunction(Configuration);
             var compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
 

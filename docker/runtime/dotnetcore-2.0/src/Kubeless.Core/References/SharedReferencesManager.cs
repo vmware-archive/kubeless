@@ -3,18 +3,20 @@ using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 
 namespace Kubeless.Core.References
 {
     internal class SharedReferencesManager : IReferencesManager
     {
-        private static readonly string DotNetCoreSharedRefVersion = Environment.GetEnvironmentVariable("DOTNETCORESHAREDREF_VERSION");
+        private static readonly string BaseSharedPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
+            Path.Combine(Environment.GetEnvironmentVariable("ProgramFiles"), $@"dotnet\shared\Microsoft.NETCore.App\") :
+            Path.Combine("/usr/share", $@"dotnet/shared/Microsoft.NETCore.App/");
 
-        private static readonly string SharedPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
-            Path.Combine(Environment.GetEnvironmentVariable("ProgramFiles"), $@"dotnet\shared\Microsoft.NETCore.App\{DotNetCoreSharedRefVersion}\") :
-            Path.Combine("/usr/share", $@"dotnet/shared/Microsoft.NETCore.App/{DotNetCoreSharedRefVersion}/");
+        private static readonly string SharedPath = Path.Combine(BaseSharedPath, GetInstalledNetCoreVersion());
 
         public MetadataReference[] GetReferences()
         {
@@ -38,6 +40,14 @@ namespace Kubeless.Core.References
             }
 
             return references.ToArray();
+        }
+
+        private static string GetInstalledNetCoreVersion()
+        {
+            var versionPattern = new Regex(@"(\d\.\d\.\d)");
+            var dirs = Directory.GetDirectories(BaseSharedPath, "*", SearchOption.TopDirectoryOnly);
+            var dirNames = from d in dirs select versionPattern.Match(d).Groups[1].Value;
+            return dirNames.OrderByDescending(d => d).First();
         }
     }
 }

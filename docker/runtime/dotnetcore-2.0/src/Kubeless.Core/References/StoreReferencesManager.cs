@@ -23,8 +23,6 @@ namespace Kubeless.Core.References
                 .EnumerateFiles(StorePath, "*.dll", SearchOption.AllDirectories)
                 .ApplyFilterOnDllVersion();
 
-
-
             var dllFiles = from d in dlls select new FileInfo(d);
 
             var references = new List<MetadataReference>();
