@@ -1,5 +1,6 @@
 ﻿using Kubeless.Core.Exceptions;
 using Kubeless.Core.Interfaces;
+using Kubeless.Core.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
@@ -7,7 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace Kubeless.Core.Models
+namespace Kubeless.Core.Compilers
 {
     public class DefaultCompiler : ICompiler
     {

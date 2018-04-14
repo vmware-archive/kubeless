@@ -11,9 +11,8 @@ namespace Kubeless.Tests.Utils
     {
         private static IFunctionSettings BuildFunctionSettings(string functionFile, string moduleName, string functionHandler, string requirementsFile = "")
         {
-            var functionInfo = new FileInfo(functionFile);
-            var basePath = functionInfo.Directory.FullName;
-            var baseName = functionInfo.Name.Replace(".cs","");
+            var basePath = Path.GetDirectoryName(functionFile);
+            var baseName = Path.GetFileNameWithoutExtension(functionFile);
 
             var code = new StringContent(functionFile);
             var requirements = new StringContent(requirementsFile);

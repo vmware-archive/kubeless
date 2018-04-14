@@ -5,9 +5,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Kubeless.Core.Interfaces;
 using Kubeless.WebAPI.Utils;
-using Kubeless.Core.Models;
-using System.Reflection;
 using Kubeless.Core.References;
+using Kubeless.Core.Compilers;
+using Kubeless.Core.Invokers;
 
 namespace kubeless_netcore_runtime
 {

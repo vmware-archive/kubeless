@@ -5,7 +5,7 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace Kubeless.Core.Models
+namespace Kubeless.Core.Compilers
 {
     public class DefaultParser : IParser
     {

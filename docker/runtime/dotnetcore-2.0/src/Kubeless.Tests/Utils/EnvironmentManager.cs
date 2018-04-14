@@ -7,23 +7,39 @@ namespace Kubeless.Tests.Utils
 {
     public static class EnvironmentManager
     {
-        public static void InitVariables()
+
+        public static FunctionEnvironment CreateEnvironment(string basePath, string functionFileName)
         {
-            //Environment.SetEnvironmentVariable("MOD_NAME", "mycode");
-            //Environment.SetEnvironmentVariable("FUNC_HANDLER", "execute");
-            Environment.SetEnvironmentVariable("DOTNETCORE_HOME", @".\packages");
-            Environment.SetEnvironmentVariable("DOTNETCORESHAREDREF_VERSION", "2.0.6"); //TODO: Get Higher available version
+            var environmentPath = Path.Combine(basePath, functionFileName, Guid.NewGuid().ToString());
+
+            EnsureDirectoryIsClear(environmentPath);
+
+            var functionFiles = Directory.EnumerateFiles(basePath, $"{functionFileName}.*");
+
+            CopyFunctionsFiles(functionFiles, environmentPath);
+
+            var environment = new FunctionEnvironment(environmentPath, functionFileName);
+
+            Environment.SetEnvironmentVariable("DOTNETCORE_HOME", environment.PackagesPath);
+            Environment.SetEnvironmentVariable("DOTNETCORESHAREDREF_VERSION", "2.0.6"); //TODO: Get Higher available version on computer
+
+            return environment;
         }
 
-        public static void ClearCompilations(string basePath)
+        private static void EnsureDirectoryIsClear(string directory)
         {
-            if (!Directory.Exists(basePath))
-                return;
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+            Directory.CreateDirectory(directory);
+        }
 
-            var compilations = Directory.EnumerateFiles(basePath, "*.dll", SearchOption.AllDirectories);
-
-            foreach (var c in compilations)
-                File.Delete(c);
+        public static void CopyFunctionsFiles(IEnumerable<string> files, string destination)
+        {
+            foreach (var f in files)
+            {
+                var name = Path.GetFileName(f);
+                File.Copy(f, Path.Combine(destination, name));
+            }
         }
     }
 }

@@ -32,7 +32,8 @@ namespace Kubeless.Core.References
                 try
                 {
                     var assembly = Assembly.LoadFile(dll);
-                    references.Add(MetadataReference.CreateFromFile(dll));
+                    var reference = MetadataReference.CreateFromFile(dll);
+                    references.Add(reference);
                 }
                 catch (BadImageFormatException) { }
                 catch

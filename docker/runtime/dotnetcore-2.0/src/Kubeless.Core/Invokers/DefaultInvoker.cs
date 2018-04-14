@@ -1,9 +1,8 @@
 ﻿using Kubeless.Core.Interfaces;
 using System;
-using System.IO;
 using System.Reflection;
 
-namespace Kubeless.Core.Models
+namespace Kubeless.Core.Invokers
 {
     public class DefaultInvoker : IInvoker
     {

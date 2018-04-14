@@ -1,20 +1,26 @@
 ﻿using Kubeless.Core.Interfaces;
-using System;
-using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace Kubeless.Core.References
 {
     public class WithDependencyReferencesManager : IReferencesManager
     {
-        private IEnumerable<IReferencesManager> referencesManager;
+        private IEnumerable<IReferencesManager> basicReferencesManager;
+        private IEnumerable<IReferencesManager> dependenciesManager;
 
         public WithDependencyReferencesManager()
         {
-            referencesManager = new List<IReferencesManager>()
+            basicReferencesManager = new List<IReferencesManager>()
             {
                 new SharedReferencesManager(),
-                new StoreReferencesManager(),
+                new StoreReferencesManager()
+            };
+
+            dependenciesManager = new List<IReferencesManager>()
+            {
                 new KubelessReferencesManager()
             };
         }
@@ -22,8 +28,20 @@ namespace Kubeless.Core.References
         public MetadataReference[] GetReferences()
         {
             var references = new List<MetadataReference>();
-            foreach (var manager in referencesManager)
+
+            // Add all native assemblies 
+            foreach (var manager in basicReferencesManager)
                 references.AddRange(manager.GetReferences());
+
+            // Add external referenced assemblies, but check if them aren't a native one
+            foreach (var manager in dependenciesManager)
+                foreach (var reference in manager.GetReferences())
+                {
+                    var assemblyName = Path.GetFileNameWithoutExtension(reference.Display);
+                    if (references.FirstOrDefault(r => r.Display.Contains(assemblyName)) == null)
+                        references.Add(reference);
+                }
+
             return references.ToArray();
         }
     }
