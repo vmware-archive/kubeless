@@ -168,7 +168,7 @@ local runtime_images ='[
       {
         "name": "dotnetcore2.0",
         "version": "2.0",
-        "runtimeImage": "allantargino/kubeless-dotnetcore@sha256:d321dc4b2c420988d98cdaa22c733743e423f57d1153c89c2b99ff0d944e8a63",
+        "runtimeImage": "allantargino/kubeless-dotnetcore@sha256:6028f68d9b13a5eaac0b3a20cea21fe7392111d02b89e87253b496271bdd5a9e",
         "initImage": "microsoft/aspnetcore-build"
       }
     ],
