@@ -17,19 +17,12 @@ limitations under the License.
 package kafka
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"os"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/Shopify/sarama"
 	"github.com/bsm/sarama-cluster"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -81,12 +74,12 @@ func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, 
 			if more {
 				logrus.Infof("Received Kafka message Partition: %d Offset: %d Key: %s Value: %s ", msg.Partition, msg.Offset, string(msg.Key), string(msg.Value))
 				logrus.Infof("Sending message %s to function %s", msg, funcName)
-				req, err := getHTTPReq(clientset, funcName, ns, "POST", string(msg.Value))
+				req, err := utils.GetHTTPReq(clientset, funcName, ns, "kafkatriggers.kubeless.io", "POST", string(msg.Value))
 				if err != nil {
 					logrus.Errorf("Unable to elaborate request: %v", err)
 				} else {
 					//forward msg to function
-					err = sendMessage(req)
+					err = utils.SendMessage(req)
 					if err != nil {
 						logrus.Errorf("Failed to send message to function: %v", err)
 					} else {
@@ -107,52 +100,6 @@ func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, 
 			return
 		}
 	}
-}
-
-func isJSON(s string) bool {
-	var js map[string]interface{}
-	return json.Unmarshal([]byte(s), &js) == nil
-
-}
-
-func getHTTPReq(clientset kubernetes.Interface, funcName, namespace, method, body string) (*http.Request, error) {
-	svc, err := clientset.CoreV1().Services(namespace).Get(funcName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("Unable to find the service for function %s", funcName)
-	}
-	funcPort := strconv.Itoa(int(svc.Spec.Ports[0].Port))
-	req, err := http.NewRequest(method, fmt.Sprintf("http://%s.%s.svc.cluster.local:%s", funcName, namespace, funcPort), strings.NewReader(body))
-	if err != nil {
-		return nil, fmt.Errorf("Unable to create request %v", err)
-	}
-	timestamp := time.Now().UTC()
-	eventID, err := utils.GetRandString(11)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create a event-ID %v", err)
-	}
-	req.Header.Add("event-id", eventID)
-	req.Header.Add("event-time", timestamp.String())
-	req.Header.Add("event-namespace", "kafkatriggers.kubeless.io")
-	if isJSON(body) {
-		req.Header.Add("Content-Type", "application/json")
-		req.Header.Add("event-type", "application/json")
-	} else {
-		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-		req.Header.Add("event-type", "application/x-www-form-urlencoded")
-	}
-	return req, nil
-}
-
-func sendMessage(req *http.Request) error {
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	if res.StatusCode != 200 {
-		return fmt.Errorf("Error: received error code %d: %s", res.StatusCode, res.Status)
-	}
-	return nil
 }
 
 // CreateKafkaConsumer creates a goroutine that subscribes to Kafka topic

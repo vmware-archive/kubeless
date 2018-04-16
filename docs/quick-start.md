@@ -133,7 +133,7 @@ Kubeless also supports [ingress](https://kubernetes.io/docs/concepts/services-ne
 
 ## PubSub function
 
-We provide several [PubSub runtimes](https://hub.docker.com/r/kubeless/), which has suffix `event-consumer`, which help you to quickly deploy your function with PubSub mechanism. The PubSub function will expect to consume input messages from a predefined topic from a messaging system. Kubeless supports using events from Kafka and NATS messaging systems as Triggers.
+You can deploy your functions written in any Kubeless supported runtimes to be triggerred by PubSub mechanism. The PubSub function is expected to consume input messages from a predefined topic from a messaging system. Kubeless currently supports using events from Kafka and NATS messaging systems as Triggers.
 
 ### Kafka
 
@@ -163,7 +163,7 @@ zoo         ClusterIP   None            <none>        9092/TCP,3888/TCP   1m
 zookeeper   ClusterIP   10.55.249.102   <none>        2181/TCP            1m
 ```
 
-Now you can deploy a pubsub function. A function can be as simple as:
+A function can be as simple as:
 
 ```python
 def foobar(event, context):
@@ -171,16 +171,21 @@ def foobar(event, context):
   return event['data']
 ```
 
-You create it the same way than an _HTTP_ function except that you specify a `--trigger-topic`.
+Now you can deploy a pubsub function. 
 
 ```console
 $ kubeless function deploy test --runtime python2.7 \
                                 --handler test.foobar \
-                                --from-file test.py \
-                                --trigger-topic test-topic
+                                --from-file test.py
 ```
 
-After that you can invoke them publishing messages in that topic. To allow you to easily manage topics `kubeless` provides a convenience function `kubeless topic`. You can create/delete and publish to a topic easily.
+You need to create a _Kafka_ trigger that lets you associate a function with a topic specified by `--trigger-topic` as below:
+
+```console
+$ kubeless trigger kafka create test --function-selector created-by=kubeless,function=test --trigger-topic test-topic
+```
+
+After that you can invoke the function by publishing messages in that topic. To allow you to easily manage topics `kubeless` provides a convenience function `kubeless topic`. You can create/delete and publish to a topic easily.
 
 ```console
 $ kubeless topic create test-topic
@@ -215,13 +220,7 @@ $ kubeless function deploy pubsub-python-nats --runtime python2.7 \
 After function is deployed you can use `kubeless trigger nats` CLI command to  associate function with a topic on NATS cluster as below.
 
 ```console
-$ kubeless trigger nats create pubsub-python-nats --function-selector created-by=kubeless,function=pubsub-python-nats --trigger-topic test-topic
-```
-
-You could quickly test the functionality by publishing a message to the topic, and verifying that message is seen by the pod running the function.
-
-```console
-	kubeless trigger nats publish --url nats://nats-server-ip:4222 --topic test --message "Hello World!"
+$ kubeless trigger nats create pubsub-python-nats --function-selector created-by=kubeless,function=pubsub-python-nats --trigger-topic test
 ```
 
 If you do not have NATS cluster its pretty easy to setup a NATS cluster. Run below command to deploy a [NATS operator](https://github.com/nats-io/nats-operator)
@@ -247,6 +246,20 @@ spec:
 Above command will create NATS cluster IP service `nats.nats-io.svc.cluster.local:4222` which is the default URL Kubeless NATS trigger contoller expects.
 
 At this point you are all set try Kubeless NATS triggers.
+
+You could quickly test the functionality by publishing a message to the topic, and verifying that message is seen by the pod running the function.
+
+```console
+$ kubeless trigger nats publish --url nats://nats-server-ip:4222 --topic test --message "Hello World!"
+```
+
+You can check the result in the pod logs:
+
+```console
+$ kubectl logs pubsub-python-nats-5b9c849fc-tvq2l
+...
+Hello World!
+```
 
 ## Other commands
 

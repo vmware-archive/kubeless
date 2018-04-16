@@ -17,22 +17,18 @@ limitations under the License.
 package nats
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"os"
-	"strconv"
-	"strings"
-	"time"
+
+	"sync"
 
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/nats-io/go-nats"
 	"github.com/sirupsen/logrus"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 var (
+	mutex     = &sync.Mutex{}
 	stopM     map[string](chan struct{})
 	stoppedM  map[string](chan struct{})
 	consumerM map[string]bool
@@ -64,12 +60,12 @@ func createConsumerProcess(topic, funcName, ns, queueGroupID string, clientset k
 	subscription, err := nc.QueueSubscribe(topic, queueGroupID, func(msg *nats.Msg) {
 		logrus.Debugf("Received Message %v on Topic: %v Queue: %v", string(msg.Data), msg.Subject, msg.Sub.Queue)
 		logrus.Infof("Sending message %s to function %s", string(msg.Data), funcName)
-		req, err := getHTTPReq(clientset, funcName, ns, "POST", string(msg.Data))
+		req, err := utils.GetHTTPReq(clientset, funcName, ns, "natstriggers.kubeless.io", "POST", string(msg.Data))
 		if err != nil {
 			logrus.Errorf("Unable to elaborate request: %v", err)
 		} else {
 			//forward msg to function
-			err = sendMessage(req)
+			err = utils.SendMessage(req)
 			if err != nil {
 				logrus.Errorf("Failed to send message to function: %v", err)
 			} else {
@@ -93,57 +89,10 @@ func createConsumerProcess(topic, funcName, ns, queueGroupID string, clientset k
 	}
 }
 
-func isJSON(s string) bool {
-	var js map[string]interface{}
-	return json.Unmarshal([]byte(s), &js) == nil
-
-}
-
-func getHTTPReq(clientset kubernetes.Interface, funcName, namespace, method, body string) (*http.Request, error) {
-	svc, err := clientset.CoreV1().Services(namespace).Get(funcName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("Unable to find the service for function %s", funcName)
-	}
-	funcPort := strconv.Itoa(int(svc.Spec.Ports[0].Port))
-	req, err := http.NewRequest(method, fmt.Sprintf("http://%s.%s.svc.cluster.local:%s", funcName, namespace, funcPort), strings.NewReader(body))
-	if err != nil {
-		return nil, fmt.Errorf("Unable to create request %v", err)
-	}
-	timestamp := time.Now().UTC()
-	eventID, err := utils.GetRandString(11)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create a event-ID %v", err)
-	}
-	req.Header.Add("event-id", eventID)
-	req.Header.Add("event-time", timestamp.String())
-	req.Header.Add("event-namespace", "natstriggers.kubeless.io")
-	if isJSON(body) {
-		logrus.Infof("TRUE %v", body)
-		req.Header.Add("Content-Type", "application/json")
-		req.Header.Add("event-type", "application/json")
-	} else {
-		logrus.Infof("FLASE %v", body)
-		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-		req.Header.Add("event-type", "application/x-www-form-urlencoded")
-	}
-	return req, nil
-}
-
-func sendMessage(req *http.Request) error {
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("Error: received error code %d: %s", resp.StatusCode, resp.Status)
-	}
-	return nil
-}
-
 // CreateNATSConsumer creates a goroutine that subscribes to NATS topic
 func CreateNATSConsumer(triggerObjName, funcName, ns, topic string, clientset kubernetes.Interface) error {
+	mutex.Lock()
+	defer mutex.Unlock()
 	queueGroupID := generateUniqueQueueGroupName(triggerObjName, funcName, ns, topic)
 	if !consumerM[queueGroupID] {
 		logrus.Infof("Creating NATS consumer for the function %s associated with for trigger %s", funcName, triggerObjName)
@@ -160,13 +109,15 @@ func CreateNATSConsumer(triggerObjName, funcName, ns, topic string, clientset ku
 
 // DeleteNATSConsumer deletes goroutine created by CreateNATSConsumer
 func DeleteNATSConsumer(triggerObjName, funcName, ns, topic string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
 	queueGroupID := generateUniqueQueueGroupName(triggerObjName, funcName, ns, topic)
 	if consumerM[queueGroupID] {
 		logrus.Infof("Stopping consumer for the function %s associated with for trigger %s", funcName, triggerObjName)
 		// delete consumer process
 		close(stopM[queueGroupID])
 		<-stoppedM[queueGroupID]
-		consumerM[queueGroupID] = false
+		delete(consumerM, queueGroupID)
 		logrus.Infof("Stopped consumer for the function %s associated with for trigger %s", funcName, triggerObjName)
 	} else {
 		logrus.Infof("Consumer for function %s associated with trigger does n't exists. Good enough to skip the stop", funcName, triggerObjName)

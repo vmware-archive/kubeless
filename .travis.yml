@@ -162,10 +162,12 @@ script:
       GKE)
         make function-image-builder FUNCTION_IMAGE_BUILDER=$BUILDER_IMAGE
         make kafka-controller-image KAFKA_CONTROLLER_IMAGE=$KAFKA_CONTROLLER_IMAGE
+        make nats-controller-image NATS_CONTROLLER_IMAGE=$NATS_CONTROLLER_IMAGE
         docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
         docker push $CONTROLLER_IMAGE
         docker push $BUILDER_IMAGE
         docker push $KAFKA_CONTROLLER_IMAGE
+        docker push $NATS_CONTROLLER_IMAGE
         echo "Waiting for the GKE cluster to be ready"
         tail -f $TRAVIS_BUILD_DIR/gke-start.log &
         wait $GKE_START_PID
@@ -192,6 +194,7 @@ after_success:
       docker tag $CONTROLLER_IMAGE ${CONTROLLER_IMAGE_NAME}:latest
       docker tag $BUILDER_IMAGE ${BUILDER_IMAGE_NAME}:latest
       docker tag $KAFKA_CONTROLLER_IMAGE ${KAFKA_CONTROLLER_IMAGE_NAME}:latest
+      docker tag $NATS_CONTROLLER_IMAGE ${NATS_CONTROLLER_IMAGE}:latest
       docker push ${CONTROLLER_IMAGE_NAME}:latest
       docker push ${BUILDER_IMAGE_NAME}:latest
       docker push ${KAFKA_CONTROLLER_IMAGE_NAME}:latest
@@ -216,6 +219,7 @@ before_deploy:
       sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
       cp kafka-zookeeper.yaml kafka-zookeeper-${TRAVIS_TAG}.yaml
       cp kafka-zookeeper-openshift.yaml kafka-zookeeper-openshift-${TRAVIS_TAG}.yaml
+      cp nats.yaml nats-${TRAVIS_TAG}.yaml
     fi
 
 deploy:
@@ -229,6 +233,7 @@ deploy:
     - kubeless-openshift-${TRAVIS_TAG}.yaml
     - kafka-zookeeper-${TRAVIS_TAG}.yaml
     - kafka-zookeeper-openshift-${TRAVIS_TAG}.yaml
+    - nats-${TRAVIS_TAG}.yaml
     - bundles/kubeless_*.zip
   skip_cleanup: true
   overwrite: true

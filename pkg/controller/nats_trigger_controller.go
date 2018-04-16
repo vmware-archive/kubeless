@@ -19,10 +19,10 @@ package controller
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/sirupsen/logrus"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apimachineryHelpers "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -372,10 +372,7 @@ func natsTriggerObjChanged(oldNatsTriggerObj, newNatsTriggerObj *kubelessApi.NAT
 	if oldNatsTriggerObj.ResourceVersion == newNatsTriggerObj.ResourceVersion {
 		return false
 	}
-	if !reflect.DeepEqual(oldNatsTriggerObj.Spec.FunctionSelector, newNatsTriggerObj.Spec.FunctionSelector) {
-		return true
-	}
-	if oldNatsTriggerObj.Spec.Topic != newNatsTriggerObj.Spec.Topic {
+	if !apiequality.Semantic.DeepEqual(oldNatsTriggerObj.Spec, newNatsTriggerObj.Spec) {
 		return true
 	}
 	return false

@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package kafka
+package utils
 
 import (
 	"io/ioutil"
@@ -40,7 +40,7 @@ func TestGetHTTPRequest(t *testing.T) {
 		},
 	}
 	clientset := fake.NewSimpleClientset(&svc)
-	req, err := getHTTPReq(clientset, "foo", "myns", "POST", "my msg")
+	req, err := GetHTTPReq(clientset, "foo", "myns", "kafkatriggers.kubeless.io", "POST", "my msg")
 	if err != nil {
 		t.Errorf("Unexpected error %v", err)
 	}
@@ -90,7 +90,7 @@ func TestGetJSONHTTPRequest(t *testing.T) {
 		},
 	}
 	clientset := fake.NewSimpleClientset(&svc)
-	req, err := getHTTPReq(clientset, "foo", "myns", "POST", `{"hello": "world"}`)
+	req, err := GetHTTPReq(clientset, "foo", "myns", "kafkatriggers.kubeless.io", "POST", `{"hello": "world"}`)
 	if err != nil {
 		t.Errorf("Unexpected error %v", err)
 	}
@@ -136,7 +136,7 @@ func TestIsJSON(t *testing.T) {
 		},
 	}
 	for _, d := range testData {
-		if isJSON(d.input) != d.expectedJSON {
+		if IsJSON(d.input) != d.expectedJSON {
 			t.Errorf("isJSON(%s) should be %t", d.input, d.expectedJSON)
 		}
 	}

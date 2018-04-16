@@ -78,7 +78,7 @@ kafka-controller-image: docker/kafka-controller
 	$(DOCKER) build -t $(KAFKA_CONTROLLER_IMAGE) $<
 
 nats-controller-build:
-	./script/nats-controller.sh -os=$(OS) -arch=$(ARCH)
+	./script/binary-controller -os=$(OS) -arch=$(ARCH) nats-controller github.com/kubeless/kubeless/cmd/nats-trigger-controller
 
 nats-controller-image: docker/nats-controller
 	$(DOCKER) build -t $(NATS_CONTROLLER_IMAGE) $<
