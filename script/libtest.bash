@@ -17,6 +17,7 @@
 KUBELESS_MANIFEST=kubeless-non-rbac.yaml
 KUBELESS_MANIFEST_RBAC=kubeless.yaml
 KAFKA_MANIFEST=kafka-zookeeper.yaml
+NATS_MANIFEST=nats.yaml
 
 KUBECTL_BIN=$(which kubectl)
 : ${KUBECTL_BIN:?ERROR: missing binary: kubectl}
@@ -158,6 +159,11 @@ kubeless_kafka_trigger_delete() {
     echo_info "Deleting kafka trigger "${trigger}" in case still present ... "
     kubeless trigger kafka list |grep -w "${trigger}" && kubeless trigger kafka delete "${trigger}" >& /dev/null || true
 }
+kubeless_nats_trigger_delete() {
+    local trigger=${1:?}; shift
+    echo_info "Deleting NATS trigger "${trigger}" in case still present ... "
+    kubeless trigger nats list |grep -w "${trigger}" && kubeless trigger nats delete "${trigger}" >& /dev/null || true
+}    
 kubeless_function_deploy() {
     local func=${1:?}; shift
     echo_info "Deploying function ..."
@@ -188,6 +194,18 @@ wait_for_kubeless_kafka_server_ready() {
     k8s_wait_for_pod_ready -n kubeless -l kubeless=kafka-trigger-controller
     _wait_for_cmd_ok kubectl get kafkatriggers 2>/dev/null
     kubectl annotate pods --overwrite -n kubeless kafka-0 ready=true
+}
+wait_for_kubeless_nats_operator_ready() {
+    echo_info "Waiting for NATS operator pod to be ready ..."
+    k8s_wait_for_pod_ready -n nats-io -l name=nats-operator
+}
+wait_for_kubeless_nats_cluster_ready() {
+    echo_info "Waiting for NATS cluster pods to be ready ..."
+    k8s_wait_for_pod_ready -n nats-io -l nats_cluster=nats
+}
+wait_for_kubeless_nats_controller_ready() {
+    echo_info "Waiting for NATS controller pods to be ready ..."
+    k8s_wait_for_pod_ready -n kubeless -l kubeless=nats-trigger-controller
 }
 _wait_for_kubeless_kafka_topic_ready() {
     local topic=${1:?}
@@ -282,6 +300,25 @@ deploy_kafka() {
     kubectl create -f $KAFKA_MANIFEST
 }
 
+deploy_nats_operator() {
+    echo_info "Deploy NATS operator ... "
+    kubectl apply -f https://raw.githubusercontent.com/nats-io/nats-operator/master/example/deployment-rbac.yaml
+}
+
+deploy_nats_cluster() {
+    echo_info "Deploy NATS cluster ... "
+    kubectl apply -f ./manifests/nats/nats-cluster.yaml -n nats-io
+}
+
+deploy_nats_trigger_controller() {
+    echo_info "Deploy NATS trigger controller ... "
+    kubectl create -f $NATS_MANIFEST
+}
+
+expose_nats_service() {
+    kubectl get svc nats -n nats-io -o yaml | sed 's/ClusterIP/NodePort/' | kubectl replace -f -
+}
+
 deploy_function() {
     local func=${1:?} func_topic
     echo_info "TEST: $func"
@@ -293,6 +330,13 @@ deploy_kafka_trigger() {
     local trigger=${1:?}
     echo_info "TEST: $trigger"
     kubeless_kafka_trigger_delete ${trigger}
+    make -sC examples ${trigger}
+}
+
+deploy_nats_trigger() {
+    local trigger=${1:?}
+    echo_info "TEST: $trigger"
+    kubeless_nats_trigger_delete ${trigger}
     make -sC examples ${trigger}
 }
 

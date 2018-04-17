@@ -6,6 +6,7 @@ DOCKER = docker
 CONTROLLER_IMAGE = kubeless-controller-manager:latest
 FUNCTION_IMAGE_BUILDER = kubeless-function-image-builder:latest
 KAFKA_CONTROLLER_IMAGE = kafka-trigger-controller:latest
+NATS_CONTROLLER_IMAGE = nats-trigger-controller:latest
 OS = linux
 ARCH = amd64
 BUNDLES = bundles
@@ -37,7 +38,7 @@ binary-cross:
 	$(KUBECFG) show -o yaml $< > $@.tmp
 	mv $@.tmp $@
 
-all-yaml: kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml kafka-zookeeper.yaml kafka-zookeeper-openshift.yaml
+all-yaml: kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml kafka-zookeeper.yaml kafka-zookeeper-openshift.yaml nats.yaml
 
 kubeless.yaml: kubeless.jsonnet
 
@@ -46,6 +47,8 @@ kubeless-non-rbac.yaml: kubeless-non-rbac.jsonnet
 kubeless-openshift.yaml: kubeless-openshift.jsonnet
 
 kafka-zookeeper.yaml: kafka-zookeeper.jsonnet
+
+nats.yaml: nats.jsonnet
 
 docker/controller-manager: controller-build
 	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/kubeless-controller-manager $@
@@ -73,6 +76,15 @@ kafka-controller-build:
 
 kafka-controller-image: docker/kafka-controller
 	$(DOCKER) build -t $(KAFKA_CONTROLLER_IMAGE) $<
+
+nats-controller-build:
+	./script/binary-controller -os=$(OS) -arch=$(ARCH) nats-controller github.com/kubeless/kubeless/cmd/nats-trigger-controller
+
+nats-controller-image: docker/nats-controller
+	$(DOCKER) build -t $(NATS_CONTROLLER_IMAGE) $<
+
+docker/nats-controller: nats-controller-build
+	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/nats-controller $@
 
 update:
 	./hack/update-codegen.sh

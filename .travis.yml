@@ -18,6 +18,7 @@ env:
     - TEST_TARGET=minikube_core_triggers
     - TEST_TARGET=minikube_build_functions
     - TEST_TARGET=minikube_kafka
+    - TEST_TARGET=minikube_nats
     - TEST_TARGET=GKE
   global:
     - CONTROLLER_IMAGE_NAME=bitnami/kubeless-controller-manager
@@ -27,6 +28,8 @@ env:
     - BUILDER_IMAGE=${BUILDER_IMAGE_NAME}:${CONTROLLER_TAG}
     - KAFKA_CONTROLLER_IMAGE_NAME=bitnami/kafka-trigger-controller
     - KAFKA_CONTROLLER_IMAGE=${KAFKA_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
+    - NATS_CONTROLLER_IMAGE_NAME=bitnami/nats-trigger-controller
+    - NATS_CONTROLLER_IMAGE=${NATS_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
     - CGO_ENABLED=0
     - TEST_DEBUG=1
     - GKE_VERSION=1.8.8-gke.0
@@ -74,6 +77,17 @@ before_install:
         export SHOULD_TEST=1
       fi
       ;;
+    # In kase of minikube+NATS we want to test it if
+    # it is a Pull Request related to NATS (discovered from the PR title)
+    # or if the build is from the "master" branch
+    minikube_nats)
+      if [[ "$TRAVIS_PULL_REQUEST" != false ]]; then
+        pr_nats_title=$(curl "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title || true)
+      fi
+      if [[ "$TRAVIS_PULL_REQUEST" == false || "$pr_nats_title" == "" || "$pr_nats_title" =~ ^.*(Nats|nats|NATS).*$ ]]; then
+        export SHOULD_TEST=1
+      fi
+      ;;
     esac
 install:
   - |
@@ -113,6 +127,7 @@ script:
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless-non-rbac.yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kubeless-openshift.yaml
       sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' kafka-zookeeper.yaml
+      sed -i.bak 's/'":latest"'/'":${CONTROLLER_TAG}"'/g' nats.yaml
       case $TEST_TARGET in
       unit)
         make test
@@ -139,13 +154,20 @@ script:
         ./script/integration-tests minikube deployment
         ./script/integration-tests minikube kafka
         ;;
+      minikube_nats)
+        make nats-controller-image NATS_CONTROLLER_IMAGE=$NATS_CONTROLLER_IMAGE
+        ./script/integration-tests minikube deployment
+        ./script/integration-tests minikube nats
+        ;;
       GKE)
         make function-image-builder FUNCTION_IMAGE_BUILDER=$BUILDER_IMAGE
         make kafka-controller-image KAFKA_CONTROLLER_IMAGE=$KAFKA_CONTROLLER_IMAGE
+        make nats-controller-image NATS_CONTROLLER_IMAGE=$NATS_CONTROLLER_IMAGE
         docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
         docker push $CONTROLLER_IMAGE
         docker push $BUILDER_IMAGE
         docker push $KAFKA_CONTROLLER_IMAGE
+        docker push $NATS_CONTROLLER_IMAGE
         echo "Waiting for the GKE cluster to be ready"
         tail -f $TRAVIS_BUILD_DIR/gke-start.log &
         wait $GKE_START_PID
@@ -172,6 +194,7 @@ after_success:
       docker tag $CONTROLLER_IMAGE ${CONTROLLER_IMAGE_NAME}:latest
       docker tag $BUILDER_IMAGE ${BUILDER_IMAGE_NAME}:latest
       docker tag $KAFKA_CONTROLLER_IMAGE ${KAFKA_CONTROLLER_IMAGE_NAME}:latest
+      docker tag $NATS_CONTROLLER_IMAGE ${NATS_CONTROLLER_IMAGE}:latest
       docker push ${CONTROLLER_IMAGE_NAME}:latest
       docker push ${BUILDER_IMAGE_NAME}:latest
       docker push ${KAFKA_CONTROLLER_IMAGE_NAME}:latest
@@ -196,6 +219,7 @@ before_deploy:
       sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
       cp kafka-zookeeper.yaml kafka-zookeeper-${TRAVIS_TAG}.yaml
       cp kafka-zookeeper-openshift.yaml kafka-zookeeper-openshift-${TRAVIS_TAG}.yaml
+      cp nats.yaml nats-${TRAVIS_TAG}.yaml
     fi
 
 deploy:
@@ -209,6 +233,7 @@ deploy:
     - kubeless-openshift-${TRAVIS_TAG}.yaml
     - kafka-zookeeper-${TRAVIS_TAG}.yaml
     - kafka-zookeeper-openshift-${TRAVIS_TAG}.yaml
+    - nats-${TRAVIS_TAG}.yaml
     - bundles/kubeless_*.zip
   skip_cleanup: true
   overwrite: true

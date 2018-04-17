@@ -22,3 +22,5 @@ type FunctionExpansion interface{}
 type HTTPTriggerExpansion interface{}
 
 type KafkaTriggerExpansion interface{}
+
+type NATSTriggerExpansion interface{}

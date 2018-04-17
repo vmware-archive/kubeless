@@ -66,11 +66,6 @@ var deployCmd = &cobra.Command{
 			}
 		}
 
-		topic, err := cmd.Flags().GetString("trigger-topic")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
 		labels, err := cmd.Flags().GetStringSlice("label")
 		if err != nil {
 			logrus.Fatal(err)
@@ -214,27 +209,6 @@ var deployCmd = &cobra.Command{
 				logrus.Fatalf("Failed to deploy cron job trigger %s. Received:\n%s", funcName, err)
 			}
 		}
-		if topic != "" {
-			kafkaTrigger := kubelessApi.KafkaTrigger{}
-			kafkaTrigger.TypeMeta = metav1.TypeMeta{
-				Kind:       "KafkaTrigger",
-				APIVersion: "kubeless.io/v1beta1",
-			}
-			kafkaTrigger.ObjectMeta = metav1.ObjectMeta{
-				Name:      funcName,
-				Namespace: ns,
-			}
-			kafkaTrigger.ObjectMeta.Labels = map[string]string{
-				"created-by": "kubeless",
-				"function":   funcName,
-			}
-			kafkaTrigger.Spec.FunctionSelector.MatchLabels = f.ObjectMeta.Labels
-			kafkaTrigger.Spec.Topic = topic
-			err = utils.CreateKafkaTriggerCustomResource(kubelessClient, &kafkaTrigger)
-			if err != nil {
-				logrus.Fatalf("Failed to deploy Kafka trigger %s. Received:\n%s", funcName, err)
-			}
-		}
 	},
 }
 
@@ -247,7 +221,6 @@ func init() {
 	deployCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
-	deployCmd.Flags().StringP("trigger-topic", "", "", "Deploy a pubsub function to Kubeless")
 	deployCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory, which is measured in bytes, for the function. It is expressed as a plain integer or a fixed-point interger with one of these suffies: E, P, T, G, M, K, Ei, Pi, Ti, Gi, Mi, Ki")
 	deployCmd.Flags().StringP("cpu", "", "", "Request amount of cpu for the function, which is measured in units of cores. Please see the following link for more information: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-cpu")

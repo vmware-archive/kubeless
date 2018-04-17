@@ -43,21 +43,21 @@ Kubeless uses k8s primitives, there is no additional API server or API router/ga
 
 Kubeless fully supports two major versions of Kubernetes (1.8 and 1.9) at the moment. For other versions some of the features in Kubeless may not be available. Our CI run tests against two different platforms: GKE (1.8) and Minikube (1.9). Other platforms are supported but fully compatibiliy cannot be assured. This is the summary of the features and versions supported:
 
-| Platform | Kubernetes Version | HTTP functions | Scheduled functions | PubSub (Kafka) functions | Autoscaling (CPU) |
-| ------------- | ----- | - | - | - | - |
-| GKE           | 1.7.X | ✓ | X | ✓ | X |
-| GKE (CI)      | 1.8.X | ✓ | ✓ | ✓ | ✓ |
-| GKE           | 1.9.X | ✓ | ✓ | ✓ | ✓ |
-| Minikube      | 1.7.X | ✓ | X | ✓ | ✓ |
-| Minikube      | 1.8.X | ✓ | ✓ | ✓ | ✓ |
-| Minikube (CI) | 1.9.X | ✓ | ✓ | ✓ | ✓ |
+| Platform | Kubernetes Version | HTTP functions | Scheduled functions | PubSub (Kafka) functions | PubSub (NATS) functions | Autoscaling (CPU) |
+| ------------- | ----- | - | - | - | - | - |
+| GKE           | 1.7.X | ✓ | X | ✓ | ✓ | X |
+| GKE (CI)      | 1.8.X | ✓ | ✓ | ✓ | ✓ | ✓ |
+| GKE           | 1.9.X | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Minikube      | 1.7.X | ✓ | X | ✓ | ✓ | ✓ |
+| Minikube      | 1.8.X | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Minikube (CI) | 1.9.X | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 ## _Roadmap_
 
 We would love to get your help, feel free to lend a hand. We are currently looking to implement the following high level features:
 
 * Add other runtimes, currently Python, NodeJS, Ruby and PHP are supported. We are also providing a way to use custom runtime. Please check [this doc](./docs/runtimes.md) for more details.
-* Investigate other messaging bus (e.g nats.io)
+* Investigate other messaging bus (e.g SQS, rabbitMQ)
 * Use a standard interface for events
 * Optimize for functions startup time
 * Add distributed tracing (maybe using istio)

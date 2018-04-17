@@ -324,7 +324,8 @@ post: post-python post-nodejs post-ruby post-python-custom-port
 
 pubsub-python:
 	kubeless topic create s3-python || true
-	kubeless function deploy pubsub-python --trigger-topic s3-python --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py
+	kubeless function deploy pubsub-python  --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py
+	kubeless trigger kafka create pubsub-python --function-selector created-by=kubeless,function=pubsub-python --trigger-topic s3-python
 
 # Generate a random string to inject into s3 topic,
 # then "tail -f" until it shows (with timeout)
@@ -352,6 +353,153 @@ pubsub-python-verify:
 	echo $$logs | grep -q "event-namespace.*kafkatriggers.kubeless.io" && \
 	echo $$logs | grep -q "event-id.*"
 
+python-nats:
+	kubeless function deploy python-nats --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py
+	kubeless trigger nats create python-nats --function-selector created-by=kubeless,function=python-nats --trigger-topic test
+
+python-nats-verify:
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
+	$(eval NODEPORT := $(shell kubectl get svc nats -n nats-io -o jsonpath="{.spec.ports[0].nodePort}"))
+	$(eval MINIKUBE_IP := $(shell minikube ip))
+	kubeless trigger nats publish --url nats://$(MINIKUBE_IP):$(NODEPORT) --topic test --message '{"payload":"$(DATA)"}'
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=python-nats`; \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+		if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
+	# Verify event context
+	logs=`kubectl logs -l function=python-nats`; \
+	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-type.*application/json" && \
+	echo $$logs | grep -q "event-namespace.*natstriggers.kubeless.io" && \
+	echo $$logs | grep -q "event-id.*"
+
+nats-python-func1-topic-test:
+	kubeless function deploy nats-python-func1-topic-test --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py  --label topic=nats-topic-test
+
+nats-python-func2-topic-test:
+	kubeless function deploy nats-python-func2-topic-test --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py  --label topic=nats-topic-test
+
+nats-python-func-multi-topic:
+	kubeless function deploy nats-python-func-multi-topic --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py  --label func=nats-python-func-multi-topic
+
+nats-python-trigger-topic-test:
+	kubeless trigger nats create nats-python-trigger-topic-test --function-selector created-by=kubeless,topic=nats-topic-test --trigger-topic topic-test
+
+nats-python-trigger-topic1:
+	kubeless trigger nats create nats-python-trigger-topic1 --function-selector created-by=kubeless,func=nats-python-func-multi-topic --trigger-topic topic1
+
+nats-python-trigger-topic2:
+	kubeless trigger nats create nats-python-trigger-topic2 --function-selector created-by=kubeless,func=nats-python-func-multi-topic --trigger-topic topic2
+
+nats-python-func1-topic-test-verify:
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
+	$(eval NODEPORT := $(shell kubectl get svc nats -n nats-io -o jsonpath="{.spec.ports[0].nodePort}"))
+	$(eval MINIKUBE_IP := $(shell minikube ip))
+	kubeless trigger nats publish --url nats://$(MINIKUBE_IP):$(NODEPORT) --topic topic-test --message '{"payload":"$(DATA)"}'
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=nats-python-func1-topic-test`; \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+		if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
+	# Verify event context
+	logs=`kubectl logs -l function=nats-python-func1-topic-test`; \
+	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-type.*application/json" && \
+	echo $$logs | grep -q "event-namespace.*natstriggers.kubeless.io" && \
+	echo $$logs | grep -q "event-id.*"
+
+nats-python-func2-topic-test-verify:
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
+	$(eval NODEPORT := $(shell kubectl get svc nats -n nats-io -o jsonpath="{.spec.ports[0].nodePort}"))
+	$(eval MINIKUBE_IP := $(shell minikube ip))
+	kubeless trigger nats publish --url nats://$(MINIKUBE_IP):$(NODEPORT) --topic topic-test --message '{"payload":"$(DATA)"}'
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=nats-python-func2-topic-test`; \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+		if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
+	# Verify event context
+	logs=`kubectl logs -l function=nats-python-func2-topic-test`; \
+	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-type.*application/json" && \
+	echo $$logs | grep -q "event-namespace.*natstriggers.kubeless.io" && \
+	echo $$logs | grep -q "event-id.*"
+
+nats-python-func-multi-topic-verify:
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
+	$(eval NODEPORT := $(shell kubectl get svc nats -n nats-io -o jsonpath="{.spec.ports[0].nodePort}"))
+	$(eval MINIKUBE_IP := $(shell minikube ip))
+	kubeless trigger nats publish --url nats://$(MINIKUBE_IP):$(NODEPORT) --topic topic1 --message '{"payload":"$(DATA)"}'
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=nats-python-func-multi-topic`; \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+		if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
+	# Verify event context
+	logs=`kubectl logs -l function=nats-python-func-multi-topic`; \
+	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-type.*application/json" && \
+	echo $$logs | grep -q "event-namespace.*natstriggers.kubeless.io" && \
+	echo $$logs | grep -q "event-id.*"
+
+	kubeless trigger nats publish --url nats://$(MINIKUBE_IP):$(NODEPORT) --topic topic2 --message '{"payload":"$(DATA)"}'
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=nats-python-func-multi-topic`; \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+		if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
+	# Verify event context
+	logs=`kubectl logs -l function=nats-python-func-multi-topic`; \
+	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-type.*application/json" && \
+	echo $$logs | grep -q "event-namespace.*natstriggers.kubeless.io" && \
+	echo $$logs | grep -q "event-id.*"
 
 kafka-python-func1-topic-s3-python:
 	kubeless topic create s3-python || true
@@ -402,7 +550,8 @@ s3-python-kafka-trigger:
 
 pubsub-python34:
 	kubeless topic create s3-python34 || true
-	kubeless function deploy pubsub-python34 --trigger-topic s3-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/hellowithdata34.py
+	kubeless function deploy pubsub-python34 --runtime python3.4 --handler pubsub-python.handler --from-file python/hellowithdata34.py
+	kubeless trigger kafka create pubsub-python34 --function-selector created-by=kubeless,function=pubsub-python34 --trigger-topic s3-python34
 
 pubsub-python34-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
@@ -424,7 +573,8 @@ pubsub-python34-verify:
 
 pubsub-python36:
 	kubeless topic create s3-python36 || true
-	kubeless function deploy pubsub-python36 --trigger-topic s3-python36 --runtime python3.6 --handler pubsub-python.handler --from-file python/pubsub.py
+	kubeless function deploy pubsub-python36 --runtime python3.6 --handler pubsub-python.handler --from-file python/pubsub.py
+	kubeless trigger kafka create pubsub-python36 --function-selector created-by=kubeless,function=pubsub-python36 --trigger-topic s3-python36
 
 pubsub-python36-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
@@ -446,7 +596,8 @@ pubsub-python36-verify:
 
 pubsub-nodejs:
 	kubeless topic create s3-nodejs || true
-	kubeless function deploy pubsub-nodejs --trigger-topic s3-nodejs --runtime nodejs6 --handler pubsub-nodejs.handler --from-file nodejs/hellowithdata.js
+	kubeless function deploy pubsub-nodejs --runtime nodejs6 --handler pubsub-nodejs.handler --from-file nodejs/hellowithdata.js
+	kubeless trigger kafka create pubsub-nodejs --function-selector created-by=kubeless,function=pubsub-nodejs --trigger-topic s3-nodejs
 
 pubsub-nodejs-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
@@ -490,7 +641,8 @@ pubsub-nodejs-update-verify:
 
 pubsub-ruby:
 	kubeless topic create s3-ruby || true
-	kubeless function deploy pubsub-ruby --trigger-topic s3-ruby --runtime ruby2.4 --handler pubsub-ruby.handler --from-file ruby/hellowithdata.rb
+	kubeless function deploy pubsub-ruby --runtime ruby2.4 --handler pubsub-ruby.handler --from-file ruby/hellowithdata.rb
+	kubeless trigger kafka create pubsub-ruby --function-selector created-by=kubeless,function=pubsub-ruby --trigger-topic s3-ruby
 
 pubsub-ruby-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
@@ -512,7 +664,8 @@ pubsub-ruby-verify:
 
 pubsub-go:
 	kubeless topic create s3-go || true
-	kubeless function deploy pubsub-go --trigger-topic s3-go --runtime go1.10 --handler pubsub-go.Handler --from-file golang/hellowithdata.go
+	kubeless function deploy pubsub-go --runtime go1.10 --handler pubsub-go.Handler --from-file golang/hellowithdata.go
+	kubeless trigger kafka create pubsub-go --function-selector created-by=kubeless,function=pubsub-go --trigger-topic s3-go
 
 pubsub-go-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))

@@ -313,6 +313,41 @@ func GetKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTrig
 	return kafkaCRD, nil
 }
 
+// CreateNatsTriggerCustomResource will create a custom function object
+func CreateNatsTriggerCustomResource(kubelessClient versioned.Interface, natsTrigger *kubelessApi.NATSTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().NATSTriggers(natsTrigger.Namespace).Create(natsTrigger)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateNatsTriggerCustomResource applies changes to the function custom object
+func UpdateNatsTriggerCustomResource(kubelessClient versioned.Interface, natsTrigger *kubelessApi.NATSTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().NATSTriggers(natsTrigger.Namespace).Update(natsTrigger)
+	return err
+}
+
+// DeleteNatsTriggerCustomResource will delete custom function object
+func DeleteNatsTriggerCustomResource(kubelessClient versioned.Interface, natsTriggerName, ns string) error {
+	err := kubelessClient.KubelessV1beta1().NATSTriggers(ns).Delete(natsTriggerName, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetNatsTriggerCustomResource will get CronJobTrigger custom resource object
+func GetNatsTriggerCustomResource(kubelessClient versioned.Interface, natsTriggerName, ns string) (*kubelessApi.NATSTrigger, error) {
+	kafkaCRD, err := kubelessClient.KubelessV1beta1().NATSTriggers(ns).Get(natsTriggerName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return kafkaCRD, nil
+}
+
 // CreateHTTPTriggerCustomResource will create a HTTP trigger custom resource object
 func CreateHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTrigger *kubelessApi.HTTPTrigger) error {
 	_, err := kubelessClient.KubelessV1beta1().HTTPTriggers(httpTrigger.Namespace).Create(httpTrigger)

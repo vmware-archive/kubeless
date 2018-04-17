@@ -1,0 +1,6 @@
+RUNTIME ERROR: Unrecognized native function name: blah
+-------------------------------------------------
+	<builtin>	builtin function <native>
+
+-------------------------------------------------
+	During evaluation
