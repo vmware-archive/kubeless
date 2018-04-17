@@ -242,6 +242,9 @@ func TestEnsureService(t *testing.T) {
 	if !reflect.DeepEqual(svc.ObjectMeta.Labels, newLabels) {
 		t.Error("Unable to update the service")
 	}
+	if reflect.DeepEqual(svc.Spec.Selector, newLabels) {
+		t.Error("It should not update the selector")
+	}
 }
 
 func TestEnsureImage(t *testing.T) {
@@ -531,16 +534,8 @@ func TestEnsureDeployment(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get(f1Name, metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	if getEnvValueFromList("FUNC_HANDLER", dpm.Spec.Template.Spec.Containers[0].Env) != "bar2" {
-		t.Error("Unable to update deployment")
-	}
-	if dpm.Annotations["new-key"] != "value" {
-		t.Errorf("Unable to update deployment %v", dpm.Annotations)
-	}
+	// Unable to ensure that the new deployment is patched since fake
+	// ignores PATCH actions: https://github.com/kubernetes/client-go/issues/364
 
 	// It should return an error if some dependencies are given but the runtime is not supported
 	f7 := getDefaultFunc("func7", ns)

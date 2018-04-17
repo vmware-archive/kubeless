@@ -18,7 +18,9 @@ package utils
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -746,7 +748,6 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *kubelessApi.Functio
 		newSvc.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
 		newSvc.ObjectMeta.OwnerReferences = or
 		newSvc.Spec.Ports = svc.Spec.Ports
-		newSvc.Spec.Selector = svc.Spec.Selector
 		_, err = client.Core().Services(funcObj.ObjectMeta.Namespace).Update(newSvc)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The service may already exist and there is nothing to update
@@ -837,7 +838,13 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 		if len(result.Containers) > 0 {
 			envVars = result.Containers[0].Env
 		}
-		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, envVars, runtimeVolumeMount)
+		h := sha256.New()
+		_, err = h.Write([]byte(funcObj.Spec.Deps))
+		if err != nil {
+			return fmt.Errorf("Unable to obtain dependencies checksum: %v", err)
+		}
+		checksum := hex.EncodeToString(h.Sum(nil))
+		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, checksum, envVars, runtimeVolumeMount)
 		if err != nil {
 			return err
 		}
@@ -1143,26 +1150,18 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		newDpm.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
 		newDpm.ObjectMeta.Annotations = funcObj.Spec.Deployment.ObjectMeta.Annotations
 		newDpm.ObjectMeta.OwnerReferences = or
+		// We should maintain previous selector to avoid duplicated ReplicaSets
+		selector := newDpm.Spec.Selector
 		newDpm.Spec = dpm.Spec
-		_, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Update(newDpm)
+		newDpm.Spec.Selector = selector
+		data, err := json.Marshal(newDpm)
 		if err != nil {
 			return err
 		}
-
-		// kick existing function pods then it will be recreated
-		// with the new data mount from updated configmap.
-		// TODO: This is a workaround.  Do something better.
-		var pods *v1.PodList
-		pods, err = GetPodsByLabel(client, funcObj.ObjectMeta.Namespace, "function", funcObj.ObjectMeta.Name)
+		// Use `Patch` to do a rolling update
+		_, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Patch(newDpm.Name, types.MergePatchType, data)
 		if err != nil {
 			return err
-		}
-		for _, pod := range pods.Items {
-			err = client.Core().Pods(funcObj.ObjectMeta.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
-			if err != nil && !k8sErrors.IsNotFound(err) {
-				// non-fatal
-				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", funcObj.ObjectMeta.Namespace, pod.Name, err)
-			}
 		}
 	}
 

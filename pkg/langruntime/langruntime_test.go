@@ -96,7 +96,7 @@ func TestGetBuildContainer(t *testing.T) {
 	lr.ReadConfigMap()
 
 	// It should throw an error if there is not an image available
-	_, err := lr.GetBuildContainer("notExists", []v1.EnvVar{}, v1.VolumeMount{})
+	_, err := lr.GetBuildContainer("notExists", "", []v1.EnvVar{}, v1.VolumeMount{})
 	if err == nil {
 		t.Error("Expected to throw an error")
 	}
@@ -104,7 +104,7 @@ func TestGetBuildContainer(t *testing.T) {
 	// It should return the proper build image for python
 	env := []v1.EnvVar{}
 	vol1 := v1.VolumeMount{Name: "v1", MountPath: "/v1"}
-	c, err := lr.GetBuildContainer("python2.7", env, vol1)
+	c, err := lr.GetBuildContainer("python2.7", "abc123", env, vol1)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -112,7 +112,7 @@ func TestGetBuildContainer(t *testing.T) {
 		Name:            "install",
 		Image:           "tuna/python-pillow:2.7.11-alpine",
 		Command:         []string{"sh", "-c"},
-		Args:            []string{"pip install --prefix=/v1 -r /v1/requirements.txt"},
+		Args:            []string{"echo 'abc123  /v1/requirements.txt' > /tmp/deps.sha256 && sha256sum -c /tmp/deps.sha256 && pip install --prefix=/v1 -r /v1/requirements.txt"},
 		VolumeMounts:    []v1.VolumeMount{vol1},
 		WorkingDir:      "/v1",
 		ImagePullPolicy: v1.PullIfNotPresent,
@@ -127,7 +127,7 @@ func TestGetBuildContainer(t *testing.T) {
 		{Name: "NPM_REGISTRY", Value: "http://reg.com"},
 		{Name: "NPM_SCOPE", Value: "myorg"},
 	}
-	c, err = lr.GetBuildContainer("nodejs6", nodeEnv, vol1)
+	c, err = lr.GetBuildContainer("nodejs6", "abc123", nodeEnv, vol1)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -139,7 +139,7 @@ func TestGetBuildContainer(t *testing.T) {
 	}
 
 	// It should return the proper build image for ruby
-	c, err = lr.GetBuildContainer("ruby2.4", env, vol1)
+	c, err = lr.GetBuildContainer("ruby2.4", "abc123", env, vol1)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
