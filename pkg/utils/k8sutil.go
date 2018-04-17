@@ -18,7 +18,9 @@ package utils
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -801,7 +803,13 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 		if len(result.Containers) > 0 {
 			envVars = result.Containers[0].Env
 		}
-		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, envVars, runtimeVolumeMount)
+		h := sha256.New()
+		_, err = h.Write([]byte(funcObj.Spec.Deps))
+		if err != nil {
+			return fmt.Errorf("Unable to obtain dependencies checksum: %v", err)
+		}
+		checksum := hex.EncodeToString(h.Sum(nil))
+		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, checksum, envVars, runtimeVolumeMount)
 		if err != nil {
 			return err
 		}
