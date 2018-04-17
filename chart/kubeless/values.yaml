@@ -6,7 +6,7 @@ controller:
     replicaCount: 1
     image:
       repository: bitnami/kubeless-controller-manager
-      tag: v0.5.0
+      tag: v0.6.0
       pullPolicy: IfNotPresent
 
 kafkaController:
@@ -14,7 +14,7 @@ kafkaController:
     replicaCount: 1
     image:
       repository: bitnami/kafka-trigger-controller
-      tag: v0.5.0
+      tag: v0.6.0
       pullPolicy: IfNotPresent
 
 ## Runtimes configuration
@@ -26,19 +26,19 @@ runtimeImages: |-
           {
             "name": "python27",
             "version": "2.7",
-            "runtimeImage": "kubeless/python@sha256:565bebecb08d9a7b804c588105677a3572f10ff2032cef7727975061a653fb98",
+            "runtimeImage": "kubeless/python@sha256:07cfb0f3d8b6db045dc317d35d15634d7be5e436944c276bf37b1c630b03add8",
             "initImage": "python:2.7"
           },
           {
             "name": "python34",
             "version": "3.4",
-            "runtimeImage": "kubeless/python@sha256:4eead12b5631d91130fde8740eab9ff96d7f231c1da45c8d30db7ada523b70b1",
+            "runtimeImage": "kubeless/python@sha256:f19640c547a3f91dbbfb18c15b5e624029b4065c1baf2892144e07c36f0a7c8f",
             "initImage": "python:3.4"
           },
           {
             "name": "python36",
             "version": "3.6",
-            "runtimeImage": "kubeless/python@sha256:5a84245496452ce87e8c9a4f120357dce842f293e3ce9252a30fd9141045c7ca",
+            "runtimeImage": "kubeless/python@sha256:0c9f8f727d42625a4e25230cfe612df7488b65f283e7972f84108d87e7443d72",
             "initImage": "python:3.6"
           }
         ],
@@ -51,13 +51,13 @@ runtimeImages: |-
           {
             "name": "node6",
             "version": "6",
-            "runtimeImage": "kubeless/nodejs@sha256:9231b3a983407a1538375f508dc7dc8e30770f2633e0cd0a0e642ef6b7f0fbea",
+            "runtimeImage": "kubeless/nodejs@sha256:61c5a10aacb709c4575a09a4aa28f822b2d008c0dbf4aa0b124705ee9ca143f9",
             "initImage": "node:6.10"
           },
           {
             "name": "node8",
             "version": "8",
-            "runtimeImage": "kubeless/nodejs@sha256:2fc2e4b8d6e2bb1bda75e431082a998e623dabe51cfb6cab19edfce835289622",
+            "runtimeImage": "kubeless/nodejs@sha256:fc1aa96e55116400ee13d664a655dfb2025ded91858ebfd5fc0c8f0d6b923eba",
             "initImage": "node:8"
           }
         ],
@@ -70,7 +70,7 @@ runtimeImages: |-
           {
             "name": "ruby24",
             "version": "2.4",
-            "runtimeImage": "kubeless/ruby@sha256:a0c5700b9dd1bf14917a6be3dc05d18f059c045a89ef4252b3048fbb902e4624",
+            "runtimeImage": "kubeless/ruby@sha256:0dce29c0eb2a246f7d825b6644eeae7957b26f2bfad2b7987f2134cc7b350f2f",
             "initImage": "bitnami/ruby:2.4"
           }
         ],
@@ -83,16 +83,30 @@ runtimeImages: |-
           {
             "name": "php72",
             "version": "7.2",
-            "runtimeImage": "kubeless/php@sha256:6be0b60b54a2a945a0a95fd4453f197af5ce306be7c921e9ab1c785652f6e618",
+            "runtimeImage": "kubeless/php@sha256:82b94c691302bc82f3900444255cabb8f230487764eafeba7866ac49d90ddc3b",
             "initImage": "composer:1.6"
           }
         ],
         "depName": "composer.json",
         "fileNameSuffix": ".php"
+      },
+      {
+        "ID": "go",
+        "compiled": true,
+        "versions": [
+          {
+            "name": "go1.10",
+            "version": "1.10",
+            "runtimeImage": "kubeless/go@sha256:bf72622344a54e4360f31d3fea5eb9dca2c96fbedc6f0ad7c54f3eb8fb7bd353",
+            "initImage": "kubeless/go-init@sha256:ce6ef4fafe518ed78b3a68b03947c064fec1cf8c667cd109e9331f227877b3a9"
+          }
+        ],
+        "depName": "Gopkg.toml",
+        "fileNameSuffix": ".go"
       }
     ]
 
-functionBuilderImage: kubeless/function-image-builder:v0.5.0
+functionBuilderImage: kubeless/function-image-builder:v0.6.0
 
 ## UI configuration
 ui:
