@@ -214,10 +214,6 @@ before_deploy:
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
       docker tag $CONTROLLER_IMAGE ${CONTROLLER_IMAGE_NAME}:latest
       docker push $CONTROLLER_IMAGE
-      NEW_DIGEST=$(./script/find_digest.sh  ${CONTROLLER_IMAGE_NAME} ${TRAVIS_TAG} | cut -d " " -f 2)
-      sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless.yaml > kubeless-${TRAVIS_TAG}.yaml
-      sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-non-rbac.yaml > kubeless-non-rbac-${TRAVIS_TAG}.yaml
-      sed 's/'":${CONTROLLER_TAG}"'/'"@$NEW_DIGEST"'/g' kubeless-openshift.yaml > kubeless-openshift-${TRAVIS_TAG}.yaml
       cp kafka-zookeeper.yaml kafka-zookeeper-${TRAVIS_TAG}.yaml
       cp kafka-zookeeper-openshift.yaml kafka-zookeeper-openshift-${TRAVIS_TAG}.yaml
       cp nats.yaml nats-${TRAVIS_TAG}.yaml
