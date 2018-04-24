@@ -170,7 +170,10 @@ local kubelessConfig  = configMap.default("kubeless-config", namespace) +
     configMap.data({"runtime-images": std.toString(runtime_images)})+
     configMap.data({"enable-build-step": "false"})+
     configMap.data({"function-registry-tls-verify": "true"})+
-    configMap.data({"builder-image": "kubeless/function-image-builder:latest"});
+    configMap.data({"provision-image": "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697"})+
+    configMap.data({"provision-image-secret": ""})+
+    configMap.data({"builder-image": "kubeless/function-image-builder:latest"})+
+    configMap.data({"builder-image-secret": ""});
 
 {
   controllerAccount: k.util.prune(controllerAccount),

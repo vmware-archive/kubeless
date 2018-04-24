@@ -26,6 +26,7 @@ import (
 	kubelessInformers "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -46,10 +47,12 @@ const (
 type CronJobTriggerController struct {
 	logger           *logrus.Entry
 	clientset        kubernetes.Interface
+	config           *corev1.ConfigMap
 	kubelessclient   versioned.Interface
 	queue            workqueue.RateLimitingInterface
 	cronJobInformer  kubelessInformers.CronJobTriggerInformer
 	functionInformer kubelessInformers.FunctionInformer
+	imagePullSecrets []corev1.LocalObjectReference
 }
 
 // CronJobTriggerConfig contains config for CronJobTriggerController
@@ -90,13 +93,19 @@ func NewCronJobTriggerController(cfg CronJobTriggerConfig, sharedInformerFactory
 		},
 	})
 
+	config, err := utils.GetKubelessConfig(cfg.KubeCli)
+	if err != nil {
+		logrus.Fatalf("Unable to read the configmap: %s", err)
+	}
 	controller := CronJobTriggerController{
 		logger:           logrus.WithField("controller", "cronjob-trigger-controller"),
 		clientset:        cfg.KubeCli,
 		kubelessclient:   cfg.TriggerClient,
+		config:           config,
 		cronJobInformer:  cronJobInformer,
 		functionInformer: functionInformer,
 		queue:            queue,
+		imagePullSecrets: utils.GetSecretsAsLocalObjectReference(config.Data["provision-image-secret"], config.Data["builder-image-secret"]),
 	}
 
 	functionInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -239,7 +248,7 @@ func (c *CronJobTriggerController) syncCronJobTrigger(key string) error {
 		c.logger.Errorf("Unable to find the function %s in the namespace %s. Received %s: ", cronJobtriggerObj.Spec.FunctionName, ns, err)
 		return err
 	}
-	err = utils.EnsureCronJob(c.clientset, functionObj, cronJobtriggerObj.Spec.Schedule, or)
+	err = utils.EnsureCronJob(c.clientset, functionObj, cronJobtriggerObj.Spec.Schedule, c.config.Data["provision-image"], or, c.imagePullSecrets)
 	if err != nil {
 		return err
 	}

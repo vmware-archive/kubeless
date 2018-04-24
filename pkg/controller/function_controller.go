@@ -54,15 +54,16 @@ const (
 
 // FunctionController object
 type FunctionController struct {
-	logger         *logrus.Entry
-	clientset      kubernetes.Interface
-	kubelessclient versioned.Interface
-	smclient       *monitoringv1alpha1.MonitoringV1alpha1Client
-	Functions      map[string]*kubelessApi.Function
-	queue          workqueue.RateLimitingInterface
-	informer       cache.SharedIndexInformer
-	config         *corev1.ConfigMap
-	langRuntime    *langruntime.Langruntimes
+	logger           *logrus.Entry
+	clientset        kubernetes.Interface
+	kubelessclient   versioned.Interface
+	smclient         *monitoringv1alpha1.MonitoringV1alpha1Client
+	Functions        map[string]*kubelessApi.Function
+	queue            workqueue.RateLimitingInterface
+	informer         cache.SharedIndexInformer
+	config           *corev1.ConfigMap
+	langRuntime      *langruntime.Langruntimes
+	imagePullSecrets []corev1.LocalObjectReference
 }
 
 // Config contains k8s client of a controller
@@ -102,15 +103,7 @@ func NewFunctionController(cfg Config, smclient *monitoringv1alpha1.MonitoringV1
 		},
 	})
 
-	apiExtensionsClientset := utils.GetAPIExtensionsClientInCluster()
-	configLocation, err := utils.GetConfigLocation(apiExtensionsClientset)
-	if err != nil {
-		logrus.Fatalf("Error while fetching config location: %v", err)
-	}
-	controllerNamespace := configLocation.Namespace
-	kubelessConfig := configLocation.Name
-
-	config, err := cfg.KubeCli.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
+	config, err := utils.GetKubelessConfig(cfg.KubeCli)
 	if err != nil {
 		logrus.Fatalf("Unable to read the configmap: %s", err)
 	}
@@ -118,15 +111,20 @@ func NewFunctionController(cfg Config, smclient *monitoringv1alpha1.MonitoringV1
 	var lr = langruntime.New(config)
 	lr.ReadConfigMap()
 
+	imagePullSecrets := utils.GetSecretsAsLocalObjectReference(config.Data["provision-image-secret"], config.Data["builder-image-secret"])
+	if config.Data["enable-build-step"] == "true" {
+		imagePullSecrets = append(imagePullSecrets, utils.GetSecretsAsLocalObjectReference("kubeless-registry-credentials")...)
+	}
 	return &FunctionController{
-		logger:         logrus.WithField("pkg", "function-controller"),
-		clientset:      cfg.KubeCli,
-		smclient:       smclient,
-		kubelessclient: cfg.FunctionClient,
-		informer:       informer,
-		queue:          queue,
-		config:         config,
-		langRuntime:    lr,
+		logger:           logrus.WithField("pkg", "function-controller"),
+		clientset:        cfg.KubeCli,
+		smclient:         smclient,
+		kubelessclient:   cfg.FunctionClient,
+		informer:         informer,
+		queue:            queue,
+		config:           config,
+		langRuntime:      lr,
+		imagePullSecrets: imagePullSecrets,
 	}
 }
 
@@ -283,7 +281,7 @@ func (c *FunctionController) startImageBuildJob(funcObj *kubelessApi.Function, o
 		if c.config.Data["function-registry-tls-verify"] == "false" {
 			tlsVerify = false
 		}
-		err = utils.EnsureFuncImage(c.clientset, funcObj, c.langRuntime, or, imageName, tag, c.config.Data["builder-image"], regURL.Host, imagePullSecret.Name, tlsVerify)
+		err = utils.EnsureFuncImage(c.clientset, funcObj, c.langRuntime, or, imageName, tag, c.config.Data["builder-image"], regURL.Host, imagePullSecret.Name, c.config.Data["provision-image"], tlsVerify, c.imagePullSecrets)
 		if err != nil {
 			return "", false, fmt.Errorf("Unable to create image build job: %v", err)
 		}
@@ -353,7 +351,7 @@ func (c *FunctionController) ensureK8sResources(funcObj *kubelessApi.Function) e
 		logrus.Infof("Skipping image-build step for %s", funcObj.ObjectMeta.Name)
 	}
 
-	err = utils.EnsureFuncDeployment(c.clientset, funcObj, or, c.langRuntime, prebuiltImage)
+	err = utils.EnsureFuncDeployment(c.clientset, funcObj, or, c.langRuntime, prebuiltImage, c.config.Data["provision-image"], c.imagePullSecrets)
 	if err != nil {
 		return err
 	}
