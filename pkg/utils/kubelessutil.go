@@ -39,9 +39,8 @@ func getConfigLocation(apiExtensionsClientset clientsetAPIExtensions.Interface) 
 }
 
 // GetKubelessConfig Returns Kubeless ConfigMap
-func GetKubelessConfig(cli kubernetes.Interface) (*v1.ConfigMap, error) {
-	apiExtensionsClientset := GetAPIExtensionsClientInCluster()
-	configLocation, err := getConfigLocation(apiExtensionsClientset)
+func GetKubelessConfig(cli kubernetes.Interface, cliAPIExtensions clientsetAPIExtensions.Interface) (*v1.ConfigMap, error) {
+	configLocation, err := getConfigLocation(cliAPIExtensions)
 	if err != nil {
 		return nil, fmt.Errorf("Error while fetching config location: %v", err)
 	}

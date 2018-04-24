@@ -16,7 +16,8 @@ var GetServerConfigCmd = &cobra.Command{
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		cli := utils.GetClientOutOfCluster()
-		config, err := utils.GetKubelessConfig(cli)
+		apiExtensionsClientset := utils.GetAPIExtensionsClientOutOfCluster()
+		config, err := utils.GetKubelessConfig(cli, apiExtensionsClientset)
 		if err != nil {
 			logrus.Fatalf("Unable to read the configmap: %v", err)
 		}

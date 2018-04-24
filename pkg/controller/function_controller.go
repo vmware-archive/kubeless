@@ -103,7 +103,8 @@ func NewFunctionController(cfg Config, smclient *monitoringv1alpha1.MonitoringV1
 		},
 	})
 
-	config, err := utils.GetKubelessConfig(cfg.KubeCli)
+	apiExtensionsClientset := utils.GetAPIExtensionsClientInCluster()
+	config, err := utils.GetKubelessConfig(cfg.KubeCli, apiExtensionsClientset)
 	if err != nil {
 		logrus.Fatalf("Unable to read the configmap: %s", err)
 	}
