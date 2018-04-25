@@ -118,12 +118,6 @@ ksonnet-lib:
 bootstrap: bats ksonnet-lib
 
 	go get github.com/mitchellh/gox
-	# Need to manually clone golint
-	# https://github.com/golang/lint/issues/397
-	mkdir -p $$GOPATH/src/golang.org/x
-	git clone --depth 1 https://github.com/golang/lint.git $$GOPATH/src/golang.org/x/lint
-	go get -u golang.org/x/lint/golint
-
 	go get github.com/golang/lint/golint
 
 	@if ! which kubecfg >/dev/null; then \
