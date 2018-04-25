@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	completion_shells = map[string]func(out io.Writer, cmd *cobra.Command) error{
+	completionShells = map[string]func(out io.Writer, cmd *cobra.Command) error{
 		"bash": runCompletionBash,
 	}
 )
@@ -41,7 +41,7 @@ var bashCmd = &cobra.Command{
 			logrus.Fatalf("Too many arguments. Expected only the shell type.")
 		}
 
-		run, found := completion_shells[cmd.Name()]
+		run, found := completionShells[cmd.Name()]
 		if !found {
 			logrus.Fatalf("Unsupported shell type.")
 		}
