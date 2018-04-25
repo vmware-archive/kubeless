@@ -269,6 +269,7 @@ apiVersion: configuration.konghq.com/v1
 kind: KongPlugin
 metadata:
   name: basic-auth
+consumerRef: basic-auth
 config:
   hide_credentials: false
 " | kubectl create -f -
@@ -277,22 +278,36 @@ kongplugin "basic-auth" created
 
 #### Create a Consumer
 
-Now we need a [`Consumer`](https://getkong.org/docs/0.13.x/getting-started/adding-consumers/#adding-consumers) for the plugin. It is necessary to do a POST to the Kong API adding the new consumer. Note that the same plugin can be reused for different plugins. The commands below works for a Minikube environment. In case you are using a different cluster you need to discover which are the IP and port that the Kong backend is using.
+Now we need a [`Consumer`](https://getkong.org/docs/0.13.x/getting-started/adding-consumers/#adding-consumers) for the plugin.
 
 ```console
-$ export KONG_ADMIN_PORT=$(minikube service -n kong kong-ingress-controller --url --format "{{ .Port }}")
-$ export KONG_ADMIN_IP=$(minikube service   -n kong kong-ingress-controller --url --format "{{ .IP }}")
-$ curl ${KONG_ADMIN_IP}:${KONG_ADMIN_PORT}/consumers/ --data "username=foo"
-{"created_at":1523519403000,"username":"foo","id":"a204a55f-cdd1-462e-88a9-306782d5c0d8"}
+$ echo "
+apiVersion: configuration.konghq.com/v1
+kind: KongConsumer
+metadata:
+  name: basic-auth
+username: user
+" | kubectl create -f -
+kongconsumer "basic-auth" created
 ```
 
 #### Create user credentials
 
-Now that we have a consumer we need to create the basic authentication credentials that the function is going to use. This should be done with another API call to the Kong endpoint:
+Now that we have a consumer we need to create the basic authentication credentials that the function is going to use:
 
 ```console
-curl ${KONG_ADMIN_IP}:${KONG_ADMIN_PORT}/consumers/foo/basic-auth --data "username=user" --data "password=pass"
-{"created_at":1523519716000,"id":"f438cec3-c51f-4660-a63b-b381c854d3c3","username":"user","password":"d4d7681d6bb73f3002188509c5bd8447cd430d58","consumer_id":"a204a55f-cdd1-462e-88a9-306782d5c0d8"}
+$ echo "
+apiVersion: configuration.konghq.com/v1
+kind: KongCredential
+metadata:
+  name: basic-auth
+consumerRef: basic-auth
+type: basic-auth
+config:
+  username: user
+  password: pass
+" | kubectl create -f -
+kongcredential "basic-auth" created
 ```
 
 #### Associate the credentials with the Ingress object
