@@ -20,29 +20,96 @@ And Kubeless already running at `kubeless` namespace:
 
 ```console
 $ kubectl -n kubeless get po
-NAME                                   READY     STATUS    RESTARTS   AGE
-kubeless-controller-58676964bb-l79gh   1/1       Running   0          5d
+NAME                                           READY     STATUS    RESTARTS   AGE
+kubeless-controller-manager-58676964bb-l79gh   1/1       Running   0          5d
 ```
 
-Kubeless provide several [PubSub runtimes](https://hub.docker.com/r/kubeless/),which has suffix `event-consumer`, specified for languages that help you to quickly deploy your function with PubSub mechanism. Those runtimes are configured to read Kafka configuration at two environment variables:
+Now we need to deploy the Kafka consumer and the Kafka Trigger CRD. We can do that extracting the Deployment, CRD and ClusterRoles from the generic Kafka manifest. The key part is adding the environment variable `KAFKA_BROKERS` pointing to the right URL:
 
-- KUBELESS_KAFKA_SVC: which points to kafka service name in Kubernetes cluster.
-- KUBELESS_KAFKA_NAMESPACE: which declares the namespace that Kafka is running on.
-
-In this example, when deploying function we will declare two environment variables `KUBELESS_KAFKA_SVC=kafka` and `KUBELESS_KAFKA_NAMESPACE=pubsub`.
-
-We now try to deploy a provided function in `examples` folder with command as below:
-
-```console
-$ kubeless function deploy pubsub-python --trigger-topic s3-python --runtime python2.7 --handler pubsub.handler --from-file examples/python/pubsub.py --env KUBELESS_KAFKA_SVC=kafka --env KUBELESS_KAFKA_NAMESPACE=pubsub
-```
-
-The `pubsub-python` function will just print out messages it receive from `s3-python` topic. Checking if the function is up and running:
-
-```console
-$ kubectl get po
-NAME                             READY     STATUS        RESTARTS   AGE
-pubsub-python-5445bdcb64-48bv2   1/1       Running       0          4s
+```yaml
+$ echo '
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    kubeless: kafka-trigger-controller
+  name: kafka-trigger-controller
+  namespace: kubeless
+spec:
+  selector:
+    matchLabels:
+      kubeless: kafka-trigger-controller
+  template:
+    metadata:
+      labels:
+        kubeless: kafka-trigger-controller
+    spec:
+      containers:
+      - image: bitnami/kafka-trigger-controller:latest
+        imagePullPolicy: IfNotPresent
+        name: kafka-trigger-controller
+        env:
+        - name: KAFKA_BROKERS
+          value: kafka.pubsub:9092 # CHANGE THIS!
+      serviceAccountName: controller-acct
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+description: CRD object for Kafka trigger type
+kind: CustomResourceDefinition
+metadata:
+  name: kafkatriggers.kubeless.io
+spec:
+  group: kubeless.io
+  names:
+    kind: KafkaTrigger
+    plural: kafkatriggers
+    singular: kafkatrigger
+  scope: Namespaced
+  version: v1beta1
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: kafka-controller-deployer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kafka-controller-deployer
+subjects:
+- kind: ServiceAccount
+  name: controller-acct
+  namespace: kubeless
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: kafka-controller-deployer
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - services
+  - configmaps
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - kubeless.io
+  resources:
+  - functions
+  - kafkatriggers
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - delete
+' | kubectl create -f -
+deployment "kafka-trigger-controller" created
+clusterrolebinding "kafka-controller-deployer" created
+clusterrole "kafka-controller-deployer" created
+customresourcedefinition "kafkatriggers.kubeless.io" created
 ```
 
 Now we need to create `s3-python` topic and try to publish some messages. You can do it on your own kafka client. In this example, I will try to use the bundled binaries in the kafka container:
