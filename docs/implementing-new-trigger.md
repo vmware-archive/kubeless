@@ -68,4 +68,8 @@ Add appropriate Makefile targets so that controller binary and docker image can 
 Create a jsonnet file for the new trigger and ensure that generated yaml file has CRD definition, deployment for the trigger controller and necessary RBAC rules. Again most of the stuff is common with Kafka or HTTP triggers, so take existing jsonnet manifests as a referance.
 
 ## CI
-Please add unit tests and integration tests to tests the new functionality related to adding a trigger in to Kubeless. Also make necessary changes to .travis.yaml so that new trigger controller image can be built, deployed and integration tests can be run against the new trigger functionality.
+Please add unit tests and integration tests to tests the new functionality related to adding a trigger in to Kubeless. Also make necessary changes to .travis.yaml so that new trigger controller image can be built, deployed and integration tests can be run against the new trigger functionality. Please consider adding integration tests that conver following scenarios.
+
+- add an integration test to enusre function gets invoked when an event occurs. For example, we have a Kafka integration test to publish a message to a topic, and test also verifies that associated function got invoked by the verifying the pods logs.
+- if your Trigger supports 1:n association between Trigger and Functions, then add integration test to verify multiple functions get invoked on the occurrence of the event.
+- add an integration tests to ensure `Trigger` CRD object update scenarios work fine.
