@@ -1,12 +1,12 @@
 # How to add a new event source as Trigger
 
-Kubeless [architecture](/docs/architecture.md) is built on core concepts of Functions, Triggers and Runtime. A _Trigger_ in Kubeless represents association between an event source and functions that need to be invoked on a event in the event source. Kubeless fully leverages the Kubernetes concpets of [custom resource definition](https://kubernetes.io/docs/concepts/api-extension/custom-resources/)(CRD) and [custom controllers](https://kubernetes.io/docs/concepts/api-extension/custom-resources/#custom-controllers). Each trigger is expected to be modelled as Kubernetes CRD. A trigger specific custom resource controller is expected to be written that realizes how deployed functions are invoked when event occurs. Following sections document how one can add a new event source as _Trigger_ into Kubeless.
+Kubeless [architecture](/docs/architecture) is built on core concepts of Functions, Triggers and Runtime. A _Trigger_ in Kubeless represents association between an event source and functions that need to be invoked on an event in the event source. Kubeless fully leverages the Kubernetes concepts of [custom resource definition](https://kubernetes.io/docs/concepts/api-extension/custom-resources/)(CRD) and [custom controllers](https://kubernetes.io/docs/concepts/api-extension/custom-resources/#custom-controllers). Each trigger is expected to be modelled as Kubernetes CRD. A trigger specific custom resource controller is expected to be written that realizes how deployed functions are invoked when event occurs. Following sections document how one can add a new event source as _Trigger_ into Kubeless.
 
 **Note**: Eventual [vision](https://github.com/kubeless/kubeless/issues/695) of the Kubeless architecture is to let any one develop a Trigger for any event source independent of Kubeless code base. Please see [695](https://github.com/kubeless/kubeless/issues/695) for details. There still work to be done to achieve the end goal. But as a interim solution below guidelines provide a way to add new triggers.
 
 ## Model event source as CRD
 
-First step is to create a new CRD for the event source. CRD for the new triggers will be largley similar to the existing ones. For e.g. below is the CRD for Kafka trigger
+First step is to create a new CRD for the event source. CRD for the new triggers will be largely similar to the existing ones. For example below is the CRD for Kafka trigger
 
 ```yaml
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -28,7 +28,7 @@ Give appropriate and intutive name to the event source.
 
 ## Model the CRD spec
 
-Once CRD is defined, you need to model the event source and its attributes as resource object spec. Please see [API conventions] for key attributes of Kubernetes API resource object. Except fot `Spec` part rest of the needed parts to define a Trigger are pretty similar to other Triggers.
+Once CRD is defined, you need to model the event source and its attributes as resource object spec. Please see [API conventions](https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md) for key attributes of Kubernetes API resource object. Except fot `Spec` part rest of the needed parts to define a Trigger are pretty similar to other Triggers.
 
 For e.g below is the definition of [Kafka Trigger](https://github.com/kubeless/kubeless/blob/master/pkg/apis/kubeless/v1beta1/kafka_trigger.go)
 
@@ -40,7 +40,7 @@ type KafkaTrigger struct {
 }
 ```
 
-You need to model the event source attributes in to Spec attribute of new trigger. Dependeing on the nature of event source you may want to associate single function or multiple functions with the event source. Use appropriate mechanism to represent the association. For e.g Kafka trigger uses Kubernetes label selector to associate any function with matching label with the event source.
+You need to model the event source attributes in to Spec attribute of new trigger. Depending on the nature of event source you may want to associate single function or multiple functions with the event source. Use appropriate mechanism to represent the association. For e.g Kafka trigger uses Kubernetes label selector to associate any function with matching label with the event source.
 
 ## Code Generation
 
@@ -50,18 +50,18 @@ Now you can auto-generate the clientset, lister and informers for the new API re
 
 ## CRD controller
 
-Here is the most important step, i.e. writing controller itself. As far as the skelton of controller goes, it would be pretty similar to existing controllers like Kafka trigger controller, nats trigger controller or http trigger controller. Functionally controller does two important things
+Here is the most important step, i.e. writing controller itself. As far as the skeleton of controller goes, it would be pretty similar to existing controllers like Kafka trigger controller, nats trigger controller or http trigger controller. Functionally controller does two important things
 
 - watch Kuberentes API server for CRUD operations on the new trigger object and take appropriate actions.
 - when an event occurs in the event source trigger the associated functions.
 
-Please read the code and logic for existing [controllers](https://github.com/kubeless/kubeless/tree/master/pkg/controller) as a referance.
+Please read the code and logic for existing [controllers](https://github.com/kubeless/kubeless/tree/master/pkg/controller) as a reference.
 
 ## Building controller binary and docker image
 
-Ensure you controller is independent binary that can be built from the Makefile. Please follow one of the existing controller [cmd](https://github.com/kubeless/kubeless/tree/master/cmd) as referance. Also ensure there is corresponding `Dockerfile` to build the controller image. Plese see the dockerfile for other trigger controller as a [referance](https://github.com/kubeless/kubeless/tree/master/docker).
+Ensure you controller is an independent binary that can be built from the Makefile. Please follow one of the existing controller [cmd](https://github.com/kubeless/kubeless/tree/master/cmd) as referance. Also ensure there is corresponding `Dockerfile` to build the controller image. Please see the dockerfile for other trigger controller as a [reference](https://github.com/kubeless/kubeless/tree/master/docker).
 
-Add apparopriate Makefile targets so that controller binary and docker image can be built.
+Add appropriate Makefile targets so that controller binary and docker image can be built.
 
 ## Manifest
 
