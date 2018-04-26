@@ -27,6 +27,7 @@ kubeless-controller-manager-58676964bb-l79gh   1/1       Running   0          5d
 Now we need to deploy the Kafka consumer and the Kafka Trigger CRD. We can do that extracting the Deployment, CRD and ClusterRoles from the generic Kafka manifest. The key part is adding the environment variable `KAFKA_BROKERS` pointing to the right URL:
 
 ```yaml
+$ echo '
 ---
 apiVersion: apps/v1beta1
 kind: Deployment
@@ -50,7 +51,7 @@ spec:
         name: kafka-trigger-controller
         env:
         - name: KAFKA_BROKERS
-          value: kafka.pubsub:9092
+          value: kafka.pubsub:9092 # CHANGE THIS!
       serviceAccountName: controller-acct
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -104,6 +105,11 @@ rules:
   - watch
   - update
   - delete
+' | kubectl create -f -
+deployment "kafka-trigger-controller" created
+clusterrolebinding "kafka-controller-deployer" created
+clusterrole "kafka-controller-deployer" created
+customresourcedefinition "kafkatriggers.kubeless.io" created
 ```
 
 Now we need to create `s3-python` topic and try to publish some messages. You can do it on your own kafka client. In this example, I will try to use the bundled binaries in the kafka container:
