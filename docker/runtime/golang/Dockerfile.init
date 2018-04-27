@@ -3,7 +3,7 @@ FROM golang:1.10
 # Install dep
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 RUN go get golang.org/x/net/context
-RUN mkdir -p /go/pkg/dep && chmod -R a+w /go/pkg/dep
+RUN mkdir -p /go/pkg/dep
 
 # Prepare function environment
 RUN ln -s /kubeless $GOPATH/src/kubeless 
