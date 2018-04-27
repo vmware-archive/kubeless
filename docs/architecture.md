@@ -309,6 +309,7 @@ Usage:
 
 Available Commands:
   autoscale         manage autoscale to function on Kubeless
+  completion        Output shell completion code for the specified shell.
   function          function specific operations
   get-server-config Print the current configuration of the controller
   help              Help about any command
