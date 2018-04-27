@@ -140,7 +140,7 @@ local runtime_images ='[
       {
         "name": "php72",
         "version": "7.2",
-        "runtimeImage": "kubeless/php@sha256:82b94c691302bc82f3900444255cabb8f230487764eafeba7866ac49d90ddc3b",
+        "runtimeImage": "kubeless/php@sha256:4e44ab60f597e93097bf9f5ea91d58bd9c308bf206043db2a9809ec16a8ff2f4",
         "initImage": "composer:1.6"
       }
     ],
@@ -155,7 +155,7 @@ local runtime_images ='[
         "name": "go1.10",
         "version": "1.10",
         "runtimeImage": "kubeless/go@sha256:bf72622344a54e4360f31d3fea5eb9dca2c96fbedc6f0ad7c54f3eb8fb7bd353",
-        "initImage": "kubeless/go-init@sha256:ce6ef4fafe518ed78b3a68b03947c064fec1cf8c667cd109e9331f227877b3a9"
+        "initImage": "kubeless/go-init@sha256:e262f70639594b3a9e3481843171ecbbe82e84b786825ebe28bc1a3ae89310d3"
       }
     ],
     "depName": "Gopkg.toml",
