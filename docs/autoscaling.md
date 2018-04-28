@@ -61,7 +61,7 @@ To do this, use the `--cpu` parameter when deploying your function. Please see t
 
 It is possible to use custom metrics (like queries per second) to scale your functions. We are [looking for help](https://github.com/kubeless/kubeless/issues/647) in order to document the required steps to do so with the different Kubernetes providers for newer versions of Kubernetes. If you want to contribute to this guide PRs are more than welcome :).
 
-**Warning** This walkthrough is done in [kubeadm-dind-cluster v1.7](https://github.com/Mirantis/kubeadm-dind-cluster) it may now work for other versions or platforms.
+**Warning** This walkthrough is done in [kubeadm-dind-cluster v1.7](https://github.com/Mirantis/kubeadm-dind-cluster) it may not work for other versions or platforms.
 
 ### Cluster configuration
 
