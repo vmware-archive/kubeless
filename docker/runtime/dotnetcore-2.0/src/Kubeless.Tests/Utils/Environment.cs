@@ -2,17 +2,23 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Kubeless.Tests.Utils
+namespace Kubeless.Core.Tests.Utils
 {
     public class FunctionEnvironment
     {
-        public string Path { get; set; }
-        public string FunctionFileName { get; set; }
+        private const int DEFAULT_TIMEOUT = 180;
 
-        public FunctionEnvironment(string path, string functionFileName)
+        public string Path { get; }
+        public string FunctionFileName { get; }
+        public int Timeout { get; }
+
+        public FunctionEnvironment(string path, string functionFileName) : this(path, functionFileName, DEFAULT_TIMEOUT) { }
+
+        public FunctionEnvironment(string path, string functionFileName, int timeout)
         {
             Path = path;
             FunctionFileName = functionFileName;
+            Timeout = timeout;
         }
 
         public string PackagesPath

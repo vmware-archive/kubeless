@@ -1,10 +1,10 @@
 using Kubeless.Core.Compilers;
 using Kubeless.Core.References;
-using Kubeless.Tests.Utils;
+using Kubeless.Core.Tests.Utils;
 using System.IO;
 using Xunit;
 
-namespace Kubeless.Tests
+namespace Kubeless.Core.Tests
 {
     public class CompilationTests
     {

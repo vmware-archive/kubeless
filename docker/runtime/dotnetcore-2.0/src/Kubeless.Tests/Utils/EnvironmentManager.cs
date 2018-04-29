@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Kubeless.Tests.Utils
+namespace Kubeless.Core.Tests.Utils
 {
     public static class EnvironmentManager
     {
@@ -17,6 +17,18 @@ namespace Kubeless.Tests.Utils
             var functionFiles = Directory.EnumerateFiles(basePath, $"{functionFileName}.*");
 
             CopyFunctionsFiles(functionFiles, environmentPath);
+
+            var environment = new FunctionEnvironment(environmentPath, functionFileName);
+
+            Environment.SetEnvironmentVariable("DOTNETCORE_HOME", environment.PackagesPath);
+            Environment.SetEnvironmentVariable("DOTNETCORESHAREDREF_VERSION", "2.0.6"); //TODO: Get Higher available version on computer
+
+            return environment;
+        }
+
+        public static FunctionEnvironment UseExistentEnvironment(string basePath, string functionFileName, Guid sessionId)
+        {
+            var environmentPath = Path.Combine(basePath, functionFileName, sessionId.ToString());
 
             var environment = new FunctionEnvironment(environmentPath, functionFileName);
 

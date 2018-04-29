@@ -1,9 +1,11 @@
 ﻿using Kubeless.Core.Interfaces;
 using Kubeless.Core.Invoker;
+using Kubeless.Functions;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 
 namespace Kubeless.Core.Invokers
 {
@@ -29,13 +31,16 @@ namespace Kubeless.Core.Invokers
 
         public object Execute(IFunction function, params object[] parameters)
         {
-            var returnedValue = _type.InvokeMember(function.FunctionSettings.FunctionHandler,
+            return _type.InvokeMember(function.FunctionSettings.FunctionHandler,
                                      BindingFlags.Default | BindingFlags.InvokeMethod,
                                      null,
                                      _instance,
                                      parameters);
+        }
 
-            return returnedValue;
+        public object Execute(IFunction function, CancellationTokenSource cancellationSource, Event kubelessEvent, Context kubelessContext)
+        {
+            throw new NotImplementedException();
         }
     }
 }

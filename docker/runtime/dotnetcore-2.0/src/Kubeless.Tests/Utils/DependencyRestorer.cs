@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 
-namespace Kubeless.Tests.Utils
+namespace Kubeless.Core.Tests.Utils
 {
     /// <summary>
     /// Simulates dependency restore executed in an init container by Kubeless.

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Kubeless.Tests.Utils
+namespace Kubeless.Core.Tests.Utils
 {
     public static class FunctionCreator
     {

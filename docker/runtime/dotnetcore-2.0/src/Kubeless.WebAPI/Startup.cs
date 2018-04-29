@@ -9,6 +9,7 @@ using Kubeless.Core.References;
 using Kubeless.Core.Compilers;
 using Kubeless.Core.Invokers;
 using System.IO;
+using Kubeless.Core.Handlers;
 
 namespace kubeless_netcore_runtime
 {
@@ -23,12 +24,12 @@ namespace kubeless_netcore_runtime
                 //Set fixed enviroment variables for example function:
                 Environment.SetEnvironmentVariable("MOD_NAME", "mycode");
                 Environment.SetEnvironmentVariable("FUNC_HANDLER", "execute");
+                Environment.SetEnvironmentVariable("FUNC_TIMEOUT", "180");
             }
         }
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
@@ -40,7 +41,7 @@ namespace kubeless_netcore_runtime
             ICompiler compiler;
 
             string directory = Environment.GetEnvironmentVariable("DOTNETCORE_HOME");
-            if(Directory.Exists(directory))
+            if (Directory.Exists(directory))
                 compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
             else
                 compiler = new DefaultCompiler(new DefaultParser(), new WithoutDependencyReferencesManager());
@@ -49,10 +50,13 @@ namespace kubeless_netcore_runtime
                 compiler.Compile(function);
 
             services.AddSingleton<IFunction>(function);
-            services.AddSingleton<IInvoker>(new DefaultInvoker());
+
+            int timeout = int.Parse(VariablesUtils.GetEnvironmentVariable("FUNC_TIMEOUT", "180"));
+
+            services.AddSingleton<IInvoker>(new TimeoutInvoker(timeout));
+            services.AddSingleton<IParameterHandler>(new DefaultParameterHandler());
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
             if (env.IsDevelopment())

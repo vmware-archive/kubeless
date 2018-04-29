@@ -1,8 +1,10 @@
 ﻿using Kubeless.Core.Interfaces;
 using Kubeless.Core.Invoker;
+using Kubeless.Functions;
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 
 namespace Kubeless.Core.Invokers
 {
@@ -32,6 +34,11 @@ namespace Kubeless.Core.Invokers
                                      parameters);
 
             return returnedValue;
+        }
+
+        public object Execute(IFunction function, CancellationTokenSource cancellationSource, Event kubelessEvent, Context kubelessContext)
+        {
+            throw new NotImplementedException();
         }
     }
 }
