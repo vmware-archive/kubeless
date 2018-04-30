@@ -57,11 +57,11 @@ To autoscale based on CPU usage, it is *required* that your function has been de
 
 To do this, use the `--cpu` parameter when deploying your function. Please see the [Meaning of CPU](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-cpu) for the format of the value that should be passed. 
 
-## Autoscaling with custom metrics on k8s 1.7
+## Autoscaling with custom metrics
 
-This walkthrough will go over the step-by-step of setting up the prometheus-based custom API server on your cluster and configuring autoscaler (HPA) to use application metrics sourced from prometheus instance.
+It is possible to use custom metrics (like queries per second) to scale your functions. We are [looking for help](https://github.com/kubeless/kubeless/issues/647) in order to document the required steps to do so with the different Kubernetes providers for newer versions of Kubernetes. If you want to contribute to this guide PRs are more than welcome :).
 
-This walkthrough is done in [kubeadm-dind-cluster v1.7](https://github.com/Mirantis/kubeadm-dind-cluster)
+**Warning** This walkthrough is done in [kubeadm-dind-cluster v1.7](https://github.com/Mirantis/kubeadm-dind-cluster) it may not work for other versions or platforms.
 
 ### Cluster configuration
 
