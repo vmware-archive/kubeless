@@ -8,4 +8,6 @@ RUN gem install sinatra --no-rdoc --no-ri
 
 ADD kubeless.rb /
 
+USER 1000
+
 CMD ["ruby", "/kubeless.rb"]

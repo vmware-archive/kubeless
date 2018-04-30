@@ -177,8 +177,15 @@ func (l *Langruntimes) GetImageSecrets(runtime string) ([]v1.LocalObjectReferenc
 	return lors, nil
 }
 
+func appendToCommand(orig string, command ...string) string {
+	if len(orig) > 0 {
+		return fmt.Sprintf("%s && %s", orig, strings.Join(command, " && "))
+	}
+	return strings.Join(command, " && ")
+}
+
 // GetBuildContainer returns a Container definition based on a runtime
-func (l *Langruntimes) GetBuildContainer(runtime string, env []v1.EnvVar, installVolume v1.VolumeMount) (v1.Container, error) {
+func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.EnvVar, installVolume v1.VolumeMount) (v1.Container, error) {
 	runtimeInf, err := l.GetRuntimeInfo(runtime)
 	if err != nil {
 		return v1.Container{}, err
@@ -190,9 +197,16 @@ func (l *Langruntimes) GetBuildContainer(runtime string, env []v1.EnvVar, instal
 	}
 
 	var command string
+	// Validate deps checksum
+	shaFile := "/tmp/deps.sha256"
+	command = appendToCommand(command,
+		fmt.Sprintf("echo '%s  %s' > %s", depsChecksum, depsFile, shaFile),
+		fmt.Sprintf("sha256sum -c %s", shaFile))
+
 	switch {
 	case strings.Contains(runtime, "python"):
-		command = "pip install --prefix=" + installVolume.MountPath + " -r " + depsFile
+		command = appendToCommand(command,
+			"pip install --prefix="+installVolume.MountPath+" -r "+depsFile)
 	case strings.Contains(runtime, "nodejs"):
 		registry := "https://registry.npmjs.org"
 		scope := ""
@@ -204,17 +218,23 @@ func (l *Langruntimes) GetBuildContainer(runtime string, env []v1.EnvVar, instal
 				scope = v.Value + ":"
 			}
 		}
-		command = "npm config set " + scope + "registry " + registry +
-			" && npm install --production --prefix=" + installVolume.MountPath
+		command = appendToCommand(command,
+			"npm config set "+scope+"registry "+registry,
+			"npm install --production --prefix="+installVolume.MountPath)
 	case strings.Contains(runtime, "ruby"):
-		command = "bundle install --gemfile=" + depsFile + " --path=" + installVolume.MountPath
+		command = appendToCommand(command,
+			"bundle install --gemfile="+depsFile+" --path="+installVolume.MountPath)
 
 	case strings.Contains(runtime, "php"):
-		command = "composer install -d " + installVolume.MountPath
+		command = appendToCommand(command,
+			"composer install -d "+installVolume.MountPath)
 	case strings.Contains(runtime, "go"):
-		command = "cd $GOPATH/src/kubeless && dep ensure > /dev/termination-log 2>&1"
+		command = appendToCommand(command,
+			"cd $GOPATH/src/kubeless",
+			"dep ensure > /dev/termination-log 2>&1")
 	case strings.Contains(runtime, "dotnetcore"):
-		command = "dotnet restore --packages " + installVolume.MountPath + "/packages"
+		command = appendToCommand(command,
+			"dotnet restore --packages " + installVolume.MountPath + "/packages")
 	}
 
 	return v1.Container{

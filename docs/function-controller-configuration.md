@@ -117,4 +117,18 @@ The priority of deciding the `namespace` and `config name` (highest to lowest) i
 
 - Environment variables
 - Annotations in `functions.kubeless.io` CRD
-- default: `namespace` is `kubeless` and `ConfigMap` is `kubeless-config`  
+- default: `namespace` is `kubeless` and `ConfigMap` is `kubeless-config`
+
+## Using custom images
+
+It is possible to configure the different images that Kubeless uses for deploy and execute functions. In this ConfigMap you can configure:
+
+ - Different or additional runtimes. For doing so it is possible to modify/add a runtime in the field `runtimeImages`. Runtimes are categorized by major version. See the guide for [implementing a new runtime](/docs/implementing-new-runtime) for more information. Each major version has:
+  - Name: Unique ID of the runtime. It should contain the runtime name and version.
+  - Version: Major and minor version of the runtime.
+  - Runtime Image: Image used to execute the function.
+  - Init Image: Image used for installing the function and/or dependencies.
+  - (Optional) Image Pull Secrets: Secret required to pull the image in case the repository is private.
+ - The image used to populate the base image with the function. This is called `provision-image`. This image should have at least `unzip` and `curl`. It is also possible to specify `provision-image-secret` to specify a secret to pull that image from a private registry. 
+ - The image used to build function images. This is called `builder-image`. This image is optional since its usage can be disabled with the property `enable-build-step`. A Dockerfile to build this image can be found [here](https://github.com/kubeless/kubeless/tree/master/docker/function-image-builder). It is also possible to specify `builder-image-secret` to specify a secret to pull that image from a private registry.
+ 

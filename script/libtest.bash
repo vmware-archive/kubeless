@@ -17,6 +17,7 @@
 KUBELESS_MANIFEST=kubeless-non-rbac.yaml
 KUBELESS_MANIFEST_RBAC=kubeless.yaml
 KAFKA_MANIFEST=kafka-zookeeper.yaml
+NATS_MANIFEST=nats.yaml
 
 KUBECTL_BIN=$(which kubectl)
 : ${KUBECTL_BIN:?ERROR: missing binary: kubectl}
@@ -54,7 +55,12 @@ k8s_wait_for_pod_count() {
     local pod_cnt=${1:?}; shift
     echo_info "Waiting for pod '${@}' to have count==${pod_cnt} running ... "
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
-    until [[ $(kubectl get pod "${@}" -ogo-template='{{.items|len}}') == ${pod_cnt} ]]; do
+    # Retries just in case it is not stable
+    local -i successCount=0
+    while [ "$successCount" -lt "3" ]; do
+        if [[ $(kubectl get pod "${@}" -ogo-template='{{.items|len}}') == ${pod_cnt} ]]; then
+            ((successCount=successCount+1))
+        fi
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
@@ -141,12 +147,23 @@ kubeless_function_delete() {
     local func=${1:?}; shift
     echo_info "Deleting function "${func}" in case still present ... "
     kubeless function ls |grep -w "${func}" && kubeless function delete "${func}" >& /dev/null || true
+    echo_info "Wait for function "${func}" to be deleted "
+    local -i cnt=${TEST_MAX_WAIT_SEC:?}
+    while kubectl get functions "${func}" >& /dev/null; do
+        ((cnt=cnt-1)) || return 1
+        sleep 1
+    done
 }
 kubeless_kafka_trigger_delete() {
     local trigger=${1:?}; shift
     echo_info "Deleting kafka trigger "${trigger}" in case still present ... "
     kubeless trigger kafka list |grep -w "${trigger}" && kubeless trigger kafka delete "${trigger}" >& /dev/null || true
 }
+kubeless_nats_trigger_delete() {
+    local trigger=${1:?}; shift
+    echo_info "Deleting NATS trigger "${trigger}" in case still present ... "
+    kubeless trigger nats list |grep -w "${trigger}" && kubeless trigger nats delete "${trigger}" >& /dev/null || true
+}    
 kubeless_function_deploy() {
     local func=${1:?}; shift
     echo_info "Deploying function ..."
@@ -177,6 +194,18 @@ wait_for_kubeless_kafka_server_ready() {
     k8s_wait_for_pod_ready -n kubeless -l kubeless=kafka-trigger-controller
     _wait_for_cmd_ok kubectl get kafkatriggers 2>/dev/null
     kubectl annotate pods --overwrite -n kubeless kafka-0 ready=true
+}
+wait_for_kubeless_nats_operator_ready() {
+    echo_info "Waiting for NATS operator pod to be ready ..."
+    k8s_wait_for_pod_ready -n nats-io -l name=nats-operator
+}
+wait_for_kubeless_nats_cluster_ready() {
+    echo_info "Waiting for NATS cluster pods to be ready ..."
+    k8s_wait_for_pod_ready -n nats-io -l nats_cluster=nats
+}
+wait_for_kubeless_nats_controller_ready() {
+    echo_info "Waiting for NATS controller pods to be ready ..."
+    k8s_wait_for_pod_ready -n kubeless -l kubeless=nats-trigger-controller
 }
 _wait_for_kubeless_kafka_topic_ready() {
     local topic=${1:?}
@@ -271,6 +300,25 @@ deploy_kafka() {
     kubectl create -f $KAFKA_MANIFEST
 }
 
+deploy_nats_operator() {
+    echo_info "Deploy NATS operator ... "
+    kubectl apply -f https://raw.githubusercontent.com/nats-io/nats-operator/master/example/deployment-rbac.yaml
+}
+
+deploy_nats_cluster() {
+    echo_info "Deploy NATS cluster ... "
+    kubectl apply -f ./manifests/nats/nats-cluster.yaml -n nats-io
+}
+
+deploy_nats_trigger_controller() {
+    echo_info "Deploy NATS trigger controller ... "
+    kubectl create -f $NATS_MANIFEST
+}
+
+expose_nats_service() {
+    kubectl get svc nats -n nats-io -o yaml | sed 's/ClusterIP/NodePort/' | kubectl replace -f -
+}
+
 deploy_function() {
     local func=${1:?} func_topic
     echo_info "TEST: $func"
@@ -282,6 +330,13 @@ deploy_kafka_trigger() {
     local trigger=${1:?}
     echo_info "TEST: $trigger"
     kubeless_kafka_trigger_delete ${trigger}
+    make -sC examples ${trigger}
+}
+
+deploy_nats_trigger() {
+    local trigger=${1:?}
+    echo_info "TEST: $trigger"
+    kubeless_nats_trigger_delete ${trigger}
     make -sC examples ${trigger}
 }
 
@@ -331,8 +386,8 @@ test_kubeless_function_update() {
 }
 create_basic_auth_secret() {
     local secret=${1:?}; shift
-    htpasswd -cb basic-auth foo bar
-    kubectl create secret generic $secret --from-file=basic-auth
+    htpasswd -cb auth foo bar
+    kubectl create secret generic $secret --from-file=auth
 }
 create_tls_secret_from_key_cert() {
     local secret=${1:?}; shift
@@ -426,7 +481,8 @@ verify_http_trigger_basic_auth(){
         sleep 1
     done
     sleep 3
-    curl -vv --header "Host: $domain" -u $auth $ip\/$subpath | grep "${expected_response}"
+    curl -v --header "Host: $domain" $ip\/$subpath | grep "401 Authorization Required"
+    curl -v --header "Host: $domain" -u $auth $ip\/$subpath | grep "${expected_response}"
 }
 verify_https_trigger(){
     local func=${1:?}; shift

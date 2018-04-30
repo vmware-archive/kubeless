@@ -41,6 +41,10 @@ func (c *FakeKubelessV1beta1) KafkaTriggers(namespace string) v1beta1.KafkaTrigg
 	return &FakeKafkaTriggers{c, namespace}
 }
 
+func (c *FakeKubelessV1beta1) NATSTriggers(namespace string) v1beta1.NATSTriggerInterface {
+	return &FakeNATSTriggers{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeKubelessV1beta1) RESTClient() rest.Interface {

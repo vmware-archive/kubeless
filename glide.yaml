@@ -1,4 +1,6 @@
 package: github.com/kubeless/kubeless
+ignore:
+- kubeless
 import:
 - package: github.com/sirupsen/logrus
   version: 768a92a02685ee7535069fc1581341b41bab9b72
@@ -33,3 +35,7 @@ import:
   version: v2.1.12
 - package: k8s.io/apiextensions-apiserver
   version: kubernetes-1.8.7
+- package: github.com/nats-io/go-nats
+  version: v1.5.0
+- package: github.com/nats-io/nuid
+  version: 3e58d42c9cfe5cd9429f1a21ad8f35cd859ba829

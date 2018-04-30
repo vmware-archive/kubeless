@@ -75,6 +75,9 @@ basic)
 kafka)
     bats tests/integration-tests-kafka.bats
     ;;
+nats)
+    bats tests/integration-tests-nats.bats
+    ;;
 http)
     bats tests/integration-tests-http.bats
     ;;

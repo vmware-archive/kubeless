@@ -70,7 +70,7 @@ $ cd /Users/{your_user}/Library/Caches/Homebrew/delve-1.0.0-rc.1/scripts
 $ ./gencert.sh
 ```
 
-Done. Now you can try to install Delve again via Homebrew. You'll see that the operation will be completed successfuly.
+Done. Now you can try to install Delve again via Homebrew. You'll see that the operation will be completed successfully.
 
 ## 2. Configure Visual Studio Code
 
@@ -78,11 +78,11 @@ In order to demonstrate the debug process I'll use Visual Studio Code. Visual St
 
 To know more about VS Code, follow [this link](https://code.visualstudio.com/docs).
 
-Microsoft already did a great job describing the processo to configure Delve on top of VS Code. In order to accomplish that, please, follow [this link](https://github.com/Microsoft/vscode-go/wiki/Debugging-Go-code-using-VS-Code).
+Microsoft already did a great job describing the process to configure Delve on top of VS Code. In order to accomplish that, please, follow [this link](https://github.com/Microsoft/vscode-go/wiki/Debugging-Go-code-using-VS-Code).
 
 ## 3. Debugging Kubeless
 
-If you was sucessful VS Code debug setup task, you now have a new directory with one file called "launch.json" inside. This file must contain the follow content inside.
+If you was successful VS Code debug setup task, you now have a new directory with one file called "launch.json" inside. This file must contain the follow content inside.
 
 ```json
 {
@@ -111,4 +111,4 @@ In order to debug a Go code, Delve looks for a "main" method, once that is the m
  "program": "$/Users/{your_user}/Documents/Projects/.../kubeless/cmd/kubeless/"
 ```
 
-Done. Now Kubeless code is done to be degugged.
+Done. Now Kubeless code is done to be debugged.

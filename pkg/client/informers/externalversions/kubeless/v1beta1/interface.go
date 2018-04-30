@@ -32,6 +32,8 @@ type Interface interface {
 	HTTPTriggers() HTTPTriggerInformer
 	// KafkaTriggers returns a KafkaTriggerInformer.
 	KafkaTriggers() KafkaTriggerInformer
+	// NATSTriggers returns a NATSTriggerInformer.
+	NATSTriggers() NATSTriggerInformer
 }
 
 type version struct {
@@ -63,4 +65,9 @@ func (v *version) HTTPTriggers() HTTPTriggerInformer {
 // KafkaTriggers returns a KafkaTriggerInformer.
 func (v *version) KafkaTriggers() KafkaTriggerInformer {
 	return &kafkaTriggerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// NATSTriggers returns a NATSTriggerInformer.
+func (v *version) NATSTriggers() NATSTriggerInformer {
+	return &nATSTriggerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

@@ -5,7 +5,7 @@
 Kubeless includes a way of building and storing functions as docker images. This can be used to:
 
  - Persist function: Functions now become docker images that can be safely stored in a docker registry.
- - Speed up the process of redeploying the same function. This is specicially useful for scaling up your function.
+ - Speed up the process of redeploying the same function. This is specifically useful for scaling up your function.
  - Generate immutable function deployments. Once a function image is generated, the same image will be used every time the function is used.
 
 ### [Optional] Start a Docker registry
@@ -78,7 +78,7 @@ The following diagram represents the building process:
 When a new function is created the Kubeless Controller generates two items:
  
  - A [Kubernetes job](https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/) that will use the registry credentials to push a new image under the `user` repository. It will use the checksum (SHA256) of the function specification as tag so any change in the function will generate a different image.
- - A Pod to run the function. This pod will wait until the previus job finishes in order to pull the function image.
+ - A Pod to run the function. This pod will wait until the previous job finishes in order to pull the function image.
 
 ## Known limitations
 

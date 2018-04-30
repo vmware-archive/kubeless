@@ -1,13 +1,16 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 
+	"k8s.io/api/core/v1"
 	clientsetAPIExtensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
-// GetConfigLocation returns a map which has information on the namespace where Kubeless controller is installed and the name of the ConfigMap which stores kubeless configurations
-func GetConfigLocation(apiExtensionsClientset clientsetAPIExtensions.Interface) (ConfigLocation, error) {
+func getConfigLocation(apiExtensionsClientset clientsetAPIExtensions.Interface) (ConfigLocation, error) {
 	configLocation := ConfigLocation{}
 	controllerNamespace := os.Getenv("KUBELESS_NAMESPACE")
 	kubelessConfig := os.Getenv("KUBELESS_CONFIG")
@@ -33,4 +36,19 @@ func GetConfigLocation(apiExtensionsClientset clientsetAPIExtensions.Interface) 
 	}
 	configLocation.Name = kubelessConfig
 	return configLocation, nil
+}
+
+// GetKubelessConfig Returns Kubeless ConfigMap
+func GetKubelessConfig(cli kubernetes.Interface, cliAPIExtensions clientsetAPIExtensions.Interface) (*v1.ConfigMap, error) {
+	configLocation, err := getConfigLocation(cliAPIExtensions)
+	if err != nil {
+		return nil, fmt.Errorf("Error while fetching config location: %v", err)
+	}
+	controllerNamespace := configLocation.Namespace
+	kubelessConfig := configLocation.Name
+	config, err := cli.CoreV1().ConfigMaps(controllerNamespace).Get(kubelessConfig, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("Unable to read the configmap: %s", err)
+	}
+	return config, nil
 }

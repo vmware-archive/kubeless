@@ -18,7 +18,9 @@ package utils
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -61,8 +63,6 @@ import (
 
 const (
 	pubsubFunc     = "PubSub"
-	busybox        = "busybox@sha256:be3c11fdba7cfe299214e46edc642e09514dbb9bbefcd0d3836c05a1e0cd0642"
-	unzip          = "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697"
 	defaultTimeout = "180"
 )
 
@@ -313,6 +313,41 @@ func GetKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTrig
 	return kafkaCRD, nil
 }
 
+// CreateNatsTriggerCustomResource will create a custom function object
+func CreateNatsTriggerCustomResource(kubelessClient versioned.Interface, natsTrigger *kubelessApi.NATSTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().NATSTriggers(natsTrigger.Namespace).Create(natsTrigger)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateNatsTriggerCustomResource applies changes to the function custom object
+func UpdateNatsTriggerCustomResource(kubelessClient versioned.Interface, natsTrigger *kubelessApi.NATSTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().NATSTriggers(natsTrigger.Namespace).Update(natsTrigger)
+	return err
+}
+
+// DeleteNatsTriggerCustomResource will delete custom function object
+func DeleteNatsTriggerCustomResource(kubelessClient versioned.Interface, natsTriggerName, ns string) error {
+	err := kubelessClient.KubelessV1beta1().NATSTriggers(ns).Delete(natsTriggerName, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetNatsTriggerCustomResource will get CronJobTrigger custom resource object
+func GetNatsTriggerCustomResource(kubelessClient versioned.Interface, natsTriggerName, ns string) (*kubelessApi.NATSTrigger, error) {
+	kafkaCRD, err := kubelessClient.KubelessV1beta1().NATSTriggers(ns).Get(natsTriggerName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return kafkaCRD, nil
+}
+
 // CreateHTTPTriggerCustomResource will create a HTTP trigger custom resource object
 func CreateHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTrigger *kubelessApi.HTTPTrigger) error {
 	_, err := kubelessClient.KubelessV1beta1().HTTPTriggers(httpTrigger.Namespace).Create(httpTrigger)
@@ -388,7 +423,7 @@ func appendToCommand(orig string, command ...string) string {
 	return strings.Join(command, " && ")
 }
 
-func getProvisionContainer(function, checksum, fileName, handler, contentType, runtime string, runtimeVolume, depsVolume v1.VolumeMount, lr *langruntime.Langruntimes) (v1.Container, error) {
+func getProvisionContainer(function, checksum, fileName, handler, contentType, runtime, prepareImage string, runtimeVolume, depsVolume v1.VolumeMount, lr *langruntime.Langruntimes) (v1.Container, error) {
 	prepareCommand := ""
 	originFile := path.Join(depsVolume.MountPath, fileName)
 
@@ -451,7 +486,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 
 	return v1.Container{
 		Name:            "prepare",
-		Image:           unzip,
+		Image:           prepareImage,
 		Command:         []string{"sh", "-c"},
 		Args:            []string{prepareCommand},
 		VolumeMounts:    []v1.VolumeMount{runtimeVolume, depsVolume},
@@ -511,14 +546,16 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 		switch gateway := httpTriggerObj.Spec.Gateway; gateway {
 		case "nginx":
 			ingressAnnotations["kubernetes.io/ingress.class"] = "nginx"
-			ingressAnnotations["ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
-			ingressAnnotations["ingress.kubernetes.io/auth-type"] = "basic"
+			ingressAnnotations["nginx.ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
+			ingressAnnotations["nginx.ingress.kubernetes.io/auth-type"] = "basic"
 			break
 		case "traefik":
 			ingressAnnotations["kubernetes.io/ingress.class"] = "traefik"
 			ingressAnnotations["ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
 			ingressAnnotations["ingress.kubernetes.io/auth-type"] = "basic"
 			break
+		case "kong":
+			return fmt.Errorf("Setting basic authentication with Kong is not yet supported")
 		}
 	}
 
@@ -709,7 +746,6 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *kubelessApi.Functio
 		newSvc.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
 		newSvc.ObjectMeta.OwnerReferences = or
 		newSvc.Spec.Ports = svc.Spec.Ports
-		newSvc.Spec.Selector = svc.Spec.Selector
 		_, err = client.Core().Services(funcObj.ObjectMeta.Namespace).Update(newSvc)
 		if err != nil && k8sErrors.IsAlreadyExists(err) {
 			// The service may already exist and there is nothing to update
@@ -731,9 +767,12 @@ func getRuntimeVolumeMount(name string) v1.VolumeMount {
 // The caller should define the runtime container(s).
 // It accepts a prepopulated podSpec with default information and volume that the
 // runtime container should mount
-func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes, podSpec *v1.PodSpec, runtimeVolumeMount v1.VolumeMount) error {
+func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes, podSpec *v1.PodSpec, runtimeVolumeMount v1.VolumeMount, provisionImage string, imagePullSecrets []v1.LocalObjectReference) error {
 	depsVolumeName := funcObj.ObjectMeta.Name + "-deps"
 	result := podSpec
+	if len(imagePullSecrets) > 0 {
+		result.ImagePullSecrets = imagePullSecrets
+	}
 	result.Volumes = append(podSpec.Volumes,
 		v1.Volume{
 			Name: runtimeVolumeMount.Name,
@@ -772,6 +811,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 			funcObj.Spec.Handler,
 			funcObj.Spec.FunctionContentType,
 			funcObj.Spec.Runtime,
+			provisionImage,
 			runtimeVolumeMount,
 			srcVolumeMount,
 			lr,
@@ -788,7 +828,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 		if err != nil {
 			return fmt.Errorf("Unable to fetch ImagePullSecrets, %v", err)
 		}
-		result.ImagePullSecrets = imageSecrets
+		result.ImagePullSecrets = append(result.ImagePullSecrets, imageSecrets...)
 	}
 
 	// ensure that the runtime is supported for installing dependencies
@@ -800,7 +840,13 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 		if len(result.Containers) > 0 {
 			envVars = result.Containers[0].Env
 		}
-		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, envVars, runtimeVolumeMount)
+		h := sha256.New()
+		_, err = h.Write([]byte(funcObj.Spec.Deps))
+		if err != nil {
+			return fmt.Errorf("Unable to obtain dependencies checksum: %v", err)
+		}
+		checksum := hex.EncodeToString(h.Sum(nil))
+		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, checksum, envVars, runtimeVolumeMount)
 		if err != nil {
 			return err
 		}
@@ -826,7 +872,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 }
 
 // EnsureFuncImage creates a Job to build a function image
-func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function, lr *langruntime.Langruntimes, or []metav1.OwnerReference, imageName, tag, builderImage, registryHost, imagePullSecretName string, registryTLSEnabled bool) error {
+func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function, lr *langruntime.Langruntimes, or []metav1.OwnerReference, imageName, tag, builderImage, registryHost, dockerSecretName, provisionImage string, registryTLSEnabled bool, imagePullSecrets []v1.LocalObjectReference) error {
 	if len(tag) < 64 {
 		return fmt.Errorf("Expecting sha256 as image tag")
 	}
@@ -841,7 +887,7 @@ func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function,
 		RestartPolicy: v1.RestartPolicyOnFailure,
 	}
 	runtimeVolumeMount := getRuntimeVolumeMount(funcObj.ObjectMeta.Name)
-	err = populatePodSpec(funcObj, lr, &podSpec, runtimeVolumeMount)
+	err = populatePodSpec(funcObj, lr, &podSpec, runtimeVolumeMount, provisionImage, imagePullSecrets)
 	if err != nil {
 		return err
 	}
@@ -858,7 +904,7 @@ func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function,
 		Command:      []string{"sh", "-c"},
 		Args:         []string{fmt.Sprintf("tar cvf %s/bundle.tar %s/*", runtimeVolumeMount.MountPath, runtimeVolumeMount.MountPath)},
 		VolumeMounts: prepareContainer.VolumeMounts,
-		Image:        unzip,
+		Image:        provisionImage,
 	})
 
 	buildJob := batchv1.Job{
@@ -884,13 +930,13 @@ func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function,
 	}
 
 	// Registry volume
-	dockerCredsVol := imagePullSecretName
+	dockerCredsVol := dockerSecretName
 	dockerCredsVolMountPath := "/docker"
 	registryCredsVolume := v1.Volume{
 		Name: dockerCredsVol,
 		VolumeSource: v1.VolumeSource{
 			Secret: &v1.SecretVolumeSource{
-				SecretName: imagePullSecretName,
+				SecretName: dockerSecretName,
 			},
 		},
 	}
@@ -945,7 +991,7 @@ func svcPort(funcObj *kubelessApi.Function) int32 {
 }
 
 // EnsureFuncDeployment creates/updates a function deployment
-func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference, lr *langruntime.Langruntimes, prebuiltRuntimeImage string) error {
+func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference, lr *langruntime.Langruntimes, prebuiltRuntimeImage, provisionImage string, imagePullSecrets []v1.LocalObjectReference) error {
 
 	var err error
 
@@ -1014,7 +1060,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		}
 		//only resolve the image name and build the function if it has not been built already
 		if dpm.Spec.Template.Spec.Containers[0].Image == "" && prebuiltRuntimeImage == "" {
-			err := populatePodSpec(funcObj, lr, &dpm.Spec.Template.Spec, runtimeVolumeMount)
+			err := populatePodSpec(funcObj, lr, &dpm.Spec.Template.Spec, runtimeVolumeMount, provisionImage, imagePullSecrets)
 			if err != nil {
 				return err
 			}
@@ -1031,6 +1077,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 			if dpm.Spec.Template.Spec.Containers[0].Image == "" {
 				dpm.Spec.Template.Spec.Containers[0].Image = prebuiltRuntimeImage
 			}
+			dpm.Spec.Template.Spec.ImagePullSecrets = imagePullSecrets
 		}
 		timeout := funcObj.Spec.Timeout
 		if timeout == "" {
@@ -1088,6 +1135,15 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	}
 	dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
 
+	// Add security context
+	runtimeUser := int64(1000)
+	if dpm.Spec.Template.Spec.SecurityContext == nil {
+		dpm.Spec.Template.Spec.SecurityContext = &v1.PodSecurityContext{
+			RunAsUser: &runtimeUser,
+			FSGroup:   &runtimeUser,
+		}
+	}
+
 	_, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Create(dpm)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		// In case the Deployment already exists we should update
@@ -1097,26 +1153,18 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		newDpm.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
 		newDpm.ObjectMeta.Annotations = funcObj.Spec.Deployment.ObjectMeta.Annotations
 		newDpm.ObjectMeta.OwnerReferences = or
+		// We should maintain previous selector to avoid duplicated ReplicaSets
+		selector := newDpm.Spec.Selector
 		newDpm.Spec = dpm.Spec
-		_, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Update(newDpm)
+		newDpm.Spec.Selector = selector
+		data, err := json.Marshal(newDpm)
 		if err != nil {
 			return err
 		}
-
-		// kick existing function pods then it will be recreated
-		// with the new data mount from updated configmap.
-		// TODO: This is a workaround.  Do something better.
-		var pods *v1.PodList
-		pods, err = GetPodsByLabel(client, funcObj.ObjectMeta.Namespace, "function", funcObj.ObjectMeta.Name)
+		// Use `Patch` to do a rolling update
+		_, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Patch(newDpm.Name, types.MergePatchType, data)
 		if err != nil {
 			return err
-		}
-		for _, pod := range pods.Items {
-			err = client.Core().Pods(funcObj.ObjectMeta.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
-			if err != nil && !k8sErrors.IsNotFound(err) {
-				// non-fatal
-				logrus.Warnf("Unable to delete pod %s/%s, may be running stale version of function: %v", funcObj.ObjectMeta.Namespace, pod.Name, err)
-			}
 		}
 	}
 
@@ -1160,7 +1208,7 @@ func doRESTReq(restIface rest.Interface, groupVersion, verb, resource, elem, nam
 }
 
 // EnsureCronJob creates/updates a function cron job
-func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, schedule string, or []metav1.OwnerReference) error {
+func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, schedule, reqImage string, or []metav1.OwnerReference, reqImagePullSecret []v1.LocalObjectReference) error {
 	var maxSucccessfulHist, maxFailedHist int32
 	maxSucccessfulHist = 3
 	maxFailedHist = 1
@@ -1202,9 +1250,10 @@ func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, s
 					ActiveDeadlineSeconds: &activeDeadlineSeconds,
 					Template: v1.PodTemplateSpec{
 						Spec: v1.PodSpec{
+							ImagePullSecrets: reqImagePullSecret,
 							Containers: []v1.Container{
 								{
-									Image: unzip,
+									Image: reqImage,
 									Name:  "trigger",
 									Args:  []string{"curl", "-Lv", headersString, fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.ObjectMeta.Name, funcObj.ObjectMeta.Namespace)},
 								},
@@ -1441,4 +1490,15 @@ func GetRandString(n int) (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// GetSecretsAsLocalObjectReference returns a list of LocalObjectReference based on secret names
+func GetSecretsAsLocalObjectReference(secrets ...string) []v1.LocalObjectReference {
+	res := []v1.LocalObjectReference{}
+	for _, secret := range secrets {
+		if secret != "" {
+			res = append(res, v1.LocalObjectReference{Name: secret})
+		}
+	}
+	return res
 }

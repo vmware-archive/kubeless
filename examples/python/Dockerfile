@@ -1,7 +1,8 @@
 # Create a custom image with a python function
-FROM kubeless/python@sha256:ba948a6783b93d75037b7b1806a3925d441401ae6fba18282f712a1b1a786899
+FROM kubeless/python@sha256:565bebecb08d9a7b804c588105677a3572f10ff2032cef7727975061a653fb98
 ENV FUNC_HANDLER=foo \
     MOD_NAME=helloget
 ADD helloget.py /
 RUN mkdir -p /kubeless/
-ENTRYPOINT [ "bash", "-c", "mv /helloget.py /kubeless/ && python /kubeless.py"]
+RUN chown 1000:1000 /kubeless
+ENTRYPOINT [ "bash", "-c", "cp /helloget.py /kubeless/ && python2.7 /kubeless.py"]

@@ -91,19 +91,25 @@ var updateCmd = &cobra.Command{
 		if enableTLSAcme && len(tlsSecret) > 0 {
 			logrus.Fatalf("Cannot specify both --enableTLSAcme and --tls-secret")
 		}
-		httpTrigger.Spec.TLSSecret = tlsSecret
+		if tlsSecret != "" {
+			httpTrigger.Spec.TLSSecret = tlsSecret
+		}
 
 		gateway, err := cmd.Flags().GetString("gateway")
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		httpTrigger.Spec.Gateway = gateway
+		if gateway != "" {
+			httpTrigger.Spec.Gateway = gateway
+		}
 
 		basicAuthSecret, err := cmd.Flags().GetString("basic-auth-secret")
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		httpTrigger.Spec.BasicAuthSecret = basicAuthSecret
+		if basicAuthSecret != "" {
+			httpTrigger.Spec.BasicAuthSecret = basicAuthSecret
+		}
 
 		err = utils.UpdateHTTPTriggerCustomResource(kubelessClient, httpTrigger)
 		if err != nil {

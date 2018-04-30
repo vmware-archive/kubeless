@@ -242,6 +242,9 @@ func TestEnsureService(t *testing.T) {
 	if !reflect.DeepEqual(svc.ObjectMeta.Labels, newLabels) {
 		t.Error("Unable to update the service")
 	}
+	if reflect.DeepEqual(svc.Spec.Selector, newLabels) {
+		t.Error("It should not update the selector")
+	}
 }
 
 func TestEnsureImage(t *testing.T) {
@@ -270,7 +273,10 @@ func TestEnsureImage(t *testing.T) {
 		},
 	}
 	// Testing happy path
-	err := EnsureFuncImage(clientset, f1, lr, or, "user/image", "4840d87600137157493ba43a24f0b4bb6cf524ebbf095ce96c79f85bf5a3ff5a", "kubeless/builder", "registry.docker.io", "registry-creds", true)
+	pullSecrets := []v1.LocalObjectReference{
+		{Name: "creds"},
+	}
+	err := EnsureFuncImage(clientset, f1, lr, or, "user/image", "4840d87600137157493ba43a24f0b4bb6cf524ebbf095ce96c79f85bf5a3ff5a", "kubeless/builder", "registry.docker.io", "registry-creds", "unzip", true, pullSecrets)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -293,6 +299,13 @@ func TestEnsureImage(t *testing.T) {
 	}
 	if dockerConfigFolder == "" {
 		t.Error("Builder image relies on the env var DOCKER_CONFIG_FOLDER to authenticate")
+	}
+	initContainer := jobs.Items[0].Spec.Template.Spec.InitContainers[0]
+	if initContainer.Image != "unzip" {
+		t.Errorf("Unexpected init image %s", initContainer.Image)
+	}
+	if reflect.DeepEqual(jobs.Items[0].Spec.Template.Spec.ImagePullSecrets, pullSecrets) {
+		t.Error("Missing ImagePullSecrets")
 	}
 }
 
@@ -373,7 +386,10 @@ func TestEnsureDeployment(t *testing.T) {
 		Annotations: funcAnno,
 	}
 	// Testing happy path
-	err := EnsureFuncDeployment(clientset, f1, or, lr, "")
+	pullSecrets := []v1.LocalObjectReference{
+		{Name: "creds"},
+	}
+	err := EnsureFuncDeployment(clientset, f1, or, lr, "", "unzip", pullSecrets)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -469,7 +485,7 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 
 	secrets := dpm.Spec.Template.Spec.ImagePullSecrets
-	if secrets[0].Name != "p1" && secrets[1].Name != "p2" {
+	if secrets[0].Name != "creds" && secrets[1].Name != "p1" && secrets[2].Name != "p2" {
 		t.Errorf("Expected first secret to be 'p1' but found %v and second secret to be 'p2' and found %v", secrets[0], secrets[1])
 	}
 
@@ -477,12 +493,15 @@ func TestEnsureDeployment(t *testing.T) {
 	if len(dpm.Spec.Template.Spec.InitContainers) < 1 {
 		t.Errorf("Expecting at least an init container to install deps")
 	}
+	if dpm.Spec.Template.Spec.InitContainers[0].Image != "unzip" {
+		t.Errorf("Unexpected init image %s", dpm.Spec.Template.Spec.InitContainers[0].Image)
+	}
 
 	// If no handler and function is given it should not fail
 	f2 := getDefaultFunc("func2", ns)
 	f2.Spec.Function = ""
 	f2.Spec.Handler = ""
-	err = EnsureFuncDeployment(clientset, f2, or, lr, "")
+	err = EnsureFuncDeployment(clientset, f2, or, lr, "", "unzip", []v1.LocalObjectReference{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -494,7 +513,7 @@ func TestEnsureDeployment(t *testing.T) {
 	// If the Image has been already provided it should not resolve it
 	f3 := getDefaultFunc("func3", ns)
 	f3.Spec.Deployment.Spec.Template.Spec.Containers[0].Image = "test-image"
-	err = EnsureFuncDeployment(clientset, f3, or, lr, "")
+	err = EnsureFuncDeployment(clientset, f3, or, lr, "", "unzip", []v1.LocalObjectReference{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -510,7 +529,7 @@ func TestEnsureDeployment(t *testing.T) {
 	f4 := getDefaultFunc("func4", ns)
 	f4.Spec.Function = ""
 	f4.Spec.Deps = ""
-	err = EnsureFuncDeployment(clientset, f4, or, lr, "")
+	err = EnsureFuncDeployment(clientset, f4, or, lr, "", "unzip", []v1.LocalObjectReference{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -527,26 +546,18 @@ func TestEnsureDeployment(t *testing.T) {
 	f6 = *f1
 	f6.Spec.Handler = "foo.bar2"
 	f6.Spec.Deployment.ObjectMeta.Annotations["new-key"] = "value"
-	err = EnsureFuncDeployment(clientset, &f6, or, lr, "")
+	err = EnsureFuncDeployment(clientset, &f6, or, lr, "", "unzip", []v1.LocalObjectReference{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get(f1Name, metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	if getEnvValueFromList("FUNC_HANDLER", dpm.Spec.Template.Spec.Containers[0].Env) != "bar2" {
-		t.Error("Unable to update deployment")
-	}
-	if dpm.Annotations["new-key"] != "value" {
-		t.Errorf("Unable to update deployment %v", dpm.Annotations)
-	}
+	// Unable to ensure that the new deployment is patched since fake
+	// ignores PATCH actions: https://github.com/kubernetes/client-go/issues/364
 
 	// It should return an error if some dependencies are given but the runtime is not supported
 	f7 := getDefaultFunc("func7", ns)
 	f7.Spec.Deps = "deps"
 	f7.Spec.Runtime = "cobol"
-	err = EnsureFuncDeployment(clientset, f7, or, lr, "")
+	err = EnsureFuncDeployment(clientset, f7, or, lr, "", "unzip", []v1.LocalObjectReference{})
 
 	if err == nil {
 		t.Fatal("An error should be thrown")
@@ -555,7 +566,7 @@ func TestEnsureDeployment(t *testing.T) {
 	// If a timeout is specified it should set an environment variable FUNC_TIMEOUT
 	f8 := getDefaultFunc("func8", ns)
 	f8.Spec.Timeout = "10"
-	err = EnsureFuncDeployment(clientset, f8, or, lr, "")
+	err = EnsureFuncDeployment(clientset, f8, or, lr, "", "unzip", []v1.LocalObjectReference{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -569,7 +580,7 @@ func TestEnsureDeployment(t *testing.T) {
 
 	// If a prebuilt image is specified it should not build the function using init containers
 	f9 := getDefaultFunc("func9", ns)
-	err = EnsureFuncDeployment(clientset, f9, or, lr, "user/image:test")
+	err = EnsureFuncDeployment(clientset, f9, or, lr, "user/image:test", "unzip", []v1.LocalObjectReference{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -598,7 +609,7 @@ func TestEnsureDeployment(t *testing.T) {
 			MountPath: "/tmp/test",
 		},
 	}
-	err = EnsureFuncDeployment(clientset, f10, or, lr, "")
+	err = EnsureFuncDeployment(clientset, f10, or, lr, "", "unzip", []v1.LocalObjectReference{})
 	dpm, err = clientset.ExtensionsV1beta1().Deployments(ns).Get("func10", metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
@@ -668,7 +679,10 @@ func TestEnsureCronJob(t *testing.T) {
 
 	clientset := fake.NewSimpleClientset()
 
-	err := EnsureCronJob(clientset, f1, "* * * * *", or)
+	pullSecrets := []v1.LocalObjectReference{
+		{Name: "creds"},
+	}
+	err := EnsureCronJob(clientset, f1, "* * * * *", "unzip", or, pullSecrets)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -689,7 +703,11 @@ func TestEnsureCronJob(t *testing.T) {
 		t.Errorf("Unexpected ActiveDeadlineSeconds: %d", *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds)
 	}
 	expectedCommand := []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", f1Name, ns)}
-	args := cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args
+	runtimeContainer := cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0]
+	if runtimeContainer.Image != "unzip" {
+		t.Errorf("Unexpected image %s", runtimeContainer.Image)
+	}
+	args := runtimeContainer.Args
 	// skip event headers data (i.e  -H "event-id: cronjob-controller-2018-03-05T05:55:41.990784027Z" etc)
 	foundCommand := []string{args[0], args[1], args[len(args)-1]}
 	if !reflect.DeepEqual(foundCommand, expectedCommand) {
@@ -698,7 +716,7 @@ func TestEnsureCronJob(t *testing.T) {
 
 	// It should update the existing cronJob if it is already created
 	newSchedule := "*/10 * * * *"
-	err = EnsureCronJob(clientset, f1, newSchedule, or)
+	err = EnsureCronJob(clientset, f1, newSchedule, "unzip", or, pullSecrets)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -808,8 +826,8 @@ func TestCreateIngressResourceWithNginxGateway(t *testing.T) {
 	annotations := ingress.ObjectMeta.Annotations
 	if annotations == nil || len(annotations) == 0 ||
 		annotations["kubernetes.io/ingress.class"] != "nginx" ||
-		annotations["ingress.kubernetes.io/auth-secret"] != "foo-secret" ||
-		annotations["ingress.kubernetes.io/auth-type"] != "basic" ||
+		annotations["nginx.ingress.kubernetes.io/auth-secret"] != "foo-secret" ||
+		annotations["nginx.ingress.kubernetes.io/auth-type"] != "basic" ||
 		annotations["kubernetes.io/tls-acme"] != "true" ||
 		annotations["nginx.ingress.kubernetes.io/ssl-redirect"] != "true" {
 		t.Fatal("Missing or wrong annotations!")
@@ -1039,13 +1057,13 @@ func TestGetProvisionContainer(t *testing.T) {
 
 	rvol := v1.VolumeMount{Name: "runtime", MountPath: "/runtime"}
 	dvol := v1.VolumeMount{Name: "deps", MountPath: "/deps"}
-	c, err := getProvisionContainer("test", "sha256:abc1234", "test.func", "test.foo", "text", "python2.7", rvol, dvol, lr)
+	c, err := getProvisionContainer("test", "sha256:abc1234", "test.func", "test.foo", "text", "python2.7", "unzip", rvol, dvol, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
 	expectedContainer := v1.Container{
 		Name:            "prepare",
-		Image:           "kubeless/unzip@sha256:f162c062973cca05459834de6ed14c039d45df8cdb76097f50b028a1621b3697",
+		Image:           "unzip",
 		Command:         []string{"sh", "-c"},
 		Args:            []string{"echo 'abc1234  /deps/test.func' > /tmp/func.sha256 && sha256sum -c /tmp/func.sha256 && cp /deps/test.func /runtime/test.py && cp /deps/requirements.txt /runtime"},
 		VolumeMounts:    []v1.VolumeMount{rvol, dvol},
@@ -1056,7 +1074,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// If the content type is encoded it should decode it
-	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.func", "test.foo", "base64", "python2.7", rvol, dvol, lr)
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.func", "test.foo", "base64", "python2.7", "unzip", rvol, dvol, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -1074,7 +1092,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// It should skip the dependencies installation if the runtime is not supported
-	c, err = getProvisionContainer("function", "sha256:abc1234", "test.func", "test.foo", "text", "cobol", rvol, dvol, lr)
+	c, err = getProvisionContainer("function", "sha256:abc1234", "test.func", "test.foo", "text", "cobol", "unzip", rvol, dvol, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -1083,7 +1101,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// It should extract the file in case it is a Zip
-	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64+zip", "python2.7", rvol, dvol, lr)
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64+zip", "python2.7", "unzip", rvol, dvol, lr)
 	if !strings.Contains(c.Args[0], "unzip -o /tmp/func.decoded -d /runtime") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}

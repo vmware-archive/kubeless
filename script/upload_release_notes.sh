@@ -7,7 +7,7 @@ REPO_DOMAIN=kubeless
 function commit_list {
   local tag=$1
   git fetch --tags
-  local previous_tag=`curl -s https://api.github.com/repos/$REPO_DOMAIN/$REPO_NAME/tags | jq --raw-output '.[1].name'`
+  local previous_tag=`curl -H "Authorization: token $ACCESS_TOKEN" -s https://api.github.com/repos/$REPO_DOMAIN/$REPO_NAME/tags | jq --raw-output '.[1].name'`
   local release_notes=`git log $previous_tag..$tag --oneline`
   local parsed_release_notes=$(echo "$release_notes" | sed -n -e 'H;${x;s/\n/\\n- /g;s/^\\n//;s/"/\\"/g;p;}')
   echo $parsed_release_notes
@@ -33,18 +33,12 @@ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$tag/ku
 kubectl create ns kubeless\\n\
 kubectl create -f https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-non-rbac-$tag.yaml \\n\
 \`\`\`\\n\
-**KAFKA:**\\n\
-\\n\
-\`\`\`console\\n\
-kubectl create ns kubeless\\n\
-kubectl create -f https://github.com/kubeless/kubeless/releases/download/$tag/kafka-zookeeper-$tag.yaml \\n\
-\`\`\`\\n\
 **OPENSHIFT:**\\n\
 \\n\
 \`\`\`console\\n\
 oc create ns kubeless\\n\
 oc create -f https://github.com/kubeless/kubeless/releases/download/$tag/kubeless-openshift-$tag.yaml \\n\
-# Kafka
+# Kafka\\n\
 oc create -f https://github.com/kubeless/kubeless/releases/download/$tag/kafka-zookeeper-openshift-$tag.yaml \\n\
 \`\`\`\\n\
 ")
@@ -54,7 +48,7 @@ oc create -f https://github.com/kubeless/kubeless/releases/download/$tag/kafka-z
 function release_tag {
   local tag=$1
   local release_notes=$(get_release_notes $tag)
-  local release_id=$(curl -s https://api.github.com/repos/$REPO_DOMAIN/$REPO_NAME/releases | jq  --raw-output '.[0].id')
+  local release_id=$(curl -H "Authorization: token $ACCESS_TOKEN" -s https://api.github.com/repos/$REPO_DOMAIN/$REPO_NAME/releases | jq  --raw-output '.[0].id')
   local release=`curl -H "Authorization: token $ACCESS_TOKEN" -s --request PATCH --data "{
     \"tag_name\": \"$tag\",
     \"target_commitish\": \"master\",
@@ -76,7 +70,7 @@ if [[ -z "$ACCESS_TOKEN" ]]; then
   exit 1
 fi
 
-repo_check=`curl -s https://api.github.com/repos/$REPO_DOMAIN/$REPO_NAME`
+repo_check=`curl -H "Authorization: token $ACCESS_TOKEN" -s https://api.github.com/repos/$REPO_DOMAIN/$REPO_NAME`
 if [[ $repo_check == *"Not Found"* ]]; then
   echo "Not found a Github repository for $REPO_DOMAIN/$REPO_NAME, it is not possible to publish it" > /dev/stderr
   exit 1

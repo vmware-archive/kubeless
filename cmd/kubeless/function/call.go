@@ -36,8 +36,8 @@ var callCmd = &cobra.Command{
 	Long:  `call function from cli`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var (
-			jsonStr []byte
-			get     bool = false
+			str []byte
+			get bool = false
 		)
 
 		if len(args) != 1 {
@@ -49,7 +49,7 @@ var callCmd = &cobra.Command{
 		if data == "" {
 			get = true
 		} else {
-			jsonStr = []byte(data)
+			str = []byte(data)
 		}
 
 		if err != nil {
@@ -78,7 +78,14 @@ var callCmd = &cobra.Command{
 		if get {
 			req = clientset.CoreV1().RESTClient().Get().Namespace(ns).Resource("services").SubResource("proxy").Name(funcName + ":" + port)
 		} else {
-			req = clientset.CoreV1().RESTClient().Post().Body(bytes.NewBuffer(jsonStr)).SetHeader("Content-Type", "application/json")
+			req = clientset.CoreV1().RESTClient().Post().Body(bytes.NewBuffer(str))
+			if utils.IsJSON(string(str)) {
+				req.SetHeader("Content-Type", "application/json")
+				req.SetHeader("event-type", "application/json")
+			} else {
+				req.SetHeader("Content-Type", "application/x-www-form-urlencoded")
+				req.SetHeader("event-type", "application/x-www-form-urlencoded")
+			}
 			// REST package removes trailing slash when building URLs
 			// Causing POST requests to be redirected with an empty body
 			// So we need to manually build the URL
@@ -90,7 +97,6 @@ var callCmd = &cobra.Command{
 			logrus.Fatalf("Unable to generate ID %v", err)
 		}
 		req.SetHeader("event-id", eventID)
-		req.SetHeader("event-type", "application/json")
 		req.SetHeader("event-time", timestamp.String())
 		req.SetHeader("event-namespace", "cli.kubeless.io")
 		res, err := req.Do().Raw()
