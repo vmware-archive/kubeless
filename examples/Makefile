@@ -249,7 +249,7 @@ timeout-ruby-verify:
 	echo $(MSG) | egrep "real\s*0m4."
 
 get-dotnetcore:
-	kubeless function deploy get-dotnetcore --runtime dotnetcore2.0 --handler module.handler --from-file dotnetcore/helloget.cs --requirements dotnetcore/helloget.csproj
+	kubeless function deploy get-dotnetcore --runtime dotnetcore2.0 --handler module.handler --from-file dotnetcore/helloget.cs --dependencies dotnetcore/helloget.csproj
 
 get-dotnetcore-verify:
 	kubeless function call get-dotnetcore |egrep hello.world
@@ -315,7 +315,7 @@ post-ruby-verify:
 	echo $$logs | grep -q "event-id.*"
 
 post-dotnetcore:
-	kubeless function deploy post-dotnetcore --runtime dotnetcore2.0 --handler module.handler --from-file dotnetcore/hellowithdata.cs --requirements dotnetcore/hellowithdata.csproj
+	kubeless function deploy post-dotnetcore --runtime dotnetcore2.0 --handler module.handler --from-file dotnetcore/hellowithdata.cs --dependencies dotnetcore/hellowithdata.csproj
 
 post-dotnetcore-verify:
 	kubeless function call post-dotnetcore --data '{"it-s": "alive"}'|egrep "it.*alive"
