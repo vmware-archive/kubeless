@@ -210,6 +210,8 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 	case strings.Contains(runtime, "nodejs"):
 		registry := "https://registry.npmjs.org"
 		scope := ""
+		// Force HOME to a folder with permissions to avoid issues in OpenShift #694
+		env = append(env, v1.EnvVar{Name: "HOME", Value: "/tmp"})
 		for _, v := range env {
 			if v.Name == "NPM_REGISTRY" {
 				registry = v.Value
