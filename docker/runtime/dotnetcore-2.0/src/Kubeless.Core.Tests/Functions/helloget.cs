@@ -1,9 +1,9 @@
 using System;
 using Kubeless.Functions;
 
-public class module
+public class helloget
 {
-    public string handler(Event k8Event, Context k8Context)
+    public string foo(Event k8Event, Context k8Context)
     {
         return "hello world";
     }

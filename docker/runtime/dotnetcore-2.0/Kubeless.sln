@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kubeless.WebAPI", "src\Kube
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kubeless.Core", "src\Kubeless.Core\Kubeless.Core.csproj", "{3302AAC1-F26E-4839-904B-1E2A6F515061}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kubeless.Core.Tests", "src\Kubeless.Tests\Kubeless.Core.Tests.csproj", "{CFD979AE-406B-4C1C-BD4F-E9065AA5AF39}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kubeless.Core.Tests", "src\Kubeless.Core.Tests\Kubeless.Core.Tests.csproj", "{CFD979AE-406B-4C1C-BD4F-E9065AA5AF39}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kubeless.Functions", "src\Kubeless.Functions\Kubeless.Functions.csproj", "{43FD8D4B-30FD-4F50-A604-085F7CE6303E}"
 EndProject

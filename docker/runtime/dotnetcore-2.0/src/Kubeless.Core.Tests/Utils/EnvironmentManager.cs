@@ -23,6 +23,13 @@ namespace Kubeless.Core.Tests.Utils
             Environment.SetEnvironmentVariable("DOTNETCORE_HOME", environment.PackagesPath);
             Environment.SetEnvironmentVariable("DOTNETCORESHAREDREF_VERSION", "2.0.6"); //TODO: Get Higher available version on computer
 
+            Environment.SetEnvironmentVariable("MOD_NAME", "module");
+            Environment.SetEnvironmentVariable("FUNC_HANDLER", "handler");
+            Environment.SetEnvironmentVariable("FUNC_PORT", "8080");
+            Environment.SetEnvironmentVariable("FUNC_TIMEOUT", "180");
+            Environment.SetEnvironmentVariable("FUNC_RUNTIME", "DOTNETCORE");
+            Environment.SetEnvironmentVariable("FUNC_MEMORY_LIMIT", "128m");
+
             return environment;
         }
 
