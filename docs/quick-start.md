@@ -34,7 +34,7 @@ functions.kubeless.io         1h
 httptriggers.kubeless.io      1h
 ```
 
-> Details on [installing kubeless in a different namespace](/docs/function-controller-configuration) can be found here.  
+> Details on [installing kubeless in a different namespace](/docs/function-controller-configuration#install-kubeless-in-different-namespace) can be found here.
 
 For installing `kubeless` CLI using execute:
 
@@ -72,7 +72,7 @@ Functions in Kubeless have the same format regardless of the language of the fun
  - Receives a second object `context` with general information about the function.
  - Returns a string/object that will be used as response for the caller.
 
-You can find more details about the function interface [here](/docs/runtimes#runtimes-interface)
+You can find more details about the function interface [here](/docs/kubeless-functions#functions-interface)
 
 You create it with:
 
@@ -144,7 +144,4 @@ $ kubectl delete -f https://github.com/kubeless/kubeless/releases/download/$RELE
 
 See the [examples](https://github.com/kubeless/kubeless/tree/master/examples) directory for a list of various examples. Minio, SLACK, Twitter etc ...
 
-Also checkout the [functions repository](https://github.com/kubeless/functions),
-where we're building a library of ready to use kubeless examples, including an
-[incubator](https://github.com/kubeless/functions/tree/master/incubator)
-to encourage contributions from the community - **your PR is welcome** ! :)
+Also checkout the [functions repository](https://github.com/kubeless/functions), where we're building a library of ready to use kubeless examples, including an [incubator](https://github.com/kubeless/functions/tree/master/incubator) to encourage contributions from the community - **your PR is welcome** ! :)
