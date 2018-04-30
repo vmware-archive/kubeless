@@ -87,7 +87,7 @@ Ruby functions should define the desired method. You can specify dependencies us
 
 For the case of Ruby we use [Sinatra](http://www.sinatrarb.com) as web framework and we add the routes required for the function and the health check. Monitoring is currently not supported yet for this framework. PR is welcome :-)
 
-### Ruby
+### Go
 
 #### Example
 
@@ -113,7 +113,7 @@ The Go HTTP server doesn't include any framework since the native packages inclu
 
 If there is an error during the compilation of a function, the error message will be dumped to the termination log. If you see that the pod is crashed in a init container:
 
-```
+```console
 NAME                      READY     STATUS                  RESTARTS   AGE
 get-go-6774465f95-x55lw   0/1       Init:CrashLoopBackOff   1          1m
 ```
@@ -151,12 +151,12 @@ One peculiarity of the Go runtime is that the user has a `Context` object as par
 
 ```go
 func Foo(event functions.Event, context functions.Context) (string, error) {
-	select {
-	case <-event.Extensions.Context.Done():
-		return "", nil
+  select {
+  case <-event.Extensions.Context.Done():
+    return "", nil
   case <-time.After(5 * time.Second):
-	}
-	return "Function returned after 5 seconds", nil
+  }
+  return "Function returned after 5 seconds", nil
 }
 ```
 

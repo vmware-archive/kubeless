@@ -1,6 +1,6 @@
 # Kubeless Functions
 
-Functions are the main entity in Kubeless. It is possible to write Functions in different languages but all of them share common properties like the general interface, the default timeout our the runtime UID. In this document we are going to explain these common features and different runtimes availables in Kubeless. You can find in depth details about the Function specification [here](/docs/advanced-function-deployment). 
+Functions are the main entity in Kubeless. It is possible to write Functions in different languages but all of them share common properties like the generic interface, the default timeout or the runtime UID. In this document we are going to explain some these common properties and different runtimes availables in Kubeless. You can find in depth details about the Function specification [here](/docs/advanced-function-deployment). 
 
 ## Functions Interface
 

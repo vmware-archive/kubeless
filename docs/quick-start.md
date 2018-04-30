@@ -2,7 +2,7 @@
 
 Installation is made of three steps:
 
-* Download the `kubeless` CLI from the [release page](https://github.com/kubeless/kubeless/releases). (OSX users can also use [brew](https://brew.sh/): `brew install kubeless`).
+* Download the `kubeless` CLI from the [release page](https://github.com/kubeless/kubeless/releases).
 * Create a `kubeless` namespace (used by default)
 * Then use one of the YAML manifests found in the release page to deploy kubeless. It will create a _functions_ Custom Resource Definition and launch a controller.
 
@@ -15,7 +15,7 @@ There are several kubeless manifests being shipped for multiple k8s environments
 For example, this below is a show case of deploying kubeless to a non-RBAC Kubernetes cluster.
 
 ```console
-$ export RELEASE=$(curl -s https://api.github.com/repos/kubeless/kubeless/releases/latest | grep tag_name | cut -d '"' -f 4)
+$ export RELEASE=v1.0.0-alpha.1
 $ kubectl create ns kubeless
 $ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-non-rbac-$RELEASE.yaml
 
@@ -35,6 +35,24 @@ httptriggers.kubeless.io      1h
 ```
 
 > Details on [installing kubeless in a different namespace](/docs/function-controller-configuration) can be found here.  
+
+For installing `kubeless` CLI using execute:
+
+#### Linux and macOS
+
+```console
+export OS=$(uname -s| tr '[:upper:]' '[:lower:]')
+curl -OL https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless_$OS-amd64.zip && \
+  unzip kubeless_$OS-amd64.zip && \
+  sudo mv bundles/kubeless_$OS-amd64/kubeless /usr/local/bin/
+```
+
+Binaries for x86 architectures can be found as well [in the releases page](https://github.com/kubeless/kubeless/releases).
+
+#### Windows
+
+1. Download the latest release from [the releases page](https://github.com/kubeless/kubeless/releases).
+2. Extract the content and add the `kubeless` binary to the system PATH.
 
 You are now ready to create functions.
 

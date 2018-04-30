@@ -1,9 +1,9 @@
 # Debug Kubeless Functions
 
-In this document we will show how you can debug your function in order to spot possible errors. There could be several reasons that causes a wrong deployment. For learning how to successfully debug a function it is important to know what is the process of deployment of a Kubeless function. In this guide we are going to assume that you are using the `kubeless` CLI tool to deploy your function. If that is the case, this is the process to run a function:
+In this document we will show how you can debug your function in order to spot possible errors. There could be several reasons that causes a wrong deployment. For learning how to successfully debug a function it is important to know what is the process of deploying a Kubeless function. In this guide we are going to assume that you are using the `kubeless` CLI tool to deploy your functions. If that is the case, this is the process to run a function:
 
- 1. The `kubeless` CLI read the parameters you give to it and produces a [`Function`](/docs/advanced-function-deployment) object that submits to the Kubernetes API server.
- 2. The Kubeless Function Controller detects that a new `Function` has been created and reads its content. From the function content it generates: a `ConfigMap` with the function code and its dependencies, a `Service` to make the function reachable through HTTP and a `Deployment` with the base image and all the required steps to install and run your functions. It is important to know this order because if the controller fails to deploy the `ConfigMap` or the `Service` it won't never create the `Deployment`: a failure will abort the process.
+ 1. The `kubeless` CLI read the parameters you give to it and produces a [Function](/docs/advanced-function-deployment) object that submits to the Kubernetes API server.
+ 2. The Kubeless Function Controller detects that a new `Function` has been created and reads its content. From the function content it generates: a `ConfigMap` with the function code and its dependencies, a `Service` to make the function reachable through HTTP and a `Deployment` with the base image and all the required steps to install and run your functions. It is important to know this order because if the controller fails to deploy the `ConfigMap` or the `Service` it will never create the `Deployment`. A failure in any step will abort the process.
  3. Once the `Deployment` has been created a `Pod` should be generated with your function. When a Pod starts it dinamically reads the content of your function (in case of interpreted languages).
 
 After all the above you are ready to call your function. Let's see some common mistakes and how to fix them.
@@ -41,13 +41,13 @@ time="2018-04-27T15:12:28Z" level=error msg="Function can not be created/updated
 time="2018-04-27T15:12:28Z" level=error msg="Error processing default/foo (will retry): failed: incorrect handler format. It should be module_name.handler_name" pkg=function-controller
 ```
 
-From the logs we can see that there is a problem with your handler: we specified `hello,foo` while the correct value is `hello.foo`.
+From the logs we can see that there is a problem with the handler: we specified `hello,foo` while the correct value is `hello.foo`.
 
 ## Function pod is crashing
 
 The most common error is finding that the `Deployment` is generated successfully but the function remains with the status `0/1 Not ready`. This is usually caused by a syntax error in our function or in the dependencies we specify.
 
-If our functino doesn't start we should check the status of the pods executing:
+If our function doesn't start we should check the status of the pods executing:
 
 ```
 $ kubectl get pods -l function=foo
