@@ -86,6 +86,11 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		fromURL, err := cmd.Flags().GetString("from-url")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		file, err := cmd.Flags().GetString("from-file")
 		if err != nil {
 			logrus.Fatal(err)
@@ -221,6 +226,7 @@ func init() {
 	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
 	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
+	deployCmd.Flags().StringP("from-url", "", "", "Specify a URL to the raw code file. For example, --from-url https://raw.githubusercontent.com/<USER>/<REPO>/<BRANCH>/<FILE>")
 	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")
 	deployCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")

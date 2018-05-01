@@ -18,8 +18,11 @@ package function
 
 import (
 	"archive/zip"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"reflect"
 	"testing"
@@ -195,6 +198,23 @@ func TestGetFunctionDescription(t *testing.T) {
 	if !reflect.DeepEqual(expectedFunction, *result2) {
 		t.Errorf("Unexpected result. Expecting:\n %+v\n Received %+v\n", expectedFunction, *result2)
 	}
+
+	// it should create a function from a URL
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "function")
+	}))
+	defer ts.Close()
+
+	result7, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", ts.URL, "", "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !reflect.DeepEqual(expectedFunction, *result7) {
+		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedFunction, *result7)
+	}
+	// end test
 
 	// Given parameters should take precedence from default values
 	file, err = ioutil.TempFile("", "test")
@@ -372,4 +392,24 @@ func TestGetFunctionDescription(t *testing.T) {
 	if result6.Spec.ServiceSpec.ClusterIP != v1.ClusterIPNone {
 		t.Errorf("Unexpected clusterIP %v", result6.Spec.ServiceSpec.ClusterIP)
 	}
+
+	// it should handle zip files from a URL and detect base64+zip encoding
+	zipBytes, err := ioutil.ReadFile(newfile.Name())
+	if err != nil {
+		t.Error(err)
+	}
+
+	ts2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(zipBytes)
+	}))
+	defer ts2.Close()
+
+	result8, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", ts2.URL+"/test.zip", "", "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+	if err != nil {
+		t.Error(err)
+	}
+	if result8.Spec.FunctionContentType != "base64+zip" {
+		t.Errorf("Should return base64+zip, received %s", result8.Spec.FunctionContentType)
+	}
+	// end test
 }
