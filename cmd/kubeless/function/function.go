@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -120,6 +121,16 @@ func getFileSha256(file string) (string, error) {
 	return "sha256:" + checksum, err
 }
 
+func getHttpSha256(bytes []byte) (string, error) {
+	h := sha256.New()
+	_, err := h.Write(bytes)
+	if err != nil {
+		return "", err
+	}
+	checksum := hex.EncodeToString(h.Sum(nil))
+	return "sha256:" + checksum, nil
+}
+
 func getContentType(filename string, fbytes []byte) string {
 	var contentType string
 	isText := utf8.ValidString(string(fbytes))
@@ -134,7 +145,7 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, port int32, headless bool, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fromURL, file, deps, runtime, runtimeImage, mem, cpu, timeout string, port int32, headless bool, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
 
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
@@ -143,6 +154,32 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 	}
 	if handler != "" {
 		function.Spec.Handler = handler
+	}
+
+	// --from-file will override --from-url
+	if fromURL != "" && file == "" {
+		resp, err := http.Get(fromURL)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		functionBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		function.Spec.FunctionContentType = getContentType(fromURL, functionBytes)
+		if function.Spec.FunctionContentType == "text" {
+			function.Spec.Function = string(functionBytes)
+		} else {
+			function.Spec.Function = base64.StdEncoding.EncodeToString(functionBytes)
+		}
+		checksum, err := getHttpSha256(functionBytes)
+		if err != nil {
+			return nil, err
+		}
+		function.Spec.Checksum = checksum
 	}
 
 	if file != "" {

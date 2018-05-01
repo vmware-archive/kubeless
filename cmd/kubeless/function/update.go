@@ -59,6 +59,11 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		fromURL, err := cmd.Flags().GetString("from-url")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		file, err := cmd.Flags().GetString("from-file")
 		if err != nil {
 			logrus.Fatal(err)
@@ -137,7 +142,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, port, headless, envs, labels, secrets, previousFunction)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, fromURL, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, port, headless, envs, labels, secrets, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -160,6 +165,7 @@ func init() {
 	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	updateCmd.Flags().StringP("handler", "", "", "Specify handler")
 	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
+	updateCmd.Flags().StringP("from-url", "", "", "Specify a URL to the raw code file. For example, --from-url https://raw.githubusercontent.com/<USER>/<REPO>/<BRANCH>/<FILE>")
 	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
 	updateCmd.Flags().StringP("cpu", "", "", "Request amount of cpu for the function.")
 	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
