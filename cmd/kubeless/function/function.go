@@ -121,7 +121,7 @@ func getFileSha256(file string) (string, error) {
 	return "sha256:" + checksum, err
 }
 
-func getHttpSha256(bytes []byte) (string, error) {
+func getHTTPSha256(bytes []byte) (string, error) {
 	h := sha256.New()
 	_, err := h.Write(bytes)
 	if err != nil {
