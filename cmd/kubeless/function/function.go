@@ -175,7 +175,7 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fro
 		} else {
 			function.Spec.Function = base64.StdEncoding.EncodeToString(functionBytes)
 		}
-		checksum, err := getHttpSha256(functionBytes)
+		checksum, err := getHTTPSha256(functionBytes)
 		if err != nil {
 			return nil, err
 		}
