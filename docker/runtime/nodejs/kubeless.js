@@ -6,31 +6,25 @@ const path = require('path');
 const Module = require('module');
 
 const bodyParser = require('body-parser');
+const contentType = require('content-type');
 const client = require('prom-client');
 const express = require('express');
 const helper = require('./lib/helper');
 const morgan = require('morgan');
 
-const bodySizeLimit = Number(process.env.REQ_MB_LIMIT || '1');
-
 const app = express();
 app.use(morgan('combined'));
 const bodParserOptions = {
-    type: '*/*',
-    limit: `${bodySizeLimit}mb`,
+    type: '*/*'
 };
 app.use(bodyParser.raw(bodParserOptions));
-app.use(bodyParser.json({ limit: `${bodySizeLimit}mb` }));
-app.use(bodyParser.urlencoded({ limit: `${bodySizeLimit}mb`, extended: true }));
 
 const modName = process.env.MOD_NAME;
 const funcHandler = process.env.FUNC_HANDLER;
 const timeout = Number(process.env.FUNC_TIMEOUT || '180');
 const funcPort = Number(process.env.FUNC_PORT || '8080');
 
-const modKubeless = require.main.filename;
-const modRootPath = path.join(modKubeless, '..', '..', 'kubeless');
-
+const modRootPath = require.main.filename.replace('kubeless.js', 'kubeless');
 const modPath = path.join(modRootPath, `${modName}.js`);
 const libPath = path.join(modRootPath, 'node_modules');
 const pkgPath = path.join(modRootPath, 'package.json');
@@ -77,22 +71,38 @@ function modExecute(handler, req, res, end) {
         throw new Error(`Unable to load ${handler}`);
 
     try {
-        let data = req.body;
+        let event;
+        let cType = contentType.parse(req);
         if (req.body.length > 0) {
-            if (req.get('content-type') === 'application/json') {
-                data = JSON.parse(req.body.toString('utf-8'))
-            } else {
-                data = req.body.toString('utf-8')
+            if (cType.type.startsWith('application/cloudevents')){
+                if (cType.type.endsWith('+json')){
+
+                    event = JSON.parse(req.body.toString('utf-8'));
+                    console.log('Event: '+req.body.toString());
+                }
+                else {
+//  We only support +json right now. Throw an error?
+                }
+            }
+            else {
+                event = {
+                    'eventType': req.get('CE-EventType'),
+                    'eventID': req.get('CE-EventID'),
+                    'eventTime': req.get('CE-EventTime'),
+                    'eventSource': req.get('CE-EventSource'),
+                    'cloudEventsVersion' : req.get('CE-CloudEventsVersion'),
+                    'contentType': cType.toString(),
+                    'extensions': { request: req },
+                };
+
+                if (cType.type === 'application/json' || cType.type.endsWith('+json')) {
+                    event.data = JSON.parse(req.body.toString('utf-8'))
+                }
+                else{
+                    event.data = req.body;
+                }
             }
         }
-        const event = {
-            'event-type': req.get('event-type'),
-            'event-id': req.get('event-id'),
-            'event-time': req.get('event-time'),
-            'event-namespace': req.get('event-namespace'),
-            data,
-            'extensions': { request: req, response: res },
-        };
         Promise.resolve(func(event, context))
         // Finalize
             .then(rval => modFinalize(rval, res, end))
@@ -106,15 +116,12 @@ function modExecute(handler, req, res, end) {
 }
 
 function modFinalize(result, res, end) {
-    if (!res.finished) switch(typeof result) {
+    switch(typeof result) {
         case 'string':
             res.end(result);
             break;
         case 'object':
-            res.json(result); // includes res.end(), null also handled
-            break;
-        case 'undefined':
-            res.end();
+            res.json(result);
             break;
         default:
             res.end(JSON.stringify(result));
@@ -169,3 +176,4 @@ app.all('*', (req, res) => {
 });
 
 app.listen(funcPort);
+
