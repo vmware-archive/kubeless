@@ -7,3 +7,4 @@ It installs:
 * The Kubeless configuration
 * The UI
 * A single node Kafka and Zookeeper setup
+* A HostPath PersistentVolume for kafka, You can create a gce PersistentVolume to replace it.
