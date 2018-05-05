@@ -122,12 +122,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 }
 
 // CreateIngress creates ingress rule for a specific function
-func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTPTrigger) error {
-	or, err := GetHTTPTriggerOwnerReference(httpTriggerObj)
-	if err != nil {
-		return err
-	}
-
+func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTPTrigger, or []metav1.OwnerReference) error {
 	funcSvc, err := client.CoreV1().Services(httpTriggerObj.ObjectMeta.Namespace).Get(httpTriggerObj.Spec.FunctionName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("Unable to find the function internal service: %v", funcSvc)
@@ -369,6 +364,15 @@ func getRuntimeVolumeMount(name string) v1.VolumeMount {
 	}
 }
 
+func getChecksum(content string) (string, error) {
+	h := sha256.New()
+	_, err := h.Write([]byte(content))
+	if err != nil {
+		return "", nil
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
 // populatePodSpec populates a basic Pod Spec that uses init containers to populate
 // the runtime container with the function content and its dependencies.
 // The caller should define the runtime container(s).
@@ -447,13 +451,11 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 		if len(result.Containers) > 0 {
 			envVars = result.Containers[0].Env
 		}
-		h := sha256.New()
-		_, err = h.Write([]byte(funcObj.Spec.Deps))
+		depsChecksum, err := getChecksum(funcObj.Spec.Deps)
 		if err != nil {
 			return fmt.Errorf("Unable to obtain dependencies checksum: %v", err)
 		}
-		checksum := hex.EncodeToString(h.Sum(nil))
-		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, checksum, envVars, runtimeVolumeMount)
+		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, depsChecksum, envVars, runtimeVolumeMount)
 		if err != nil {
 			return err
 		}
@@ -597,6 +599,16 @@ func svcPort(funcObj *kubelessApi.Function) int32 {
 	return funcObj.Spec.ServiceSpec.Ports[0].Port
 }
 
+func mergeMap(dst, src map[string]string) map[string]string {
+	if len(dst) == 0 {
+		dst = make(map[string]string)
+	}
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
+}
+
 // EnsureFuncDeployment creates/updates a function deployment
 func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference, lr *langruntime.Langruntimes, prebuiltRuntimeImage, provisionImage string, imagePullSecrets []v1.LocalObjectReference) error {
 
@@ -629,34 +641,14 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	}
 
 	//append data to dpm deployment
-	if len(dpm.ObjectMeta.Labels) == 0 {
-		dpm.ObjectMeta.Labels = make(map[string]string)
-	}
-	for k, v := range funcObj.ObjectMeta.Labels {
-		dpm.ObjectMeta.Labels[k] = v
-	}
-	if len(dpm.ObjectMeta.Annotations) == 0 {
-		dpm.ObjectMeta.Annotations = make(map[string]string)
-	}
-
-	if len(dpm.Spec.Template.ObjectMeta.Labels) == 0 {
-		dpm.Spec.Template.ObjectMeta.Labels = make(map[string]string)
-	}
-	for k, v := range funcObj.ObjectMeta.Labels {
-		dpm.Spec.Template.ObjectMeta.Labels[k] = v
-	}
-	if len(dpm.Spec.Template.ObjectMeta.Annotations) == 0 {
-		dpm.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
-	}
-	for k, v := range podAnnotations {
-		//only append k-v from podAnnotations if it doesn't exist in deployment podTemplateSpec annotation
-		if _, ok := dpm.Spec.Template.ObjectMeta.Annotations[k]; !ok {
-			dpm.Spec.Template.ObjectMeta.Annotations[k] = v
-		}
-	}
+	dpm.Labels = mergeMap(dpm.Labels, funcObj.Labels)
+	dpm.Spec.Template.Labels = mergeMap(dpm.Spec.Template.Labels, funcObj.Labels)
+	dpm.Annotations = mergeMap(dpm.Annotations, funcObj.Annotations)
+	dpm.Spec.Template.Annotations = mergeMap(dpm.Spec.Template.Annotations, funcObj.Annotations)
+	dpm.Spec.Template.Annotations = mergeMap(dpm.Spec.Template.Annotations, podAnnotations)
 
 	if len(dpm.Spec.Template.Spec.Containers) == 0 {
-		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
+		dpm.Spec.Template.Spec.Containers = []v1.Container{}
 	}
 
 	runtimeVolumeMount := getRuntimeVolumeMount(funcObj.ObjectMeta.Name)
@@ -837,8 +829,6 @@ func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, s
 		},
 	}
 
-	// We need to use directly the REST API since the endpoint
-	// for CronJobs changes from Kubernetes 1.8
 	_, err = client.BatchV1beta1().CronJobs(funcObj.ObjectMeta.Namespace).Create(job)
 	if err != nil && k8sErrors.IsAlreadyExists(err) {
 		newCronJob := &batchv1beta1.CronJob{}
@@ -892,59 +882,20 @@ func CreateServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, 
 	return fmt.Errorf("service monitor has already existed")
 }
 
-// GetFunctionOwnerReference returns ownerRef for appending to objects's metadata
-// created by kubeless-controller once a function is deployed.
-func GetFunctionOwnerReference(funcObj *kubelessApi.Function) ([]metav1.OwnerReference, error) {
-	if funcObj.ObjectMeta.Name == "" {
-		return []metav1.OwnerReference{}, fmt.Errorf("function name can't be empty")
+// GetOwnerReference returns ownerRef for appending to objects's metadata
+func GetOwnerReference(kind, apiVersion, name string, uid types.UID) ([]metav1.OwnerReference, error) {
+	if name == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("name can't be empty")
 	}
-	if funcObj.ObjectMeta.UID == "" {
-		return []metav1.OwnerReference{}, fmt.Errorf("uid of function %s can't be empty", funcObj.ObjectMeta.Name)
-	}
-	return []metav1.OwnerReference{
-		{
-			Kind:       "Function",
-			APIVersion: "kubeless.io/v1beta1",
-			Name:       funcObj.ObjectMeta.Name,
-			UID:        funcObj.ObjectMeta.UID,
-		},
-	}, nil
-}
-
-// GetHTTPTriggerOwnerReference returns ownerRef for appending to objects's metadata
-// created by kubeless-controller one a function is deployed.
-func GetHTTPTriggerOwnerReference(httpTriggerObj *kubelessApi.HTTPTrigger) ([]metav1.OwnerReference, error) {
-	if httpTriggerObj.ObjectMeta.Name == "" {
-		return []metav1.OwnerReference{}, fmt.Errorf("HTTP trigger name can't be empty")
-	}
-	if httpTriggerObj.ObjectMeta.UID == "" {
-		return []metav1.OwnerReference{}, fmt.Errorf("uid of http trigger %s can't be empty", httpTriggerObj.ObjectMeta.Name)
+	if uid == "" {
+		return []metav1.OwnerReference{}, fmt.Errorf("uid can't be empty")
 	}
 	return []metav1.OwnerReference{
 		{
-			Kind:       "HTTPTrigger",
-			APIVersion: "kubeless.io",
-			Name:       httpTriggerObj.ObjectMeta.Name,
-			UID:        httpTriggerObj.ObjectMeta.UID,
-		},
-	}, nil
-}
-
-// GetCronJobTriggerOwnerReference returns ownerRef for appending to objects's metadata
-// created by kubeless-controller one a function is deployed.
-func GetCronJobTriggerOwnerReference(cronJobTriggerObj *kubelessApi.CronJobTrigger) ([]metav1.OwnerReference, error) {
-	if cronJobTriggerObj.ObjectMeta.Name == "" {
-		return []metav1.OwnerReference{}, fmt.Errorf("CronJob trigger name can't be empty")
-	}
-	if cronJobTriggerObj.ObjectMeta.UID == "" {
-		return []metav1.OwnerReference{}, fmt.Errorf("uid of cronjob trigger %s can't be empty", cronJobTriggerObj.ObjectMeta.Name)
-	}
-	return []metav1.OwnerReference{
-		{
-			Kind:       "CronJobTrigger",
-			APIVersion: "kubeless.io",
-			Name:       cronJobTriggerObj.ObjectMeta.Name,
-			UID:        cronJobTriggerObj.ObjectMeta.UID,
+			Kind:       kind,
+			APIVersion: apiVersion,
+			Name:       name,
+			UID:        uid,
 		},
 	}, nil
 }

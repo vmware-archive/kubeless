@@ -39,7 +39,7 @@ import (
 const (
 	cronJobTriggerMaxRetries = 5
 	cronJobObjKind           = "Trigger"
-	cronJobObjAPI            = "kubeless.io"
+	cronJobAPIVersion        = "kubeless.io/v1beta1"
 	cronJobTriggerFinalizer  = "kubeless.io/cronjobtrigger"
 )
 
@@ -238,7 +238,7 @@ func (c *CronJobTriggerController) syncCronJobTrigger(key string) error {
 		}
 	}
 
-	or, err := utils.GetCronJobTriggerOwnerReference(cronJobtriggerObj)
+	or, err := utils.GetOwnerReference(cronJobObjKind, cronJobAPIVersion, cronJobtriggerObj.Name, cronJobtriggerObj.UID)
 	if err != nil {
 		return err
 	}

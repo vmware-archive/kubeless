@@ -825,10 +825,23 @@ func TestCreateIngressResource(t *testing.T) {
 			FunctionName: f1.Name,
 		},
 	}
-	if err := CreateIngress(clientset, httpTrigger); err != nil {
+	or := []metav1.OwnerReference{
+		{
+			Kind:       "HTTPTrigger",
+			APIVersion: "kubeless.io/v1beta1",
+		},
+	}
+	if err := CreateIngress(clientset, httpTrigger, or); err != nil {
 		t.Fatalf("Creating ingress returned err: %v", err)
 	}
-	if err := CreateIngress(clientset, httpTrigger); err != nil {
+	ing, err := clientset.ExtensionsV1beta1().Ingresses("myns").Get("foo", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Unexpected err: %v", err)
+	}
+	if !reflect.DeepEqual(ing.OwnerReferences, or) {
+		t.Errorf("Unexpected OwnerRef %v", httpTrigger.OwnerReferences)
+	}
+	if err := CreateIngress(clientset, httpTrigger, or); err != nil {
 		if !k8sErrors.IsAlreadyExists(err) {
 			t.Fatalf("Expect object is already exists, got %v", err)
 		}
@@ -870,7 +883,7 @@ func TestCreateIngressResourceWithNginxGateway(t *testing.T) {
 			Gateway:         "nginx",
 		},
 	}
-	if err := CreateIngress(clientset, httpTrigger); err != nil {
+	if err := CreateIngress(clientset, httpTrigger, []metav1.OwnerReference{}); err != nil {
 		t.Fatalf("Creating ingress returned err: %v", err)
 	}
 
@@ -930,7 +943,7 @@ func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
 			FunctionName: f1.Name,
 		},
 	}
-	if err := CreateIngress(clientset, httpTrigger); err != nil {
+	if err := CreateIngress(clientset, httpTrigger, []metav1.OwnerReference{}); err != nil {
 		t.Fatalf("Creating ingress returned err: %v", err)
 	}
 
@@ -995,7 +1008,7 @@ func TestUpdateIngressResource(t *testing.T) {
 			HostName:     "test.domain",
 		},
 	}
-	if err := CreateIngress(clientset, httpTrigger); err != nil {
+	if err := CreateIngress(clientset, httpTrigger, []metav1.OwnerReference{}); err != nil {
 		t.Fatalf("Creating ingress returned err: %v", err)
 	}
 	newIngress, err := clientset.ExtensionsV1beta1().Ingresses("myns").Get("foo", metav1.GetOptions{})
