@@ -653,7 +653,7 @@ func getFileName(handler, funcContentType, runtime string, lr *langruntime.Langr
 		return "", err
 	}
 	filename := modName
-	if funcContentType == "text" || funcContentType == "" || funcContentType == "url"{
+	if funcContentType == "text" || funcContentType == "" || funcContentType == "url" {
 		// We can only guess the extension if the function is specified as plain text
 		runtimeInf, err := lr.GetRuntimeInfo(runtime)
 		if err == nil {
