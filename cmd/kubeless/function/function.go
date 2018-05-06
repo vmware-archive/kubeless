@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -121,7 +122,7 @@ func getFileSha256(file string) (string, error) {
 	return "sha256:" + checksum, err
 }
 
-func getHTTPSha256(bytes []byte) (string, error) {
+func getSha256(bytes []byte) (string, error) {
 	h := sha256.New()
 	_, err := h.Write(bytes)
 	if err != nil {
@@ -156,8 +157,12 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fro
 		function.Spec.Handler = handler
 	}
 
-	// --from-file will override --from-url
-	if fromURL != "" && file == "" {
+	if fromURL != "" && file != "" {
+		err := errors.New("either --from-url or --from-file should be provided, not both")
+		return nil, err
+	}
+
+	if fromURL != "" {
 		resp, err := http.Get(fromURL)
 		if err != nil {
 			return nil, err
@@ -169,17 +174,14 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fro
 			return nil, err
 		}
 
-		function.Spec.FunctionContentType = getContentType(fromURL, functionBytes)
-		if function.Spec.FunctionContentType == "text" {
-			function.Spec.Function = string(functionBytes)
-		} else {
-			function.Spec.Function = base64.StdEncoding.EncodeToString(functionBytes)
-		}
-		checksum, err := getHTTPSha256(functionBytes)
+		checksum, err := getSha256(functionBytes)
 		if err != nil {
 			return nil, err
 		}
 		function.Spec.Checksum = checksum
+
+		function.Spec.FunctionContentType = "url"
+		function.Spec.Function = fromURL
 	}
 
 	if file != "" {
