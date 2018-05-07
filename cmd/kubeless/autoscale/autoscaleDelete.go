@@ -54,9 +54,9 @@ var autoscaleDeleteCmd = &cobra.Command{
 			if err != nil {
 				logrus.Fatal(err)
 			}
-			logrus.Infof("Removed Autoscaling rule from %s", funcName)
+			logrus.Infof("Remove Autoscaling rule from %s successfully", funcName)
 		} else {
-			logrus.Fatalf("Not found an auto scale definition for %s", funcName)
+			logrus.Fatalf("Not found an autoscale definition for %s", funcName)
 		}
 	},
 }
