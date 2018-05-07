@@ -29,7 +29,7 @@ MINIKUBE_VERSION=${MINIKUBE_VERSION:?}
 
 install_bin() {
     local exe=${1:?}
-    test -n "${TRAVIS}" && sudo install -v ${exe} /usr/local/bin || install ${exe} ${GOPATH:?}/bin
+    sudo install -v ${exe} /usr/local/bin || install ${exe} ${GOPATH:?}/bin
 }
 
 # Travis ubuntu trusty env doesn't have nsenter, needed for VM-less minikube
