@@ -706,6 +706,12 @@ get-java:
 get-java-verify:
 	kubeless function call get-java |egrep Hello.world
 
+post-java:
+	kubeless function deploy post-java --runtime java1.8  --handler Foo.Foo --from-file java/HelloWithData.java
+
+post-java-verify:
+	kubeless function call post-java --data '{"its": "alive"}'| egrep "its.*alive"
+
 get-java-deps:
 	kubeless function deploy get-java-deps --runtime java1.8 --handler Hello.sayHello --from-file java/HelloWithDeps.java --dependencies java/pom.xml
 

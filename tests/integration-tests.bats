@@ -48,6 +48,7 @@ load ../script/libtest
   deploy_function get-python-url-deps
   deploy_function get-node-url-zip
   deploy_function get-java
+  deploy_function post-java
   deploy_function get-java-deps
 }
 @test "Test function: get-python" {
@@ -188,6 +189,10 @@ load ../script/libtest
 @test "Test function: get-java" {
   verify_function get-java
   kubeless_function_delete get-java
+}
+@test "Test function: post-java" {
+  verify_function post-java
+  kubeless_function_delete post-java
 }
 @test "Test function: get-java-deps" {
   verify_function get-java-deps

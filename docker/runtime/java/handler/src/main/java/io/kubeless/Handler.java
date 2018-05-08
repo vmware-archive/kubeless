@@ -18,10 +18,14 @@ package io.kubeless;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.nio.charset.StandardCharsets;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.Headers;
 
 import io.prometheus.client.Counter;
 import io.prometheus.client.Histogram;
@@ -50,12 +54,15 @@ public class Handler {
     static class FunctionHandler implements HttpHandler {
         String className = System.getenv("MOD_NAME");
         String methodName = System.getenv("FUNC_HANDLER");
+        String timeout = System.getenv("FUNC_TIMEOUT");
+        String runtime = System.getenv("FUNC_RUNTIME");
+        String memoryLimit = System.getenv("FUNC_MEMORY_LIMIT");
         static final Counter requests = Counter.build().name("function_calls_total").help("Total function calls.").register();
         static final Counter failures = Counter.build().name("function_failures_total").help("Total function call failuress.").register();
         static final Histogram requestLatency = Histogram.build().name("function_duration_seconds").help("Duration of time user function ran in seconds.").register();
 
         @Override
-        public void handle(HttpExchange t) throws IOException {
+        public void handle(HttpExchange he) throws IOException {
             Histogram.Timer requestTimer = requestLatency.startTimer();
             try {
                 requests.inc();
@@ -63,14 +70,29 @@ public class Handler {
                 Object obj = c.newInstance();
                 java.lang.reflect.Method method = c.getMethod(methodName, io.kubeless.Event.class, io.kubeless.Context.class);
 
-                io.kubeless.Event event = new io.kubeless.Event("", "", "", "", "");
-                io.kubeless.Context context = new io.kubeless.Context("", "", "", "");
+                InputStreamReader reader = new InputStreamReader(he.getRequestBody(), StandardCharsets.UTF_8.name());
+                BufferedReader br = new BufferedReader(reader);
+                int b;
+                StringBuilder body = new StringBuilder();
+                while ((b = br.read()) != -1) {
+                    body.append((char) b);
+                }
+                br.close();
+                reader.close();
+
+                Headers headers = he.getRequestHeaders();
+                io.kubeless.Event event = new io.kubeless.Event(body.toString(),
+                                headers.get("event-id").get(0),
+                                headers.get("event-type").get(0),
+                                headers.get("event-time").get(0),
+                                headers.get("event-namespace").get(0));
+                io.kubeless.Context context = new io.kubeless.Context(methodName, timeout, runtime, memoryLimit);
 
                 Object returnValue = method.invoke(obj, event, context);
                 String response = (String)returnValue;
                 System.out.println("Response: " + response);
-                t.sendResponseHeaders(200, response.length());
-                OutputStream os = t.getResponseBody();
+                he.sendResponseHeaders(200, response.length());
+                OutputStream os = he.getResponseBody();
                 os.write(response.getBytes());
                 os.close();
             } catch (Exception e) {
