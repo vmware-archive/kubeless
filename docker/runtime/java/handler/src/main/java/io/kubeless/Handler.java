@@ -21,6 +21,7 @@ import java.net.InetSocketAddress;
 import java.io.InputStreamReader;
 import java.io.BufferedReader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -81,11 +82,35 @@ public class Handler {
                 reader.close();
 
                 Headers headers = he.getRequestHeaders();
-                io.kubeless.Event event = new io.kubeless.Event(body.toString(),
-                                headers.get("event-id").get(0),
-                                headers.get("event-type").get(0),
-                                headers.get("event-time").get(0),
-                                headers.get("event-namespace").get(0));
+                String eventId = "";
+                if (headers.containsKey("event-id")) {
+                    List<String> values = headers.get("event-id");
+                    if (values != null) {
+                        eventId = values.get(0);
+                    }
+                }
+                String eventType = "";
+                if (headers.containsKey("event-type")) {
+                    List<String> values = headers.get("event-type");
+                    if (values != null) {
+                        eventType = values.get(0);
+                    }
+                }
+                String eventTime = "";
+                if (headers.containsKey("event-time")) {
+                    List<String> values = headers.get("event-time");
+                    if (values != null) {
+                        eventTime = values.get(0);
+                    }
+                }
+                String eventNamespace = "";
+                if (headers.containsKey("event-namespace")) {
+                    List<String> values = headers.get("event-namespace");
+                    if (values != null) {
+                        eventNamespace = values.get(0);
+                    }
+                }
+                io.kubeless.Event event = new io.kubeless.Event(body.toString(), eventId, eventType, eventTime, eventNamespace);
                 io.kubeless.Context context = new io.kubeless.Context(methodName, timeout, runtime, memoryLimit);
 
                 Object returnValue = method.invoke(obj, event, context);
@@ -107,6 +132,7 @@ public class Handler {
                     System.out.println("Failed to instantiate method: " + methodName);
                 } else {
                     System.out.println("An exception occured running Class: " + className + " method: " + methodName);
+                    e.printStackTrace();
                 }
             } finally {
                 requestTimer.observeDuration();
