@@ -160,6 +160,20 @@ local runtime_images ='[
     ],
     "depName": "Gopkg.toml",
     "fileNameSuffix": ".go"
+  },
+  {
+    "ID": "java",
+    "compiled": true,
+    "versions": [
+      {
+        "name": "java1.8",
+        "version": "1.8",
+        "runtimeImage": "muralireddy/java:1.8",
+        "initImage": "muralireddy/java-init:1.8"
+      }
+    ],
+    "depName": "maven",
+    "fileNameSuffix": ".java"
   }
 ]';
 

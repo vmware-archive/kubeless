@@ -298,6 +298,9 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 		command = fmt.Sprintf(
 			"sed 's/<<FUNCTION>>/%s/g' $GOPATH/src/controller/kubeless.tpl.go > $GOPATH/src/controller/kubeless.go && "+
 				"go build -o %s/server $GOPATH/src/controller/kubeless.go > /dev/termination-log 2>&1", funcName, installVolume.MountPath)
+	case strings.Contains(runtime, "java"):
+		command = fmt.Sprintf("cp -r /usr/src/myapp/* /kubeless/ && cp /kubeless/*.java /kubeless/function/src/main/java/io/kubeless/ &&") +
+			"mvn package && mvn install"
 	default:
 		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
 	}
