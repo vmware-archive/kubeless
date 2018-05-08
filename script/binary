@@ -16,19 +16,25 @@
 
 set -e
 
+
 GIT_COMMIT=$(git describe --tags --dirty)
 BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/pkg/version.Version=${GIT_COMMIT}")
 
 # Get rid of existing binary
-rm -f ${GOPATH%%:*}/bin/kubeless*
+echo "Removing Old Kubeless binary"
+rm -f ${GOPATH%%:*}/bin/kubeless
+rm -f ${GOPATH%%:*}/bin/kafka-trigger-controller
+rm -f ${GOPATH%%:*}/bin/kubeless-controller-manager
+rm -f ${GOPATH%%:*}/bin/nats-trigger-controller
 
+echo "Build Kubeless Components Binary"
 # Build binary
 go install \
     "${BUILD_FLAGS[@]}" \
     github.com/kubeless/kubeless/cmd/...
 
 if [ $? -eq 0 ]; then
-  echo "Build successful. Program saved at ${GOPATH%%:*}/bin"
+  echo "Build Kubeless Components successful. Program saved at ${GOPATH%%:*}/bin"
 else
-  echo "Build failed."
+  echo "Build Kubeless Components failed."
 fi
