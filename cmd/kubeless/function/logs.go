@@ -57,7 +57,7 @@ var logsCmd = &cobra.Command{
 		}
 		readyPod, err := utils.GetReadyPod(pods)
 		if err != nil {
-			logrus.Fatalf("Can't find the function pod: %v", err)
+			logrus.Fatalf("No function pod is running: %v", err)
 		}
 		podLog := &v1.PodLogOptions{
 			Container: funcName,
