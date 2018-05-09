@@ -8,7 +8,7 @@ build_allways: &build_allways
 defaults: &defaults
   environment:
     CONTROLLER_IMAGE_NAME: bitnami/kubeless-controller-manager
-    BUILDER_IMAGE_NAME: bitnami/function-image-builder
+    BUILDER_IMAGE_NAME: kubeless/function-image-builder
     KAFKA_CONTROLLER_IMAGE_NAME: bitnami/kafka-trigger-controller
     NATS_CONTROLLER_IMAGE_NAME: bitnami/nats-trigger-controller
     CGO_ENABLED: "0"
