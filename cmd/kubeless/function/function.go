@@ -134,7 +134,7 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, port int32, headless bool, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, imagePullPolicy string, port int32, headless bool, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
 
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
@@ -225,9 +225,10 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 	}
 	function.Spec.Deployment.Spec.Template.Spec.Containers = []v1.Container{
 		{
-			Env:       funcEnv,
-			Resources: resources,
-			Image:     runtimeImage,
+			ImagePullPolicy: v1.PullPolicy(imagePullPolicy),
+			Env:             funcEnv,
+			Resources:       resources,
+			Image:           runtimeImage,
 		},
 	}
 
