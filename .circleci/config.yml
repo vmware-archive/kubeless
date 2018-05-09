@@ -41,8 +41,6 @@ should_test: &should_test
       if [[ -n "$GKE_ADMIN" && -z "$CIRCLE_PULL_REQUESTS" ]]; then
         export SHOULD_TEST=1
       fi
-      echo "SHOULD TEST? $SHOULD_TEST"
-      export SHOULD_TEST=0
       ;;
     # In kase of minikube+kafka we want to test it if
     # it is a Pull Request related to Kafka (discovered from the PR title)
