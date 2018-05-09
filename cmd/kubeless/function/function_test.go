@@ -100,7 +100,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
 
 	if err != nil {
 		t.Error(err)
@@ -147,7 +147,8 @@ func TestGetFunctionDescription(t *testing.T) {
 											v1.ResourceCPU:    parsedCPU,
 										},
 									},
-									Image: "test-image",
+									Image:           "test-image",
+									ImagePullPolicy: v1.PullAlways,
 									VolumeMounts: []v1.VolumeMount{
 										{
 											Name:      "secretName-vol",
@@ -186,7 +187,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should take the default values
-	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", 8080, false, []string{}, []string{}, []string{}, expectedFunction)
+	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", "Always", 8080, false, []string{}, []string{}, []string{}, expectedFunction)
 
 	if err != nil {
 		t.Error(err)
@@ -207,7 +208,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test-image2", "256Mi", "100m", "20", 8080, false, []string{"TEST=2"}, []string{"test=2"}, []string{"secret2"}, expectedFunction)
+	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test-image2", "256Mi", "100m", "20", "Always", 8080, false, []string{"TEST=2"}, []string{"test=2"}, []string{"secret2"}, expectedFunction)
 
 	if err != nil {
 		t.Error(err)
@@ -254,7 +255,8 @@ func TestGetFunctionDescription(t *testing.T) {
 											v1.ResourceCPU:    parsedCPU2,
 										},
 									},
-									Image: "test-image2",
+									Image:           "test-image2",
+									ImagePullPolicy: v1.PullAlways,
 									VolumeMounts: []v1.VolumeMount{
 										{
 											Name:      "secretName-vol",
@@ -332,7 +334,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	zipW.Close()
 
-	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", 8080, false, []string{}, []string{}, []string{}, expectedFunction)
+	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", "Always", 8080, false, []string{}, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -341,7 +343,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should maintain previous HPA definition
-	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{}, kubelessApi.Function{
+	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{}, kubelessApi.Function{
 
 		Spec: kubelessApi.FunctionSpec{
 			HorizontalPodAutoscaler: v2beta1.HorizontalPodAutoscaler{
@@ -356,7 +358,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should set the Port and headless service properly
-	result6, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "", 9091, true, []string{}, []string{}, []string{}, kubelessApi.Function{})
+	result6, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "", "Always", 9091, true, []string{}, []string{}, []string{}, kubelessApi.Function{})
 	expectedPort := v1.ServicePort{
 		Name:       "http-function-port",
 		Port:       9091,
