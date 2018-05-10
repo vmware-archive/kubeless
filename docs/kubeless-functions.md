@@ -16,6 +16,7 @@ event:
   event-namespace: "kafkatriggers.kubeless.io"  # Event emitter
   extensions:                                   # Optional parameters
     request: ...                                # Reference to the request received 
+    response: ...                               # Reference to the response to send 
                                                 # (specific properties will depend on the function language)
 context:
     function-name: "pubsub-nodejs"
