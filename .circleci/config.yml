@@ -38,6 +38,7 @@ should_test: &should_test
     # In case of GKE we will only want to build if it is
     # a build of a branch in the kubeless/kubeless repository
     GKE)
+      echo $CIRCLE_PULL_REQUESTS
       if [[ -n "$GKE_ADMIN" && -z "$CIRCLE_PULL_REQUESTS" ]]; then
         export SHOULD_TEST=1
       fi
@@ -65,6 +66,7 @@ should_test: &should_test
       fi
       ;;
     esac
+    echo "Should test? $SHOULD_TEST"
     if [[ "$SHOULD_TEST" != "1" ]]; then
       circleci step halt
     fi
@@ -251,7 +253,7 @@ jobs:
       - attach_workspace:
           at: /tmp/go
       - <<: *restore_workspace
-      - run: ./script/install-gcloud-and-start.sh $(pwd) > /dev/null
+      - run: ./script/enable-gcloud.sh $(pwd) > /dev/null
       - run: echo "export ESCAPED_GKE_CLUSTER=$(echo ${GKE_CLUSTER}-ci-${CIRCLE_BRANCH} | sed 's/[^a-z0-9-]//g')" >> $BASH_ENV
       - run: ./script/start-gke-env.sh $ESCAPED_GKE_CLUSTER $ZONE $GKE_VERSION $GKE_ADMIN > /dev/null
       - run: ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER} deployment

@@ -3,7 +3,7 @@ set -e
 
 # TODO: Use kubeless
 REPO_NAME=kubeless
-REPO_DOMAIN=andresmgot
+REPO_DOMAIN=kubeless
 TAG=${1:?}
 
 PROJECT_DIR=$(cd $(dirname $0)/.. && pwd)
