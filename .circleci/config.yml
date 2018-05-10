@@ -48,7 +48,7 @@ should_test: &should_test
     # or if the build is from the "master" branch
     minikube_kafka)
       if [[ -n "$CIRCLE_PULL_REQUESTS" ]]; then
-        pr_kafka_title=$(curl "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${CIRCLE_PR_NUMBER}" | grep title || true)
+        pr_kafka_title=$(curl -H "Authorization: token $ACCESS_TOKEN" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${CIRCLE_PR_NUMBER}" | grep title || true)
       fi
       if [[ -z "$CIRCLE_PULL_REQUESTS" || "$pr_kafka_title" == "" || "$pr_kafka_title" =~ ^.*(Kafka|kafka|KAFKA).*$ ]]; then
         export SHOULD_TEST=1
@@ -59,7 +59,7 @@ should_test: &should_test
     # or if the build is from the "master" branch
     minikube_nats)
       if [[ -n "$CIRCLE_PULL_REQUESTS" ]]; then
-        pr_nats_title=$(curl "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title || true)
+        pr_nats_title=$(curl -H "Authorization: token $ACCESS_TOKEN" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title || true)
       fi
       if [[ -z "$CIRCLE_PULL_REQUESTS" || "$pr_nats_title" == "" || "$pr_nats_title" =~ ^.*(Nats|nats|NATS).*$ ]]; then
         export SHOULD_TEST=1
@@ -145,17 +145,26 @@ jobs:
       - run: make test
       - run: make validation
       - run: make all-yaml
-      - run: "sed -i.bak 's/:latest/'\":${CONTROLLER_TAG}\"'/g' kubeless.yaml"
-      - run: "sed -i.bak 's/:latest/'\":${CONTROLLER_TAG}\"'/g' kubeless-non-rbac.yaml"
-      - run: "sed -i.bak 's/:latest/'\":${CONTROLLER_TAG}\"'/g' kubeless-openshift.yaml"
-      - run: "sed -i.bak 's/:latest/'\":${CONTROLLER_TAG}\"'/g' kafka-zookeeper.yaml"
-      - run: "sed -i.bak 's/:latest/'\":${CONTROLLER_TAG}\"'/g' kafka-zookeeper-openshift.yaml"
-      - run: "sed -i.bak 's/:latest/'\":${CONTROLLER_TAG}\"'/g' nats.yaml"
+      - run: |
+          mkdir build-manifests
+          manifests=(
+            kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml
+            kafka-zookeeper.yaml kafka-zookeeper-openshift.yaml
+            nats.yaml
+          )
+          for f in "${manifests[@]}"; do
+            sed -i.bak 's/:latest/'":${CONTROLLER_TAG}"'/g' $f
+            cp $f build-manifests/
+          done
       - persist_to_workspace:
           root: /go
           paths: 
             - bin
             - src/github.com/kubeless/kubeless/*yaml
+      - store_artifacts:
+          path: /go/bin/kubeless
+      - store_artifacts:
+          path: build-manifests
   build_images:
     <<: *defaults
     docker:
