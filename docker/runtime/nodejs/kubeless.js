@@ -84,7 +84,7 @@ function modExecute(handler, req, res, end) {
             'event-time': req.get('event-time'),
             'event-namespace': req.get('event-namespace'),
             data,
-            'extensions': { request: req },
+            'extensions': { request: req, response: res },
         };
         Promise.resolve(func(event, context))
         // Finalize
