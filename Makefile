@@ -121,14 +121,14 @@ bootstrap: bats ksonnet-lib
 	go get github.com/golang/lint/golint
 
 	@if ! which kubecfg >/dev/null; then \
-	wget -q -O $$GOPATH/bin/kubecfg https://github.com/ksonnet/kubecfg/releases/download/v0.6.0/kubecfg-$$(go env GOOS)-$$(go env GOARCH); \
-	chmod +x $$GOPATH/bin/kubecfg; \
+	sudo wget -q -O /usr/local/bin/kubecfg https://github.com/ksonnet/kubecfg/releases/download/v0.6.0/kubecfg-$$(go env GOOS)-$$(go env GOARCH); \
+	sudo chmod +x /usr/local/bin/kubecfg; \
 	fi
 
 	@if ! which kubectl >/dev/null; then \
 	KUBECTL_VERSION=$$(wget -qO- https://storage.googleapis.com/kubernetes-release/release/stable.txt); \
-	wget -q -O $$GOPATH/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$$KUBECTL_VERSION/bin/$$(go env GOOS)/$$(go env GOARCH)/kubectl; \
-	chmod +x $$GOPATH/bin/kubectl; \
+	sudo wget -q -O /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/$$KUBECTL_VERSION/bin/$$(go env GOOS)/$$(go env GOARCH)/kubectl; \
+	sudo chmod +x /usr/local/bin/kubectl; \
 	fi
 
 build_and_test:
