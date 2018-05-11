@@ -51,4 +51,6 @@ RUN rm /etc/nginx/sites-available/default && \
     chmod -R a+w /run/nginx.pid /app /var/lib/nginx /var/log/nginx
 USER 1000
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+ADD proxy /
+ADD entrypoint.sh /
+ENTRYPOINT [ "/entrypoint.sh" ]

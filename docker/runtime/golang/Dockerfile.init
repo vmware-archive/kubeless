@@ -11,6 +11,9 @@ RUN ln -s /kubeless $GOPATH/src/kubeless
 # Install controller
 RUN mkdir -p $GOPATH/src/github.com/kubeless/kubeless/pkg/functions
 ADD pkg/functions/* $GOPATH/src/github.com/kubeless/kubeless/pkg/functions
+ADD pkg/function-proxy $GOPATH/src/github.com/kubeless/kubeless/pkg/function-proxy
+WORKDIR $GOPATH/src/github.com/kubeless/kubeless/pkg/function-proxy
+RUN dep ensure
 RUN mkdir -p $GOPATH/src/controller
 ADD docker/runtime/golang/Gopkg.toml $GOPATH/src/controller/
 WORKDIR $GOPATH/src/controller/

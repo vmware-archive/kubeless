@@ -126,7 +126,7 @@ local runtime_images ='[
       {
         "name": "ruby24",
         "version": "2.4",
-        "runtimeImage": "kubeless/ruby@sha256:0dce29c0eb2a246f7d825b6644eeae7957b26f2bfad2b7987f2134cc7b350f2f",
+        "runtimeImage": "kubeless/ruby@sha256:e394e622d91a9c38da629c70254e43f97cc7da5149409d5c3eb6787f52071cfd",
         "initImage": "bitnami/ruby:2.4"
       }
     ],
@@ -140,7 +140,7 @@ local runtime_images ='[
       {
         "name": "php72",
         "version": "7.2",
-        "runtimeImage": "kubeless/php@sha256:b605bb6b5ae3b1a2a93570939296618904259d7767a14002fa9733e66d59849b",
+        "runtimeImage": "kubeless/php@sha256:7783a3d6aa301434b5fa2f88dca7fccf1ad9dc8d5d42a3a35b0e7b7dbee7b124",
         "initImage": "composer:1.6"
       }
     ],
@@ -155,7 +155,7 @@ local runtime_images ='[
         "name": "go1.10",
         "version": "1.10",
         "runtimeImage": "kubeless/go@sha256:bf72622344a54e4360f31d3fea5eb9dca2c96fbedc6f0ad7c54f3eb8fb7bd353",
-        "initImage": "kubeless/go-init@sha256:d0812c4e8351bfd95d0574efd23613cff2664d6a57af4ed0a20ebc651382d476"
+        "initImage": "kubeless/go-init@sha256:ed563f752a75ccbb109ba2afa1437c78ad69ca9e7f244b395804b820cde14602"
       }
     ],
     "depName": "Gopkg.toml",

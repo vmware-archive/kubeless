@@ -10,4 +10,6 @@ ADD kubeless.rb /
 
 USER 1000
 
-CMD ["ruby", "/kubeless.rb"]
+ADD proxy /
+ADD entrypoint.sh /
+ENTRYPOINT [ "/entrypoint.sh" ]
