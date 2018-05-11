@@ -126,6 +126,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		EventNamespace: r.Header.Get("event-namespace"),
 		Extensions: functions.Extension{
 			Request: r,
+			Response: w,
 			Context: ctx,
 		},
 	}

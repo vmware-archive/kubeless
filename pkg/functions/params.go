@@ -23,8 +23,9 @@ import (
 
 // Extension includes a reference to the Event request and its Context (to handle timeouts)
 type Extension struct {
-	Request *http.Request
-	Context context.Context
+	Request  *http.Request
+	Response http.ResponseWriter
+	Context  context.Context
 }
 
 // Event includes information about the event source
