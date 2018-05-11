@@ -172,7 +172,7 @@ local runtime_images ='[
         "initImage": "muralireddy/java-init:1.8"
       }
     ],
-    "depName": "maven",
+    "depName": "pom.xml",
     "fileNameSuffix": ".java"
   }
 ]';

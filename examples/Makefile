@@ -717,4 +717,4 @@ get-java-deps:
 
 get-java-deps-verify:
 	kubeless function call get-java-deps --data '{"hello": "world"}'
-	kubectl logs -l function=get-java-deps | grep -q 'level=info msg=.*hello.*world'
+	kubectl logs -l function=get-java-deps | grep -q '.*Hello.*world! Current local time is:'

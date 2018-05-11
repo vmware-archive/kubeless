@@ -234,6 +234,9 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 		command = appendToCommand(command,
 			"cd $GOPATH/src/kubeless",
 			"dep ensure > /dev/termination-log 2>&1")
+	case strings.Contains(runtime, "java"):
+		command = appendToCommand(command,
+			"mv /kubeless/pom.xml /kubeless/function-pom.xml")
 	}
 
 	return v1.Container{
@@ -299,7 +302,9 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 			"sed 's/<<FUNCTION>>/%s/g' $GOPATH/src/controller/kubeless.tpl.go > $GOPATH/src/controller/kubeless.go && "+
 				"go build -o %s/server $GOPATH/src/controller/kubeless.go > /dev/termination-log 2>&1", funcName, installVolume.MountPath)
 	case strings.Contains(runtime, "java"):
-		command = fmt.Sprintf("cp -r /usr/src/myapp/* /kubeless/ && cp /kubeless/*.java /kubeless/function/src/main/java/io/kubeless/ &&") +
+		command = "cp -r /usr/src/myapp/* /kubeless/ && " +
+			"cp /kubeless/*.java /kubeless/function/src/main/java/io/kubeless/ &&" +
+			"cp /kubeless/function-pom.xml /kubeless/function/pom.xml 2>/dev/null || true &&" +
 			"mvn package && mvn install"
 	default:
 		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
