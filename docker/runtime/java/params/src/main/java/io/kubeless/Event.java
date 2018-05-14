@@ -16,7 +16,9 @@ limitations under the License.
 
 package io.kubeless;
 
-// Event includes information about the event source
+/**
+ * Event includes information about the event source
+ */
 public class Event {
 	String Data;
 	String EventID;

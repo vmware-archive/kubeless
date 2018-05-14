@@ -1,5 +1,8 @@
 package io.kubeless;
 
+import io.kubeless.Event;
+import io.kubeless.Context;
+
 import org.joda.time.LocalTime;
 
 public class Hello {

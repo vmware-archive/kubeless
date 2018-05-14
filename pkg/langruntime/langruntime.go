@@ -303,9 +303,9 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 				"go build -o %s/server $GOPATH/src/controller/kubeless.go > /dev/termination-log 2>&1", funcName, installVolume.MountPath)
 	case strings.Contains(runtime, "java"):
 		command = "cp -r /usr/src/myapp/* /kubeless/ && " +
-			"cp /kubeless/*.java /kubeless/function/src/main/java/io/kubeless/ &&" +
-			"cp /kubeless/function-pom.xml /kubeless/function/pom.xml 2>/dev/null || true &&" +
-			"mvn package && mvn install"
+			"cp /kubeless/*.java /kubeless/function/src/main/java/io/kubeless/ && " +
+			"cp /kubeless/function-pom.xml /kubeless/function/pom.xml 2>/dev/null || true && " +
+			"mvn package > /dev/termination-log 2>&1 && mvn install > /dev/termination-log 2>&1"
 	default:
 		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
 	}

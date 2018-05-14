@@ -16,17 +16,19 @@ limitations under the License.
 
 package io.kubeless;
 
-// Context includes information about the function environment
+/**
+ * Context includes information about the function environment
+ */
 public class Context {
-	String FunctionName;
-	String Timeout;
-	String Runtime;
-	String MemoryLimit;
+	String functionName;
+	String timeout;
+	String runtime;
+	String memoryLimit;
 
     public Context(String functionName, String timeout, String runtime, String memoryLimit) {
-        this.FunctionName = functionName;
-        this.Timeout = timeout;
-        this.Runtime = runtime;
-        this.MemoryLimit = memoryLimit;
+        this.functionName = functionName;
+        this.timeout = timeout;
+        this.runtime = runtime;
+        this.memoryLimit = memoryLimit;
     }
 }

@@ -15,27 +15,47 @@ limitations under the License.
 */
 package io.kubeless;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.io.InputStreamReader;
-import java.io.BufferedReader;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.Headers;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.lang.reflect.Method;
+import java.lang.reflect.InvocationTargetException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
 import io.prometheus.client.Counter;
 import io.prometheus.client.Histogram;
-import java.lang.reflect.InvocationTargetException;
 import io.kubeless.Event;
 import io.kubeless.Context;
+import org.apache.log4j.Logger;
+import org.apache.log4j.BasicConfigurator;
 
 public class Handler {
+
+    static String className   = System.getenv("MOD_NAME");
+    static String methodName  = System.getenv("FUNC_HANDLER");
+    static String timeout     = System.getenv("FUNC_TIMEOUT");
+    static String runtime     = System.getenv("FUNC_RUNTIME");
+    static String memoryLimit = System.getenv("FUNC_MEMORY_LIMIT");
+    static Method method;
+    static Object obj;
+    static Logger logger = Logger.getLogger(Handler.class.getName());
+
+    static final Counter requests = Counter.build().name("function_calls_total").help("Total function calls.").register();
+    static final Counter failures = Counter.build().name("function_failures_total").help("Total function call failuress.").register();
+    static final Histogram requestLatency = Histogram.build().name("function_duration_seconds").help("Duration of time user function ran in seconds.").register();
+
     public static void main(String[] args) {
+
+        BasicConfigurator.configure();
+
         String funcPort = System.getenv("FUNC_PORT");
         if(funcPort == null || funcPort.isEmpty()) {
             funcPort = "8080";
@@ -47,29 +67,32 @@ public class Handler {
             server.createContext("/healthz", new HealthHandler());
             server.setExecutor(null);
             server.start();
-        } catch (java.io.IOException e) {
-            System.out.println("Failed to starting listener.");
+
+            Class<?> c = Class.forName("io.kubeless."+className);
+            obj = c.newInstance();
+            method = c.getMethod(methodName, io.kubeless.Event.class, io.kubeless.Context.class);
+        } catch (Exception e) {
+            failures.inc();
+            if (e instanceof ClassNotFoundException) {
+                logger.error("Class: " + className + " not found");
+            } else if (e instanceof NoSuchMethodException) {
+                logger.error("Method: " + methodName + " not found");
+            } else if (e instanceof java.io.IOException) {
+                logger.error("Failed to starting listener.");
+            } else {
+                logger.error("An exception occured running Class: " + className + " method: " + methodName);
+                e.printStackTrace();
+            }
         }
     }
 
     static class FunctionHandler implements HttpHandler {
-        String className = System.getenv("MOD_NAME");
-        String methodName = System.getenv("FUNC_HANDLER");
-        String timeout = System.getenv("FUNC_TIMEOUT");
-        String runtime = System.getenv("FUNC_RUNTIME");
-        String memoryLimit = System.getenv("FUNC_MEMORY_LIMIT");
-        static final Counter requests = Counter.build().name("function_calls_total").help("Total function calls.").register();
-        static final Counter failures = Counter.build().name("function_failures_total").help("Total function call failuress.").register();
-        static final Histogram requestLatency = Histogram.build().name("function_duration_seconds").help("Duration of time user function ran in seconds.").register();
 
         @Override
         public void handle(HttpExchange he) throws IOException {
             Histogram.Timer requestTimer = requestLatency.startTimer();
             try {
                 requests.inc();
-                Class<?> c = Class.forName("io.kubeless."+className);
-                Object obj = c.newInstance();
-                java.lang.reflect.Method method = c.getMethod(methodName, io.kubeless.Event.class, io.kubeless.Context.class);
 
                 InputStreamReader reader = new InputStreamReader(he.getRequestBody(), StandardCharsets.UTF_8.name());
                 BufferedReader br = new BufferedReader(reader);
@@ -82,40 +105,17 @@ public class Handler {
                 reader.close();
 
                 Headers headers = he.getRequestHeaders();
-                String eventId = "";
-                if (headers.containsKey("event-id")) {
-                    List<String> values = headers.get("event-id");
-                    if (values != null) {
-                        eventId = values.get(0);
-                    }
-                }
-                String eventType = "";
-                if (headers.containsKey("event-type")) {
-                    List<String> values = headers.get("event-type");
-                    if (values != null) {
-                        eventType = values.get(0);
-                    }
-                }
-                String eventTime = "";
-                if (headers.containsKey("event-time")) {
-                    List<String> values = headers.get("event-time");
-                    if (values != null) {
-                        eventTime = values.get(0);
-                    }
-                }
-                String eventNamespace = "";
-                if (headers.containsKey("event-namespace")) {
-                    List<String> values = headers.get("event-namespace");
-                    if (values != null) {
-                        eventNamespace = values.get(0);
-                    }
-                }
-                io.kubeless.Event event = new io.kubeless.Event(body.toString(), eventId, eventType, eventTime, eventNamespace);
-                io.kubeless.Context context = new io.kubeless.Context(methodName, timeout, runtime, memoryLimit);
+                String eventId  = getEventId(headers);
+                String eventType = getEventType(headers);
+                String eventTime = getEventTime(headers);
+                String eventNamespace = getEventNamespace(headers);
 
-                Object returnValue = method.invoke(obj, event, context);
+                Event event = new Event(body.toString(), eventId, eventType, eventTime, eventNamespace);
+                Context context = new Context(methodName, timeout, runtime, memoryLimit);
+
+                Object returnValue = Handler.method.invoke(Handler.obj, event, context);
                 String response = (String)returnValue;
-                System.out.println("Response: " + response);
+                logger.info("Response: " + response);
                 he.sendResponseHeaders(200, response.length());
                 OutputStream os = he.getResponseBody();
                 os.write(response.getBytes());
@@ -123,20 +123,60 @@ public class Handler {
             } catch (Exception e) {
                 failures.inc();
                 if (e instanceof ClassNotFoundException) {
-                    System.out.println("Class: " + className + " not found");
+                    logger.error("Class: " + className + " not found");
                 } else if (e instanceof NoSuchMethodException) {
-                    System.out.println("Method: " + methodName + " not found");
+                    logger.error("Method: " + methodName + " not found");
                 } else if (e instanceof InvocationTargetException) {
-                    System.out.println("Failed to Invoke Method: " + methodName);
+                    logger.error("Failed to Invoke Method: " + methodName);
                 } else if (e instanceof InstantiationException) {
-                    System.out.println("Failed to instantiate method: " + methodName);
+                    logger.error("Failed to instantiate method: " + methodName);
                 } else {
-                    System.out.println("An exception occured running Class: " + className + " method: " + methodName);
+                    logger.error("An exception occured running Class: " + className + " method: " + methodName);
                     e.printStackTrace();
                 }
             } finally {
                 requestTimer.observeDuration();
             }
+        }
+
+        private String getEventType(Headers headers) {
+            if (headers.containsKey("event-type")) {
+                List<String> values = headers.get("event-type");
+                if (values != null) {
+                    return values.get(0);
+                }
+            }
+            return "";
+        }
+
+        private String getEventTime(Headers headers) {
+            if (headers.containsKey("event-time")) {
+                List<String> values = headers.get("event-time");
+                if (values != null) {
+                    return values.get(0);
+                }
+            }
+            return "";
+        }
+
+        private String getEventNamespace(Headers headers) {
+            if (headers.containsKey("event-namespace")) {
+                List<String> values = headers.get("event-namespace");
+                if (values != null) {
+                    return values.get(0);
+                }
+            }
+            return "";
+        }
+
+        private String getEventId(Headers headers) {
+            if (headers.containsKey("event-id")) {
+                List<String> values = headers.get("event-id");
+                if (values != null) {
+                    return values.get(0);
+                }
+            }
+            return "";
         }
     }
 
