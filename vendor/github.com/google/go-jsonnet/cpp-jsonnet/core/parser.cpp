@@ -932,7 +932,7 @@ class Parser {
                     op_precedence = APPLY_PRECEDENCE;
                     break;
 
-                default:
+                default: 
                     // This happens when we reach EOF or the terminating token of an outer context.
                     return lhs;
             }

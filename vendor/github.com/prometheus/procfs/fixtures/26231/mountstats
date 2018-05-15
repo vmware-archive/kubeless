@@ -16,3 +16,4 @@ device 192.168.1.1:/srv/test mounted on /mnt/nfs/test with fstype nfs4 statvers=
 	        NULL: 0 0 0 0 0 0 0 0
 	        READ: 1298 1298 0 207680 1210292152 6 79386 79407
 	       WRITE: 0 0 0 0 0 0 0 0
+

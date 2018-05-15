@@ -14,7 +14,7 @@ do not yet have a library binding.</p>
 <p>The tool is self-documenting:</p>
 
 <!-- Updating the following?  This may help:
-jsonnet -h | sed -e 's/&/&amp/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+jsonnet -h | sed -e 's/&/&amp/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' 
 -->
 <pre>
 Jsonnet commandline interpreter v0.8.9
@@ -139,12 +139,12 @@ one per line.  This makes it easy to drive other tools that operate on the JSON 
 $ jsonnet -m . multiple_output.jsonnet
 a.json
 b.json
-$ cat a.json
+$ cat a.json 
 {
    "x": 1,
    "y": 2
 }
-$ cat b.json
+$ cat b.json 
 {
    "x": 1,
    "y": 2

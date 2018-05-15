@@ -1,13 +1,13 @@
 Personalities : [linear] [multipath] [raid0] [raid1] [raid6] [raid5] [raid4] [raid10]
 md3 : active raid6 sda1[8] sdh1[7] sdg1[6] sdf1[5] sde1[11] sdd1[3] sdc1[10] sdb1[9]
       5853468288 blocks super 1.2 level 6, 64k chunk, algorithm 2 [8/8] [UUUUUUUU]
-
+      
 md127 : active raid1 sdi2[0] sdj2[1]
       312319552 blocks [2/2] [UU]
-
+      
 md0 : active raid1 sdk[2](S) sdi1[0] sdj1[1]
       248896 blocks [2/2] [UU]
-
+      
 md4 : inactive raid1 sda3[0] sdb3[1]
       4883648 blocks [2/2] [UU]
 

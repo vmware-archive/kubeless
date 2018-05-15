@@ -46,7 +46,7 @@ int main(int argc, const char **argv)
         const std::string &msg;
         Exception(const std::string &msg) : msg(msg) { }
     };
-
+    
     int code = EXIT_SUCCESS;
     png_structp png_write_struct = NULL;
     volatile png_infop info_ptr = NULL;

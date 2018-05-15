@@ -3,4 +3,4 @@ RUNTIME ERROR: foo was not equal to bar
 	std.jsonnet:1192:42-46	thunk <a>
 	std.jsonnet:1192:42-54	function <anonymous>
 	std.jsonnet:1192:42-54	function <anonymous>
-	std.jsonnet:1196:11-23
+	std.jsonnet:1196:11-23	
