@@ -49,6 +49,30 @@ get-python-36:
 get-python-36-verify:
 	kubeless function call get-python-36 |egrep hello.world
 
+get-python-url:
+	kubeless function deploy get-python-url --runtime python2.7 --handler helloget.foo --from-file https://raw.githubusercontent.com/kubeless/kubeless/v1.0.0-alpha.1/examples/python/helloget.py
+
+get-python-url-verify:
+	kubeless function call get-python-url |egrep hello.world
+
+get-python-url-filedep:
+	kubeless function deploy get-python-url-filedep --runtime python2.7 --handler helloget.foo --from-file https://raw.githubusercontent.com/kubeless/kubeless/v1.0.0-alpha.1/examples/python/hellowithdeps.py --dependencies python/requirements.txt
+
+get-python-url-filedep-verify:
+	kubeless function call get-python-url-filedep |egrep Google	
+
+get-python-url-deps:
+	kubeless function deploy get-python-url-deps --runtime python2.7 --handler helloget.foo --from-file https://raw.githubusercontent.com/kubeless/kubeless/v1.0.0-alpha.1/examples/python/hellowithdeps.py --dependencies https://raw.githubusercontent.com/kubeless/kubeless/v1.0.0-alpha.1/examples/python/requirements.txt
+
+get-python-url-deps-verify:
+	kubeless function call get-python-url-deps |egrep Google	
+
+get-node-url-zip:
+	kubeless function deploy get-node-url-zip --runtime nodejs6 --handler index.helloGet --from-file https://github.com/tkeech1/kubelessfunction/blob/master/nodejs/helloFunctions.zip?raw=true
+
+get-node-url-zip-verify:
+	kubeless function call get-node-url-zip |egrep hello.world
+
 scheduled-get-python:
 	kubeless function deploy scheduled-get-python --schedule "* * * * *" --runtime python2.7 --handler helloget.foo --from-file python/helloget.py
 
