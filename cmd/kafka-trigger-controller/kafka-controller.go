@@ -19,9 +19,15 @@ package main
 import (
 	"fmt"
 	"os"
+	"net"
+	"strconv"
 	"os/signal"
 	"syscall"
+	"runtime"
+	"net/http"
+	"net/http/pprof"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/kubeless/kubeless/pkg/controller"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/kubeless/kubeless/pkg/version"
@@ -43,6 +49,46 @@ var rootCmd = &cobra.Command{
 			logrus.Fatalf("Cannot get kubeless client: %v", err)
 		}
 
+		port, err := cmd.Flags().GetUint16("port")
+		if err != nil {
+			logrus.Fatal("Invalid Server Port")
+		}
+
+		address, err := cmd.Flags().GetString("addresss")
+		if err != nil {
+			logrus.Fatal("Cannot get Server Address")
+		}
+
+		isEnableProfiling, err := cmd.Flags().GetBool("profiling")
+		if err != nil {
+			logrus.Fatal("Cannot get profiling")
+		}
+
+		isEnableContentionProfiling, err := cmd.Flags().GetBool("contention-profiling")
+		if err != nil {
+			logrus.Fatal("Cannot get contention-profiling")
+		}
+
+		go func() {
+			mux := http.NewServeMux()
+			if isEnableProfiling {
+				mux.HandleFunc("/debug/pprof/", pprof.Index)
+				mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+				mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+				mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+				if isEnableContentionProfiling {
+					runtime.SetBlockProfileRate(1)
+				}
+			}
+			mux.Handle("/metrics", prometheus.Handler())
+
+			server := &http.Server{
+				Addr:    net.JoinHostPort(address, strconv.Itoa(int(port))),
+				Handler: mux,
+			}
+			logrus.Fatal(server.ListenAndServe())
+		}()
+
 		kafkaTriggerCfg := controller.KafkaTriggerConfig{
 			TriggerClient: kubelessClient,
 		}
@@ -59,6 +105,13 @@ var rootCmd = &cobra.Command{
 		signal.Notify(sigterm, syscall.SIGINT)
 		<-sigterm
 	},
+}
+
+func init() {
+	rootCmd.Flags().StringP("address", "", "0.0.0.0", "The IP address to serve on (set to 0.0.0.0 for all interfaces)")
+	rootCmd.Flags().Uint16P("port", "", 10300, "The port that the controller-manager's http service runs on")
+	rootCmd.Flags().BoolP("profiling", "", false, "Enable profiling via web interface host:port/debug/pprof/")
+	rootCmd.Flags().BoolP("contention-profiling", "", false, "Enable lock contention profiling, if profiling is enabled")
 }
 
 func main() {
