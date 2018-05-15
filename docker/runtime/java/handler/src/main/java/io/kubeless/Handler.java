@@ -29,7 +29,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-
+import java.util.stream.Collectors;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Histogram;
 import io.kubeless.Event;
@@ -65,7 +65,7 @@ public class Handler {
             HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
             server.createContext("/", new FunctionHandler());
             server.createContext("/healthz", new HealthHandler());
-            server.setExecutor(null);
+            server.setExecutor(java.util.concurrent.Executors.newFixedThreadPool(50));
             server.start();
 
             Class<?> c = Class.forName("io.kubeless."+className);
@@ -96,11 +96,7 @@ public class Handler {
 
                 InputStreamReader reader = new InputStreamReader(he.getRequestBody(), StandardCharsets.UTF_8.name());
                 BufferedReader br = new BufferedReader(reader);
-                int b;
-                StringBuilder body = new StringBuilder();
-                while ((b = br.read()) != -1) {
-                    body.append((char) b);
-                }
+                String requestBody = br.lines().collect(Collectors.joining());
                 br.close();
                 reader.close();
 
@@ -110,7 +106,7 @@ public class Handler {
                 String eventTime = getEventTime(headers);
                 String eventNamespace = getEventNamespace(headers);
 
-                Event event = new Event(body.toString(), eventId, eventType, eventTime, eventNamespace);
+                Event event = new Event(requestBody, eventId, eventType, eventTime, eventNamespace);
                 Context context = new Context(methodName, timeout, runtime, memoryLimit);
 
                 Object returnValue = Handler.method.invoke(Handler.obj, event, context);
