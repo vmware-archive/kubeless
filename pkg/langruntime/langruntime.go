@@ -223,10 +223,13 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 		command = appendToCommand(command,
 			"npm config set "+scope+"registry "+registry,
 			"npm install --production --prefix="+installVolume.MountPath)
+	case strings.Contains(runtime, "csharpx"):
+		command = appendToCommand(command,
+			"export HOME="+installVolume.MountPath,
+			"dotnet restore --packages "+installVolume.MountPath+"/packages > /dev/termination-log 2>&1")
 	case strings.Contains(runtime, "ruby"):
 		command = appendToCommand(command,
 			"bundle install --gemfile="+depsFile+" --path="+installVolume.MountPath)
-
 	case strings.Contains(runtime, "php"):
 		command = appendToCommand(command,
 			"composer install -d "+installVolume.MountPath)
@@ -266,10 +269,10 @@ func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runti
 			Name:  "GEM_HOME",
 			Value: path.Join(depsPath, "ruby/2.4.0"),
 		})
-	case strings.Contains(runtime, "dotnetcore"):
+	case strings.Contains(runtime, "csharpx"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-			Name:  "DOTNETCORE_HOME",
-			Value: "/usr/bin/",
+			Name: "CSHARPX_HOME",
+			Value: depsPath,
 		})
 	}
 }

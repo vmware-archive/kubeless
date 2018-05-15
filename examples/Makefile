@@ -266,7 +266,7 @@ custom-get-python-update:
 custom-get-python-update-verify:
 	kubeless function call custom-get-python |egrep hello.world.updated
 
-get: get-python get-nodejs get-python-metadata get-ruby get-ruby-deps get-python-custom-port
+get: get-python get-nodejs get-python-metadata get-ruby get-ruby-deps get-python-custom-port get-csharpx
 
 post-python:
 	kubeless function deploy post-python --runtime python2.7 --handler hellowithdata.handler --from-file python/hellowithdata.py
@@ -320,7 +320,7 @@ post-dotnetcore:
 post-dotnetcore-verify:
 	kubeless function call post-dotnetcore --data '{"it-s": "alive"}'|egrep "it.*alive"
 
-post: post-python post-nodejs post-ruby post-python-custom-port
+post: post-python post-nodejs post-ruby post-python-custom-port post-csharpx
 
 pubsub-python:
 	kubeless topic create s3-python || true
@@ -687,3 +687,28 @@ pubsub-go-verify:
 
 
 pubsub: pubsub-python pubsub-nodejs pubsub-ruby
+
+get-csharpx:
+	kubeless function deploy get-csharpx --runtime csharpx2.8.0 --from-file csharpx/helloget.csx --handler helloget.Hello
+
+get-csharpx-verify:
+	kubeless function call get-csharpx | egrep Hello
+
+post-csharpx:
+	kubeless function deploy post-csharpx --runtime csharpx2.8.0 --from-file csharpx/hellowithdata.csx --handler hellowithdata.Hello
+
+post-csharpx-verify:
+	kubeless function call post-csharpx --data '{"it-s": "alive"}' | egrep "it.*alive"
+	# Verify event context
+	logs=`kubectl logs -l function=post-csharpx`; \
+	echo $$logs | grep -q "UTC" && \
+	echo $$logs | grep -q "application/json" && \
+	echo $$logs | grep -q "cli.kubeless.io"
+
+get-csharpx-deps:
+	kubeless function deploy get-csharpx-deps --runtime csharpx2.8.0 --from-file csharpx/hellowithdeps.csx --handler hellowithdeps.Hello --dependencies csharpx/packages.csproj
+
+get-csharpx-deps-verify:
+	response=`kubeless function call get-csharpx-deps`; \
+	echo $$response | grep -q "John Doe" && \
+	echo $$response | grep -q "john@nuget.org"

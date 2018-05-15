@@ -160,6 +160,20 @@ local runtime_images ='[
     ],
     "depName": "Gopkg.toml",
     "fileNameSuffix": ".go"
+  },
+  {
+    "ID": "csharpx",
+    "compiled": false,
+    "versions": [
+      {
+        "name": "csharpx",
+        "version": "2.8.0",
+        "runtimeImage": "from/kubeless-csharpx@sha256:77155dde67a81544763b7198100e085e83d04fe3ad8fcee8f9756914141a52e2",
+        "initImage": "microsoft/aspnetcore-build:2.0",
+      }
+    ],
+    "depName": "packages.csproj",
+    "fileNameSuffix": ".csx"
   }
 ]';
 
