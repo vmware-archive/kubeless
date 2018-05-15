@@ -103,3 +103,4 @@ class Service(object):
     # Convert ${-} to the name of the service
     def translateSelfName(self, full_name, v):
         return self._selfNameRegex.sub(full_name, v)
+    

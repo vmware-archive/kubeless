@@ -106,7 +106,7 @@ int main(int argc, const char **argv)
         jsonnet_realloc(vm, output, 0);
         jsonnet_destroy(vm);
         return EXIT_FAILURE;
-    }
+    } 
     printf("%s", output);
     jsonnet_realloc(vm, output, 0);
     jsonnet_destroy(vm);

@@ -36,8 +36,8 @@ local web_solutions = import "mmlib/v0.1.1/web/solutions.libsonnet";
         uwsgiModuleContent: |||
             import flask
             import socket
-            app = flask.Flask(__name__)
-            @app.route('/')
+            app = flask.Flask(__name__) 
+            @app.route('/') 
             def hello_world():
                 return 'Hello from %s!' % socket.gethostname()
         |||,
@@ -54,8 +54,8 @@ local web_solutions = import "mmlib/v0.1.1/web/solutions.libsonnet";
                 uwsgiModuleContent: |||
                     import flask
                     import socket
-                    app = flask.Flask(__name__)
-                    @app.route('/')
+                    app = flask.Flask(__name__) 
+                    @app.route('/') 
                     def hello_world():
                         return 'Hello from %s!' % socket.gethostname()
                 |||,
@@ -64,8 +64,8 @@ local web_solutions = import "mmlib/v0.1.1/web/solutions.libsonnet";
                 uwsgiModuleContent: |||
                     import flask
                     import socket
-                    app = flask.Flask(__name__)
-                    @app.route('/')
+                    app = flask.Flask(__name__) 
+                    @app.route('/') 
                     def hello_world():
                         return 'Greetings from %s!' % socket.gethostname()
                 |||,

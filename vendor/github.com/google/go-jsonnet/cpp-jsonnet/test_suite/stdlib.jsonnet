@@ -250,7 +250,7 @@ std.assertEqual(
     a = 2
     [s2]
     p = yes
-    p =
+    p = 
   |||
 ) &&
 
@@ -456,13 +456,13 @@ std.assertEqual(
   std.manifestYamlDoc(some_json) + '\n',
   |||
     "\"": null
-    "arr":
+    "arr": 
     - - []
     "emptyArray": []
     "emptyObject": {}
-    "objectInArray":
+    "objectInArray": 
     - "f": 3
-    "x":
+    "x": 
     - 1
     - 2
     - 3
@@ -472,10 +472,10 @@ std.assertEqual(
     - |
       string
       string
-    "y":
+    "y": 
       "a": 1
       "b": 2
-      "c":
+      "c": 
       - 1
       - 2
   |||
@@ -486,13 +486,13 @@ std.assertEqual(
   |||
     ---
     "\"": null
-    "arr":
+    "arr": 
     - - []
     "emptyArray": []
     "emptyObject": {}
-    "objectInArray":
+    "objectInArray": 
     - "f": 3
-    "x":
+    "x": 
     - 1
     - 2
     - 3
@@ -502,21 +502,21 @@ std.assertEqual(
     - |
       string
       string
-    "y":
+    "y": 
       "a": 1
       "b": 2
-      "c":
+      "c": 
       - 1
       - 2
     ---
     "\"": null
-    "arr":
+    "arr": 
     - - []
     "emptyArray": []
     "emptyObject": {}
-    "objectInArray":
+    "objectInArray": 
     - "f": 3
-    "x":
+    "x": 
     - 1
     - 2
     - 3
@@ -526,10 +526,10 @@ std.assertEqual(
     - |
       string
       string
-    "y":
+    "y": 
       "a": 1
       "b": 2
-      "c":
+      "c": 
       - 1
       - 2
     ---

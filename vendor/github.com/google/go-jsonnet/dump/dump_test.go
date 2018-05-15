@@ -454,3 +454,26 @@ var Obj = &struct { Foo *Zeo; Bar *Zeo }{
 		}
 	}
 }
+
+func TestSdumpLargeDefinition(t *testing.T) {
+	type largeStruct struct {
+		ABCDEFGHIJKLMNOBQRSTUVWXYZ0 int
+		ABCDEFGHIJKLMNOBQRSTUVWXYZ1 int
+		ABCDEFGHIJKLMNOBQRSTUVWXYZ2 int
+		ABCDEFGHIJKLMNOBQRSTUVWXYZ3 int
+		ABCDEFGHIJKLMNOBQRSTUVWXYZ4 int
+	}
+	got := Sdump(&largeStruct{1, 2, 3, 4, 5})
+	want := `var Obj = _Obj
+var _Obj = &largeStruct{
+	ABCDEFGHIJKLMNOBQRSTUVWXYZ0: int(1),
+	ABCDEFGHIJKLMNOBQRSTUVWXYZ1: int(2),
+	ABCDEFGHIJKLMNOBQRSTUVWXYZ2: int(3),
+	ABCDEFGHIJKLMNOBQRSTUVWXYZ3: int(4),
+	ABCDEFGHIJKLMNOBQRSTUVWXYZ4: int(5),
+}
+`
+	if got != want {
+		t.Errorf("got : \n%#v\n, want : \n%#v", got, want)
+	}
+}

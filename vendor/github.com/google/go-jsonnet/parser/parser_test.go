@@ -16,7 +16,6 @@ limitations under the License.
 package parser
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -126,7 +125,6 @@ var tests = []string{
 func TestParser(t *testing.T) {
 	for _, s := range tests {
 		t.Run(s, func(t *testing.T) {
-			fmt.Println(s)
 			tokens, err := Lex("test", s)
 			if err != nil {
 				t.Errorf("Unexpected lex error\n  input: %v\n  error: %v", s, err)
