@@ -20,11 +20,11 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -146,7 +146,7 @@ func getContentType(filename string, fbytes []byte) string {
 	return contentType
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fromURL, file, deps, runtime, runtimeImage, mem, cpu, timeout string, port int32, headless bool, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
+func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, port int32, headless bool, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
 
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
@@ -157,47 +157,49 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fro
 		function.Spec.Handler = handler
 	}
 
-	if fromURL != "" && file != "" {
-		err := errors.New("either --from-url or --from-file should be provided, not both")
-		return nil, err
-	}
-
-	if fromURL != "" {
-		resp, err := http.Get(fromURL)
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-
-		functionBytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-
-		checksum, err := getSha256(functionBytes)
-		if err != nil {
-			return nil, err
-		}
-		function.Spec.Checksum = checksum
-
-		function.Spec.FunctionContentType = "url"
-		function.Spec.Function = fromURL
-	}
-
 	if file != "" {
-		functionBytes, err := ioutil.ReadFile(file)
-		if err != nil {
-			return nil, err
-		}
-		function.Spec.FunctionContentType = getContentType(file, functionBytes)
-		if function.Spec.FunctionContentType == "text" {
-			function.Spec.Function = string(functionBytes)
+
+		if strings.Index(file, "http://") == 0 || strings.Index(file, "https://") == 0 {
+			functionURL, err := url.Parse(file)
+			if err != nil {
+				return nil, err
+			}
+			resp, err := http.Get(functionURL.String())
+			if err != nil {
+				return nil, err
+			}
+			defer resp.Body.Close()
+
+			functionBytes, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return nil, err
+			}
+			function.Spec.FunctionContentType = "url"
+			// strip any query params to determine if the file is a zip
+			if path.Ext(strings.Split(functionURL.String(), "?")[0]) == ".zip" {
+				function.Spec.FunctionContentType += "+zip"
+			}
+			function.Spec.Function = functionURL.String()
+			function.Spec.Checksum, err = getSha256(functionBytes)
+			if err != nil {
+				return nil, err
+			}
+
 		} else {
-			function.Spec.Function = base64.StdEncoding.EncodeToString(functionBytes)
-		}
-		function.Spec.Checksum, err = getFileSha256(file)
-		if err != nil {
-			return nil, err
+			functionBytes, err := ioutil.ReadFile(file)
+			if err != nil {
+				return nil, err
+			}
+			function.Spec.FunctionContentType = getContentType(file, functionBytes)
+			if function.Spec.FunctionContentType == "text" {
+				function.Spec.Function = string(functionBytes)
+			} else {
+				function.Spec.Function = base64.StdEncoding.EncodeToString(functionBytes)
+			}
+			function.Spec.Checksum, err = getFileSha256(file)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 

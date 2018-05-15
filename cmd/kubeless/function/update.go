@@ -18,6 +18,8 @@ package function
 
 import (
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/kubeless/kubeless/pkg/langruntime"
@@ -55,11 +57,6 @@ var updateCmd = &cobra.Command{
 		}
 
 		handler, err := cmd.Flags().GetString("handler")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
-		fromURL, err := cmd.Flags().GetString("from-url")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -119,11 +116,30 @@ var updateCmd = &cobra.Command{
 		}
 		funcDeps := ""
 		if deps != "" {
-			bytes, err := ioutil.ReadFile(deps)
-			if err != nil {
-				logrus.Fatalf("Unable to read file %s: %v", deps, err)
+			if strings.Index(deps, "http://") == 0 || strings.Index(deps, "https://") == 0 {
+				depsURL, err := url.Parse(deps)
+				if err != nil {
+					logrus.Fatalf("Unable to retrieve dependencies %s: %v", deps, err)
+				}
+				resp, err := http.Get(depsURL.String())
+				if err != nil {
+					logrus.Fatalf("Unable to retrieve dependencies %s: %v", deps, err)
+				}
+				defer resp.Body.Close()
+
+				depsBytes, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					logrus.Fatalf("Unable to retrieve dependencies %s: %v", deps, err)
+				}
+				funcDeps = string(depsBytes)
+
+			} else {
+				bytes, err := ioutil.ReadFile(deps)
+				if err != nil {
+					logrus.Fatalf("Unable to read file %s: %v", deps, err)
+				}
+				funcDeps = string(bytes)
 			}
-			funcDeps = string(bytes)
 		}
 		headless, err := cmd.Flags().GetBool("headless")
 		if err != nil {
@@ -142,7 +158,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		f, err := getFunctionDescription(cli, funcName, ns, handler, fromURL, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, port, headless, envs, labels, secrets, previousFunction)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, port, headless, envs, labels, secrets, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -164,8 +180,7 @@ var updateCmd = &cobra.Command{
 func init() {
 	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	updateCmd.Flags().StringP("handler", "", "", "Specify handler")
-	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
-	updateCmd.Flags().StringP("from-url", "", "", "Specify a URL to the raw code file. For example, --from-url https://raw.githubusercontent.com/<USER>/<REPO>/<BRANCH>/<FILE>")
+	updateCmd.Flags().StringP("from-file", "", "", "Specify code file or a URL to the code file")
 	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
 	updateCmd.Flags().StringP("cpu", "", "", "Request amount of cpu for the function.")
 	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")

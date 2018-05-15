@@ -103,7 +103,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", "", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
 
 	if err != nil {
 		t.Error(err)
@@ -189,7 +189,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should take the default values
-	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", "", 8080, false, []string{}, []string{}, []string{}, expectedFunction)
+	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", 8080, false, []string{}, []string{}, []string{}, expectedFunction)
 
 	if err != nil {
 		t.Error(err)
@@ -210,7 +210,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", "", file.Name(), "dependencies2", "runtime2", "test-image2", "256Mi", "100m", "20", 8080, false, []string{"TEST=2"}, []string{"test=2"}, []string{"secret2"}, expectedFunction)
+	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test-image2", "256Mi", "100m", "20", 8080, false, []string{"TEST=2"}, []string{"test=2"}, []string{"secret2"}, expectedFunction)
 
 	if err != nil {
 		t.Error(err)
@@ -335,7 +335,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	zipW.Close()
 
-	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", "", newfile.Name(), "dependencies", "runtime", "", "", "", "", 8080, false, []string{}, []string{}, []string{}, expectedFunction)
+	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", 8080, false, []string{}, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -344,7 +344,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should maintain previous HPA definition
-	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", "", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{}, kubelessApi.Function{
+	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{}, kubelessApi.Function{
 
 		Spec: kubelessApi.FunctionSpec{
 			HorizontalPodAutoscaler: v2beta1.HorizontalPodAutoscaler{
@@ -359,7 +359,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should set the Port and headless service properly
-	result6, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", "", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "", 9091, true, []string{}, []string{}, []string{}, kubelessApi.Function{})
+	result6, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "", 9091, true, []string{}, []string{}, []string{}, kubelessApi.Function{})
 	expectedPort := v1.ServicePort{
 		Name:       "http-function-port",
 		Port:       9091,
@@ -455,7 +455,7 @@ func TestGetFunctionDescription(t *testing.T) {
 		},
 	}
 
-	result7, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", ts.URL, "", "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+	result7, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", ts.URL, "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
 
 	if err != nil {
 		t.Error(err)
@@ -466,11 +466,28 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 	// end test
 
-	// it should return an error if both --from-url and --from-file are given as command line flags
-	_, err = getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", "fromURL", "fromFile", "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
-
-	if err == nil {
+	// it should handle zip files from a URL and detect url+base64+zip encoding
+	zipBytes, err := ioutil.ReadFile(newfile.Name())
+	if err != nil {
 		t.Error(err)
+	}
+
+	ts2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(zipBytes)
+	}))
+	defer ts2.Close()
+
+	expectedURLFunction.Spec.FunctionContentType = "url+zip"
+	expectedURLFunction.Spec.Function = ts2.URL + "/test.zip"
+	result8, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", ts2.URL+"/test.zip", "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+	if err != nil {
+		t.Error(err)
+	}
+	if result8.Spec.FunctionContentType != "url+zip" {
+		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedURLFunction, *result8)
+	}
+	if result8.Spec.Function != ts2.URL+"/test.zip" {
+		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedURLFunction, *result8)
 	}
 	// end test
 

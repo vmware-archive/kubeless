@@ -18,6 +18,8 @@ package function
 
 import (
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"strings"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
@@ -85,11 +87,6 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		fromURL, err := cmd.Flags().GetString("from-url")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
 		file, err := cmd.Flags().GetString("from-file")
 		if err != nil {
 			logrus.Fatal(err)
@@ -147,11 +144,30 @@ var deployCmd = &cobra.Command{
 
 		funcDeps := ""
 		if deps != "" {
-			bytes, err := ioutil.ReadFile(deps)
-			if err != nil {
-				logrus.Fatalf("Unable to read file %s: %v", deps, err)
+			if strings.Index(deps, "http://") == 0 || strings.Index(deps, "https://") == 0 {
+				depsURL, err := url.Parse(deps)
+				if err != nil {
+					logrus.Fatalf("Unable to retrieve dependencies %s: %v", deps, err)
+				}
+				resp, err := http.Get(depsURL.String())
+				if err != nil {
+					logrus.Fatalf("Unable to retrieve dependencies %s: %v", deps, err)
+				}
+				defer resp.Body.Close()
+
+				depsBytes, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					logrus.Fatalf("Unable to retrieve dependencies %s: %v", deps, err)
+				}
+				funcDeps = string(depsBytes)
+
+			} else {
+				bytes, err := ioutil.ReadFile(deps)
+				if err != nil {
+					logrus.Fatalf("Unable to read file %s: %v", deps, err)
+				}
+				funcDeps = string(bytes)
 			}
-			funcDeps = string(bytes)
 		}
 
 		if runtime == "" && runtimeImage == "" {
@@ -168,7 +184,7 @@ var deployCmd = &cobra.Command{
 			"function":   funcName,
 		}
 
-		f, err := getFunctionDescription(cli, funcName, ns, handler, fromURL, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, port, headless, envs, labels, secrets, defaultFunctionSpec)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, port, headless, envs, labels, secrets, defaultFunctionSpec)
 
 		if err != nil {
 			logrus.Fatal(err)
@@ -214,8 +230,7 @@ var deployCmd = &cobra.Command{
 func init() {
 	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
-	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
-	deployCmd.Flags().StringP("from-url", "", "", "Specify a URL to the raw code file. For example, --from-url https://raw.githubusercontent.com/<USER>/<REPO>/<BRANCH>/<FILE>")
+	deployCmd.Flags().StringP("from-file", "", "", "Specify code file or a URL to the code file")
 	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")
 	deployCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
