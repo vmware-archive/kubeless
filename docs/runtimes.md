@@ -162,6 +162,90 @@ func Foo(event functions.Event, context functions.Context) (string, error) {
 
 If the function above has a timeout smaller than 5 seconds it will exit and the code after the `select{}` won't be executed. 
 
+### Java
+
+#### Example
+
+```java
+package io.kubeless;
+
+import io.kubeless.Event;
+import io.kubeless.Context;
+
+public class Foo {
+    public String foo(io.kubeless.Event event, io.kubeless.Context context) {
+        return "Hello world!";
+    }
+}
+```
+
+#### Description
+
+Java functions must use `io.kubeless` as package and should import both `io.kubeless.Event` and `io.kubeless.Context` packages. Function should be made part of a public class and should have a function signature that takes `Event` and `Context` as inputs and produces `String` output. Once you have Java function meeting the requirements it can be deployed with Kubeless as below. Where handler part `--handler Foo.foo` takes `Classname.Methodname` format.
+
+```cmd
+  kubeless function deploy get-java --runtime java1.8 --handler Foo.foo --from-file Foo.java
+```
+
+Kubeless supports Java functions with dependencies. Kubeless uses Maven for both dependency management and building user given functions. Users are expected to provide function dependencies expresses in Maven pom.xml format.
+
+Lets take Java function with dependency on `org.joda.time.LocalTime`.
+
+```java
+package io.kubeless;
+
+import io.kubeless.Event;
+import io.kubeless.Context;
+
+import org.joda.time.LocalTime;
+
+public class Hello {
+    public String sayHello(io.kubeless.Event event, io.kubeless.Context context) {
+        System.out.println(event.Data);
+        LocalTime currentTime = new LocalTime();
+        return "Hello world! Current local time is: " + currentTime;
+    }
+}
+```
+
+#### Dependencies
+
+Dependencies are expressed through standard Maven pom.xml file format as below.
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>function</artifactId>
+  <name>function</name>
+  <version>1.0-SNAPSHOT</version>
+  <dependencies>
+     <dependency>
+       <groupId>joda-time</groupId>
+       <artifactId>joda-time</artifactId>
+       <version>2.9.2</version>
+     </dependency>
+      <dependency>
+          <groupId>io.kubeless</groupId>
+          <artifactId>params</artifactId>
+          <version>1.0-SNAPSHOT</version>
+      </dependency>
+  </dependencies>
+  <parent>
+    <groupId>io.kubeless</groupId>
+    <artifactId>kubeless</artifactId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
+</project>
+```
+
+Notice the reference to `kubeless` parent pom module and dependency on `params` artifact. pom.xml should also use `function` as artifact ID.
+
+Once you have Java function with dependencies and pom.xml file expressing the dependencies Java function can be deployed with Kubeless as below.
+
+```cmd
+	kubeless function deploy get-java-deps --runtime java1.8 --handler Hello.sayHello --from-file java/HelloWithDeps.java --dependencies java/pom.xml
+```
+
 ## Use a custom runtime
 
 The Kubeless configuration defines a set of default container images per supported runtime variant.
