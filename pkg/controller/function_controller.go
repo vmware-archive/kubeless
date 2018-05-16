@@ -447,6 +447,9 @@ func functionObjChanged(oldFunctionObj, newFunctionObj *kubelessApi.Function) bo
 	oldSpec := &newFunctionObj.Spec
 
 	if newSpec.Function != oldSpec.Function ||
+		// compare checksum since the url content type uses Function field to pass the URL for the function
+		// comparing the checksum ensures that if the function code has changed but the URL remains the same, the function will get redeployed
+		newSpec.Checksum != oldSpec.Checksum ||
 		newSpec.Handler != oldSpec.Handler ||
 		newSpec.FunctionContentType != oldSpec.FunctionContentType ||
 		newSpec.Deps != oldSpec.Deps ||
