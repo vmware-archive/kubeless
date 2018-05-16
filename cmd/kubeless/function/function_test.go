@@ -422,7 +422,8 @@ func TestGetFunctionDescription(t *testing.T) {
 											v1.ResourceCPU:    parsedCPU,
 										},
 									},
-									Image: "test-image",
+									Image:           "test-image",
+									ImagePullPolicy: v1.PullAlways,
 									VolumeMounts: []v1.VolumeMount{
 										{
 											Name:      "secretName-vol",
@@ -457,7 +458,7 @@ func TestGetFunctionDescription(t *testing.T) {
 		},
 	}
 
-	result7, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", ts.URL, "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+	result7, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", ts.URL, "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
 
 	if err != nil {
 		t.Error(err)
@@ -468,7 +469,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 	// end test
 
-	// it should handle zip files from a URL and detect url+base64+zip encoding
+	// it should handle zip files from a URL and detect url+zip encoding
 	zipBytes, err := ioutil.ReadFile(newfile.Name())
 	if err != nil {
 		t.Error(err)
@@ -481,7 +482,7 @@ func TestGetFunctionDescription(t *testing.T) {
 
 	expectedURLFunction.Spec.FunctionContentType = "url+zip"
 	expectedURLFunction.Spec.Function = ts2.URL + "/test.zip"
-	result8, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", ts2.URL+"/test.zip", "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+	result8, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", ts2.URL+"/test.zip", "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
 	if err != nil {
 		t.Error(err)
 	}

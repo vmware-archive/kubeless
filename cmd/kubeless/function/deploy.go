@@ -18,9 +18,6 @@ package function
 
 import (
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
 	"strings"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
@@ -155,29 +152,13 @@ var deployCmd = &cobra.Command{
 
 		funcDeps := ""
 		if deps != "" {
-			if strings.Index(deps, "http://") == 0 || strings.Index(deps, "https://") == 0 {
-				depsURL, err := url.Parse(deps)
-				if err != nil {
-					logrus.Fatalf("Unable to retrieve dependencies %s: %v", deps, err)
-				}
-				resp, err := http.Get(depsURL.String())
-				if err != nil {
-					logrus.Fatalf("Unable to retrieve dependencies %s: %v", deps, err)
-				}
-				defer resp.Body.Close()
-
-				depsBytes, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					logrus.Fatalf("Unable to retrieve dependencies %s: %v", deps, err)
-				}
-				funcDeps = string(depsBytes)
-
-			} else {
-				bytes, err := ioutil.ReadFile(deps)
-				if err != nil {
-					logrus.Fatalf("Unable to read file %s: %v", deps, err)
-				}
-				funcDeps = string(bytes)
+			contentType, err := getContentType(deps)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			funcDeps, _, err = parseContent(deps, contentType)
+			if err != nil {
+				logrus.Fatal(err)
 			}
 		}
 

@@ -132,18 +132,75 @@ func getSha256(bytes []byte) (string, error) {
 	return "sha256:" + checksum, nil
 }
 
-func getContentType(filename string, fbytes []byte) string {
+func getContentType(filename string) (string, error) {
 	var contentType string
-	isText := utf8.ValidString(string(fbytes))
-	if isText {
-		contentType = "text"
-	} else {
-		contentType = "base64"
-		if path.Ext(filename) == ".zip" {
+
+	if strings.Index(filename, "http://") == 0 || strings.Index(filename, "https://") == 0 {
+		contentType = "url"
+		if path.Ext(strings.Split(filename, "?")[0]) == ".zip" {
 			contentType += "+zip"
 		}
+	} else {
+		fbytes, err := ioutil.ReadFile(filename)
+		if err != nil {
+			return "", err
+		}
+		isText := utf8.ValidString(string(fbytes))
+		if isText {
+			contentType = "text"
+		} else {
+			contentType = "base64"
+			if path.Ext(filename) == ".zip" {
+				contentType += "+zip"
+			}
+		}
 	}
-	return contentType
+	return contentType, nil
+}
+
+func parseContent(file, contentType string) (string, string, error) {
+	var checksum, content string
+
+	if strings.Contains(contentType, "url") {
+
+		functionURL, err := url.Parse(file)
+		if err != nil {
+			return "", "", err
+		}
+		resp, err := http.Get(functionURL.String())
+		if err != nil {
+			return "", "", err
+		}
+		defer resp.Body.Close()
+
+		functionBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", "", err
+		}
+		content = string(functionBytes)
+		checksum, err = getSha256(functionBytes)
+		if err != nil {
+			return "", "", err
+		}
+
+	} else {
+
+		functionBytes, err := ioutil.ReadFile(file)
+		if err != nil {
+			return "", "", err
+		}
+		if contentType == "text" {
+			content = string(functionBytes)
+		} else {
+			content = base64.StdEncoding.EncodeToString(functionBytes)
+		}
+		checksum, err = getFileSha256(file)
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	return content, checksum, nil
 }
 
 func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, imagePullPolicy string, port int32, headless bool, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
@@ -158,49 +215,22 @@ func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, fil
 	}
 
 	if file != "" {
-
-		if strings.Index(file, "http://") == 0 || strings.Index(file, "https://") == 0 {
-			functionURL, err := url.Parse(file)
-			if err != nil {
-				return nil, err
-			}
-			resp, err := http.Get(functionURL.String())
-			if err != nil {
-				return nil, err
-			}
-			defer resp.Body.Close()
-
-			functionBytes, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				return nil, err
-			}
-			function.Spec.FunctionContentType = "url"
-			// strip any query params to determine if the file is a zip
-			if path.Ext(strings.Split(functionURL.String(), "?")[0]) == ".zip" {
-				function.Spec.FunctionContentType += "+zip"
-			}
-			function.Spec.Function = functionURL.String()
-			function.Spec.Checksum, err = getSha256(functionBytes)
-			if err != nil {
-				return nil, err
-			}
-
-		} else {
-			functionBytes, err := ioutil.ReadFile(file)
-			if err != nil {
-				return nil, err
-			}
-			function.Spec.FunctionContentType = getContentType(file, functionBytes)
-			if function.Spec.FunctionContentType == "text" {
-				function.Spec.Function = string(functionBytes)
-			} else {
-				function.Spec.Function = base64.StdEncoding.EncodeToString(functionBytes)
-			}
-			function.Spec.Checksum, err = getFileSha256(file)
-			if err != nil {
-				return nil, err
-			}
+		contentType, err := getContentType(file)
+		if err != nil {
+			return nil, err
 		}
+		functionContent, checksum, err := parseContent(file, contentType)
+		if err != nil {
+			return nil, err
+		}
+		if strings.Contains(contentType, "url") {
+			// set the function to be the URL provided on the command line
+			function.Spec.Function = file
+		} else {
+			function.Spec.Function = functionContent
+		}
+		function.Spec.Checksum = checksum
+		function.Spec.FunctionContentType = contentType
 	}
 
 	if deps != "" {

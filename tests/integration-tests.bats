@@ -45,8 +45,6 @@ load ../script/libtest
   deploy_function post-php
   deploy_function post-go
   deploy_function custom-get-python
-  deploy_function get-python-url
-  deploy_function get-python-url-filedep
   deploy_function get-python-url-deps
   deploy_function get-node-url-zip
 }
@@ -190,14 +188,6 @@ load ../script/libtest
     echo "Found errors in the controller logs"
     false
   fi
-}
-@test "Test function: get-python-url" {
-  verify_function get-python-url
-  kubeless_function_delete get-python-url
-}
-@test "Test function: get-python-url-filedep" {
-  verify_function get-python-url-filedep
-  kubeless_function_delete get-python-url-filedep
 }
 @test "Test function: get-python-url-deps" {
   verify_function get-python-url-deps
