@@ -25,6 +25,9 @@ namespace kubeless_netcore_runtime
                 Environment.SetEnvironmentVariable("MOD_NAME", "mycode");
                 Environment.SetEnvironmentVariable("FUNC_HANDLER", "execute");
                 Environment.SetEnvironmentVariable("FUNC_TIMEOUT", "180");
+                Environment.SetEnvironmentVariable("FUNC_PORT", "8080");
+                Environment.SetEnvironmentVariable("FUNC_RUNTIME", "dotnetcore2.0");
+                Environment.SetEnvironmentVariable("FUNC_MEMORY_LIMIT", "0");
             }
         }
 
@@ -63,6 +66,14 @@ namespace kubeless_netcore_runtime
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            app.UseCors(builder =>
+                builder.
+                AllowAnyHeader().
+                AllowAnyOrigin().
+                AllowAnyMethod()
+                );
+
 
             app.UseMvc();
         }

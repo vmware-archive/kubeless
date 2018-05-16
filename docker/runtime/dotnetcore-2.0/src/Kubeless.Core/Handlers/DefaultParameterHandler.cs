@@ -24,11 +24,10 @@ namespace Kubeless.Core.Handlers
             if (request.Body.CanSeek)
                 request.Body.Position = 0;
 
-
             var contentType = request.Headers["content-type"];
 
             object data = new StreamReader(request.Body).ReadToEnd();
-            if (contentType == "application/json" && request.Body.Length > 0)
+            if (contentType == "application/json" && data.ToString().Length > 0)
                 data = JsonConvert.DeserializeObject(data.ToString());
 
             string eventId = request.Headers["event-id"];

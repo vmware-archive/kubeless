@@ -1,6 +1,7 @@
 ﻿using Kubeless.Core.Interfaces;
 using Kubeless.Functions;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Threading;
 
@@ -21,7 +22,7 @@ namespace Kubeless.WebAPI.Controllers
         }
 
         [AcceptVerbs("GET", "POST", "PUT", "PATCH", "DELETE")]
-        public object Execute([FromBody]object data)
+        public object Execute()
         {
             Console.WriteLine("{0}: Function Started. HTTP Method: {1}, Path: {2}.", DateTime.Now.ToString(), Request.Method, Request.Path);
 
