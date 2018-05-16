@@ -18,7 +18,6 @@ package function
 
 import (
 	"fmt"
-	"io/ioutil"
 	"strings"
 
 	"github.com/kubeless/kubeless/pkg/langruntime"
@@ -125,11 +124,14 @@ var updateCmd = &cobra.Command{
 		}
 		funcDeps := ""
 		if deps != "" {
-			bytes, err := ioutil.ReadFile(deps)
+			contentType, err := getContentType(deps)
 			if err != nil {
-				logrus.Fatalf("Unable to read file %s: %v", deps, err)
+				logrus.Fatal(err)
 			}
-			funcDeps = string(bytes)
+			funcDeps, _, err = parseContent(deps, contentType)
+			if err != nil {
+				logrus.Fatal(err)
+			}
 		}
 		headless, err := cmd.Flags().GetBool("headless")
 		if err != nil {
@@ -170,7 +172,7 @@ var updateCmd = &cobra.Command{
 func init() {
 	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	updateCmd.Flags().StringP("handler", "", "", "Specify handler")
-	updateCmd.Flags().StringP("from-file", "", "", "Specify code file")
+	updateCmd.Flags().StringP("from-file", "", "", "Specify code file or a URL to the code file")
 	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
 	updateCmd.Flags().StringP("cpu", "", "", "Request amount of cpu for the function.")
 	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
