@@ -21,6 +21,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"os/exec"
 
 	"github.com/kubeless/kubeless/pkg/function-proxy/utils"
 
@@ -67,7 +69,19 @@ func health(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func startNativeDaemon() {
+	args := os.Getenv("FUNC_PROCESS")
+	cmd := exec.Command("/bin/sh", "-c", args)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		log.Fatalf("Unable to run %s. Received %v", args, err)
+	}
+}
+
 func main() {
+	go startNativeDaemon()
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/healthz", health)
 	http.Handle("/metrics", promhttp.Handler())
