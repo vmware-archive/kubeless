@@ -39,8 +39,8 @@ import (
 
 const (
 	httpTriggerMaxRetries = 5
-	httpTriggerObjKind    = "HttpTrigger"
-	httpTriggerObjAPI     = "kubeless.io"
+	httpTriggerKind       = "HTTPTrigger"
+	httpTriggerAPIVersion = "kubeless.io/v1beta1"
 	httpTriggerFinalizer  = "kubeless.io/httptrigger"
 )
 
@@ -230,7 +230,11 @@ func (c *HTTPTriggerController) syncHTTPTrigger(key string) error {
 
 	// create ingress resource if required
 	c.logger.Infof("Adding ingress resource for http trigger Obj: %s ", key)
-	err = utils.CreateIngress(c.clientset, httpTriggerObj)
+	or, err := utils.GetOwnerReference(httpTriggerKind, httpTriggerAPIVersion, httpTriggerObj.Name, httpTriggerObj.UID)
+	if err != nil {
+		return err
+	}
+	err = utils.CreateIngress(c.clientset, httpTriggerObj, or)
 	if err != nil && !k8sErrors.IsAlreadyExists(err) {
 		c.logger.Errorf("Failed to create ingress rule %s corresponding to http trigger Obj: %s due to: %v: ", httpTriggerObj.Name, key, err)
 	}
