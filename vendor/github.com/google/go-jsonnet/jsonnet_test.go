@@ -100,9 +100,9 @@ func removeExcessiveWhitespace(s string) string {
 func TestCustomImporter(t *testing.T) {
 	vm := MakeVM()
 	vm.Importer(&MemoryImporter{
-		map[string]string{
-			"a.jsonnet": "2 + 2",
-			"b.jsonnet": "3 + 3",
+		map[string]Contents{
+			"a.jsonnet": MakeContents("2 + 2"),
+			"b.jsonnet": MakeContents("3 + 3"),
 		},
 	})
 	input := `[import "a.jsonnet", importstr "b.jsonnet"]`
@@ -114,5 +114,19 @@ func TestCustomImporter(t *testing.T) {
 	actual = removeExcessiveWhitespace(actual)
 	if actual != expected {
 		t.Errorf("Expected %q, but got %q", expected, actual)
+	}
+}
+
+func TestContents(t *testing.T) {
+	a := "aaa"
+	c1 := MakeContents(a)
+	a = "bbb"
+	if c1.String() != "aaa" {
+		t.Errorf("Contents should be immutable")
+	}
+	c2 := MakeContents(a)
+	c3 := MakeContents(a)
+	if c2 == c3 {
+		t.Errorf("Contents should distinguish between different instances even if they have the same data inside")
 	}
 }

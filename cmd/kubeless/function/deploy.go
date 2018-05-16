@@ -18,7 +18,6 @@ package function
 
 import (
 	"fmt"
-	"io/ioutil"
 	"strings"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
@@ -153,11 +152,14 @@ var deployCmd = &cobra.Command{
 
 		funcDeps := ""
 		if deps != "" {
-			bytes, err := ioutil.ReadFile(deps)
+			contentType, err := getContentType(deps)
 			if err != nil {
-				logrus.Fatalf("Unable to read file %s: %v", deps, err)
+				logrus.Fatal(err)
 			}
-			funcDeps = string(bytes)
+			funcDeps, _, err = parseContent(deps, contentType)
+			if err != nil {
+				logrus.Fatal(err)
+			}
 		}
 
 		if runtime == "" && runtimeImage == "" {
@@ -220,7 +222,7 @@ var deployCmd = &cobra.Command{
 func init() {
 	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
-	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
+	deployCmd.Flags().StringP("from-file", "", "", "Specify code file or a URL to the code file")
 	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")
 	deployCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")

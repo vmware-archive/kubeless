@@ -6,7 +6,9 @@ build_allways: &build_allways
     tags:
       only: /.*/
 defaults: &defaults
+  working_directory: /home/circleci/.go_workspace/src/github.com/kubeless/kubeless
   environment:
+    GOPATH: /home/circleci/.go_workspace
     CONTROLLER_IMAGE_NAME: bitnami/kubeless-controller-manager
     BUILDER_IMAGE_NAME: kubeless/function-image-builder
     KAFKA_CONTROLLER_IMAGE_NAME: bitnami/kafka-trigger-controller
@@ -22,10 +24,10 @@ exports: &exports
     CONTROLLER_TAG=${CIRCLE_TAG:-build-$CIRCLE_WORKFLOW_ID}
     echo "export CONTROLLER_TAG=${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
-    echo "export BUILDER_IMAGE=${BUILDER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
+    echo "export FUNCTION_IMAGE_BUILDER=${BUILDER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export KAFKA_CONTROLLER_IMAGE=${KAFKA_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export NATS_CONTROLLER_IMAGE=${NATS_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
-    echo "export KUBECFG_JPATH=/go/src/github.com/kubeless/kubeless/ksonnet-lib" >> $BASH_ENV
+    echo "export KUBECFG_JPATH=/home/circleci/src/github.com/kubeless/kubeless/ksonnet-lib" >> $BASH_ENV
     echo "export PATH=$(pwd)/bats/libexec:$PATH" >> $BASH_ENV
 restore_workspace: &restore_workspace
   run: |
@@ -78,34 +80,30 @@ workflows:
     jobs:
       - build:
           <<: *build_allways
-      - build_images:
-          <<: *build_allways
-          requires:
-            - build
       - minikube:
           <<: *build_allways
           requires:
-            - build_images
+            - build
       - minikube_core_triggers:
           <<: *build_allways
           requires:
-            - build_images
+            - build
       - minikube_build_functions:
           <<: *build_allways
           requires:
-            - build_images
+            - build
       - minikube_kafka:
           <<: *build_allways
           requires:
-            - build_images
+            - build
       - minikube_nats:
           <<: *build_allways
           requires:
-            - build_images
+            - build
       - GKE:
           <<: *build_allways
           requires:
-            - build_images
+            - build
       - push_latest_images:
           filters:
             branches:
@@ -136,7 +134,6 @@ jobs:
     <<: *defaults
     docker:
       - image: circleci/golang:1.9 
-    working_directory: /go/src/github.com/kubeless/kubeless
     steps:
       - checkout
       - <<: *exports
@@ -157,33 +154,14 @@ jobs:
             cp $f build-manifests/
           done
       - persist_to_workspace:
-          root: /go
+          root: /home/circleci/.go_workspace
           paths: 
             - bin
             - src/github.com/kubeless/kubeless/*yaml
       - store_artifacts:
-          path: /go/bin/kubeless
+          path: /home/circleci/.go_workspace/bin/kubeless
       - store_artifacts:
           path: build-manifests
-  build_images:
-    <<: *defaults
-    docker:
-      - image: circleci/golang:1.9 
-    working_directory: /go/src/github.com/kubeless/kubeless
-    steps:
-      - setup_remote_docker
-      - checkout
-      - <<: *exports
-      - run: make bootstrap
-      - run: docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"      
-      - run: make controller-image CONTROLLER_IMAGE=$CONTROLLER_IMAGE
-      - run: docker push $CONTROLLER_IMAGE
-      - run: make kafka-controller-image KAFKA_CONTROLLER_IMAGE=$KAFKA_CONTROLLER_IMAGE
-      - run: docker push $KAFKA_CONTROLLER_IMAGE
-      - run: make nats-controller-image NATS_CONTROLLER_IMAGE=$NATS_CONTROLLER_IMAGE
-      - run: docker push $NATS_CONTROLLER_IMAGE
-      - run: make function-image-builder FUNCTION_IMAGE_BUILDER=$BUILDER_IMAGE
-      - run: docker push $BUILDER_IMAGE
   minikube:
     <<: *defaults
     machine: true
@@ -193,6 +171,7 @@ jobs:
           at: /tmp/go
       - <<: *exports
       - <<: *restore_workspace
+      - run: ./script/pull-or-build-image.sh controller-image
       - run: ./script/integration-tests minikube deployment
       - run: ./script/integration-tests minikube basic
   minikube_core_triggers:
@@ -206,6 +185,7 @@ jobs:
       - <<: *restore_workspace
       - run: sudo apt-get update -y
       - run: sudo apt-get install -y apache2-utils
+      - run: ./script/pull-or-build-image.sh controller-image
       - run: ./script/integration-tests minikube deployment
       - run: ./script/integration-tests minikube cronjob
       - run: ./script/integration-tests minikube http
@@ -218,6 +198,8 @@ jobs:
       - attach_workspace:
           at: /tmp/go
       - <<: *restore_workspace
+      - run: ./script/pull-or-build-image.sh controller-image
+      - run: ./script/pull-or-build-image.sh function-image-builder
       - run: "echo '{\"host\": \"unix:///var/run/docker.sock\", \"storage-driver\": \"overlay2\", \"insecure-registries\" : [\"0.0.0.0/0\"]}' > /tmp/daemon.json"
       - run: sudo mv /tmp/daemon.json /etc/docker/daemon.json
       - run: sudo service docker restart
@@ -237,6 +219,8 @@ jobs:
       - attach_workspace:
           at: /tmp/go
       - <<: *restore_workspace
+      - run: ./script/pull-or-build-image.sh controller-image
+      - run: ./script/pull-or-build-image.sh kafka-controller-image
       - run: ./script/integration-tests minikube deployment
       - run: ./script/integration-tests minikube kafka
   minikube_nats:
@@ -249,6 +233,8 @@ jobs:
       - attach_workspace:
           at: /tmp/go
       - <<: *restore_workspace
+      - run: ./script/pull-or-build-image.sh controller-image
+      - run: ./script/pull-or-build-image.sh nats-controller-image
       - run: ./script/integration-tests minikube deployment
       - run: ./script/integration-tests minikube nats
   GKE:
@@ -265,6 +251,8 @@ jobs:
       - run: ./script/enable-gcloud.sh $(pwd) > /dev/null
       - run: echo "export ESCAPED_GKE_CLUSTER=$(echo ${GKE_CLUSTER}-ci-${CIRCLE_BRANCH} | sed 's/[^a-z0-9-]//g')" >> $BASH_ENV
       - run: ./script/start-gke-env.sh $ESCAPED_GKE_CLUSTER $ZONE $GKE_VERSION $GKE_ADMIN > /dev/null
+      - run: ./script/pull-or-build-image.sh controller-image
+      - run: ./script/pull-or-build-image.sh kafka-controller-image
       - run: ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER} deployment
       - run: ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER} basic
       - run: ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER} cronjob
@@ -294,7 +282,6 @@ jobs:
     <<: *defaults
     docker:
       - image: circleci/golang:1.9 
-    working_directory: /go/src/github.com/kubeless/kubeless
     steps:
       - <<: *exports
       - checkout

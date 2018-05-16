@@ -32,12 +32,12 @@ service_compilers = {
     'Google': service_google.GoogleService(),
     'Amazon': service_amazon.AmazonService(),
 }
-
+    
 def get_compiler(config, service):
     environments = config['environments']
     environment = environments[service.get('environment', 'default')]
     return service_compilers[environment['kind']], environment
-
+    
 
 def config_check_service(environments, root, path):
     try:
@@ -62,7 +62,7 @@ def config_check_service(environments, root, path):
             e.note = ('Did you mean for %s to be a visible field (: instead of ::)?'
                       % validate.render_path(path))
         raise
-
+    
 def services(config):
     for service_name, service in config.iteritems():
         if service_name == 'environments':
@@ -87,7 +87,7 @@ def config_check(config):
     for service_name, service in services(config):
         config_check_service(environments, config, [service_name])
 
-
+            
 ext_vars = {}  # For Jsonnet evaluation
 search_paths = [  # Where we look for imported jsonnet files
     os.path.dirname(os.path.realpath(__file__)) + '/lib/'
@@ -110,7 +110,7 @@ def jsonnet_try_path(dir, rel):
     with open(full_path) as f:
         return full_path, f.read()
 
-
+    
 def jsonnet_import_callback(dir, rel):
     full_path, content = jsonnet_try_path(dir, rel)
     if content:
@@ -254,7 +254,7 @@ def action_blueprint(config_file, config, args):
         sys.stderr.write('Action "blueprint" accepts no arguments, but got:  %s\n' % ' '.join(args))
         sys.exit(1)
     print(util.jsonstr(config))
-
+        
 
 def generate(dirpath, config, do_build):
     files = []
@@ -471,7 +471,7 @@ def action_image_gc(config_file, config, args):
         mmimgs = [img for img in imgs if img[0].startswith('micromanage-') and not img[0] in used_images[access_key]]
         for img in mmimgs:
             img_name, img_creation_timestamp, env = img
-            days_old = (now - img_creation_timestamp).days
+            days_old = (now - img_creation_timestamp).days 
             if days_old > 7:
                 if not got_any_amazon:
                     got_any_amazon = True

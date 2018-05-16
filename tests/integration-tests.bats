@@ -45,6 +45,8 @@ load ../script/libtest
   deploy_function post-php
   deploy_function post-go
   deploy_function custom-get-python
+  deploy_function get-python-url-deps
+  deploy_function get-node-url-zip
 }
 @test "Test function: get-python" {
   verify_function get-python
@@ -186,5 +188,13 @@ load ../script/libtest
     echo "Found errors in the controller logs"
     false
   fi
+}
+@test "Test function: get-python-url-deps" {
+  verify_function get-python-url-deps
+  kubeless_function_delete get-python-url-deps
+}
+@test "Test function: get-node-url-zip" {
+  verify_function get-node-url-zip
+  kubeless_function_delete get-node-url-zip
 }
 # vim: ts=2 sw=2 si et syntax=sh

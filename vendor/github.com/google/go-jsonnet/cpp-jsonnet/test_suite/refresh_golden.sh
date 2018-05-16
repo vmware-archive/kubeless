@@ -38,3 +38,5 @@ for FILE in "$@" ; do
     # Avoid set -e terminating us if the run fails.
     "$JSONNET_BIN" "$FILE" > "${FILE}.golden" 2>&1 || true
 done
+
+

@@ -24,7 +24,7 @@ public class SubTemplate extends BaseTemplate {
     }
     public class SubTemplateSpec extends BaseTemplate.BaseTemplateSpec {
         public Object replicas() { return 2.0; }
-    }
+    }    
     public Object spec() {
         return new SubTemplateSpec();
     }

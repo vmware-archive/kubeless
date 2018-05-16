@@ -65,8 +65,8 @@ local cmd = import "mmlib/v0.1.1/cmd/cmd.libsonnet";
                 uwsgiModuleContent: |||
                     import flask
                     import socket
-                    app = flask.Flask(__name__)
-                    @app.route('/')
+                    app = flask.Flask(__name__) 
+                    @app.route('/') 
                     def hello_world():
                         return 'Hello from %s!' % socket.gethostname()
                 |||,
@@ -75,8 +75,8 @@ local cmd = import "mmlib/v0.1.1/cmd/cmd.libsonnet";
                 uwsgiModuleContent: |||
                     import flask
                     import socket
-                    app = flask.Flask(__name__)
-                    @app.route('/')
+                    app = flask.Flask(__name__) 
+                    @app.route('/') 
                     def hello_world():
                         return 'Greetings from %s!' % socket.gethostname()
                 |||,
