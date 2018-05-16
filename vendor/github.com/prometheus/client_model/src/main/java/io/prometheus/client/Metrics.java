@@ -269,7 +269,7 @@ public final class Metrics {
       if (ref instanceof java.lang.String) {
         return (java.lang.String) ref;
       } else {
-        com.google.protobuf.ByteString bs =
+        com.google.protobuf.ByteString bs = 
             (com.google.protobuf.ByteString) ref;
         java.lang.String s = bs.toStringUtf8();
         if (bs.isValidUtf8()) {
@@ -285,7 +285,7 @@ public final class Metrics {
         getNameBytes() {
       java.lang.Object ref = name_;
       if (ref instanceof java.lang.String) {
-        com.google.protobuf.ByteString b =
+        com.google.protobuf.ByteString b = 
             com.google.protobuf.ByteString.copyFromUtf8(
                 (java.lang.String) ref);
         name_ = b;
@@ -311,7 +311,7 @@ public final class Metrics {
       if (ref instanceof java.lang.String) {
         return (java.lang.String) ref;
       } else {
-        com.google.protobuf.ByteString bs =
+        com.google.protobuf.ByteString bs = 
             (com.google.protobuf.ByteString) ref;
         java.lang.String s = bs.toStringUtf8();
         if (bs.isValidUtf8()) {
@@ -327,7 +327,7 @@ public final class Metrics {
         getValueBytes() {
       java.lang.Object ref = value_;
       if (ref instanceof java.lang.String) {
-        com.google.protobuf.ByteString b =
+        com.google.protobuf.ByteString b = 
             com.google.protobuf.ByteString.copyFromUtf8(
                 (java.lang.String) ref);
         value_ = b;
@@ -618,7 +618,7 @@ public final class Metrics {
           getNameBytes() {
         java.lang.Object ref = name_;
         if (ref instanceof String) {
-          com.google.protobuf.ByteString b =
+          com.google.protobuf.ByteString b = 
               com.google.protobuf.ByteString.copyFromUtf8(
                   (java.lang.String) ref);
           name_ = b;
@@ -694,7 +694,7 @@ public final class Metrics {
           getValueBytes() {
         java.lang.Object ref = value_;
         if (ref instanceof String) {
-          com.google.protobuf.ByteString b =
+          com.google.protobuf.ByteString b = 
               com.google.protobuf.ByteString.copyFromUtf8(
                   (java.lang.String) ref);
           value_ = b;
@@ -2044,7 +2044,7 @@ public final class Metrics {
     /**
      * <code>repeated .io.prometheus.client.Quantile quantile = 3;</code>
      */
-    java.util.List<io.prometheus.client.Metrics.Quantile>
+    java.util.List<io.prometheus.client.Metrics.Quantile> 
         getQuantileList();
     /**
      * <code>repeated .io.prometheus.client.Quantile quantile = 3;</code>
@@ -2057,7 +2057,7 @@ public final class Metrics {
     /**
      * <code>repeated .io.prometheus.client.Quantile quantile = 3;</code>
      */
-    java.util.List<? extends io.prometheus.client.Metrics.QuantileOrBuilder>
+    java.util.List<? extends io.prometheus.client.Metrics.QuantileOrBuilder> 
         getQuantileOrBuilderList();
     /**
      * <code>repeated .io.prometheus.client.Quantile quantile = 3;</code>
@@ -2219,7 +2219,7 @@ public final class Metrics {
     /**
      * <code>repeated .io.prometheus.client.Quantile quantile = 3;</code>
      */
-    public java.util.List<? extends io.prometheus.client.Metrics.QuantileOrBuilder>
+    public java.util.List<? extends io.prometheus.client.Metrics.QuantileOrBuilder> 
         getQuantileOrBuilderList() {
       return quantile_;
     }
@@ -2504,7 +2504,7 @@ public final class Metrics {
               quantileBuilder_ = null;
               quantile_ = other.quantile_;
               bitField0_ = (bitField0_ & ~0x00000004);
-              quantileBuilder_ =
+              quantileBuilder_ = 
                 com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
                    getQuantileFieldBuilder() : null;
             } else {
@@ -2798,7 +2798,7 @@ public final class Metrics {
       /**
        * <code>repeated .io.prometheus.client.Quantile quantile = 3;</code>
        */
-      public java.util.List<? extends io.prometheus.client.Metrics.QuantileOrBuilder>
+      public java.util.List<? extends io.prometheus.client.Metrics.QuantileOrBuilder> 
            getQuantileOrBuilderList() {
         if (quantileBuilder_ != null) {
           return quantileBuilder_.getMessageOrBuilderList();
@@ -2824,12 +2824,12 @@ public final class Metrics {
       /**
        * <code>repeated .io.prometheus.client.Quantile quantile = 3;</code>
        */
-      public java.util.List<io.prometheus.client.Metrics.Quantile.Builder>
+      public java.util.List<io.prometheus.client.Metrics.Quantile.Builder> 
            getQuantileBuilderList() {
         return getQuantileFieldBuilder().getBuilderList();
       }
       private com.google.protobuf.RepeatedFieldBuilder<
-          io.prometheus.client.Metrics.Quantile, io.prometheus.client.Metrics.Quantile.Builder, io.prometheus.client.Metrics.QuantileOrBuilder>
+          io.prometheus.client.Metrics.Quantile, io.prometheus.client.Metrics.Quantile.Builder, io.prometheus.client.Metrics.QuantileOrBuilder> 
           getQuantileFieldBuilder() {
         if (quantileBuilder_ == null) {
           quantileBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
@@ -3280,7 +3280,7 @@ public final class Metrics {
      * Ordered in increasing order of upper_bound, +Inf bucket is optional.
      * </pre>
      */
-    java.util.List<io.prometheus.client.Metrics.Bucket>
+    java.util.List<io.prometheus.client.Metrics.Bucket> 
         getBucketList();
     /**
      * <code>repeated .io.prometheus.client.Bucket bucket = 3;</code>
@@ -3305,7 +3305,7 @@ public final class Metrics {
      * Ordered in increasing order of upper_bound, +Inf bucket is optional.
      * </pre>
      */
-    java.util.List<? extends io.prometheus.client.Metrics.BucketOrBuilder>
+    java.util.List<? extends io.prometheus.client.Metrics.BucketOrBuilder> 
         getBucketOrBuilderList();
     /**
      * <code>repeated .io.prometheus.client.Bucket bucket = 3;</code>
@@ -3479,7 +3479,7 @@ public final class Metrics {
      * Ordered in increasing order of upper_bound, +Inf bucket is optional.
      * </pre>
      */
-    public java.util.List<? extends io.prometheus.client.Metrics.BucketOrBuilder>
+    public java.util.List<? extends io.prometheus.client.Metrics.BucketOrBuilder> 
         getBucketOrBuilderList() {
       return bucket_;
     }
@@ -3776,7 +3776,7 @@ public final class Metrics {
               bucketBuilder_ = null;
               bucket_ = other.bucket_;
               bitField0_ = (bitField0_ & ~0x00000004);
-              bucketBuilder_ =
+              bucketBuilder_ = 
                 com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
                    getBucketFieldBuilder() : null;
             } else {
@@ -4130,7 +4130,7 @@ public final class Metrics {
        * Ordered in increasing order of upper_bound, +Inf bucket is optional.
        * </pre>
        */
-      public java.util.List<? extends io.prometheus.client.Metrics.BucketOrBuilder>
+      public java.util.List<? extends io.prometheus.client.Metrics.BucketOrBuilder> 
            getBucketOrBuilderList() {
         if (bucketBuilder_ != null) {
           return bucketBuilder_.getMessageOrBuilderList();
@@ -4168,12 +4168,12 @@ public final class Metrics {
        * Ordered in increasing order of upper_bound, +Inf bucket is optional.
        * </pre>
        */
-      public java.util.List<io.prometheus.client.Metrics.Bucket.Builder>
+      public java.util.List<io.prometheus.client.Metrics.Bucket.Builder> 
            getBucketBuilderList() {
         return getBucketFieldBuilder().getBuilderList();
       }
       private com.google.protobuf.RepeatedFieldBuilder<
-          io.prometheus.client.Metrics.Bucket, io.prometheus.client.Metrics.Bucket.Builder, io.prometheus.client.Metrics.BucketOrBuilder>
+          io.prometheus.client.Metrics.Bucket, io.prometheus.client.Metrics.Bucket.Builder, io.prometheus.client.Metrics.BucketOrBuilder> 
           getBucketFieldBuilder() {
         if (bucketBuilder_ == null) {
           bucketBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
@@ -4744,7 +4744,7 @@ public final class Metrics {
     /**
      * <code>repeated .io.prometheus.client.LabelPair label = 1;</code>
      */
-    java.util.List<io.prometheus.client.Metrics.LabelPair>
+    java.util.List<io.prometheus.client.Metrics.LabelPair> 
         getLabelList();
     /**
      * <code>repeated .io.prometheus.client.LabelPair label = 1;</code>
@@ -4757,7 +4757,7 @@ public final class Metrics {
     /**
      * <code>repeated .io.prometheus.client.LabelPair label = 1;</code>
      */
-    java.util.List<? extends io.prometheus.client.Metrics.LabelPairOrBuilder>
+    java.util.List<? extends io.prometheus.client.Metrics.LabelPairOrBuilder> 
         getLabelOrBuilderList();
     /**
      * <code>repeated .io.prometheus.client.LabelPair label = 1;</code>
@@ -5023,7 +5023,7 @@ public final class Metrics {
     /**
      * <code>repeated .io.prometheus.client.LabelPair label = 1;</code>
      */
-    public java.util.List<? extends io.prometheus.client.Metrics.LabelPairOrBuilder>
+    public java.util.List<? extends io.prometheus.client.Metrics.LabelPairOrBuilder> 
         getLabelOrBuilderList() {
       return label_;
     }
@@ -5523,7 +5523,7 @@ public final class Metrics {
               labelBuilder_ = null;
               label_ = other.label_;
               bitField0_ = (bitField0_ & ~0x00000001);
-              labelBuilder_ =
+              labelBuilder_ = 
                 com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
                    getLabelFieldBuilder() : null;
             } else {
@@ -5771,7 +5771,7 @@ public final class Metrics {
       /**
        * <code>repeated .io.prometheus.client.LabelPair label = 1;</code>
        */
-      public java.util.List<? extends io.prometheus.client.Metrics.LabelPairOrBuilder>
+      public java.util.List<? extends io.prometheus.client.Metrics.LabelPairOrBuilder> 
            getLabelOrBuilderList() {
         if (labelBuilder_ != null) {
           return labelBuilder_.getMessageOrBuilderList();
@@ -5797,12 +5797,12 @@ public final class Metrics {
       /**
        * <code>repeated .io.prometheus.client.LabelPair label = 1;</code>
        */
-      public java.util.List<io.prometheus.client.Metrics.LabelPair.Builder>
+      public java.util.List<io.prometheus.client.Metrics.LabelPair.Builder> 
            getLabelBuilderList() {
         return getLabelFieldBuilder().getBuilderList();
       }
       private com.google.protobuf.RepeatedFieldBuilder<
-          io.prometheus.client.Metrics.LabelPair, io.prometheus.client.Metrics.LabelPair.Builder, io.prometheus.client.Metrics.LabelPairOrBuilder>
+          io.prometheus.client.Metrics.LabelPair, io.prometheus.client.Metrics.LabelPair.Builder, io.prometheus.client.Metrics.LabelPairOrBuilder> 
           getLabelFieldBuilder() {
         if (labelBuilder_ == null) {
           labelBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
@@ -5919,7 +5919,7 @@ public final class Metrics {
        * <code>optional .io.prometheus.client.Gauge gauge = 2;</code>
        */
       private com.google.protobuf.SingleFieldBuilder<
-          io.prometheus.client.Metrics.Gauge, io.prometheus.client.Metrics.Gauge.Builder, io.prometheus.client.Metrics.GaugeOrBuilder>
+          io.prometheus.client.Metrics.Gauge, io.prometheus.client.Metrics.Gauge.Builder, io.prometheus.client.Metrics.GaugeOrBuilder> 
           getGaugeFieldBuilder() {
         if (gaugeBuilder_ == null) {
           gaugeBuilder_ = new com.google.protobuf.SingleFieldBuilder<
@@ -6035,7 +6035,7 @@ public final class Metrics {
        * <code>optional .io.prometheus.client.Counter counter = 3;</code>
        */
       private com.google.protobuf.SingleFieldBuilder<
-          io.prometheus.client.Metrics.Counter, io.prometheus.client.Metrics.Counter.Builder, io.prometheus.client.Metrics.CounterOrBuilder>
+          io.prometheus.client.Metrics.Counter, io.prometheus.client.Metrics.Counter.Builder, io.prometheus.client.Metrics.CounterOrBuilder> 
           getCounterFieldBuilder() {
         if (counterBuilder_ == null) {
           counterBuilder_ = new com.google.protobuf.SingleFieldBuilder<
@@ -6151,7 +6151,7 @@ public final class Metrics {
        * <code>optional .io.prometheus.client.Summary summary = 4;</code>
        */
       private com.google.protobuf.SingleFieldBuilder<
-          io.prometheus.client.Metrics.Summary, io.prometheus.client.Metrics.Summary.Builder, io.prometheus.client.Metrics.SummaryOrBuilder>
+          io.prometheus.client.Metrics.Summary, io.prometheus.client.Metrics.Summary.Builder, io.prometheus.client.Metrics.SummaryOrBuilder> 
           getSummaryFieldBuilder() {
         if (summaryBuilder_ == null) {
           summaryBuilder_ = new com.google.protobuf.SingleFieldBuilder<
@@ -6267,7 +6267,7 @@ public final class Metrics {
        * <code>optional .io.prometheus.client.Untyped untyped = 5;</code>
        */
       private com.google.protobuf.SingleFieldBuilder<
-          io.prometheus.client.Metrics.Untyped, io.prometheus.client.Metrics.Untyped.Builder, io.prometheus.client.Metrics.UntypedOrBuilder>
+          io.prometheus.client.Metrics.Untyped, io.prometheus.client.Metrics.Untyped.Builder, io.prometheus.client.Metrics.UntypedOrBuilder> 
           getUntypedFieldBuilder() {
         if (untypedBuilder_ == null) {
           untypedBuilder_ = new com.google.protobuf.SingleFieldBuilder<
@@ -6383,7 +6383,7 @@ public final class Metrics {
        * <code>optional .io.prometheus.client.Histogram histogram = 7;</code>
        */
       private com.google.protobuf.SingleFieldBuilder<
-          io.prometheus.client.Metrics.Histogram, io.prometheus.client.Metrics.Histogram.Builder, io.prometheus.client.Metrics.HistogramOrBuilder>
+          io.prometheus.client.Metrics.Histogram, io.prometheus.client.Metrics.Histogram.Builder, io.prometheus.client.Metrics.HistogramOrBuilder> 
           getHistogramFieldBuilder() {
         if (histogramBuilder_ == null) {
           histogramBuilder_ = new com.google.protobuf.SingleFieldBuilder<
@@ -6483,7 +6483,7 @@ public final class Metrics {
     /**
      * <code>repeated .io.prometheus.client.Metric metric = 4;</code>
      */
-    java.util.List<io.prometheus.client.Metrics.Metric>
+    java.util.List<io.prometheus.client.Metrics.Metric> 
         getMetricList();
     /**
      * <code>repeated .io.prometheus.client.Metric metric = 4;</code>
@@ -6496,7 +6496,7 @@ public final class Metrics {
     /**
      * <code>repeated .io.prometheus.client.Metric metric = 4;</code>
      */
-    java.util.List<? extends io.prometheus.client.Metrics.MetricOrBuilder>
+    java.util.List<? extends io.prometheus.client.Metrics.MetricOrBuilder> 
         getMetricOrBuilderList();
     /**
      * <code>repeated .io.prometheus.client.Metric metric = 4;</code>
@@ -6646,7 +6646,7 @@ public final class Metrics {
       if (ref instanceof java.lang.String) {
         return (java.lang.String) ref;
       } else {
-        com.google.protobuf.ByteString bs =
+        com.google.protobuf.ByteString bs = 
             (com.google.protobuf.ByteString) ref;
         java.lang.String s = bs.toStringUtf8();
         if (bs.isValidUtf8()) {
@@ -6662,7 +6662,7 @@ public final class Metrics {
         getNameBytes() {
       java.lang.Object ref = name_;
       if (ref instanceof java.lang.String) {
-        com.google.protobuf.ByteString b =
+        com.google.protobuf.ByteString b = 
             com.google.protobuf.ByteString.copyFromUtf8(
                 (java.lang.String) ref);
         name_ = b;
@@ -6688,7 +6688,7 @@ public final class Metrics {
       if (ref instanceof java.lang.String) {
         return (java.lang.String) ref;
       } else {
-        com.google.protobuf.ByteString bs =
+        com.google.protobuf.ByteString bs = 
             (com.google.protobuf.ByteString) ref;
         java.lang.String s = bs.toStringUtf8();
         if (bs.isValidUtf8()) {
@@ -6704,7 +6704,7 @@ public final class Metrics {
         getHelpBytes() {
       java.lang.Object ref = help_;
       if (ref instanceof java.lang.String) {
-        com.google.protobuf.ByteString b =
+        com.google.protobuf.ByteString b = 
             com.google.protobuf.ByteString.copyFromUtf8(
                 (java.lang.String) ref);
         help_ = b;
@@ -6740,7 +6740,7 @@ public final class Metrics {
     /**
      * <code>repeated .io.prometheus.client.Metric metric = 4;</code>
      */
-    public java.util.List<? extends io.prometheus.client.Metrics.MetricOrBuilder>
+    public java.util.List<? extends io.prometheus.client.Metrics.MetricOrBuilder> 
         getMetricOrBuilderList() {
       return metric_;
     }
@@ -7046,7 +7046,7 @@ public final class Metrics {
               metricBuilder_ = null;
               metric_ = other.metric_;
               bitField0_ = (bitField0_ & ~0x00000008);
-              metricBuilder_ =
+              metricBuilder_ = 
                 com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
                    getMetricFieldBuilder() : null;
             } else {
@@ -7112,7 +7112,7 @@ public final class Metrics {
           getNameBytes() {
         java.lang.Object ref = name_;
         if (ref instanceof String) {
-          com.google.protobuf.ByteString b =
+          com.google.protobuf.ByteString b = 
               com.google.protobuf.ByteString.copyFromUtf8(
                   (java.lang.String) ref);
           name_ = b;
@@ -7188,7 +7188,7 @@ public final class Metrics {
           getHelpBytes() {
         java.lang.Object ref = help_;
         if (ref instanceof String) {
-          com.google.protobuf.ByteString b =
+          com.google.protobuf.ByteString b = 
               com.google.protobuf.ByteString.copyFromUtf8(
                   (java.lang.String) ref);
           help_ = b;
@@ -7463,7 +7463,7 @@ public final class Metrics {
       /**
        * <code>repeated .io.prometheus.client.Metric metric = 4;</code>
        */
-      public java.util.List<? extends io.prometheus.client.Metrics.MetricOrBuilder>
+      public java.util.List<? extends io.prometheus.client.Metrics.MetricOrBuilder> 
            getMetricOrBuilderList() {
         if (metricBuilder_ != null) {
           return metricBuilder_.getMessageOrBuilderList();
@@ -7489,12 +7489,12 @@ public final class Metrics {
       /**
        * <code>repeated .io.prometheus.client.Metric metric = 4;</code>
        */
-      public java.util.List<io.prometheus.client.Metrics.Metric.Builder>
+      public java.util.List<io.prometheus.client.Metrics.Metric.Builder> 
            getMetricBuilderList() {
         return getMetricFieldBuilder().getBuilderList();
       }
       private com.google.protobuf.RepeatedFieldBuilder<
-          io.prometheus.client.Metrics.Metric, io.prometheus.client.Metrics.Metric.Builder, io.prometheus.client.Metrics.MetricOrBuilder>
+          io.prometheus.client.Metrics.Metric, io.prometheus.client.Metrics.Metric.Builder, io.prometheus.client.Metrics.MetricOrBuilder> 
           getMetricFieldBuilder() {
         if (metricBuilder_ == null) {
           metricBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<

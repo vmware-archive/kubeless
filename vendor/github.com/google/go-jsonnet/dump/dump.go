@@ -184,7 +184,21 @@ func (s *dumpState) dump(value interface{}) {
 	if v.Kind() == reflect.Ptr && v.IsNil() {
 		printNil(s.w)
 	} else {
+		// Replace the writer with a temporary buffer so that
+		// we can see how big the output is. If it's too big,
+		// we use an intermediate value so that godoc output
+		// isn't swamped by the literal.
+		oldWriter := s.w
+		buf := new(bytes.Buffer)
+		s.w = buf
 		s.dumpVal(v)
+		s.w = oldWriter
+		if buf.Len() > 100 {
+			s.w.Write([]byte("_" + s.config.VariableName))
+			s.newline()
+			s.w.Write([]byte("var _" + s.config.VariableName + " = "))
+		}
+		s.w.Write(buf.Bytes())
 	}
 	s.newline()
 }

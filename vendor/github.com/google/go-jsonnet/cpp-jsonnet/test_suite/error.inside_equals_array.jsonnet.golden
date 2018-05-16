@@ -4,4 +4,4 @@ RUNTIME ERROR: foobar
 	std.jsonnet:1178:21-33	function <anonymous>
 	std.jsonnet:1178:21-33	function <aux>
 	std.jsonnet:1181:15-31	function <anonymous>
-	std.jsonnet:1182:11-23
+	std.jsonnet:1182:11-23	

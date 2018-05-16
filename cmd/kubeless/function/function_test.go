@@ -18,8 +18,11 @@ package function
 
 import (
 	"archive/zip"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"reflect"
 	"testing"
@@ -100,7 +103,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+	result, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
 
 	if err != nil {
 		t.Error(err)
@@ -147,7 +150,8 @@ func TestGetFunctionDescription(t *testing.T) {
 											v1.ResourceCPU:    parsedCPU,
 										},
 									},
-									Image: "test-image",
+									Image:           "test-image",
+									ImagePullPolicy: v1.PullAlways,
 									VolumeMounts: []v1.VolumeMount{
 										{
 											Name:      "secretName-vol",
@@ -186,7 +190,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should take the default values
-	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", 8080, false, []string{}, []string{}, []string{}, expectedFunction)
+	result2, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "", "", "", "", "", "", "", "", "Always", 8080, false, []string{}, []string{}, []string{}, expectedFunction)
 
 	if err != nil {
 		t.Error(err)
@@ -207,7 +211,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test-image2", "256Mi", "100m", "20", 8080, false, []string{"TEST=2"}, []string{"test=2"}, []string{"secret2"}, expectedFunction)
+	result3, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test-image2", "256Mi", "100m", "20", "Always", 8080, false, []string{"TEST=2"}, []string{"test=2"}, []string{"secret2"}, expectedFunction)
 
 	if err != nil {
 		t.Error(err)
@@ -254,7 +258,8 @@ func TestGetFunctionDescription(t *testing.T) {
 											v1.ResourceCPU:    parsedCPU2,
 										},
 									},
-									Image: "test-image2",
+									Image:           "test-image2",
+									ImagePullPolicy: v1.PullAlways,
 									VolumeMounts: []v1.VolumeMount{
 										{
 											Name:      "secretName-vol",
@@ -332,7 +337,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	zipW.Close()
 
-	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", 8080, false, []string{}, []string{}, []string{}, expectedFunction)
+	result4, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", "Always", 8080, false, []string{}, []string{}, []string{}, expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -341,7 +346,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should maintain previous HPA definition
-	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{}, kubelessApi.Function{
+	result5, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{}, kubelessApi.Function{
 
 		Spec: kubelessApi.FunctionSpec{
 			HorizontalPodAutoscaler: v2beta1.HorizontalPodAutoscaler{
@@ -356,7 +361,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should set the Port and headless service properly
-	result6, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "", 9091, true, []string{}, []string{}, []string{}, kubelessApi.Function{})
+	result6, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "", "Always", 9091, true, []string{}, []string{}, []string{}, kubelessApi.Function{})
 	expectedPort := v1.ServicePort{
 		Name:       "http-function-port",
 		Port:       9091,
@@ -370,4 +375,123 @@ func TestGetFunctionDescription(t *testing.T) {
 	if result6.Spec.ServiceSpec.ClusterIP != v1.ClusterIPNone {
 		t.Errorf("Unexpected clusterIP %v", result6.Spec.ServiceSpec.ClusterIP)
 	}
+
+	// it should create a function from a URL
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "function")
+	}))
+	defer ts.Close()
+
+	expectedURLFunction := kubelessApi.Function{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Function",
+			APIVersion: "kubeless.io/v1beta1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "default",
+			Labels: map[string]string{
+				"test": "1",
+			},
+		},
+		Spec: kubelessApi.FunctionSpec{
+			Handler:             "file.handler",
+			Runtime:             "runtime",
+			Function:            ts.URL,
+			Checksum:            "sha256:78f9ac018e554365069108352dacabb7fbd15246edf19400677e3b54fe24e126",
+			FunctionContentType: "url",
+			Deps:                "dependencies",
+			Timeout:             "10",
+			Deployment: v1beta1.Deployment{
+				Spec: v1beta1.DeploymentSpec{
+					Template: v1.PodTemplateSpec{
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{
+								{
+									Env: []v1.EnvVar{{
+										Name:  "TEST",
+										Value: "1",
+									}},
+									Resources: v1.ResourceRequirements{
+										Limits: map[v1.ResourceName]resource.Quantity{
+											v1.ResourceMemory: parsedMem,
+											v1.ResourceCPU:    parsedCPU,
+										},
+										Requests: map[v1.ResourceName]resource.Quantity{
+											v1.ResourceMemory: parsedMem,
+											v1.ResourceCPU:    parsedCPU,
+										},
+									},
+									Image:           "test-image",
+									ImagePullPolicy: v1.PullAlways,
+									VolumeMounts: []v1.VolumeMount{
+										{
+											Name:      "secretName-vol",
+											MountPath: "/secretName",
+										},
+									},
+								},
+							},
+							Volumes: []v1.Volume{
+								{
+									Name: "secretName-vol",
+									VolumeSource: v1.VolumeSource{
+										Secret: &v1.SecretVolumeSource{
+											SecretName: "secretName",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			ServiceSpec: v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{Name: "http-function-port", Protocol: "TCP", Port: 8080, TargetPort: intstr.FromInt(8080)},
+				},
+				Selector: map[string]string{
+					"test": "1",
+				},
+				Type: v1.ServiceTypeClusterIP,
+			},
+		},
+	}
+
+	result7, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", ts.URL, "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !reflect.DeepEqual(expectedURLFunction, *result7) {
+		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedURLFunction, *result7)
+	}
+	// end test
+
+	// it should handle zip files from a URL and detect url+zip encoding
+	zipBytes, err := ioutil.ReadFile(newfile.Name())
+	if err != nil {
+		t.Error(err)
+	}
+
+	ts2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(zipBytes)
+	}))
+	defer ts2.Close()
+
+	expectedURLFunction.Spec.FunctionContentType = "url+zip"
+	expectedURLFunction.Spec.Function = ts2.URL + "/test.zip"
+	result8, err := getFunctionDescription(fake.NewSimpleClientset(), "test", "default", "file.handler", ts2.URL+"/test.zip", "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+	if err != nil {
+		t.Error(err)
+	}
+	if result8.Spec.FunctionContentType != "url+zip" {
+		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedURLFunction, *result8)
+	}
+	if result8.Spec.Function != ts2.URL+"/test.zip" {
+		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedURLFunction, *result8)
+	}
+	// end test
+
 }

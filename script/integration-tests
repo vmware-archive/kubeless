@@ -36,11 +36,6 @@ which bats > /dev/null || {
    exit 255
 }
 
-install_bin() {
-    local exe=${1:?}
-    test -n "${TRAVIS}" && sudo install -v ${exe} /usr/local/bin || install ${exe} ${GOPATH:?}/bin
-}
-
 # Start a k8s cluster (minikube, dind) if not running
 kubectl get nodes --context=${INTEGRATION_TESTS_CTX:?} || {
     cluster_up=./script/cluster-up-${INTEGRATION_TESTS_CTX}.sh

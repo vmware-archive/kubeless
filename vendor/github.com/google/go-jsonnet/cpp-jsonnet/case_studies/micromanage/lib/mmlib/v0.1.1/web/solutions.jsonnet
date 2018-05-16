@@ -7,8 +7,8 @@ local uwsgi_flask = import "uwsgi_flask.jsonnet";
         local service = self,
         uwsgiModuleContent:: |||
             import flask
-            app = flask.Flask(__name__)
-            @app.route('/')
+            app = flask.Flask(__name__) 
+            @app.route('/') 
             def hello_world():
                 return 'No content is configured for this web service.'
         |||,

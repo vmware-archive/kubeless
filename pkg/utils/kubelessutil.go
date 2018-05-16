@@ -60,6 +60,10 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 		decodedFile := "/tmp/func.decoded"
 		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("base64 -d < %s > %s", originFile, decodedFile))
 		originFile = decodedFile
+	} else if strings.Contains(contentType, "url") {
+		fromURLFile := "/tmp/func.fromurl"
+		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("curl %s -L --silent --output %s", function, fromURLFile))
+		originFile = fromURLFile
 	} else if strings.Contains(contentType, "text") || contentType == "" {
 		// Assumming that function is plain text
 		// So we don't need to preprocess it
@@ -244,7 +248,7 @@ func getFileName(handler, funcContentType, runtime string, lr *langruntime.Langr
 		return "", err
 	}
 	filename := modName
-	if funcContentType == "text" || funcContentType == "" {
+	if funcContentType == "text" || funcContentType == "" || funcContentType == "url" {
 		// We can only guess the extension if the function is specified as plain text
 		runtimeInf, err := lr.GetRuntimeInfo(runtime)
 		if err == nil {
@@ -648,7 +652,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	dpm.Spec.Template.Annotations = mergeMap(dpm.Spec.Template.Annotations, podAnnotations)
 
 	if len(dpm.Spec.Template.Spec.Containers) == 0 {
-		dpm.Spec.Template.Spec.Containers = []v1.Container{}
+		dpm.Spec.Template.Spec.Containers = append(dpm.Spec.Template.Spec.Containers, v1.Container{})
 	}
 
 	runtimeVolumeMount := getRuntimeVolumeMount(funcObj.ObjectMeta.Name)

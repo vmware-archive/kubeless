@@ -397,7 +397,14 @@ func GetPodsByLabel(c kubernetes.Interface, ns, k, v string) (*v1.PodList, error
 // GetReadyPod returns the first pod has passed the liveness probe check
 func GetReadyPod(pods *v1.PodList) (v1.Pod, error) {
 	for _, pod := range pods.Items {
-		if pod.Status.ContainerStatuses[0].Ready {
+		isPodRunning := true
+		for _, containerStatus := range pod.Status.ContainerStatuses {
+			if !containerStatus.Ready {
+				isPodRunning = false
+				break
+			}
+		}
+		if isPodRunning {
 			return pod, nil
 		}
 	}

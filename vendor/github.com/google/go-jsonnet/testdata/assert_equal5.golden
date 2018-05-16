@@ -1,5 +1,5 @@
-RUNTIME ERROR: Assertion failed.
-  !=
+RUNTIME ERROR: Assertion failed. 
+  != 
 
 -------------------------------------------------
 	<std>:758:7-50	function <anonymous>
@@ -12,4 +12,6 @@ RUNTIME ERROR: Assertion failed.
 std.assertEqual("\n ", "\n")
 
 -------------------------------------------------
-	During evaluation
+	During evaluation	
+
+

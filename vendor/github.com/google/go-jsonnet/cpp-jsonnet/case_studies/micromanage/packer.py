@@ -135,3 +135,5 @@ class PackerBuildArtefact(build_artefact.BuildArtefact):
             with open(logfilename, 'r') as logfile:
                 print logfile.read()
             raise RuntimeError('Error from packer.')
+
+

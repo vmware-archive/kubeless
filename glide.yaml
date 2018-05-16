@@ -15,7 +15,7 @@ import:
 - package: k8s.io/api
   version: kubernetes-1.8.7
 - package: k8s.io/code-generator
-  version: kubernetes-1.8.7
+  version: kubernetes-1.9.7
 - package: k8s.io/gengo
   version: 93fa717586400daaf96f9c88d0e708c80272627f
 - package: github.com/gosuri/uitable

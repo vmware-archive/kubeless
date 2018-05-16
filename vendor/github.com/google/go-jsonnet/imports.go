@@ -23,67 +23,87 @@ import (
 	"path"
 )
 
-// ImportedData represents imported data and where it came from.
-type ImportedData struct {
-	FoundHere string
-	Content   string
-}
-
 // An Importer imports data from a path.
+// TODO(sbarzowski) caching of errors (may require breaking changes)
 type Importer interface {
-	Import(codeDir string, importedPath string) (*ImportedData, error)
+	// Import fetches data from a given path. It may be relative
+	// to the file where we do the import. What "relative path"
+	// means depends on the importer.
+	//
+	// It is required that:
+	// a) for given (importedFrom, importedPath) the same
+	//    (contents, foundAt) are returned on subsequent calls.
+	// b) for given foundAt, the contents are always the same
+	//
+	// It is recommended that if there are multiple locations that
+	// need to be probed (e.g. relative + multiple library paths)
+	// then all results of all attempts will be cached separately,
+	// both nonexistence and contents of existing ones.
+	// FileImporter may serve as an example.
+	Import(importedFrom, importedPath string) (contents Contents, foundAt string, err error)
 }
 
-// ImportCacheValue represents a value in an imported-data cache.
-type ImportCacheValue struct {
-	// nil if we got an error
-	data *ImportedData
-
-	// nil if we got an error or have only imported it via importstr
-	asCode potentialValue
-
-	// Errors can occur during import, we have to cache these too.
-	err error
+// Contents is a representation of imported data. It is a simple
+// string wrapper, which makes it easier to enforce the caching policy.
+type Contents struct {
+	data *string
 }
 
-type importCacheKey struct {
-	dir          string
-	importedPath string
+func (c Contents) String() string {
+	return *c.data
 }
 
-type importCacheMap map[importCacheKey]*ImportCacheValue
+// MakeContents creates Contents from a string.
+func MakeContents(s string) Contents {
+	return Contents{
+		data: &s,
+	}
+}
 
 // ImportCache represents a cache of imported data.
+//
+// While the user-defined Importer implementations
+// are required to cache file content, this cache
+// is an additional layer of optimization that caches values
+// (i.e. the result of executing the file content).
+// It also verifies that the content pointer is the same for two foundAt values.
 type ImportCache struct {
-	cache    importCacheMap
-	importer Importer
+	foundAtVerification map[string]Contents
+	codeCache           map[string]potentialValue
+	importer            Importer
 }
 
-// MakeImportCache creates and ImportCache using an importer.
+// MakeImportCache creates an ImportCache using an Importer.
 func MakeImportCache(importer Importer) *ImportCache {
-	return &ImportCache{importer: importer, cache: make(importCacheMap)}
+	return &ImportCache{
+		importer:            importer,
+		foundAtVerification: make(map[string]Contents),
+		codeCache:           make(map[string]potentialValue),
+	}
 }
 
-func (cache *ImportCache) importData(key importCacheKey) *ImportCacheValue {
-	if cached, ok := cache.cache[key]; ok {
-		return cached
+func (cache *ImportCache) importData(importedFrom, importedPath string) (contents Contents, foundAt string, err error) {
+	contents, foundAt, err = cache.importer.Import(importedFrom, importedPath)
+	if err != nil {
+		return Contents{}, "", err
 	}
-	data, err := cache.importer.Import(key.dir, key.importedPath)
-	cached := &ImportCacheValue{
-		data: data,
-		err:  err,
+	if cached, importedBefore := cache.foundAtVerification[foundAt]; importedBefore {
+		if cached != contents {
+			panic(fmt.Sprintf("importer problem: a different instance of Contents returned when importing %#v again", foundAt))
+		}
+	} else {
+		cache.foundAtVerification[foundAt] = contents
 	}
-	cache.cache[key] = cached
-	return cached
+	return
 }
 
 // ImportString imports a string, caches it and then returns it.
-func (cache *ImportCache) ImportString(codeDir, importedPath string, e *evaluator) (*valueString, error) {
-	cached := cache.importData(importCacheKey{codeDir, importedPath})
-	if cached.err != nil {
-		return nil, e.Error(cached.err.Error())
+func (cache *ImportCache) ImportString(importedFrom, importedPath string, e *evaluator) (*valueString, error) {
+	data, _, err := cache.importData(importedFrom, importedPath)
+	if err != nil {
+		return nil, e.Error(err.Error())
 	}
-	return makeValueString(cached.data.Content), nil
+	return makeValueString(data.String()), nil
 }
 
 func codeToPV(e *evaluator, filename string, code string) potentialValue {
@@ -100,69 +120,101 @@ func codeToPV(e *evaluator, filename string, code string) potentialValue {
 }
 
 // ImportCode imports code from a path.
-func (cache *ImportCache) ImportCode(codeDir, importedPath string, e *evaluator) (value, error) {
-	cached := cache.importData(importCacheKey{codeDir, importedPath})
-	if cached.err != nil {
-		return nil, e.Error(cached.err.Error())
+func (cache *ImportCache) ImportCode(importedFrom, importedPath string, e *evaluator) (value, error) {
+	contents, foundAt, err := cache.importData(importedFrom, importedPath)
+	if err != nil {
+		return nil, e.Error(err.Error())
 	}
-	if cached.asCode == nil {
-		// File hasn't been parsed before, update the cache record.
-		cached.asCode = codeToPV(e, cached.data.FoundHere, cached.data.Content)
+	var pv potentialValue
+	if cachedPV, isCached := cache.codeCache[foundAt]; !isCached {
+		// File hasn't been parsed and analyzed before, update the cache record.
+		pv = codeToPV(e, foundAt, contents.String())
+		cache.codeCache[foundAt] = pv
+	} else {
+		pv = cachedPV
 	}
-	return e.evaluate(cached.asCode)
+	return e.evaluate(pv)
 }
 
 // Concrete importers
 // -------------------------------------
 
-// FileImporter imports data from files.
+// FileImporter imports data from the filesystem.
 type FileImporter struct {
-	JPaths []string
+	JPaths  []string
+	fsCache map[string]*fsCacheEntry
 }
 
-func tryPath(dir, importedPath string) (found bool, content []byte, foundHere string, err error) {
+type fsCacheEntry struct {
+	exists   bool
+	contents Contents
+}
+
+func (importer *FileImporter) tryPath(dir, importedPath string) (found bool, contents Contents, foundHere string, err error) {
+	if importer.fsCache == nil {
+		importer.fsCache = make(map[string]*fsCacheEntry)
+	}
 	var absPath string
 	if path.IsAbs(importedPath) {
 		absPath = importedPath
 	} else {
 		absPath = path.Join(dir, importedPath)
 	}
-	content, err = ioutil.ReadFile(absPath)
-	if os.IsNotExist(err) {
-		return false, nil, "", nil
+	var entry *fsCacheEntry
+	if cacheEntry, isCached := importer.fsCache[absPath]; isCached {
+		entry = cacheEntry
+	} else {
+		contentBytes, err := ioutil.ReadFile(absPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				entry = &fsCacheEntry{
+					exists: false,
+				}
+			} else {
+				return false, Contents{}, "", err
+			}
+		} else {
+			entry = &fsCacheEntry{
+				exists:   true,
+				contents: MakeContents(string(contentBytes)),
+			}
+		}
+		importer.fsCache[absPath] = entry
 	}
-	return true, content, absPath, err
+	return entry.exists, entry.contents, absPath, nil
 }
 
-// Import imports a file.
-func (importer *FileImporter) Import(dir, importedPath string) (*ImportedData, error) {
-	found, content, foundHere, err := tryPath(dir, importedPath)
+// Import imports file from the filesystem.
+func (importer *FileImporter) Import(importedFrom, importedPath string) (contents Contents, foundAt string, err error) {
+	dir, _ := path.Split(importedFrom)
+	found, content, foundHere, err := importer.tryPath(dir, importedPath)
 	if err != nil {
-		return nil, err
+		return Contents{}, "", err
 	}
 
 	for i := len(importer.JPaths) - 1; !found && i >= 0; i-- {
-		found, content, foundHere, err = tryPath(importer.JPaths[i], importedPath)
+		found, content, foundHere, err = importer.tryPath(importer.JPaths[i], importedPath)
 		if err != nil {
-			return nil, err
+			return Contents{}, "", err
 		}
 	}
 
 	if !found {
-		return nil, fmt.Errorf("couldn't open import %#v: no match locally or in the Jsonnet library paths", importedPath)
+		return Contents{}, "", fmt.Errorf("couldn't open import %#v: no match locally or in the Jsonnet library paths", importedPath)
 	}
-	return &ImportedData{Content: string(content), FoundHere: foundHere}, nil
+	return content, foundHere, nil
 }
 
 // MemoryImporter "imports" data from an in-memory map.
 type MemoryImporter struct {
-	Data map[string]string
+	Data map[string]Contents
 }
 
-// Import imports a map entry.
-func (importer *MemoryImporter) Import(dir, importedPath string) (*ImportedData, error) {
+// Import fetches data from a map entry.
+// All paths are treated as absolute keys.
+func (importer *MemoryImporter) Import(importedFrom, importedPath string) (contents Contents, foundAt string, err error) {
 	if content, ok := importer.Data[importedPath]; ok {
-		return &ImportedData{Content: content, FoundHere: importedPath}, nil
+		return content, importedPath, nil
 	}
-	return nil, fmt.Errorf("import not available %v", importedPath)
+	return Contents{}, "", fmt.Errorf("import not available %v", importedPath)
 }

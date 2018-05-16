@@ -34,3 +34,5 @@ class BuildArtefact(object):
 
     def postBuild(self):
         raise NotImplementedError("%s has no override" % self.__class__.__name__)
+        
+        

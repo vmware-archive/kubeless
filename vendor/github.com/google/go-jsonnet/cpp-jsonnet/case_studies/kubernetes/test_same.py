@@ -64,3 +64,7 @@ for filename in files:
 
         with open(filename + '.new.yaml.out', 'w') as f:
             f.write(jsonstr(jsonnet_doc))
+
+        
+
+

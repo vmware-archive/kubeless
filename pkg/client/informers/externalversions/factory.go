@@ -19,6 +19,10 @@ limitations under the License.
 package externalversions
 
 import (
+	reflect "reflect"
+	sync "sync"
+	time "time"
+
 	versioned "github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/kubeless/kubeless/pkg/client/informers/externalversions/internalinterfaces"
 	kubeless "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless"
@@ -26,9 +30,6 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
-	reflect "reflect"
-	sync "sync"
-	time "time"
 )
 
 type sharedInformerFactory struct {
