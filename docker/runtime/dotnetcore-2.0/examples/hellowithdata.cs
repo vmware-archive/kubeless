@@ -1,12 +1,10 @@
 using System;
-using System.IO;
-using Microsoft.AspNetCore.Http;
+using Kubeless.Functions;
 
-public class mycode
+public class hellowithdata
 {
-    public object execute(HttpRequest request)
+    public object handler(Event k8Event, Context k8Context)
     {
-        var input = new StreamReader(request.Body).ReadToEnd();
-        return input;
+        return k8Event.Data;
     }
 }

@@ -1,9 +1,9 @@
 using System;
-using Microsoft.AspNetCore.Http;
+using Kubeless.Functions;
 
-public class mycode
+public class helloget
 {
-    public string execute(HttpRequest request)
+    public string handler(Event k8Event, Context k8Context)
     {
         return "hello world";
     }

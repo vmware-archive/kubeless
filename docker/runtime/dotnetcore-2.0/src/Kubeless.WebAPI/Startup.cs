@@ -22,8 +22,8 @@ namespace kubeless_netcore_runtime
             if (env.IsDevelopment())
             {
                 //Set fixed enviroment variables for example function:
-                Environment.SetEnvironmentVariable("MOD_NAME", "mycode");
-                Environment.SetEnvironmentVariable("FUNC_HANDLER", "execute");
+                Environment.SetEnvironmentVariable("MOD_NAME", "hellowithdata");
+                Environment.SetEnvironmentVariable("FUNC_HANDLER", "handler");
                 Environment.SetEnvironmentVariable("FUNC_TIMEOUT", "180");
                 Environment.SetEnvironmentVariable("FUNC_PORT", "8080");
                 Environment.SetEnvironmentVariable("FUNC_RUNTIME", "dotnetcore2.0");
