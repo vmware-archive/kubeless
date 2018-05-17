@@ -1,6 +1,6 @@
 RUNTIME ERROR: Object assertion failed.
 -------------------------------------------------
-
+		
 
 -------------------------------------------------
 	testdata/object_invariant11:1:1-19	$
@@ -8,4 +8,6 @@ RUNTIME ERROR: Object assertion failed.
 { assert false }.x
 
 -------------------------------------------------
-	During evaluation
+	During evaluation	
+
+

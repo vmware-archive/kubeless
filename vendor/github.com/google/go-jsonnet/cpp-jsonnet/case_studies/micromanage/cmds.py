@@ -29,7 +29,7 @@ def file_glob(given_glob, to, prefix):
             files += more_files
         else:
             files.append((f, to + f[lp:]))
-    return files
+    return files        
 
 
 def compile_command_to_bash(cmd):
@@ -68,3 +68,4 @@ def compile_command_to_bash(cmd):
         ]
     else:
         raise RuntimeError('Did not recognize image command kind: ' + cmd['kind'])
+

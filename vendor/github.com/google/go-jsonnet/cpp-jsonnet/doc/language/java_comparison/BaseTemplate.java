@@ -89,3 +89,4 @@ public class BaseTemplate extends JsonnetObject {
     }
     public Object spec() { return new BaseTemplateSpec(); }
 }
+

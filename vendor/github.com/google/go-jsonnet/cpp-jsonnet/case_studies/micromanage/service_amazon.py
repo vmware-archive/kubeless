@@ -164,7 +164,7 @@ class AmazonService(service.Service):
         for res_kind_name, res_kind_obj in infra.iteritems():
             for res_name, res in res_kind_obj.iteritems():
                 res['provider'] = 'aws.%s' % service.get('environment', 'default')
-
+            
         instances = infra.get('aws_instance', {})
 
         # Convert AMI name to id

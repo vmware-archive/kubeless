@@ -48,7 +48,7 @@ import (
 const (
 	maxRetries        = 5
 	funcKind          = "Function"
-	funcAPI           = "kubeless.io"
+	funcAPIVersion    = "kubeless.io/v1beta1"
 	functionFinalizer = "kubeless.io/function"
 )
 
@@ -314,7 +314,7 @@ func (c *FunctionController) ensureK8sResources(funcObj *kubelessApi.Function) e
 		}
 	}
 
-	or, err := utils.GetFunctionOwnerReference(funcObj)
+	or, err := utils.GetOwnerReference(funcKind, funcAPIVersion, funcObj.Name, funcObj.UID)
 	if err != nil {
 		return err
 	}
@@ -447,6 +447,9 @@ func functionObjChanged(oldFunctionObj, newFunctionObj *kubelessApi.Function) bo
 	oldSpec := &newFunctionObj.Spec
 
 	if newSpec.Function != oldSpec.Function ||
+		// compare checksum since the url content type uses Function field to pass the URL for the function
+		// comparing the checksum ensures that if the function code has changed but the URL remains the same, the function will get redeployed
+		newSpec.Checksum != oldSpec.Checksum ||
 		newSpec.Handler != oldSpec.Handler ||
 		newSpec.FunctionContentType != oldSpec.FunctionContentType ||
 		newSpec.Deps != oldSpec.Deps ||

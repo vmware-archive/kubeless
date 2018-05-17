@@ -36,3 +36,4 @@ local all_visible = {
 	all_hidden + progressive,
 	progressive + (all_hidden + all_inherit)
 ]
+

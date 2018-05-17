@@ -4,7 +4,7 @@ FROM php:7.2-fpm-stretch
 ENV COMPOSER_HOME /composer
 ENV PATH="/root/.composer/vendor/bin:${PATH}"
 ENV COMPOSER_ALLOW_SUPERUSER=1
-ENV FUNC_PORT 8080
+ENV FUNC_PROCESS="/usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"
 
 RUN apt-get update \
     && apt-get install -y \
@@ -48,8 +48,8 @@ COPY config/default.conf /etc/nginx/conf.d/default.conf
 RUN rm /etc/nginx/sites-available/default && \
     mkdir -p /app && \
     touch /run/nginx.pid && \
-    chown 1000:1000 -R /run/nginx.pid /app /var/lib/nginx /var/log/nginx
+    chmod -R a+w /run/nginx.pid /app /var/lib/nginx /var/log/nginx
 USER 1000
 
-ENTRYPOINT [ "" ]
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+ADD proxy /
+CMD [ "/proxy" ]

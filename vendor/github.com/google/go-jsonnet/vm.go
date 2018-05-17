@@ -91,9 +91,9 @@ func (vm *VM) Importer(i Importer) {
 type evalKind int
 
 const (
-	evalKindRegular = iota
-	evalKindMulti   = iota
-	evalKindStream  = iota
+	evalKindRegular evalKind = iota
+	evalKindMulti            = iota
+	evalKindStream           = iota
 )
 
 func (vm *VM) evaluateSnippet(filename string, snippet string, kind evalKind) (output interface{}, err error) {

@@ -2,7 +2,7 @@ RUNTIME ERROR: Attempt to use super when there is no super class.
 -------------------------------------------------
 	testdata/object_invariant7:1:16-21	object <anonymous>
 
-{ x: 5, assert super.x == 5 }
+{ x: 5, assert super.x == 5 } 
 
 -------------------------------------------------
 	<std>:1165:25-26	thunk from <thunk <ta> from <function <anonymous>>>
@@ -26,7 +26,9 @@ RUNTIME ERROR: Attempt to use super when there is no super class.
     if !std.primitiveEquals(ta, tb) then
 
 -------------------------------------------------
-
+		
 
 -------------------------------------------------
-	During manifestation
+	During manifestation	
+
+

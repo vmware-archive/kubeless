@@ -43,8 +43,8 @@ Kubeless leverages multiple concepts of Kubernetes in order to support deploy fu
 - Each event source is modelled as a separate Trigger CRD object
 - Separate Custom Resource Definitions controller to handle CRUD operations corresponding to CRD object
 - Deployment / Pod to run the corresponding runtime.
-- Config map to inject function's code to the runtime pod.
-- Init container to load the dependencies that function might have.
+- Configmap to inject function's code to the runtime pod.
+- Init-container to load the dependencies that function might have.
 - Service to expose function.
 - Ingress resources to expose functions externally
 
@@ -325,9 +325,9 @@ Use "kubeless [command] --help" for more information about a command.
 
 ## Implementation
 
-Kubeless controller is written in Go programming language, and uses the Kubernetes go client to interact with the Kubernetes API server.
+Kubeless controller is written in Go programming language, and uses the Kubernetes client-go to interact with the Kubernetes apiserver.
 
-Kubeless CLI is written in Go as well, using the popular cli library `github.com/spf13/cobra`. Basically it is a bundle of HTTP requests and kubectl commands. We send http requests to the Kubernetes API server in order to 'crud' CRD objects. Checkout [the cmd folder](https://github.com/kubeless/kubeless/tree/master/cmd/kubeless) for more details.
+Kubeless CLI is written in Go as well, using the popular cli library `github.com/spf13/cobra`. Basically it is a bundle of HTTP requests and kubectl commands. We send http requests to the Kubernetes apiserver in order to 'crud' CRD objects. Checkout [the cmd folder](https://github.com/kubeless/kubeless/tree/master/cmd/kubeless) for more details.
 
 ## Directory structure
 

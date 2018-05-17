@@ -1,0 +1,32 @@
+<project>
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>io.kubeless</groupId>
+    <artifactId>kubeless</artifactId>
+    <packaging>pom</packaging>
+    <version>1.0-SNAPSHOT</version>
+    <name>kubeless</name>
+    <url>http://maven.apache.org</url>
+    <modules>
+        <module>params</module>
+        <module>function</module>
+        <module>handler</module>
+    </modules>
+    <build>
+    <plugins>
+        <plugin>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+            <execution>
+            <phase>install</phase>
+            <goals>
+                <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+                <outputDirectory>/kubeless/lib</outputDirectory>
+            </configuration>
+            </execution>
+        </executions>
+        </plugin>
+    </plugins>
+    </build>
+</project>

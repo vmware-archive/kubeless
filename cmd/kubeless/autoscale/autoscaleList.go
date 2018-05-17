@@ -85,7 +85,7 @@ func printAutoscale(w io.Writer, ass []v2beta1.HorizontalPodAutoscaler, output s
 			m := ""
 			v := ""
 			if len(i.Spec.Metrics) == 0 {
-				logrus.Errorf("The function autoscale %s isn't in correct format. It has no metric defined.", i.Name)
+				logrus.Errorf("The autoscale %s has bad format. It has no metric defined.", i.Name)
 				continue
 			}
 			if i.Spec.Metrics[0].Object != nil {
@@ -115,7 +115,7 @@ func printAutoscale(w io.Writer, ass []v2beta1.HorizontalPodAutoscaler, output s
 				}
 				fmt.Fprintln(w, string(b))
 			default:
-				return fmt.Errorf("Wrong output format. Please use only json|yaml")
+				return fmt.Errorf("Wrong output format. Only accept json|yaml file")
 			}
 		}
 	}

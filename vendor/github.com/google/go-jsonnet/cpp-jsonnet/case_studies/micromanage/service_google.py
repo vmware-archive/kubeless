@@ -186,7 +186,7 @@ class GoogleService(service.Service):
         for res_kind_name, res_kind_obj in infra.iteritems():
             for res_name, res in res_kind_obj.iteritems():
                 res['provider'] = 'google.%s' % service['environment']
-
+            
         # Process instance commands
         instances = infra.get('google_compute_instance', {})
         for inst_name, inst in instances.iteritems():
@@ -215,3 +215,4 @@ class GoogleService(service.Service):
                 }
             }
         }
+
