@@ -41,19 +41,26 @@ The HTTP server should satisfy the following requirements:
 
  - The file to load can be specified using an environment variable `MOD_NAME`.
  - The function to load can be specified using an environment variable `FUNC_HANDLER`.
- - The port used to expose the service can be modified using an environment variable `FUNC_PORT`.
  - The server should return `200 - OK` to requests at `/healthz`.
- - Functions should run `FUNC_TIMEOUT` as maximum. If, due to language limitations, it is not possible not stop the user function, at least a `408 - Timeout` response should be returned to the HTTP request.
  - Functions should receive two parameters: `event` and `context` and should return the value that will be used as HTTP response. See [the functions standard signature](/docs/runtimes#runtimes-interface) for more information. The information that will be available in `event` parameter will be received as HTTP headers.
  - Requests should be served in parallel.
- - Requests should be logged to stdout including date, HTTP method, requested path and status code of the response.
  - Exceptions in the function should be caught. The server should not exit due to a function error.
- - [Optional] The function should expose Prometheus statistics in the path `/metrics`. At least it should expose:
+
+See an example of an runtime image for [Python](https://github.com/kubeless/kubeless/blob/master/docker/runtime/python/Dockerfile.2.7).
+
+## 2.1 Additional features
+
+Apart from the requirements above, the runtime should satisfy:
+
+ - The port used to expose the service can be modified using an environment variable `FUNC_PORT`.
+ - Functions should run `FUNC_TIMEOUT` as maximum. If, due to language limitations, it is not possible not stop the user function, at least a `408 - Timeout` response should be returned to the HTTP request.
+ - Requests should be logged to stdout including date, HTTP method, requested path and status code of the response.
+ - The function should expose Prometheus statistics in the path `/metrics`. At least it should expose:
    - Calls per HTTP method
    - Errors per HTTP method
    - Histogram with the execution time per HTTP method
 
-See an example of an runtime image for [Python](https://github.com/kubeless/kubeless/blob/master/docker/runtime/python/Dockerfile.2.7).
+In any case, it is not necessary that the native runtime fulfill the above. Those features can be obtained adding a Go proxy that already implente those features and redirect the request to the new runtime. For adding it is only necessary to add the proxy binary to the image and run it as the `CMD`. See the [ruby example](https://github.com/kubeless/kubeless/blob/master/docker/runtime/ruby/).
 
 ## 3. Update the kubeless-config configmap
 
