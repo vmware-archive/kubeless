@@ -234,7 +234,7 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 			"dep ensure > /dev/termination-log 2>&1")
 	case strings.Contains(runtime, "dotnetcore"):
 		command = appendToCommand(command,
-                        "dotnet restore "+installVolume.MountPath+" --packages "+installVolume.MountPath+"/packages")
+			"dotnet restore "+installVolume.MountPath+" --packages "+installVolume.MountPath+"/packages")
 	}
 
 	return v1.Container{
