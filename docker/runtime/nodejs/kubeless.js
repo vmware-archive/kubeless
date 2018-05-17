@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('fs');
+const http = require('http');
 const vm = require('vm');
 const path = require('path');
 const Module = require('module');
@@ -81,7 +82,7 @@ function modExecute(handler, req, res, end) {
                     console.log('Event: '+req.body.toString());
                 }
                 else {
-//  We only support +json right now. Throw an error?
+                    handleError(new Error(`Content-type ${cType.type} not supported`));
                 }
             }
             else {
@@ -96,7 +97,7 @@ function modExecute(handler, req, res, end) {
                 };
 
                 if (cType.type === 'application/json' || cType.type.endsWith('+json')) {
-                    event.data = JSON.parse(req.body.toString('utf-8'))
+                    event.data = JSON.parse(req.body.toString('utf-8'));
                 }
                 else{
                     event.data = req.body;
@@ -129,9 +130,9 @@ function modFinalize(result, res, end) {
     end();
 }
 
-function handleError(err, res, label, end) {
+function handleError(err, res, label, end, code=500) {
     errorsCounter.labels(label).inc();
-    res.status(500).send('Internal Server Error');
+    res.status(code).send(http.STATUS_CODES[code]);
     console.error(`Function failed to execute: ${err.stack}`);
     end();
 }
