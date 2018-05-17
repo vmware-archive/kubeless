@@ -1,12 +1,11 @@
 using System;
-using System.IO;
-using Microsoft.AspNetCore.Http;
+using Kubeless.Functions;
 
-public class mycode
+public class module
 {
-    public int execute(HttpRequest request)
+    public int handler(Event k8Event, Context k8Context)
     {
-        var n = int.Parse(new StreamReader(request.Body).ReadToEnd());
+        var n = int.Parse(k8Event.Data.ToString());
 
         return fibonacci(n);
     }

@@ -56,7 +56,7 @@ namespace kubeless_netcore_runtime
 
             int timeout = int.Parse(VariablesUtils.GetEnvironmentVariable("FUNC_TIMEOUT", "180"));
 
-            services.AddSingleton<IInvoker>(new TimeoutInvoker(timeout));
+            services.AddSingleton<IInvoker>(new TimeoutInvoker(timeout * 1000)); // seconds
             services.AddSingleton<IParameterHandler>(new DefaultParameterHandler());
         }
 
