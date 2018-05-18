@@ -19,6 +19,8 @@ limitations under the License.
 package v1beta1
 
 import (
+	time "time"
+
 	kubeless_v1beta1 "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	versioned "github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/kubeless/kubeless/pkg/client/informers/externalversions/internalinterfaces"
@@ -27,7 +29,6 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
-	time "time"
 )
 
 // NATSTriggerInformer provides access to a shared informer and lister for

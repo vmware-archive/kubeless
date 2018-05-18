@@ -49,6 +49,18 @@ get-python-36:
 get-python-36-verify:
 	kubeless function call get-python-36 |egrep hello.world
 
+get-python-url-deps:
+	kubeless function deploy get-python-url-deps --runtime python2.7 --handler helloget.foo --from-file https://raw.githubusercontent.com/kubeless/kubeless/v1.0.0-alpha.1/examples/python/hellowithdeps.py --dependencies https://raw.githubusercontent.com/kubeless/kubeless/v1.0.0-alpha.1/examples/python/requirements.txt
+
+get-python-url-deps-verify:
+	kubeless function call get-python-url-deps |egrep Google	
+
+get-node-url-zip:
+	kubeless function deploy get-node-url-zip --runtime nodejs6 --handler index.helloGet --from-file https://github.com/tkeech1/kubelessfunction/blob/master/nodejs/helloFunctions.zip?raw=true
+
+get-node-url-zip-verify:
+	kubeless function call get-node-url-zip |egrep hello.world
+
 scheduled-get-python:
 	kubeless function deploy scheduled-get-python --schedule "* * * * *" --runtime python2.7 --handler helloget.foo --from-file python/helloget.py
 
@@ -694,3 +706,22 @@ pubsub-go-verify:
 
 
 pubsub: pubsub-python pubsub-nodejs pubsub-ruby
+
+get-java:
+	kubeless function deploy get-java --runtime java1.8 --handler Foo.foo --from-file java/HelloGet.java
+
+get-java-verify:
+	kubeless function call get-java |egrep Hello.world
+
+post-java:
+	kubeless function deploy post-java --runtime java1.8  --handler Foo.foo --from-file java/HelloWithData.java
+
+post-java-verify:
+	kubeless function call post-java --data '{"its": "alive"}'| egrep "its.*alive"
+
+get-java-deps:
+	kubeless function deploy get-java-deps --runtime java1.8 --handler Hello.sayHello --from-file java/HelloWithDeps.java --dependencies java/pom.xml
+
+get-java-deps-verify:
+	kubeless function call get-java-deps --data '{"hello": "world"}'
+	kubectl logs -l function=get-java-deps | grep -q '.*Hello.*world! Current local time is:'

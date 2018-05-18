@@ -1,5 +1,5 @@
 
-ignored = ["github.com/kubeless/kubeless/pkg/functions"]
+ignored = ["github.com/kubeless/kubeless/pkg/functions", "github.com/kubeless/kubeless/pkg/function-proxy/utils"]
 
 [[constraint]]
   name = "github.com/prometheus/client_golang"

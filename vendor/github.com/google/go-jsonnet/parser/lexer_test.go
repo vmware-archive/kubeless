@@ -157,10 +157,10 @@ var lexTests = []lexTest{
 	{
 		"block string mixed",
 		`|||
-		test
-		  more
-		|||
-		  foo
+	  	test
+	  	  more
+	  	|||
+	  	  foo
 |||`,
 		Tokens{
 			{

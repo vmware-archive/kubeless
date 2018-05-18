@@ -1,4 +1,4 @@
-RUNTIME ERROR: Assertion failed. [31m !=
+RUNTIME ERROR: Assertion failed. [31m != 
 -------------------------------------------------
 	<std>:758:7-50	function <anonymous>
 
@@ -10,4 +10,6 @@ RUNTIME ERROR: Assertion failed. [31m !=
 std.assertEqual("\u001b[31m", "")
 
 -------------------------------------------------
-	During evaluation
+	During evaluation	
+
+

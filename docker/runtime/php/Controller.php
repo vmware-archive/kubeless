@@ -40,7 +40,7 @@ class Controller
    *
    * @return void
    */
-  private function runFunction(Request $request)
+  private function runFunction(Request $request, Response $response)
   {
       set_time_limit($this->timeout);
       ob_start();
@@ -63,12 +63,14 @@ class Controller
           'event-namespace' => $_SERVER['HTTP_EVENT_NAMESPACE'],
           'extensions' => (object) array(
             'request' => $request,
+            'response' => $response,
           )
         );
         $res = call_user_func($this->function, $event, $this->functionContext);
+        $event->extensions->response->getBody()->write($res);
         ob_end_clean();
         chdir($this->currentDir);
-        return $res;
+        return $event->extensions->response;
       } else {
           sleep($this->timeout);
           posix_kill($pid, SIGKILL);
@@ -106,10 +108,8 @@ class Controller
   {
     try {
       $this->validate();
-      $ret = $this->runFunction($request);
-      $response->getBody()->write($ret);
 
-      return $response;
+      return $this->runFunction($request, $response);
     } catch (\Kubeless\TimeoutFunctionException $e) {
       $res = $response->withStatus(408);
 

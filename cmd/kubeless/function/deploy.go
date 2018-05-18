@@ -17,7 +17,7 @@ limitations under the License.
 package function
 
 import (
-	"io/ioutil"
+	"fmt"
 	"strings"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
@@ -113,6 +113,16 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		imagePullPolicy, err := cmd.Flags().GetString("image-pull-policy")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		if imagePullPolicy != "IfNotPresent" && imagePullPolicy != "Always" && imagePullPolicy != "Never" {
+			err := fmt.Errorf("image-pull-policy must be {IfNotPresent|Always|Never}")
+			logrus.Fatal(err)
+		}
+
 		mem, err := cmd.Flags().GetString("memory")
 		if err != nil {
 			logrus.Fatal(err)
@@ -142,11 +152,14 @@ var deployCmd = &cobra.Command{
 
 		funcDeps := ""
 		if deps != "" {
-			bytes, err := ioutil.ReadFile(deps)
+			contentType, err := getContentType(deps)
 			if err != nil {
-				logrus.Fatalf("Unable to read file %s: %v", deps, err)
+				logrus.Fatal(err)
 			}
-			funcDeps = string(bytes)
+			funcDeps, _, err = parseContent(deps, contentType)
+			if err != nil {
+				logrus.Fatal(err)
+			}
 		}
 
 		if runtime == "" && runtimeImage == "" {
@@ -163,7 +176,7 @@ var deployCmd = &cobra.Command{
 			"function":   funcName,
 		}
 
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, port, headless, envs, labels, secrets, defaultFunctionSpec)
+		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, imagePullPolicy, port, headless, envs, labels, secrets, defaultFunctionSpec)
 
 		if err != nil {
 			logrus.Fatal(err)
@@ -209,7 +222,7 @@ var deployCmd = &cobra.Command{
 func init() {
 	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime")
 	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
-	deployCmd.Flags().StringP("from-file", "", "", "Specify code file")
+	deployCmd.Flags().StringP("from-file", "", "", "Specify code file or a URL to the code file")
 	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")
 	deployCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
@@ -219,6 +232,7 @@ func init() {
 	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory, which is measured in bytes, for the function. It is expressed as a plain integer or a fixed-point interger with one of these suffies: E, P, T, G, M, K, Ei, Pi, Ti, Gi, Mi, Ki")
 	deployCmd.Flags().StringP("cpu", "", "", "Request amount of cpu for the function, which is measured in units of cores. Please see the following link for more information: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-cpu")
 	deployCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
+	deployCmd.Flags().StringP("image-pull-policy", "", "Always", "Image pull policy")
 	deployCmd.Flags().StringP("timeout", "", "180", "Maximum timeout (in seconds) for the function to complete its execution")
 	deployCmd.Flags().Bool("headless", false, "Deploy http-based function without a single service IP and load balancing support from Kubernetes. See: https://kubernetes.io/docs/concepts/services-networking/service/#headless-services")
 	deployCmd.Flags().Int32("port", 8080, "Deploy http-based function with a custom port")

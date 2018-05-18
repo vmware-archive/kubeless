@@ -8,7 +8,7 @@ Kubernetes introduces [HorizontalPodAutoscaler](https://kubernetes.io/docs/tasks
 
 If you're on Kubeless CLI, this below command gives you an idea how to setup autoscaling for deployed function:
 
-```
+```console
 $ kubeless autoscale --help
 autoscale command allows user to list, create, delete autoscale rule
 for function on Kubeless
@@ -30,7 +30,7 @@ Use "kubeless autoscale [command] --help" for more information about a command.
 
 Once you create an autoscaling rule for a specific function (with `kubeless autoscale create`), the corresponding HPA object will be added to the system which is going to monitor your function and auto-scale its pods based on the autoscaling rule you define in the command. The default metric is CPU, but you have option to do autoscaling with custom metrics. At this moment, Kubeless supports `qps` which stands for number of incoming requests to function per second.
 
-```
+```console
 $ kubeless autoscale create --help
 automatically scale function based on monitored metrics
 
@@ -57,11 +57,11 @@ To autoscale based on CPU usage, it is *required* that your function has been de
 
 To do this, use the `--cpu` parameter when deploying your function. Please see the [Meaning of CPU](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-cpu) for the format of the value that should be passed. 
 
-## Autoscaling with custom metrics on k8s 1.7
+## Autoscaling with custom metrics
 
-This walkthrough will go over the step-by-step of setting up the prometheus-based custom API server on your cluster and configuring autoscaler (HPA) to use application metrics sourced from prometheus instance.
+It is possible to use custom metrics (like queries per second) to scale your functions. We are [looking for help](https://github.com/kubeless/kubeless/issues/647) in order to document the required steps to do so with the different Kubernetes providers for newer versions of Kubernetes. If you want to contribute to this guide PRs are more than welcome :).
 
-This walkthrough is done in [kubeadm-dind-cluster v1.7](https://github.com/Mirantis/kubeadm-dind-cluster)
+**Warning** This walkthrough is done in [kubeadm-dind-cluster v1.7](https://github.com/Mirantis/kubeadm-dind-cluster) it may not work for other versions or platforms.
 
 ### Cluster configuration
 
@@ -73,7 +73,7 @@ Read more about the aggregation and autoscaling in the Kubernetes documentations
 
 #### Start the cluster
 
-```bash
+```console
 wget https://cdn.rawgit.com/Mirantis/kubeadm-dind-cluster/master/fixed/dind-cluster-v1.7.sh
 chmod +x dind-cluster-v1.7.sh
 ./dind-cluster-v1.7.sh up
@@ -81,7 +81,7 @@ chmod +x dind-cluster-v1.7.sh
 
 Checking the state of the cluster:
 
-```bash
+```console
 docker ps
 kubectl cluster-info
 ```
@@ -122,7 +122,7 @@ The `horizontal-pod-autoscaler-sync-period` parameter set the interval time (in 
 
 Once the kube-apiserver is configured and up and running, `kubectl` will auto-discover all API groups. Check it using this below command and you will see the `autoscaling/v2alpha1` is enabled:
 
-```
+```console
 $ kubectl api-versions
 admissionregistration.k8s.io/v1alpha1
 apiextensions.k8s.io/v1beta1
@@ -152,7 +152,7 @@ v1
 
 The Prometheus setup contains a Prometheus operator and a Prometheus instance
 
-```
+```console
 $ kubectl create -f $KUBELESS_REPO/manifests/autoscaling/prometheus-operator.yaml
 clusterrole "prometheus-operator" created
 serviceaccount "prometheus-operator" created
@@ -178,7 +178,7 @@ When the aggregator enabled and configured properly, one can deploy and register
 
 The custom API server we are using here is basically [a Prometheus adapter](https://github.com/directxman12/k8s-prometheus-adapter) which can collect metrics from Prometheus and send to HPA controller via REST queries (that's why we must configure HPA controller to use REST client via the `--horizontal-pod-autoscaler-use-rest-clients` flag)
 
-```
+```console
 $ kubectl create -f $KUBELESS_REPO/manifests/autoscaling/custom-metrics.yaml
 namespace "custom-metrics" created
 serviceaccount "custom-metrics-apiserver" created
@@ -195,7 +195,7 @@ clusterrolebinding "hpa-controller-custom-metrics" created
 
 At this step, the custom API server is deployed and registered to API aggregator, so we can see it:
 
-```
+```console
 $ kubectl api-versions
 admissionregistration.k8s.io/v1alpha1
 apiextensions.k8s.io/v1beta1

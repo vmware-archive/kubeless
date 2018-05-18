@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"fmt"
 	"math"
-	"path"
 	"reflect"
 	"sort"
 
@@ -412,12 +411,12 @@ func (i *interpreter) evaluate(a ast.Node, tc tailCallStatus) (value, error) {
 		return nil, e.Error(fmt.Sprintf("Value non indexable: %v", reflect.TypeOf(targetValue)))
 
 	case *ast.Import:
-		codeDir, _ := path.Split(node.Loc().FileName)
-		return i.importCache.ImportCode(codeDir, node.File.Value, e)
+		codePath := node.Loc().FileName
+		return i.importCache.ImportCode(codePath, node.File.Value, e)
 
 	case *ast.ImportStr:
-		codeDir, _ := path.Split(node.Loc().FileName)
-		return i.importCache.ImportString(codeDir, node.File.Value, e)
+		codePath := node.Loc().FileName
+		return i.importCache.ImportString(codePath, node.File.Value, e)
 
 	case *ast.LiteralBoolean:
 		return makeValueBoolean(node.Value), nil
@@ -750,7 +749,7 @@ func (i *interpreter) manifestString(buf *bytes.Buffer, trace *TraceElement, v v
 	}
 }
 
-func (i *interpreter) manifestAndSerializeMulti(trace *TraceElement, v value) (r map[string]string, err error) {
+func (i *interpreter) manifestAndSerializeMulti(trace *TraceElement, v value, stringOutputMode bool) (r map[string]string, err error) {
 	r = make(map[string]string)
 	json, err := i.manifestJSON(trace, v)
 	if err != nil {
@@ -759,10 +758,21 @@ func (i *interpreter) manifestAndSerializeMulti(trace *TraceElement, v value) (r
 	switch json := json.(type) {
 	case map[string]interface{}:
 		for filename, fileJSON := range json {
-			var buf bytes.Buffer
-			serializeJSON(fileJSON, true, "", &buf)
-			buf.WriteString("\n")
-			r[filename] = buf.String()
+			if stringOutputMode {
+				switch val := fileJSON.(type) {
+				case string:
+					r[filename] = val
+				default:
+					msg := fmt.Sprintf("multi mode: top-level object's key %s has a value of type %T, "+
+						"should be a string", filename, val)
+					return r, makeRuntimeError(msg, i.getCurrentStackTrace(trace))
+				}
+			} else {
+				var buf bytes.Buffer
+				serializeJSON(fileJSON, true, "", &buf)
+				buf.WriteString("\n")
+				r[filename] = buf.String()
+			}
 		}
 	default:
 		msg := fmt.Sprintf("multi mode: top-level object was a %s, "+
@@ -973,7 +983,7 @@ func evaluateAux(i *interpreter, node ast.Node, tla vmExtMap) (value, *TraceElem
 
 // TODO(sbarzowski) this function takes far too many arguments - build interpreter in vm instead
 func evaluate(node ast.Node, ext vmExtMap, tla vmExtMap, nativeFuncs map[string]*NativeFunction,
-	maxStack int, importer Importer, stringOutput bool) (string, error) {
+	maxStack int, importer Importer, stringOutputMode bool) (string, error) {
 
 	i, err := buildInterpreter(ext, nativeFuncs, maxStack, importer)
 	if err != nil {
@@ -986,7 +996,7 @@ func evaluate(node ast.Node, ext vmExtMap, tla vmExtMap, nativeFuncs map[string]
 	}
 
 	var buf bytes.Buffer
-	if stringOutput {
+	if stringOutputMode {
 		err = i.manifestString(&buf, manifestationTrace, result)
 	} else {
 		err = i.manifestAndSerializeJSON(&buf, manifestationTrace, result, true, "")
@@ -1000,7 +1010,7 @@ func evaluate(node ast.Node, ext vmExtMap, tla vmExtMap, nativeFuncs map[string]
 
 // TODO(sbarzowski) this function takes far too many arguments - build interpreter in vm instead
 func evaluateMulti(node ast.Node, ext vmExtMap, tla vmExtMap, nativeFuncs map[string]*NativeFunction,
-	maxStack int, importer Importer, stringOutput bool) (map[string]string, error) {
+	maxStack int, importer Importer, stringOutputMode bool) (map[string]string, error) {
 
 	i, err := buildInterpreter(ext, nativeFuncs, maxStack, importer)
 	if err != nil {
@@ -1012,7 +1022,7 @@ func evaluateMulti(node ast.Node, ext vmExtMap, tla vmExtMap, nativeFuncs map[st
 		return nil, err
 	}
 
-	return i.manifestAndSerializeMulti(manifestationTrace, result)
+	return i.manifestAndSerializeMulti(manifestationTrace, result, stringOutputMode)
 }
 
 // TODO(sbarzowski) this function takes far too many arguments - build interpreter in vm instead

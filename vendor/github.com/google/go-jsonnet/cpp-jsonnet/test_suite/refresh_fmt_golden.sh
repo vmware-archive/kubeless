@@ -36,3 +36,5 @@ for FILE in "$@" ; do
     fi
     "$JSONNET_BIN" fmt "$FILE" > "${FILE}.fmt.golden" 2>&1
 done
+
+

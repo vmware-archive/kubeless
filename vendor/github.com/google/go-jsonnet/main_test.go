@@ -98,15 +98,20 @@ var nativeError = &NativeFunction{
 }
 
 type jsonnetInput struct {
-	name    string
-	input   []byte
-	eKind   evalKind
-	extVars map[string]string
-	extCode map[string]string
+	name             string
+	input            []byte
+	eKind            evalKind
+	stringOutputMode bool
+	extVars          map[string]string
+	extCode          map[string]string
 }
 
 type jsonnetResult struct {
-	output  string
+	// One of output or outputMulti is populated.
+	// If isError is set, the error is stored in output.
+	output      string
+	outputMulti map[string]string
+
 	isError bool
 }
 
@@ -114,6 +119,7 @@ func runInternalJsonnet(i jsonnetInput) jsonnetResult {
 	vm := MakeVM()
 	errFormatter := termErrorFormatter{pretty: true, maxStackTraceSize: 9}
 
+	vm.StringOutput = i.stringOutputMode
 	for name, value := range i.extVars {
 		vm.ExtVar(name, value)
 	}
@@ -124,29 +130,32 @@ func runInternalJsonnet(i jsonnetInput) jsonnetResult {
 	vm.NativeFunction(jsonToString)
 	vm.NativeFunction(nativeError)
 
-	var output string
-
 	rawOutput, err := vm.evaluateSnippet(i.name, string(i.input), i.eKind)
-	var isError bool
-	if err != nil {
+	switch {
+	case err != nil:
 		// TODO(sbarzowski) perhaps somehow mark that we are processing
 		// an error. But for now we can treat them the same.
-		output = errFormatter.Format(err)
-		output += "\n"
-		isError = true
-	} else {
-		output = rawOutput.(string)
-		isError = false
-	}
-
-	return jsonnetResult{
-		output:  output,
-		isError: isError,
+		return jsonnetResult{
+			output:  errFormatter.Format(err) + "\n",
+			isError: true,
+		}
+	case i.eKind == evalKindMulti:
+		return jsonnetResult{
+			outputMulti: rawOutput.(map[string]string),
+		}
+	default:
+		return jsonnetResult{
+			output: rawOutput.(string),
+		}
 	}
 }
 
+// TODO(lukegb) CLI test support is presently completely broken: fix?
 func runJsonnetCommand(i jsonnetInput) jsonnetResult {
 	// TODO(sbarzowski) Special handling of errors (which may differ between versions)
+	if i.eKind != evalKindRegular {
+		panic(fmt.Sprintf("eKind must be evalKindRegular for jsonnet CLI testing; was %v", i.eKind))
+	}
 	input := bytes.NewBuffer(i.input)
 	var output bytes.Buffer
 	isError := false
@@ -181,8 +190,115 @@ func runJsonnet(i jsonnetInput) jsonnetResult {
 	return runInternalJsonnet(i)
 }
 
-func runTest(t *testing.T, test *mainTest) {
+func compareGolden(result string, golden []byte) (string, bool) {
+	if bytes.Compare(golden, []byte(result)) != 0 {
+		// TODO(sbarzowski) better reporting of differences in whitespace
+		// missing newline issues can be very subtle now
+		return diff(result, string(golden)), true
+	}
+	return "", false
+}
 
+func writeFile(path string, content []byte, mode os.FileMode) (changed bool, err error) {
+	old, err := ioutil.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		return false, err
+	}
+	if bytes.Compare(old, content) == 0 && !os.IsNotExist(err) {
+		return false, nil
+	}
+	if err := ioutil.WriteFile(path, content, mode); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func compareSingleGolden(path string, result jsonnetResult) []error {
+	if result.outputMulti != nil {
+		return []error{fmt.Errorf("outputMulti is populated in a single-file test for %v", path)}
+	}
+	golden, err := ioutil.ReadFile(path)
+	if err != nil {
+		return []error{fmt.Errorf("reading file %s: %v", path, err)}
+	}
+	if diff, hasDiff := compareGolden(result.output, golden); hasDiff {
+		return []error{fmt.Errorf("golden file %v has diff:\n%v", path, diff)}
+	}
+	return nil
+}
+
+func updateSingleGolden(path string, result jsonnetResult) (updated []string, err error) {
+	if result.outputMulti != nil {
+		return nil, fmt.Errorf("outputMulti is populated in a single-file test for %v", path)
+	}
+	changed, err := writeFile(path, []byte(result.output), 0666)
+	if err != nil {
+		return nil, fmt.Errorf("updating golden file %v: %v", path, err)
+	}
+	if changed {
+		return []string{path}, nil
+	}
+	return nil, nil
+}
+
+func compareMultifileGolden(path string, result jsonnetResult) []error {
+	expectFiles, err := ioutil.ReadDir(path)
+	if err != nil {
+		return []error{fmt.Errorf("reading golden dir %v: %v", path, err)}
+	}
+	goldenContent := map[string][]byte{}
+	var errs []error
+	for _, f := range expectFiles {
+		golden, err := ioutil.ReadFile(filepath.Join(path, f.Name()))
+		if err != nil {
+			return []error{fmt.Errorf("reading file %s: %v", f.Name(), err)}
+		}
+		if _, ok := result.outputMulti[f.Name()]; !ok {
+			errs = append(errs, fmt.Errorf("jsonnet did not output expected file %v", f.Name()))
+			continue
+		}
+		goldenContent[f.Name()] = golden
+	}
+	for fn, content := range result.outputMulti {
+		if _, ok := goldenContent[fn]; !ok {
+			errs = append(errs, fmt.Errorf("jsonnet outputted file %v which does not exist in goldens", fn))
+			continue
+		}
+		if diff, hasDiff := compareGolden(content, goldenContent[fn]); hasDiff {
+			errs = append(errs, fmt.Errorf("golden file %v has diff:\n%v", fn, diff))
+		}
+	}
+	return errs
+}
+
+func updateMultifileGolden(path string, result jsonnetResult) ([]string, error) {
+	expectFiles, err := ioutil.ReadDir(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading golden directory %v: %v", path, err)
+	}
+	var updatedFiles []string
+	for fn, content := range result.outputMulti {
+		updated, err := writeFile(filepath.Join(path, fn), []byte(content), 0666)
+		if err != nil {
+			return nil, fmt.Errorf("updating golden file %v: %v", fn, err)
+		}
+		if updated {
+			updatedFiles = append(updatedFiles, filepath.Join(path, fn))
+		}
+	}
+	// Delete excess files
+	for _, f := range expectFiles {
+		if _, ok := result.outputMulti[f.Name()]; ok {
+			continue
+		}
+		if err := os.Remove(filepath.Join(path, f.Name())); err != nil {
+			return nil, fmt.Errorf("removing golden file %v: %v", f.Name(), err)
+		}
+	}
+	return updatedFiles, nil
+}
+
+func runTest(t *testing.T, test *mainTest) {
 	read := func(file string) []byte {
 		bytz, err := ioutil.ReadFile(file)
 		if err != nil {
@@ -193,32 +309,46 @@ func runTest(t *testing.T, test *mainTest) {
 
 	input := read(test.input)
 
+	eKind := evalKindRegular
+	compareFunc := compareSingleGolden
+	updateFunc := updateSingleGolden
+
+	// If the golden path is a directory, this is a multi-test.
+	if info, err := os.Stat(test.golden); err == nil && info.IsDir() {
+		eKind = evalKindMulti
+		compareFunc = compareMultifileGolden
+		updateFunc = updateMultifileGolden
+	}
+
 	result := runJsonnet(jsonnetInput{
-		name:    test.name,
-		input:   input,
-		eKind:   evalKindRegular,
-		extVars: test.meta.extVars,
-		extCode: test.meta.extCode,
+		name:             test.name,
+		input:            input,
+		eKind:            eKind,
+		stringOutputMode: strings.HasSuffix(test.golden, "_string_output.golden"),
+		extVars:          test.meta.extVars,
+		extCode:          test.meta.extCode,
 	})
 
-	// TODO(sbarzowski) report which files were updated
+	if eKind == evalKindMulti && result.isError {
+		// If it's an error, then result.output is populated instead.
+		// Since we use the golden file being a directory to determine if we
+		// should run in multi-file mode, we put the output into an "error" file instead.
+		result.outputMulti = map[string]string{"error": result.output}
+		result.output = ""
+	}
+
 	if *update {
-		err := ioutil.WriteFile(test.golden, []byte(result.output), 0666)
+		updated, err := updateFunc(test.golden, result)
 		if err != nil {
-			t.Errorf("error updating golden files: %v", err)
+			t.Error(err)
+		}
+		for _, updatedFile := range updated {
+			fmt.Fprintf(os.Stderr, "updated golden %v\n", updatedFile)
 		}
 		return
 	}
-	golden := read(test.golden)
-	if bytes.Compare(golden, []byte(result.output)) != 0 {
-		// TODO(sbarzowski) better reporting of differences in whitespace
-		// missing newline issues can be very subtle now
-		t.Fail()
-		t.Errorf("Mismatch when running %s.jsonnet. Golden: %s\n", test.name, test.golden)
-		data := diff(result.output, string(golden))
-		t.Errorf("diff %s jsonnet %s.jsonnet\n", test.golden, test.name)
-		t.Errorf(string(data))
-
+	for _, err := range compareFunc(test.golden, result) {
+		t.Error(err)
 	}
 }
 

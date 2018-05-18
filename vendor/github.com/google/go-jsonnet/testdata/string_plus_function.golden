@@ -5,4 +5,6 @@ RUNTIME ERROR: couldn't manifest function in JSON output.
 "xxx" + (function() 42)
 
 -------------------------------------------------
-	During evaluation
+	During evaluation	
+
+

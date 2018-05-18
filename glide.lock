@@ -1,5 +1,5 @@
-hash: 0a8c0fa18d0fa074c932b6c0cf39f8580b5fb9cca2ca9a7b00bfd935dfb37a3e
-updated: 2018-04-12T01:10:02.581090417+05:30
+hash: 92d873b216807d8a37fd31c2f6e087b282aba4617346c209118b7ee8767d3370
+updated: 2018-05-15T13:20:37.656893826+05:30
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -66,7 +66,7 @@ imports:
 - name: github.com/google/btree
   version: 7d79101e329e5a3adf994758c578dab82b90c017
 - name: github.com/google/go-jsonnet
-  version: dfddf2b4e3aec377b0dcdf247ff92e7d078b8179
+  version: 643210d27410070da2cf0e3fdbf2325f8ff26404
   subpackages:
   - ast
 - name: github.com/google/gofuzz
@@ -101,7 +101,7 @@ imports:
 - name: github.com/juju/ratelimit
   version: 5b9ff866471762aa2ab2dced63c9fb6f53921342
 - name: github.com/ksonnet/ksonnet-lib
-  version: 5e07f358ac2de69591818afa41b7623c8cc97ac0
+  version: dda11dd2ec3928cbb7f36830ec0d8aa5fb13ce0c
   subpackages:
   - ksonnet-gen/astext
   - ksonnet-gen/jsonnet
@@ -140,7 +140,7 @@ imports:
 - name: github.com/pkg/errors
   version: 816c9085562cd7ee03e7f8188a1cfd942858cded
 - name: github.com/prometheus/client_golang
-  version: e11c6ff8170beca9d5fd8b938e71165eeec53ac6
+  version: 82f5ff156b29e276022b1a958f7d385870fb9814
   subpackages:
   - prometheus
   - prometheus/promhttp
@@ -394,7 +394,7 @@ imports:
   - util/jsonpath
   - util/workqueue
 - name: k8s.io/code-generator
-  version: 306be794f1b124a9c939ab168e9ea3944387e66b
+  version: 91d3f6a57905178524105a085085901bb73bd3dc
 - name: k8s.io/gengo
   version: 93fa717586400daaf96f9c88d0e708c80272627f
 - name: k8s.io/kube-openapi

@@ -210,6 +210,8 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 	case strings.Contains(runtime, "nodejs"):
 		registry := "https://registry.npmjs.org"
 		scope := ""
+		// Force HOME to a folder with permissions to avoid issues in OpenShift #694
+		env = append(env, v1.EnvVar{Name: "HOME", Value: "/tmp"})
 		for _, v := range env {
 			if v.Name == "NPM_REGISTRY" {
 				registry = v.Value
@@ -235,6 +237,9 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 	case strings.Contains(runtime, "dotnetcore"):
 		command = appendToCommand(command,
 			"dotnet restore "+installVolume.MountPath+" --packages "+installVolume.MountPath+"/packages")
+	case strings.Contains(runtime, "java"):
+		command = appendToCommand(command,
+			"mv /kubeless/pom.xml /kubeless/function-pom.xml")
 	}
 
 	return v1.Container{
@@ -299,6 +304,11 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 		command = fmt.Sprintf(
 			"sed 's/<<FUNCTION>>/%s/g' $GOPATH/src/controller/kubeless.tpl.go > $GOPATH/src/controller/kubeless.go && "+
 				"go build -o %s/server $GOPATH/src/controller/kubeless.go > /dev/termination-log 2>&1", funcName, installVolume.MountPath)
+	case strings.Contains(runtime, "java"):
+		command = "cp -r /usr/src/myapp/* /kubeless/ && " +
+			"cp /kubeless/*.java /kubeless/function/src/main/java/io/kubeless/ && " +
+			"cp /kubeless/function-pom.xml /kubeless/function/pom.xml 2>/dev/null || true && " +
+			"mvn package > /dev/termination-log 2>&1 && mvn install > /dev/termination-log 2>&1"
 	default:
 		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
 	}

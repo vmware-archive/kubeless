@@ -137,6 +137,15 @@ func TestGetBuildContainer(t *testing.T) {
 	if !strings.Contains(c.Args[0], "npm config set myorg:registry http://reg.com && npm install") {
 		t.Errorf("Unexpected command %s", c.Args[0])
 	}
+	home := v1.EnvVar{Name: "HOME"}
+	for _, v := range c.Env {
+		if v.Name == "HOME" {
+			home = v
+		}
+	}
+	if home.Value != "/tmp" {
+		t.Error("It should set /tmp as home")
+	}
 
 	// It should return the proper build image for ruby
 	c, err = lr.GetBuildContainer("ruby2.4", "abc123", env, vol1)

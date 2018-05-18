@@ -1,75 +1,39 @@
-# Runtimes support
+# Kubeless Runtime Variants
 
-Right now Kubeless has support for the following runtimes:
+By default Kubeless has support for the following runtimes:
 
- - Python: For the branch 2.7.X
- - NodeJS: For the branches 6.X and 8.X
- - Ruby: For the branch 2.4.X
- - PHP: For the branch 7.2.X
+ - Python: For the branches 2.7, 3.4 and 3.6
+ - NodeJS: For the branches 6 and 8
+ - Ruby: For the branch 2.4
+ - PHP: For the branch 7.2
+ - Golang: For the branch 1.10
 
-Each runtime is encapsulated in a container image. The reference to these images are injected in the Kubeless controller. You can find source code of all runtimes in `docker/runtime`.
-
-Runtimes have a maximum timeout set by the environment variable FUNC_TIMEOUT. This environment variable can be set using the CLI option `--timeout`. The default value is 180 seconds. If a function takes more than that in being executed, the process will be terminated.
-
-## Runtimes interface
-
-Every function receives two arguments: `event` and `context`. The first argument contains information about the source of the event that the function has received. The second contains general information about the function like its name or maximum timeout. This is a representation in YAML of a Kafka event:
-
-```yaml
-event:                                  
-  data:                                         # Event data
-    foo: "bar"                                  # The data is parsed as JSON when required
-  event-id: "2ebb072eb24264f55b3fff"            # Event ID
-  event-type: "application/json"                # Event content type
-  event-time: "2009-11-10 23:00:00 +0000 UTC"   # Timestamp of the event source
-  event-namespace: "kafkatriggers.kubeless.io"  # Event emitter
-  extensions:                                   # Optional parameters
-    request: ...                                # Reference to the request received 
-                                                # (specific properties will depend on the function language)
-context:
-    function-name: "pubsub-nodejs"
-    timeout: "180"
-    runtime: "nodejs6"
-    memory-limit: "128M"
-```
-
-You can check basic examples of every language supported in the [examples](https://github.com/kubeless/kubeless/tree/master/examples) folder.
-
-### Runtime user
-
-As a [Security Context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/) functions are configured to run with an unprivileged user (UID 1000) by default. This prevent functions from having root privileges and ensure compatibility with OpenShift clusters. This default behaviour can be overridden specifying a different Security Context in the `Deployment` template that is part of the Function Spec.
-
-## Configuring Default Runtime Container Images
-
-The Kubeless controller defines a set of default container images per supported runtime variant.
-
-These default container images can be configured via Kubernetes environment variables on the Kubeless controller's deployment container. Or modifying the `kubeless-config` ConfigMap that is deployed along with the Kubeless controller.
-
-If you want to obtain the list of possible runtimes execute:
+You can see the list of supported runtimes executing:
 
 ```console
 $ kubeless get-server-config
 INFO[0000] Current Server Config:
-INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, dotnetcore2.0
+INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, php7.2, go1.10
 ```
 
-If you want to deploy a custom runtime using an environment variable these are some examples:
+Each runtime is encapsulated in a container image. The reference to these images are injected in the Kubeless configuration. You can find the source code of all runtimes in [`docker/runtime`](https://github.com/kubeless/kubeless/tree/master/docker/runtime).
 
-| Runtime Variant | Environment Variable Name |
-| --- | --- |
-| NodeJS 6.X HTTP Trigger | `NODEJS6_RUNTIME` |
-| NodeJS 8.X Event Trigger | `NODEJS8_PUBSUB_RUNTIME` |
-| Python 2.7.x HTTP Trigger | `PYTHON2.7_RUNTIME` |
-| Ruby 2.4.x HTTP Trigger | `RUBY2.4_RUNTIME` |
-| ... | ... |
+### NodeJS
 
-# Runtime variants
+#### Example
 
-Every runtime use a web framework that is in charge of receiving requests and redirect them to the function.
+```js
+module.exports = {
+  foo: function (event, context) {
+    console.log(event);
+    return event.data;
+  }
+}
+```
 
-### Node.js Trigger
+#### Description
 
-For the Node.js runtime we start an [Express](http://expressjs.com) server and we include the routes for serving the health check and exposing the monitoring metrics. Apart from that we enable [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS) requests and [Morgan](https://github.com/expressjs/morgan) for handling the logging in the server. Monitoring is supported if the function is synchronous or if it uses promises.
+NodeJS functions should export the desired method using `module.exports`. You can specify dependencies using a `package.json` file. It is also possible to return an object instead of a string, this object will be stringified before returning.
 
 When using the Node.js runtime, it is possible to configure a [custom registry or scope](https://docs.npmjs.com/misc/scope#associating-a-scope-with-a-registry) in case a function needs to install modules from a different source. For doing so it is necessary to set up the environment variables *NPM_REGISTRY* and *NPM_SCOPE* when deploying the function:
 
@@ -82,23 +46,74 @@ $ kubeless function deploy myFunction --runtime nodejs6 \
                                 --from-file test.js
 ```
 
-### Python HTTP Trigger
+#### Server implementation
+
+For the Node.js runtime we start an [Express](http://expressjs.com) server and we include the routes for serving the health check and exposing the monitoring metrics. Apart from that we enable [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS) requests and [Morgan](https://github.com/expressjs/morgan) for handling the logging in the server. Monitoring is supported if the function is synchronous or if it uses promises.
+
+### Python
+
+#### Example
+
+```py
+def handler(event, context):
+    print (event)
+    return event['data']
+```
+
+#### Description
+
+Python functions should define the desired method. You can specify dependencies using a `requirements.txt` file.
+
+#### Server implementation
 
 For python we use [Bottle](https://bottlepy.org) and we also add routes for health check and monitoring metrics.
 
-### Ruby HTTP Trigger
+### Ruby
+
+#### Example
+
+```rb
+def handler(event, context)
+  puts event
+  JSON.generate(event[:data])
+end
+```
+
+#### Description
+
+Ruby functions should define the desired method. You can specify dependencies using a `Gemfile` file.
+
+#### Server implementation
 
 For the case of Ruby we use [Sinatra](http://www.sinatrarb.com) as web framework and we add the routes required for the function and the health check. Monitoring is currently not supported yet for this framework. PR is welcome :-)
 
-### Go HTTP Trigger
+### Go
+
+#### Example
+
+```go
+package kubeless
+
+import "github.com/kubeless/kubeless/pkg/functions"
+
+func Handler(event functions.Event, context functions.Context) (string, error) {
+	return event.Data, nil
+}
+```
+
+#### Description
+
+Ruby functions requires to import the package `github.com/kubeless/kubeless/pkg/functions` that is used to define the input parameters. The desired method should be exported in the package. You can specify dependencies using a `Gopkg.toml` file, dependencies are installed using [`dep`](https://github.com/golang/dep).
+
+#### Server implementation
 
 The Go HTTP server doesn't include any framework since the native packages includes enough functionality to fit our needs. Since there is not a standard package that manages server logs that functionality is implemented in the same server. It is also required to implement the `ResponseWriter` interface in order to retrieve the Status Code of the response.
 
-### Debugging compilation
+#### Debugging compilation
 
 If there is an error during the compilation of a function, the error message will be dumped to the termination log. If you see that the pod is crashed in a init container:
 
-```
+```console
 NAME                      READY     STATUS                  RESTARTS   AGE
 get-go-6774465f95-x55lw   0/1       Init:CrashLoopBackOff   1          1m
 ```
@@ -130,46 +145,119 @@ $ kubectl get pod -l function=get-go -o go-template="{{range .items}}{{range .st
 /go/src/kubeless/handler.go:6:1: syntax error: non-declaration statement outside function body
 ```
 
-### Timeout handling
+#### Timeout handling
 
 One peculiarity of the Go runtime is that the user has a `Context` object as part of the `Event.Extensions` parameter. This can be used to handle timeouts in the function. For example:
 
 ```go
 func Foo(event functions.Event, context functions.Context) (string, error) {
-	select {
-	case <-event.Extensions.Context.Done():
-		return "", nil
+  select {
+  case <-event.Extensions.Context.Done():
+    return "", nil
   case <-time.After(5 * time.Second):
-	}
-	return "Function returned after 5 seconds", nil
+  }
+  return "Function returned after 5 seconds", nil
 }
 ```
 
 If the function above has a timeout smaller than 5 seconds it will exit and the code after the `select{}` won't be executed. 
 
-# Scheduled Trigger
+### Java
 
-This is meant for functions that should be triggered following a certain schedule. For specifying the execution frequency  we use the [Cron](https://en.wikipedia.org/wiki/Cron) format. Every time a scheduled function is executed, a [Job](https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/) is started. This Job will do a HTTP GET request to the function service and will be successful as far as the function returns 200 OK.
+#### Example
 
-For executing scheduled functions we use Kubernetes [CronJobs](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/) using mostly the default options which means:
- - If a Job fails, it won't be restarted but it will be retried in the next scheduled event. The maximum time that a Job will exist is specified with the function timeout (180 seconds by default).
- - The concurrency policy is set to `Allow` so concurrent jobs may exists.
- - The history limit is set to maintain as maximum three successful jobs (and one failed).
+```java
+package io.kubeless;
 
-If for some reason you want to modify one of the default values for a certain function you can execute `kubectl edit cronjob trigger-<func_name>` (where `func_name` is the name of your function) and modify the fields required. Once it is saved the CronJob will be updated.
+import io.kubeless.Event;
+import io.kubeless.Context;
 
-# Monitoring functions
+public class Foo {
+    public String foo(io.kubeless.Event event, io.kubeless.Context context) {
+        return "Hello world!";
+    }
+}
+```
 
-Some Kubeless runtimes expose metrics at `/metrics` endpoint and these metrics will be collected by Prometheus. We also include a prometheus setup in [`manifests/monitoring`](https://github.com/kubeless/kubeless/blob/master/manifests/monitoring/prometheus.yaml) to help you easier set it up. The metrics collected are: Number of calls, succeeded and error executions and the time spent per call.
+#### Description
 
-# Custom Runtime (Alpha)
+Java functions must use `io.kubeless` as package and should import both `io.kubeless.Event` and `io.kubeless.Context` packages. Function should be made part of a public class and should have a function signature that takes `Event` and `Context` as inputs and produces `String` output. Once you have Java function meeting the requirements it can be deployed with Kubeless as below. Where handler part `--handler Foo.foo` takes `Classname.Methodname` format.
 
-> NOTE: This feature is under heavy development and may change in the future
+```cmd
+  kubeless function deploy get-java --runtime java1.8 --handler Foo.foo --from-file Foo.java
+```
 
-We are providing a way to define custom runtime in form of a container image. This way you are able to use any language or any binary with Kubeless as far as the image satisfies the following conditions:
+Kubeless supports Java functions with dependencies. Kubeless uses Maven for both dependency management and building user given functions. Users are expected to provide function dependencies expresses in Maven pom.xml format.
+
+Lets take Java function with dependency on `org.joda.time.LocalTime`.
+
+```java
+package io.kubeless;
+
+import io.kubeless.Event;
+import io.kubeless.Context;
+
+import org.joda.time.LocalTime;
+
+public class Hello {
+    public String sayHello(io.kubeless.Event event, io.kubeless.Context context) {
+        System.out.println(event.Data);
+        LocalTime currentTime = new LocalTime();
+        return "Hello world! Current local time is: " + currentTime;
+    }
+}
+```
+
+#### Dependencies
+
+Dependencies are expressed through standard Maven pom.xml file format as below.
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>function</artifactId>
+  <name>function</name>
+  <version>1.0-SNAPSHOT</version>
+  <dependencies>
+     <dependency>
+       <groupId>joda-time</groupId>
+       <artifactId>joda-time</artifactId>
+       <version>2.9.2</version>
+     </dependency>
+      <dependency>
+          <groupId>io.kubeless</groupId>
+          <artifactId>params</artifactId>
+          <version>1.0-SNAPSHOT</version>
+      </dependency>
+  </dependencies>
+  <parent>
+    <groupId>io.kubeless</groupId>
+    <artifactId>kubeless</artifactId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
+</project>
+```
+
+Notice the reference to `kubeless` parent pom module and dependency on `params` artifact. pom.xml should also use `function` as artifact ID.
+
+Once you have Java function with dependencies and pom.xml file expressing the dependencies Java function can be deployed with Kubeless as below.
+
+```cmd
+	kubeless function deploy get-java-deps --runtime java1.8 --handler Hello.sayHello --from-file java/HelloWithDeps.java --dependencies java/pom.xml
+```
+
+## Use a custom runtime
+
+The Kubeless configuration defines a set of default container images per supported runtime variant.
+
+These default container images can be configured via Kubernetes environment variables on the Kubeless controller's deployment container. Or modifying the `kubeless-config` ConfigMap that is deployed along with the Kubeless controller. For more information about how to modify the Kubeless configuration check [this guide](/docs/function-controller-configuration).
+
+Apart than changing the configuration, it is possible to use a custom runtime specifying the image that the function will use. This way you are able to use any language or any binary with Kubeless as far as the image satisfies the following conditions:
+
  - It runs a web server listening in the port 8080
  - It exposes the endpoint `/healthz` to perform the container [liveness probe](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/)
- - (Optional) It serves [Prometheus](https://prometheus.io) metrics in the endpoint `/metrics`
+
+You can check the list of desired features that a runtime image should have [in this document](/docs/implementing-new-runtime).
 
 To deploy the container image you just need to specify it using the Kubeless CLI:
 

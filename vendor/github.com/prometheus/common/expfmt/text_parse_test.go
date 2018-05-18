@@ -190,10 +190,10 @@ my_summary{n1="val3", quantile="0.2"} 4711
   my_summary{n1="val1",n2="val2",quantile="-12.34",} NaN
 # some
 # funny comments
-# HELP
+# HELP 
 # HELP
 # HELP my_summary
-# HELP my_summary
+# HELP my_summary 
 `,
 			out: []*dto.MetricFamily{
 				&dto.MetricFamily{

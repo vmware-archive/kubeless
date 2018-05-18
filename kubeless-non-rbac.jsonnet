@@ -106,13 +106,13 @@ local runtime_images ='[
       {
         "name": "node6",
         "version": "6",
-        "runtimeImage": "kubeless/nodejs@sha256:61c5a10aacb709c4575a09a4aa28f822b2d008c0dbf4aa0b124705ee9ca143f9",
+        "runtimeImage": "kubeless/nodejs@sha256:0a8a72af4cc3bfbfd4fe9bd309cbf486e7493d0dc32a691673b3f0d3fae07487",
         "initImage": "node:6.10"
       },
       {
         "name": "node8",
         "version": "8",
-        "runtimeImage": "kubeless/nodejs@sha256:fc1aa96e55116400ee13d664a655dfb2025ded91858ebfd5fc0c8f0d6b923eba",
+        "runtimeImage": "kubeless/nodejs@sha256:76ee28dc7e3613845fface2d1c56afc2e6e2c6d6392c724795a7ccc2f5e60582",
         "initImage": "node:8"
       }
     ],
@@ -126,7 +126,7 @@ local runtime_images ='[
       {
         "name": "ruby24",
         "version": "2.4",
-        "runtimeImage": "kubeless/ruby@sha256:0dce29c0eb2a246f7d825b6644eeae7957b26f2bfad2b7987f2134cc7b350f2f",
+        "runtimeImage": "kubeless/ruby@sha256:01665f1a32fe4fab4195af048627857aa7b100e392ae7f3e25a44bd296d6f105",
         "initImage": "bitnami/ruby:2.4"
       }
     ],
@@ -140,7 +140,7 @@ local runtime_images ='[
       {
         "name": "php72",
         "version": "7.2",
-        "runtimeImage": "kubeless/php@sha256:82b94c691302bc82f3900444255cabb8f230487764eafeba7866ac49d90ddc3b",
+        "runtimeImage": "kubeless/php@sha256:9b86066b2640bedcd88acb27f43dfaa2b338f0d74d9d91131ea781402f7ec8ec",
         "initImage": "composer:1.6"
       }
     ],
@@ -154,14 +154,14 @@ local runtime_images ='[
       {
         "name": "go1.10",
         "version": "1.10",
-        "runtimeImage": "kubeless/go@sha256:bf72622344a54e4360f31d3fea5eb9dca2c96fbedc6f0ad7c54f3eb8fb7bd353",
-        "initImage": "kubeless/go-init@sha256:ce6ef4fafe518ed78b3a68b03947c064fec1cf8c667cd109e9331f227877b3a9"
+        "runtimeImage": "kubeless/go@sha256:e2fd49f09b6ff8c9bac6f1592b3119ea74237c47e2955a003983e08524cb3ae5",
+        "initImage": "kubeless/go-init@sha256:983b3f06452321a2299588966817e724d1a9c24be76cf1b12c14843efcdff502"
       }
     ],
     "depName": "Gopkg.toml",
     "fileNameSuffix": ".go"
   },
-    {
+  {
     "ID": "dotnetcore",
     "compiled": false,
     "versions": [
@@ -174,6 +174,20 @@ local runtime_images ='[
     ],
     "depName": "project.csproj",
     "fileNameSuffix": ".cs"
+  },
+  {
+    "ID": "java",
+    "compiled": true,
+    "versions": [
+      {
+        "name": "java1.8",
+        "version": "1.8",
+        "runtimeImage": "kubeless/java@sha256:debf9502545f4c0e955eb60fabb45748c5d98ed9365c4a508c07f38fc7fefaac",
+        "initImage": "kubeless/java-init@sha256:7e5e4376d3ab76c336d4830c9ed1b7f9407415feca49b8c2bf013e279256878f"
+      }
+    ],
+    "depName": "pom.xml",
+    "fileNameSuffix": ".java"
   }
 ]';
 

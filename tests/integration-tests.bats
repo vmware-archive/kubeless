@@ -45,6 +45,11 @@ load ../script/libtest
   deploy_function post-php
   deploy_function post-go
   deploy_function custom-get-python
+  deploy_function get-python-url-deps
+  deploy_function get-node-url-zip
+  deploy_function get-java
+  deploy_function post-java
+  deploy_function get-java-deps
 }
 @test "Test function: get-python" {
   verify_function get-python
@@ -183,10 +188,29 @@ load ../script/libtest
   verify_function get-python-secrets
   kubeless_function_delete get-python-secrets
 }
+@test "Test function: get-java" {
+  verify_function get-java
+  kubeless_function_delete get-java
+}
+@test "Test function: post-java" {
+  verify_function post-java
+  kubeless_function_delete post-java
+}
+@test "Test function: get-java-deps" {
+  verify_function get-java-deps
+}
 @test "Test no-errors" {
   if kubectl logs -n kubeless -l kubeless=controller | grep "level=error"; then
     echo "Found errors in the controller logs"
     false
   fi
+}
+@test "Test function: get-python-url-deps" {
+  verify_function get-python-url-deps
+  kubeless_function_delete get-python-url-deps
+}
+@test "Test function: get-node-url-zip" {
+  verify_function get-node-url-zip
+  kubeless_function_delete get-node-url-zip
 }
 # vim: ts=2 sw=2 si et syntax=sh
