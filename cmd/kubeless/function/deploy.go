@@ -176,7 +176,7 @@ var deployCmd = &cobra.Command{
 			"function":   funcName,
 		}
 
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, imagePullPolicy, port, headless, envs, labels, secrets, defaultFunctionSpec)
+		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, imagePullPolicy, port, headless, envs, labels, secrets, defaultFunctionSpec)
 
 		if err != nil {
 			logrus.Fatal(err)
@@ -220,14 +220,14 @@ var deployCmd = &cobra.Command{
 }
 
 func init() {
-	deployCmd.Flags().StringP("runtime", "", "", "Specify runtime")
-	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
-	deployCmd.Flags().StringP("from-file", "", "", "Specify code file or a URL to the code file")
-	deployCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
+	deployCmd.Flags().StringP("runtime", "r", "", "Specify runtime")
+	deployCmd.Flags().StringP("handler", "h", "", "Specify handler")
+	deployCmd.Flags().StringP("from-file", "f", "", "Specify code file or a URL to the code file")
+	deployCmd.Flags().StringSliceP("label", "l", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")
-	deployCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
-	deployCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
-	deployCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
+	deployCmd.Flags().StringArrayP("env", "e", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
+	deployCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
+	deployCmd.Flags().StringP("dependencies", "d", "", "Specify a file containing list of dependencies for the function")
 	deployCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	deployCmd.Flags().StringP("memory", "", "", "Request amount of memory, which is measured in bytes, for the function. It is expressed as a plain integer or a fixed-point interger with one of these suffies: E, P, T, G, M, K, Ei, Pi, Ti, Gi, Mi, Ki")
 	deployCmd.Flags().StringP("cpu", "", "", "Request amount of cpu for the function, which is measured in units of cores. Please see the following link for more information: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#meaning-of-cpu")

@@ -66,7 +66,7 @@ var describeCmd = &cobra.Command{
 
 func init() {
 	describeCmd.Flags().StringP("out", "o", "", "Output format. One of: json|yaml")
-	describeCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
+	describeCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 }
 
 func print(f kubelessApi.Function, name, output string) error {

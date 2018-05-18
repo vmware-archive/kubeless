@@ -72,5 +72,5 @@ var deleteCmd = &cobra.Command{
 }
 
 func init() {
-	deleteCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
+	deleteCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 }

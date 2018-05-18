@@ -150,7 +150,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		f, err := getFunctionDescription(cli, funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, imagePullPolicy, port, headless, envs, labels, secrets, previousFunction)
+		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, imagePullPolicy, port, headless, envs, labels, secrets, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -170,16 +170,16 @@ var updateCmd = &cobra.Command{
 }
 
 func init() {
-	updateCmd.Flags().StringP("runtime", "", "", "Specify runtime")
-	updateCmd.Flags().StringP("handler", "", "", "Specify handler")
-	updateCmd.Flags().StringP("from-file", "", "", "Specify code file or a URL to the code file")
+	updateCmd.Flags().StringP("runtime", "r", "", "Specify runtime")
+	updateCmd.Flags().StringP("handler", "h", "", "Specify handler")
+	updateCmd.Flags().StringP("from-file", "f", "", "Specify code file or a URL to the code file")
 	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
 	updateCmd.Flags().StringP("cpu", "", "", "Request amount of cpu for the function.")
-	updateCmd.Flags().StringSliceP("label", "", []string{}, "Specify labels of the function")
+	updateCmd.Flags().StringSliceP("label", "l", []string{}, "Specify labels of the function")
 	updateCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")
-	updateCmd.Flags().StringArrayP("env", "", []string{}, "Specify environment variable of the function")
-	updateCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
-	updateCmd.Flags().StringP("dependencies", "", "", "Specify a file containing list of dependencies for the function")
+	updateCmd.Flags().StringArrayP("env", "e", []string{}, "Specify environment variable of the function")
+	updateCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
+	updateCmd.Flags().StringP("dependencies", "d", "", "Specify a file containing list of dependencies for the function")
 	updateCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
 	updateCmd.Flags().StringP("image-pull-policy", "", "Always", "Image pull policy")
 	updateCmd.Flags().StringP("timeout", "", "180", "Maximum timeout (in seconds) for the function to complete its execution")

@@ -76,5 +76,5 @@ var logsCmd = &cobra.Command{
 
 func init() {
 	logsCmd.Flags().BoolP("follow", "f", false, "Specify if the logs should be streamed.")
-	logsCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
+	logsCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 }
