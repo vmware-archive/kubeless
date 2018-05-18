@@ -7,6 +7,7 @@ CONTROLLER_IMAGE = kubeless-controller-manager:latest
 FUNCTION_IMAGE_BUILDER = kubeless-function-image-builder:latest
 KAFKA_CONTROLLER_IMAGE = kafka-trigger-controller:latest
 NATS_CONTROLLER_IMAGE = nats-trigger-controller:latest
+KINESIS_CONTROLLER_IMAGE = kinesis-trigger-controller:latest
 OS = linux
 ARCH = amd64
 BUNDLES = bundles
@@ -38,7 +39,7 @@ binary-cross:
 	$(KUBECFG) show -o yaml $< > $@.tmp
 	mv $@.tmp $@
 
-all-yaml: kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml kafka-zookeeper.yaml kafka-zookeeper-openshift.yaml nats.yaml
+all-yaml: kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml kafka-zookeeper.yaml kafka-zookeeper-openshift.yaml nats.yaml kinesis.yaml
 
 kubeless.yaml: kubeless.jsonnet
 
@@ -49,6 +50,8 @@ kubeless-openshift.yaml: kubeless-openshift.jsonnet
 kafka-zookeeper.yaml: kafka-zookeeper.jsonnet
 
 nats.yaml: nats.jsonnet
+
+kinesis.yaml: kinesis.jsonnet
 
 docker/controller-manager: controller-build
 	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/kubeless-controller-manager $@
@@ -85,6 +88,15 @@ nats-controller-image: docker/nats-controller
 
 docker/nats-controller: nats-controller-build
 	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/nats-controller $@
+
+kinesis-controller-build:
+	./script/binary-controller -os=$(OS) -arch=$(ARCH) kinesis-controller github.com/kubeless/kubeless/cmd/kinesis-trigger-controller
+
+kinesis-controller-image: docker/kinesis-controller
+	$(DOCKER) build -t $(KINESIS_CONTROLLER_IMAGE) $<
+
+docker/kinesis-controller: kinesis-controller-build
+	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/kinesis-controller $@
 
 update:
 	./hack/update-codegen.sh
