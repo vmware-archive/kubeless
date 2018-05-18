@@ -41,6 +41,10 @@ func (c *FakeKubelessV1beta1) KafkaTriggers(namespace string) v1beta1.KafkaTrigg
 	return &FakeKafkaTriggers{c, namespace}
 }
 
+func (c *FakeKubelessV1beta1) KinesisTriggers(namespace string) v1beta1.KinesisTriggerInterface {
+	return &FakeKinesisTriggers{c, namespace}
+}
+
 func (c *FakeKubelessV1beta1) NATSTriggers(namespace string) v1beta1.NATSTriggerInterface {
 	return &FakeNATSTriggers{c, namespace}
 }

@@ -28,6 +28,7 @@ type KubelessV1beta1Interface interface {
 	FunctionsGetter
 	HTTPTriggersGetter
 	KafkaTriggersGetter
+	KinesisTriggersGetter
 	NATSTriggersGetter
 }
 
@@ -50,6 +51,10 @@ func (c *KubelessV1beta1Client) HTTPTriggers(namespace string) HTTPTriggerInterf
 
 func (c *KubelessV1beta1Client) KafkaTriggers(namespace string) KafkaTriggerInterface {
 	return newKafkaTriggers(c, namespace)
+}
+
+func (c *KubelessV1beta1Client) KinesisTriggers(namespace string) KinesisTriggerInterface {
+	return newKinesisTriggers(c, namespace)
 }
 
 func (c *KubelessV1beta1Client) NATSTriggers(namespace string) NATSTriggerInterface {

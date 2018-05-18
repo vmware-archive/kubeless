@@ -50,6 +50,14 @@ type KafkaTriggerListerExpansion interface{}
 // KafkaTriggerNamespaceLister.
 type KafkaTriggerNamespaceListerExpansion interface{}
 
+// KinesisTriggerListerExpansion allows custom methods to be added to
+// KinesisTriggerLister.
+type KinesisTriggerListerExpansion interface{}
+
+// KinesisTriggerNamespaceListerExpansion allows custom methods to be added to
+// KinesisTriggerNamespaceLister.
+type KinesisTriggerNamespaceListerExpansion interface{}
+
 // NATSTriggerListerExpansion allows custom methods to be added to
 // NATSTriggerLister.
 type NATSTriggerListerExpansion interface{}

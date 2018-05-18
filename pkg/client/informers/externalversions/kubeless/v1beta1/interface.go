@@ -32,6 +32,8 @@ type Interface interface {
 	HTTPTriggers() HTTPTriggerInformer
 	// KafkaTriggers returns a KafkaTriggerInformer.
 	KafkaTriggers() KafkaTriggerInformer
+	// KinesisTriggers returns a KinesisTriggerInformer.
+	KinesisTriggers() KinesisTriggerInformer
 	// NATSTriggers returns a NATSTriggerInformer.
 	NATSTriggers() NATSTriggerInformer
 }
@@ -65,6 +67,11 @@ func (v *version) HTTPTriggers() HTTPTriggerInformer {
 // KafkaTriggers returns a KafkaTriggerInformer.
 func (v *version) KafkaTriggers() KafkaTriggerInformer {
 	return &kafkaTriggerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// KinesisTriggers returns a KinesisTriggerInformer.
+func (v *version) KinesisTriggers() KinesisTriggerInformer {
+	return &kinesisTriggerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // NATSTriggers returns a NATSTriggerInformer.
