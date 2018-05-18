@@ -7,6 +7,7 @@ By default Kubeless has support for the following runtimes:
  - Ruby: For the branch 2.4
  - PHP: For the branch 7.2
  - Golang: For the branch 1.10
+ - .NET: For the branch 2.0
 
 You can see the list of supported runtimes executing:
 
