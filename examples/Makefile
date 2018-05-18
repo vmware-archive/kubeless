@@ -267,7 +267,7 @@ get-dotnetcore-verify:
 	kubeless function call get-dotnetcore |egrep hello.world
 
 get-dotnetcore-dependency:
-	kubeless function deploy get-dotnetcore-dependency --runtime dotnetcore2.0 --handler module.handler --from-file dotnetcore/dependency-yaml.cs --dependencies dependency-yaml.csproj
+	kubeless function deploy get-dotnetcore-dependency --runtime dotnetcore2.0 --handler module.handler --from-file dotnetcore/dependency-yaml.cs --dependencies dotnetcore/dependency-yaml.csproj
 
 get-dotnetcore-dependency-verify:
 	kubeless function call get-dotnetcore-dependency |egrep Name:\ Michael
