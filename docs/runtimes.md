@@ -246,6 +246,90 @@ Once you have Java function with dependencies and pom.xml file expressing the de
 	kubeless function deploy get-java-deps --runtime java1.8 --handler Hello.sayHello --from-file java/HelloWithDeps.java --dependencies java/pom.xml
 ```
 
+### .NET Core (C#)
+
+#### Example
+
+```csharp
+using System;
+using Kubeless.Functions;
+
+public class module
+{
+    public object handler(Event k8Event, Context k8Context)
+    {
+        return k8Event.Data;
+    }
+}
+```
+
+Deploy it using the following command:
+```bash
+kubeless function deploy helloget --from-file helloget.cs --handler module.handler --runtime dotnetcore2.0
+```
+
+#### Description
+To get started using .NET Core with kubeless, you should use the following commands:
+
+```bash
+dotnet new library
+dotnet add package Kubeless.Functions
+```
+
+.NET Core (C#) functions supports returns for any primitive or complex type. The method signature needs to have first an `Kubeless.Functions.Event` followed by an `Kubeless.Functions.Context`. The models are definied as it follows:
+
+```csharp
+public class Context
+{
+    public string ModuleName { get; }
+    public string FunctionName { get; }
+    public string FunctionPort { get; }
+    public string Timeout { get; }
+    public string Runtime { get; }
+    public string MemoryLimit { get; }
+}
+```
+
+```csharp
+public class Event
+{
+    public object Data { get; }
+    public string EventId { get; }
+    public string EventType { get; }
+    public string EventTime { get; }
+    public string EventNamespace { get; }
+    public Extensions Extensions { get; }
+}
+```
+
+#### Dependencies
+
+Dependencies are handled in `.csproj` extension. You can use the regular `.csproj` file outputted by the `dotnet new library` command.
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Kubeless.Functions" Version="0.1.1" />
+    <PackageReference Include="YamlDotNet" Version="4.3.1" />
+  </ItemGroup>
+
+</Project>
+
+```
+
+The runtime already have built-in the package `Kubeless.Functions:0.1.1`, necessary to all functions - so you don't need to include that. Then, if you have a function which does not need any external references than `Kubeless.Functions`, you don't need to even send the `--dependencies` flag on kubeless cli.
+
+You can deploy them using the command:
+
+```bash
+kubeless function deploy fibonacci --from-file fibonacci.cs --handler module.handler --dependencies fibonacci.csproj --runtime dotnetcore2.0
+```
+
 ## Use a custom runtime
 
 The Kubeless configuration defines a set of default container images per supported runtime variant.
