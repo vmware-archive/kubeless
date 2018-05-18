@@ -29,16 +29,6 @@ func (b respBody) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(b))
 }
 
-func nowSeries(t ...time.Time) nower {
-	return nowFunc(func() time.Time {
-		defer func() {
-			t = t[1:]
-		}()
-
-		return t[0]
-	})
-}
-
 func TestInstrumentHandler(t *testing.T) {
 	defer func(n nower) {
 		now = n.(nower)
@@ -47,17 +37,16 @@ func TestInstrumentHandler(t *testing.T) {
 	instant := time.Now()
 	end := instant.Add(30 * time.Second)
 	now = nowSeries(instant, end)
-	body := respBody("Howdy there!")
+	respBody := respBody("Howdy there!")
 
-	hndlr := InstrumentHandler("test-handler", body)
+	hndlr := InstrumentHandler("test-handler", respBody)
 
 	opts := SummaryOpts{
 		Subsystem:   "http",
 		ConstLabels: Labels{"handler": "test-handler"},
-		Objectives:  map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	}
 
-	reqCnt := NewCounterVec(
+	reqCnt := MustRegisterOrGet(NewCounterVec(
 		CounterOpts{
 			Namespace:   opts.Namespace,
 			Subsystem:   opts.Subsystem,
@@ -66,51 +55,19 @@ func TestInstrumentHandler(t *testing.T) {
 			ConstLabels: opts.ConstLabels,
 		},
 		instLabels,
-	)
-	err := Register(reqCnt)
-	if err == nil {
-		t.Fatal("expected reqCnt to be registered already")
-	}
-	if are, ok := err.(AlreadyRegisteredError); ok {
-		reqCnt = are.ExistingCollector.(*CounterVec)
-	} else {
-		t.Fatal("unexpected registration error:", err)
-	}
+	)).(*CounterVec)
 
 	opts.Name = "request_duration_microseconds"
 	opts.Help = "The HTTP request latencies in microseconds."
-	reqDur := NewSummary(opts)
-	err = Register(reqDur)
-	if err == nil {
-		t.Fatal("expected reqDur to be registered already")
-	}
-	if are, ok := err.(AlreadyRegisteredError); ok {
-		reqDur = are.ExistingCollector.(Summary)
-	} else {
-		t.Fatal("unexpected registration error:", err)
-	}
+	reqDur := MustRegisterOrGet(NewSummary(opts)).(Summary)
 
 	opts.Name = "request_size_bytes"
 	opts.Help = "The HTTP request sizes in bytes."
-	reqSz := NewSummary(opts)
-	err = Register(reqSz)
-	if err == nil {
-		t.Fatal("expected reqSz to be registered already")
-	}
-	if _, ok := err.(AlreadyRegisteredError); !ok {
-		t.Fatal("unexpected registration error:", err)
-	}
+	MustRegisterOrGet(NewSummary(opts))
 
 	opts.Name = "response_size_bytes"
 	opts.Help = "The HTTP response sizes in bytes."
-	resSz := NewSummary(opts)
-	err = Register(resSz)
-	if err == nil {
-		t.Fatal("expected resSz to be registered already")
-	}
-	if _, ok := err.(AlreadyRegisteredError); !ok {
-		t.Fatal("unexpected registration error:", err)
-	}
+	MustRegisterOrGet(NewSummary(opts))
 
 	reqCnt.Reset()
 
@@ -124,8 +81,8 @@ func TestInstrumentHandler(t *testing.T) {
 	if resp.Code != http.StatusTeapot {
 		t.Fatalf("expected status %d, got %d", http.StatusTeapot, resp.Code)
 	}
-	if resp.Body.String() != "Howdy there!" {
-		t.Fatalf("expected body %s, got %s", "Howdy there!", resp.Body.String())
+	if string(resp.Body.Bytes()) != "Howdy there!" {
+		t.Fatalf("expected body %s, got %s", "Howdy there!", string(resp.Body.Bytes()))
 	}
 
 	out := &dto.Metric{}
@@ -138,7 +95,7 @@ func TestInstrumentHandler(t *testing.T) {
 	}
 
 	out.Reset()
-	if want, got := 1, len(reqCnt.metricMap.metrics); want != got {
+	if want, got := 1, len(reqCnt.children); want != got {
 		t.Errorf("want %d children in reqCnt, got %d", want, got)
 	}
 	cnt, err := reqCnt.GetMetricWithLabelValues("get", "418")

@@ -24,7 +24,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func ExampleNewExpvarCollector() {
+func ExampleExpvarCollector() {
 	expvarCollector := prometheus.NewExpvarCollector(map[string]*prometheus.Desc{
 		"memstats": prometheus.NewDesc(
 			"expvar_memstats",
@@ -78,7 +78,7 @@ func ExampleNewExpvarCollector() {
 		close(metricChan)
 	}()
 	for m := range metricChan {
-		if !strings.Contains(m.Desc().String(), "expvar_memstats") {
+		if strings.Index(m.Desc().String(), "expvar_memstats") == -1 {
 			metric.Reset()
 			m.Write(&metric)
 			metricStrings = append(metricStrings, metric.String())
