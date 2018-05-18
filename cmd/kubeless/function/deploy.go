@@ -221,7 +221,7 @@ var deployCmd = &cobra.Command{
 
 func init() {
 	deployCmd.Flags().StringP("runtime", "r", "", "Specify runtime")
-	deployCmd.Flags().StringP("handler", "h", "", "Specify handler")
+	deployCmd.Flags().StringP("handler", "", "", "Specify handler")
 	deployCmd.Flags().StringP("from-file", "f", "", "Specify code file or a URL to the code file")
 	deployCmd.Flags().StringSliceP("label", "l", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")

@@ -171,7 +171,7 @@ var updateCmd = &cobra.Command{
 
 func init() {
 	updateCmd.Flags().StringP("runtime", "r", "", "Specify runtime")
-	updateCmd.Flags().StringP("handler", "h", "", "Specify handler")
+	updateCmd.Flags().StringP("handler", "", "", "Specify handler")
 	updateCmd.Flags().StringP("from-file", "f", "", "Specify code file or a URL to the code file")
 	updateCmd.Flags().StringP("memory", "", "", "Request amount of memory for the function")
 	updateCmd.Flags().StringP("cpu", "", "", "Request amount of cpu for the function.")
