@@ -381,6 +381,51 @@ func GetHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTrigge
 	return kafkaCRD, nil
 }
 
+// CreateKinesisTriggerCustomResource will create a Kinesis trigger custom resource object
+func CreateKinesisTriggerCustomResource(kubelessClient versioned.Interface, kinesisTrigger *kubelessApi.KinesisTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().KinesisTriggers(kinesisTrigger.Namespace).Create(kinesisTrigger)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateKinesisTriggerCustomResource applies changes to the Kinesis trigger custom resource object
+func UpdateKinesisTriggerCustomResource(kubelessClient versioned.Interface, kinesisTrigger *kubelessApi.KinesisTrigger) error {
+	_, err := kubelessClient.KubelessV1beta1().KinesisTriggers(kinesisTrigger.Namespace).Update(kinesisTrigger)
+	return err
+}
+
+// PatchKinesisTriggerCustomResource applies changes to the function custom object
+func PatchKinesisTriggerCustomResource(kubelessClient versioned.Interface, kinesisTrigger *kubelessApi.KinesisTrigger) error {
+	data, err := json.Marshal(kinesisTrigger)
+	if err != nil {
+		return err
+	}
+	_, err = kubelessClient.KubelessV1beta1().KinesisTriggers(kinesisTrigger.Namespace).Patch(kinesisTrigger.Name, types.MergePatchType, data)
+	return err
+}
+
+// DeleteKinesisTriggerCustomResource will delete  HTTP trigger custom resource object
+func DeleteKinesisTriggerCustomResource(kubelessClient versioned.Interface, kinesisTriggerName, ns string) error {
+	err := kubelessClient.KubelessV1beta1().KinesisTriggers(ns).Delete(kinesisTriggerName, &metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetKinesisTriggerCustomResource will get  HTTP trigger custom resource object
+func GetKinesisTriggerCustomResource(kubelessClient versioned.Interface, kinesisTriggerName, ns string) (*kubelessApi.KinesisTrigger, error) {
+	kinesisCRD, err := kubelessClient.KubelessV1beta1().KinesisTriggers(ns).Get(kinesisTriggerName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return kinesisCRD, nil
+}
+
 // GetPodsByLabel returns list of pods which match the label
 // We use this to returns pods to which the function is deployed or pods running controllers
 func GetPodsByLabel(c kubernetes.Interface, ns, k, v string) (*v1.PodList, error) {
