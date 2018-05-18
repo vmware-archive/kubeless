@@ -5,10 +5,13 @@ using System;
 using System.Runtime.InteropServices;
 using System.IO;
 using System.Reflection;
+using System.Linq;
+using Kubeless.Core.Filters;
 
-namespace Kubeless.Core.Models
+
+namespace Kubeless.Core.References
 {
-    class StoreReferencesManager : IReferencesManager
+    internal class StoreReferencesManager : IReferencesManager
     {
         private static readonly string StorePath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
             Path.Combine(Environment.GetEnvironmentVariable("ProgramFiles"), @"dotnet\store\x64\netcoreapp2.0\") :
@@ -16,7 +19,11 @@ namespace Kubeless.Core.Models
 
         public MetadataReference[] GetReferences()
         {
-            var dlls = Directory.EnumerateFiles(StorePath, "*.dll", SearchOption.AllDirectories);
+            var dlls = Directory
+                .EnumerateFiles(StorePath, "*.dll", SearchOption.AllDirectories)
+                .ApplyFilterOnDllVersion();
+
+            var dllFiles = from d in dlls select new FileInfo(d);
 
             var references = new List<MetadataReference>();
 
@@ -29,7 +36,11 @@ namespace Kubeless.Core.Models
                     var assembly = Assembly.LoadFile(dll);
                     references.Add(MetadataReference.CreateFromFile(dll));
                 }
-                catch { }
+                catch (BadImageFormatException) { }
+                catch
+                {
+                    throw;
+                }
             }
 
             return references.ToArray();

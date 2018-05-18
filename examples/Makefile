@@ -261,10 +261,16 @@ timeout-ruby-verify:
 	echo $(MSG) | egrep "real\s*0m4."
 
 get-dotnetcore:
-	kubeless function deploy get-dotnetcore --runtime dotnetcore2.0 --handler helloget.foo --from-file dotnetcore/helloget.cs
+	kubeless function deploy get-dotnetcore --runtime dotnetcore2.0 --handler module.handler --from-file dotnetcore/helloget.cs
 
 get-dotnetcore-verify:
 	kubeless function call get-dotnetcore |egrep hello.world
+
+get-dotnetcore-dependency:
+	kubeless function deploy get-dotnetcore-dependency --runtime dotnetcore2.0 --handler module.handler --from-file dotnetcore/dependency-yaml.cs --dependencies dotnetcore/dependency-yaml.csproj
+
+get-dotnetcore-dependency-verify:
+	kubeless function call get-dotnetcore-dependency |egrep Name:\ Michael
 
 custom-get-python:
 	kubeless function deploy --runtime-image kubeless/get-python-example@sha256:6a14400f14e26d46a971445b7a850af533fe40cb75a67297283bdf536e09ca5e custom-get-python
@@ -327,7 +333,7 @@ post-ruby-verify:
 	echo $$logs | grep -q "event-id.*"
 
 post-dotnetcore:
-	kubeless function deploy post-dotnetcore --runtime dotnetcore2.0 --handler hellowithdata.handler --from-file dotnetcore/hellowithdata.cs
+	kubeless function deploy post-dotnetcore --runtime dotnetcore2.0 --handler module.handler --from-file dotnetcore/hellowithdata.cs
 
 post-dotnetcore-verify:
 	kubeless function call post-dotnetcore --data '{"it-s": "alive"}'|egrep "it.*alive"

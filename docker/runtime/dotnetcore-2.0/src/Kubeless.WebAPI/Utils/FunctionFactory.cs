@@ -26,7 +26,7 @@ namespace Kubeless.WebAPI.Utils
             var requirementsPathSetting = configuration["Compiler:RequirementsPath"];
             if (string.IsNullOrEmpty(requirementsPathSetting))
                 throw new ArgumentNullException("Compiler:RequirementsPath");
-            var requirementsPath = string.Concat(requirementsPathSetting, "requirements", ".xml");
+            var requirementsPath = string.Concat(requirementsPathSetting, "requirements", ".csproj");
             var requirements = new StringContent(requirementsPath);
 
             var assemblyPathConfiguration = configuration["Compiler:FunctionAssemblyPath"];

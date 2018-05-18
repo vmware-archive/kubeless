@@ -144,9 +144,12 @@ load ../script/libtest
   kubeless_function_delete post-go
 }
 @test "Test function: get-dotnetcore" {
-  skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"
   test_kubeless_function get-dotnetcore
   kubeless_function_delete get-dotnetcore
+}
+@test "Test function: get-dotnetcore-dependency" {
+  test_kubeless_function get-dotnetcore-dependency
+  kubeless_function_delete get-dotnetcore-dependency
 }
 @test "Test custom runtime image" {
   verify_function custom-get-python
@@ -174,7 +177,6 @@ load ../script/libtest
   kubeless_function_delete post-php
 }
 @test "Test function: post-dotnetcore" {
-  skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"
   test_kubeless_function post-dotnetcore
   kubeless_function_delete post-dotnetcore
 }

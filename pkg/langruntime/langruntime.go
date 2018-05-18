@@ -234,6 +234,9 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 		command = appendToCommand(command,
 			"cd $GOPATH/src/kubeless",
 			"dep ensure > /dev/termination-log 2>&1")
+	case strings.Contains(runtime, "dotnetcore"):
+		command = appendToCommand(command,
+			"dotnet restore "+installVolume.MountPath+" --packages "+installVolume.MountPath+"/packages")
 	case strings.Contains(runtime, "java"):
 		command = appendToCommand(command,
 			"mv /kubeless/pom.xml /kubeless/function-pom.xml")
@@ -272,7 +275,7 @@ func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runti
 	case strings.Contains(runtime, "dotnetcore"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "DOTNETCORE_HOME",
-			Value: "/usr/bin/",
+			Value: path.Join(depsPath, "packages"),
 		})
 	}
 }
