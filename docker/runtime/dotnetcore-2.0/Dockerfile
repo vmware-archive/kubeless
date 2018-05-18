@@ -14,4 +14,7 @@ RUN dotnet publish -c Release -o out
 FROM microsoft/aspnetcore:2.0.0
 WORKDIR /app
 COPY --from=build-env /app/src/Kubeless.WebAPI/out .
+# Kubeless.Functions reference
+COPY --from=build-env /app/src/Kubeless.WebAPI/out/Kubeless.Functions.dll /usr/share/dotnet/store/x64/netcoreapp2.0/.
+
 ENTRYPOINT ["dotnet", "Kubeless.WebAPI.dll"]

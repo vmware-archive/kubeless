@@ -142,6 +142,10 @@ load ../script/libtest
   test_kubeless_function get-dotnetcore
   kubeless_function_delete get-dotnetcore
 }
+@test "Test function: get-dotnetcore-dependency" {
+  test_kubeless_function get-dotnetcore-dependency
+  kubeless_function_delete get-dotnetcore-dependency
+}
 @test "Test custom runtime image" {
   verify_function custom-get-python
   test_kubeless_function_update custom-get-python
