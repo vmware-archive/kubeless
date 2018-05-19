@@ -1,6 +1,7 @@
 
 
 build:
+	env GOOS=linux GOARCH=amd64 go build $$GOPATH/src/github.com/kubeless/kubeless/pkg/function-proxy/proxy.go
 	docker build -t kubeless/php:7.2$$RUNTIME_TAG_MODIFIER .
 
 push:

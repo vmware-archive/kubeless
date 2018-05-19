@@ -1,47 +1,56 @@
 ﻿using Kubeless.Core.Interfaces;
-using Microsoft.AspNetCore.Http;
+using Kubeless.Functions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Threading;
 
 namespace Kubeless.WebAPI.Controllers
 {
     [Route("/")]
     public class RuntimeController : Controller
     {
-        private IFunction _function;
-        private ICompiler _compiler;
-        private IInvoker _invoker;
-        private IConfiguration _configuration;
+        private readonly IFunction _function;
+        private readonly IParameterHandler _parameterManager;
+        private readonly IInvoker _invoker;
 
-        public RuntimeController(IFunction function, ICompiler compiler, IInvoker invoker, IConfiguration configuration)
+        public RuntimeController(IFunction function, IParameterHandler parameter, IInvoker invoker)
         {
             _function = function;
-            _compiler = compiler;
             _invoker = invoker;
-            _configuration = configuration;
+            _parameterManager = parameter;
         }
 
-        [HttpPost]
-        public object Post([FromBody]object data)
+        [AcceptVerbs("GET", "POST", "PUT", "PATCH", "DELETE")]
+        public object Execute()
         {
-            if (Request.Body.CanSeek)
-                Request.Body.Position = 0;
+            Console.WriteLine("{0}: Function Started. HTTP Method: {1}, Path: {2}.", DateTime.Now.ToString(), Request.Method, Request.Path);
 
-            return CallFunction();
+            try
+            {
+                (Event _event, Context _context) = _parameterManager.GetFunctionParameters(Request);
+
+                CancellationTokenSource _cancellationSource = new CancellationTokenSource();
+
+                var output = _invoker.Execute(_function, _cancellationSource, _event, _context);
+
+                Console.WriteLine("{0}: Function Executed. HTTP response: {1}.", DateTime.Now.ToString(), 200);
+                return output;
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("{0}: Function Cancelled. HTTP Response: {1}. Reason: {2}.", DateTime.Now.ToString(), 408, "Timeout");
+                return new StatusCodeResult(408);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("{0}: Function Corrupted. HTTP Response: {1}. Reason: {2}.", DateTime.Now.ToString(), 500, ex.Message);
+                throw;
+            }
         }
 
-        [HttpGet]
-        public object Get()
-        {
-            return CallFunction();
-        }
+        [HttpGet("/healthz")]
+        public IActionResult Health() => Ok();
 
-        private object CallFunction()
-        {
-            if (!_function.IsCompiled())
-                _compiler.Compile(_function);
-            return _invoker.Execute(_function, Request);
-        }
-        
     }
 }

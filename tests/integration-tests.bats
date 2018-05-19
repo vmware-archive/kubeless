@@ -47,6 +47,9 @@ load ../script/libtest
   deploy_function custom-get-python
   deploy_function get-python-url-deps
   deploy_function get-node-url-zip
+  deploy_function get-java
+  deploy_function post-java
+  deploy_function get-java-deps
 }
 @test "Test function: get-python" {
   verify_function get-python
@@ -141,9 +144,12 @@ load ../script/libtest
   kubeless_function_delete post-go
 }
 @test "Test function: get-dotnetcore" {
-  skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"
   test_kubeless_function get-dotnetcore
   kubeless_function_delete get-dotnetcore
+}
+@test "Test function: get-dotnetcore-dependency" {
+  test_kubeless_function get-dotnetcore-dependency
+  kubeless_function_delete get-dotnetcore-dependency
 }
 @test "Test custom runtime image" {
   verify_function custom-get-python
@@ -171,7 +177,6 @@ load ../script/libtest
   kubeless_function_delete post-php
 }
 @test "Test function: post-dotnetcore" {
-  skip "This test is flaky until kubeless/kubeless/issues/395 is fixed"
   test_kubeless_function post-dotnetcore
   kubeless_function_delete post-dotnetcore
 }
@@ -182,6 +187,17 @@ load ../script/libtest
 @test "Test function: get-python-secrets" {
   verify_function get-python-secrets
   kubeless_function_delete get-python-secrets
+}
+@test "Test function: get-java" {
+  verify_function get-java
+  kubeless_function_delete get-java
+}
+@test "Test function: post-java" {
+  verify_function post-java
+  kubeless_function_delete post-java
+}
+@test "Test function: get-java-deps" {
+  verify_function get-java-deps
 }
 @test "Test no-errors" {
   if kubectl logs -n kubeless -l kubeless=controller | grep "level=error"; then

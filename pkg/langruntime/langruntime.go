@@ -237,6 +237,12 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 		command = appendToCommand(command,
 			"cd $GOPATH/src/kubeless",
 			"dep ensure > /dev/termination-log 2>&1")
+	case strings.Contains(runtime, "dotnetcore"):
+		command = appendToCommand(command,
+			"dotnet restore "+installVolume.MountPath+" --packages "+installVolume.MountPath+"/packages")
+	case strings.Contains(runtime, "java"):
+		command = appendToCommand(command,
+			"mv /kubeless/pom.xml /kubeless/function-pom.xml")
 	}
 
 	return v1.Container{
@@ -269,6 +275,10 @@ func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runti
 			Name:  "GEM_HOME",
 			Value: path.Join(depsPath, "ruby/2.4.0"),
 		})
+	case strings.Contains(runtime, "dotnetcore"):
+		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
+			Name:  "DOTNETCORE_HOME",
+			Value: path.Join(depsPath, "packages"),
 	case strings.Contains(runtime, "csharpx"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "CSHARPX_HOME",
@@ -301,6 +311,11 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 		command = fmt.Sprintf(
 			"sed 's/<<FUNCTION>>/%s/g' $GOPATH/src/controller/kubeless.tpl.go > $GOPATH/src/controller/kubeless.go && "+
 				"go build -o %s/server $GOPATH/src/controller/kubeless.go > /dev/termination-log 2>&1", funcName, installVolume.MountPath)
+	case strings.Contains(runtime, "java"):
+		command = "cp -r /usr/src/myapp/* /kubeless/ && " +
+			"cp /kubeless/*.java /kubeless/function/src/main/java/io/kubeless/ && " +
+			"cp /kubeless/function-pom.xml /kubeless/function/pom.xml 2>/dev/null || true && " +
+			"mvn package > /dev/termination-log 2>&1 && mvn install > /dev/termination-log 2>&1"
 	default:
 		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
 	}

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Kubeless.WebAPI.Utils;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -17,14 +18,14 @@ namespace kubeless_netcore_runtime
             BuildWebHost(args).Run();
         }
 
-        public static IWebHost BuildWebHost(string[] args) =>
-            var envPortStr = Environment.GetEnvironmentVariable("FUNC_PORT");
-            var urls = "http://*:8080";
-            if (!string.IsNullOrEmpty(envPortStr))
-                urls = string.Concat("http://*:", envPortStr)
-            WebHost.CreateDefaultBuilder(args)
+        public static IWebHost BuildWebHost(string[] args)
+        {
+            var port = VariablesUtils.GetEnvironmentVariable("FUNC_PORT", "8080");
+
+            return WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
-                .UseUrls(urls)
+                .UseUrls($"http://*:{port}")
                 .Build();
+        }
     }
 }

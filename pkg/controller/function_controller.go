@@ -48,7 +48,7 @@ import (
 const (
 	maxRetries        = 5
 	funcKind          = "Function"
-	funcAPI           = "kubeless.io"
+	funcAPIVersion    = "kubeless.io/v1beta1"
 	functionFinalizer = "kubeless.io/function"
 )
 
@@ -314,7 +314,7 @@ func (c *FunctionController) ensureK8sResources(funcObj *kubelessApi.Function) e
 		}
 	}
 
-	or, err := utils.GetFunctionOwnerReference(funcObj)
+	or, err := utils.GetOwnerReference(funcKind, funcAPIVersion, funcObj.Name, funcObj.UID)
 	if err != nil {
 		return err
 	}
