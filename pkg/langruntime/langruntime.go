@@ -279,6 +279,7 @@ func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runti
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "DOTNETCORE_HOME",
 			Value: path.Join(depsPath, "packages"),
+		})
 	case strings.Contains(runtime, "csharpx"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "CSHARPX_HOME",
