@@ -168,7 +168,7 @@ local runtime_images ='[
       {
         "name": "csharpx",
         "version": "2.8.0",
-        "runtimeImage": "from/kubeless-csharpx@sha256:77155dde67a81544763b7198100e085e83d04fe3ad8fcee8f9756914141a52e2",
+        "runtimeImage": "from/kubeless-csharpx@sha256:a243dafa9b9f45714da4a33087a30e53703bb95894fd79605dadf1f9e47b5fa8",
         "initImage": "microsoft/aspnetcore-build:2.0",
       }
     ],

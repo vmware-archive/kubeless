@@ -21,7 +21,7 @@
   },
   "targets": {
     ".NETCoreApp,Version=v2.0": {
-      "Kubeless.CSharpX/2.8.0": {
+      "Kubeless.CSharpX/2.8.0-1": {
         "dependencies": {
           "Microsoft.AspNetCore.All": "2.0.8",
           "Microsoft.CodeAnalysis.CSharp.Scripting": "2.8.0",
@@ -4016,7 +4016,7 @@
     }
   },
   "libraries": {
-    "Kubeless.CSharpX/2.8.0": {
+    "Kubeless.CSharpX/2.8.0-1": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

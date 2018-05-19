@@ -5,10 +5,12 @@
     <ApplicationIcon />
     <OutputType>Exe</OutputType>
     <StartupObject />
-    <Version>2.8.0</Version>
+    <Version>2.8.0-1</Version>
     <Authors>FROM / Kenji Yamazaki</Authors>
     <Company>Kumakami Koubou</Company>
     <Product>Roslyn C# Scripting Runtime for Kubeless</Product>
+    <AssemblyVersion>2.8.0.1</AssemblyVersion>
+    <FileVersion>2.8.0.1</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
