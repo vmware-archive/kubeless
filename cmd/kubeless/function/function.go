@@ -203,7 +203,7 @@ func parseContent(file, contentType string) (string, string, error) {
 	return content, checksum, nil
 }
 
-func getFunctionDescription(cli kubernetes.Interface, funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, imagePullPolicy string, port int32, headless bool, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
+func getFunctionDescription(funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, imagePullPolicy string, port int32, headless bool, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
 
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{

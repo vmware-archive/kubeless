@@ -115,7 +115,7 @@ var callCmd = &cobra.Command{
 }
 
 func init() {
-	callCmd.Flags().StringP("data", "", "", "Specify data for function")
-	callCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
+	callCmd.Flags().StringP("data", "d", "", "Specify data for function")
+	callCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 
 }
