@@ -115,20 +115,19 @@ workflows:
             - minikube_kafka
             - minikube_nats
             - GKE
-      # TODO: Enable this when Travis release is disabled
-      # - release:
-      #     filters:
-      #       tags:
-      #         only: /v.*/
-      #       branches:
-      #         ignore: /.*/
-      #     requires:
-      #       - minikube
-      #       - minikube_core_triggers
-      #       - minikube_build_functions
-      #       - minikube_kafka
-      #       - minikube_nats
-      #       - GKE
+      - release:
+          filters:
+            tags:
+              only: /v.*/
+            branches:
+              ignore: /.*/
+          requires:
+            - minikube
+            - minikube_core_triggers
+            - minikube_build_functions
+            - minikube_kafka
+            - minikube_nats
+            - GKE
 jobs:
   build:
     <<: *defaults
