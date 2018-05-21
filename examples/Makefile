@@ -56,7 +56,7 @@ get-python-url-deps-verify:
 	kubeless function call get-python-url-deps |egrep Google	
 
 get-node-url-zip:
-	kubeless function deploy get-node-url-zip --runtime nodejs6 --handler index.helloGet --from-file https://github.com/tkeech1/kubelessfunction/blob/master/nodejs/helloFunctions.zip?raw=true
+	kubeless function deploy get-node-url-zip --runtime nodejs6 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/zipExample/examples/nodejs/helloFunctions.zip?raw=true
 
 get-node-url-zip-verify:
 	kubeless function call get-node-url-zip |egrep hello.world
