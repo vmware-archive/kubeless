@@ -37,6 +37,7 @@ type KinesisTriggerSpec struct {
 	Secret       string `json:"secret"`        // Name of the Kubernetes secret that holds the AWS access key and secret key
 	Stream       string `json:"stream"`        // Kinesis Stream name
 	ShardID      string `json:"shard"`         // Kinesis Stream shard-id
+	Endpoint     string `json:"endpoint"`      // Endpoint url of the Kinesis service
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

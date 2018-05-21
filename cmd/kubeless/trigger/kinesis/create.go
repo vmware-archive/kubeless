@@ -19,6 +19,7 @@ package kinesis
 import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"net/url"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/utils"
@@ -78,6 +79,14 @@ var createCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		endpointURL, err := cmd.Flags().GetString("endpoint")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		_, err = url.ParseRequestURI(endpointURL)
+		if err != nil {
+			panic(err)
+		}
 
 		cli := utils.GetClientOutOfCluster()
 		_, err = cli.Core().Secrets(ns).Get(secretName, metav1.GetOptions{})
@@ -102,6 +111,7 @@ var createCmd = &cobra.Command{
 		kinesisTrigger.Spec.Stream = streamName
 		kinesisTrigger.Spec.ShardID = shardID
 		kinesisTrigger.Spec.Secret = secretName
+		kinesisTrigger.Spec.Endpoint = endpointURL
 		err = utils.CreateKinesisTriggerCustomResource(kubelessClient, &kinesisTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to create Kinesis trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
@@ -118,6 +128,7 @@ func init() {
 	createCmd.Flags().StringP("shard-id", "", "", "Shard-ID of the AWS kinesis stream")
 	createCmd.Flags().StringP("function-name", "", "", "Name of the Kubeless function to be associated with AWS Kinesis stream")
 	createCmd.Flags().StringP("secret", "", "", "Kubernetes secret that has AWS access key and secret key")
+	createCmd.Flags().StringP("endpoint", "", "", "Override AWS's default service URL with the given URL")
 	createCmd.MarkFlagRequired("stream")
 	createCmd.MarkFlagRequired("aws-region")
 	createCmd.MarkFlagRequired("shard-id")

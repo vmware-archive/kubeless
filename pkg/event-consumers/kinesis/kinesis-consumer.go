@@ -18,6 +18,7 @@ package kinesis
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -38,7 +39,6 @@ var (
 	stopM            map[string](chan struct{})
 	stoppedM         map[string](chan struct{})
 	streamProcessors map[string]bool
-	url              string
 )
 
 func init() {
@@ -72,7 +72,19 @@ func createStreamProcessor(triggerObj *kubelessApi.KinesisTrigger, funcName, ns 
 	awsSecretAccessKey := string(secret.Data["aws_secret_access_key"][:])
 
 	customCreds := credentials.NewStaticCredentials(awsAccessKey, awsSecretAccessKey, "")
-	s := session.New(&aws.Config{Region: aws.String(triggerObj.Spec.Region), Credentials: customCreds})
+	var s *session.Session
+	if len(triggerObj.Spec.Endpoint) > 0 {
+		_, err = url.ParseRequestURI(triggerObj.Spec.Endpoint)
+		if err != nil {
+			logrus.Errorf("Invalid overide URL: %s for Kinesis service. Error: %v", triggerObj.Spec.Endpoint, err)
+		}
+		s = session.New(&aws.Config{Region: aws.String(triggerObj.Spec.Region),
+			Endpoint:    aws.String(triggerObj.Spec.Endpoint),
+			Credentials: customCreds})
+	} else {
+		s = session.New(&aws.Config{Region: aws.String(triggerObj.Spec.Region),
+			Credentials: customCreds})
+	}
 
 	kc := kinesis.New(s)
 	shardIterator, err := getShardIterator(kc, triggerObj.Spec.ShardID, triggerObj.Spec.Stream)

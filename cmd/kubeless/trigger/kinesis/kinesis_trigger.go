@@ -36,4 +36,5 @@ func init() {
 	KinesisTriggerCmd.AddCommand(listCmd)
 	KinesisTriggerCmd.AddCommand(updateCmd)
 	KinesisTriggerCmd.AddCommand(publishCmd)
+	KinesisTriggerCmd.AddCommand(createStreamCmd)
 }
