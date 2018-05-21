@@ -4,7 +4,7 @@ Kubeless lets you trigger any Kubeless function in response to ingested records 
 
 ## AWS Kinesis
 
-To trigger Kubeless functions in response to ingested records into the AWS kinesis stream you need to deploy Kubeless AWS Kinesis trigger controlle. Please use this manifest to deploy Kubeless AWS Kinesis triggers controller.
+To trigger Kubeless functions in response to ingested records into the AWS kinesis stream you need to deploy Kubeless AWS Kinesis trigger controlle. Please use this manifest to deploy Kubeless AWS Kinesis trigger controller.
 
 ```
 kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kinesis-$RELEASE.yaml
@@ -29,11 +29,11 @@ httptriggers.kubeless.io      13h
 kinesistriggers.kubeless.io   13h
 ```
 
-Kubeless cli lets you create Kubeless triggers of Kinesis type. Kubeless cli provides necessary functionality to manage life cycle of Kinesis triggers.
+Kubeless cli lets you create Kubeless triggers of Kinesis type. Kubeless cli provides necessary functionality to manage the life cycle of Kinesis triggers.
 
 ```console
 ± kubeless trigger kinesis
-kinesis trigger command allows user to create, list, update, delete Kinesis triggers running on Kubeless
+kinesis trigger command allows users to create, list, update, delete Kinesis triggers running on Kubeless
 
 Usage:
   kubeless trigger kinesis SUBCOMMAND [flags]
@@ -52,9 +52,9 @@ Flags:
 Use "kubeless trigger kinesis [command] --help" for more information about a command.
 ```
 
-In order to deploy a Kinesis trigger and associate a Kubeless function to be invoked in response to ingested records in Kinesis data stream, you need to first let Kubeless know the credentials required to acess your AWS Kinesis stream. Kubeless will leverage Kubernetes secrets to store the credentails in the cluster and use them to acess the Kinesis stream.
+In order to deploy a Kinesis trigger and associate a Kubeless function to be invoked in response to ingested records in Kinesis data stream, you need to first let Kubeless know the credentials required to acess your AWS Kinesis stream. Kubeless will leverage Kubernetes secrets to store the credentials in the cluster and use them to access the Kinesis stream.
 
-First you need to creat Kubernetes secret that can store you AWS `aws_access_key_id` and `aws_secret_access_key`. Usually if you are using AWS cli your keys will be present in `~/.aws/credentials` or you can create access keys from AWS console.
+First you need to creat Kubernetes secret that can store you AWS `aws_access_key_id` and `aws_secret_access_key`. Usually if you are using AWS cli your keys will be present in `~/.aws/credentials` or you can create AWS access keys from AWS console.
 
 ```console
 kubectl create secret generic ec2 --from-literal=aws_access_key_id=ABCAIFDB7GEGGD37HN5Q --from-literal=aws_secret_access_key=gAckl2wtNrY9aaR/OvzAOCaAg6wSkABCsyXazXrx
@@ -97,10 +97,10 @@ Lets look into the flags expected. `--aws-region` is the AWS region in which you
 }
 ```
 
-Once you deploy Kinesis trigger you shall see a `kinesistrigger` CRD object as below.
+Once you deploy the Kinesis trigger you shall see a `kinesistrigger` CRD object as below.
 
 ```console
-± k get kinesistriggers.kubeless.io test -o yaml
+± kubectl get kinesistriggers.kubeless.io test -o yaml
 apiVersion: kubeless.io/v1beta1
 kind: KinesisTrigger
 metadata:
@@ -116,7 +116,7 @@ spec:
   stream: my-kinesis-stream
 ```
 
-At this point you shall be able to publish record in to the stream either through Kubeless CLI or using AWS cli as below.
+At this point you shall be able to publish a record in to the stream either through Kubeless CLI or using AWS cli as below.
 
 ```console
 kubeless  trigger kinesis publish --aws-region us-west-2 --aws_access_key_id AKIDIDCB7NEGGD37HN5Q --aws_secret_access_key gBckl2wtMrY9aaR/OvzAOCaKg6wSkEZAsyXazXrx --partition-key "123" --stream my-kinesis-stream  --message "hello world"
@@ -130,7 +130,7 @@ aws kinesis put-record --stream-name my-kinesis-stream --partition-key 123 --dat
 aws kinesis put-record --stream-name my-kinesis-stream --partition-key 123 --data testdata3
 ```
 
-You shall see the log of recived messages in the function pod associated with the Kinesis trigger.
+You shall see the log of received messages in the function pod associated with the Kinesis trigger.
 
 ```console
 ± k logs post-python-59f7fc4b54-4nhbb

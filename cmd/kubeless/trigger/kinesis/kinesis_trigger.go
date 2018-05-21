@@ -24,7 +24,7 @@ import (
 var KinesisTriggerCmd = &cobra.Command{
 	Use:   "kinesis SUBCOMMAND",
 	Short: "kinesis trigger specific operations",
-	Long:  `kinesis trigger command allows user to create, list, update, delete Kinesis triggers running on Kubeless`,
+	Long:  `kinesis trigger command allows users to create, list, update, delete Kinesis triggers running on Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
