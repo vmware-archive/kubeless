@@ -3,14 +3,12 @@
 import os
 import imp
 import datetime
+import julia
 
 from multiprocessing import Process, Queue
 import bottle
 import prometheus_client as prom
 
-mod = imp.load_source('function',
-                      '/kubeless/%s.py' % os.getenv('MOD_NAME'))
-func = getattr(mod, os.getenv('FUNC_HANDLER'))
 func_port = os.getenv('FUNC_PORT', 8080)
 
 timeout = float(os.getenv('FUNC_TIMEOUT', 180))
@@ -28,15 +26,18 @@ func_errors = prom.Counter('function_failures_total',
                            ['method'])
 
 function_context = {
-    'function-name': func,
     'timeout': timeout,
     'runtime': os.getenv('FUNC_RUNTIME'),
     'memory-limit': os.getenv('FUNC_MEMORY_LIMIT'),
 }
 
+    
 def funcWrap(q, event, c):
+    ju = julia.Julia()
+    julia_function = ju.include('/kubeless/%s.jl' % os.getenv('MOD_NAME'))
+    c['function-name'] = str(julia_function)
     try:
-        q.put(func(event, c))
+        q.put(julia_function(event, c))
     except Exception as inst:
         q.put(inst)
 
