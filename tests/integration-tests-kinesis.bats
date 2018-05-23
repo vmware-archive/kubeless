@@ -28,3 +28,8 @@ load ../script/libtest
   verify_function python-kinesis
   kubeless_function_delete python-kinesis
 }
+@test "Test function: stream-multi-record-pubish-python-kinesis" {
+  deploy_function python-kinesis-multi-record
+  verify_function python-kinesis-multi-record
+  kubeless_function_delete python-kinesis-multi-record
+}
