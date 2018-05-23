@@ -13,16 +13,14 @@ RUN pip3 install bottle==0.12.13 cherrypy==8.9.1 wsgi-request-logger prometheus_
 RUN pip3 install julia==0.1.5
 
 RUN julia -e 'Pkg.add("PyCall")'
-RUN julia -e 'using PyCall'
 
 RUN apt-get install -y curl
 
 WORKDIR /
 ADD kubeless-julia.py .
 RUN mkdir -p /kubeless
-COPY test.jl /kubeless
 
-CMD ["python", "/kubeless-julia.py"]
+CMD ["python3", "/kubeless-julia.py"]
 
 
 

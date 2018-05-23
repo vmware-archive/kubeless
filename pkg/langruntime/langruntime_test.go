@@ -85,7 +85,7 @@ func TestGetRuntimes(t *testing.T) {
 	lr.ReadConfigMap()
 
 	runtimes := strings.Join(lr.GetRuntimes(), ", ")
-	expectedRuntimes := "python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, dotnetcore2.0, php7.2"
+	expectedRuntimes := "python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, dotnetcore2.0, php7.2, julia0.6"
 	if runtimes != expectedRuntimes {
 		t.Errorf("Expected %s but got %s", expectedRuntimes, runtimes)
 	}

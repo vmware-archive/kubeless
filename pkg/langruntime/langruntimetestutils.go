@@ -97,6 +97,19 @@ func AddFakeConfig(clientset *fake.Clientset) {
 				},
 			},
 		},
+	}, {ID: "julia",
+		DepName: "REQUIRE",
+		FileNameSuffix: ".jl",
+		Versions: []RuntimeVersion{
+			{
+				Name:      "julia0.6",
+				Version:    "0.6",
+				InitImage:  "julia",
+				ImagePullSecrets: []ImageSecret{
+					{ImageSecret: "p1"}, {ImageSecret: "p2"},
+				},
+			},
+		},
 	}}
 
 	out, err := yaml.Marshal(runtimeImages)

@@ -34,8 +34,8 @@ function_context = {
     
 def funcWrap(q, event, c):
     ju = julia.Julia()
-    julia_function = ju.include('/kubeless/%s.jl' % os.getenv('MOD_NAME'))
-    c['function-name'] = str(julia_function)
+    julia_function = ju.include_string(os.getenv('FUNC_HANDLER'),'/kubeless/%s.jl' % os.getenv('MOD_NAME'))
+    c['function-name'] = os.getenv('FUNC_HANDLER')
     try:
         q.put(julia_function(event, c))
     except Exception as inst:

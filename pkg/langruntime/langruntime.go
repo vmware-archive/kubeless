@@ -240,6 +240,9 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 	case strings.Contains(runtime, "java"):
 		command = appendToCommand(command,
 			"mv /kubeless/pom.xml /kubeless/function-pom.xml")
+	case strings.Contains(runtime, "julia"):
+		command = appendToCommand(command,"",
+			"julia -e 'Pkg.resolve()'")
 	}
 
 	return v1.Container{
@@ -276,6 +279,11 @@ func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runti
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "DOTNETCORE_HOME",
 			Value: path.Join(depsPath, "packages"),
+		})
+	case strings.Contains(runtime, "julia"):
+		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
+			Name: "JULIA_HOME",
+			Value: path.Join(depsPath, "~/.julia/v0.6"),
 		})
 	}
 }

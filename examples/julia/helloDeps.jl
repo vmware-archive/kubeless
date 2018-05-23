@@ -1,4 +1,4 @@
 function foo(event, context)
-	println("Hello World")
+	println("hello deps")
     return "test"
 end

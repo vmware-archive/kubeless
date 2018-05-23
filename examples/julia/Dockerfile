@@ -1,19 +1,10 @@
-FROM julia-python3
-
+FROM knightxun/julia
 RUN mkdir -p /kubeless
+
+ENV FUNC_HANDLER=foo \
+    MOD_NAME=hello
 COPY hello.jl /kubeless
+COPY REQUIRE  /root/.julia/v0.6/REQUIRE
+RUN julia -e "Pkg.resolve()"
+CMD ["python3", "/kubeless-julia.py"]
 
-CMD ["python", "/kubeless-julia.py"]
-
-
-#RUN apt-get update
-#RUN apt-get -y install python3
-#RUN pip install bottle==0.12.13 cherrypy==8.9.1 wsgi-request-logger prometheus_client julia=0.1.5
-#
-#WORKDIR /
-#ADD kubeless-julia.py .
-#RUN mkdir -p /kubeless
-#COPY test.jl /kubeless
-#USER 1000
-#
-#CMD ["python", "/kubeless-julia.py"]

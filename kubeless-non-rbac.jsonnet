@@ -188,6 +188,18 @@ local runtime_images ='[
     ],
     "depName": "pom.xml",
     "fileNameSuffix": ".java"
+  },
+  {
+     "ID": "julia",
+     "compiled": true,
+     "versions": [
+       {
+         "name": "julia",
+         "version": "0.6",
+         "runtimeImage": "knightxun/julia:latest",
+         "initImage": "knightxun/julia-init:latest"
+       }
+     ],
   }
 ]';
 

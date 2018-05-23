@@ -56,7 +56,7 @@ get-python-url-deps-verify:
 	kubeless function call get-python-url-deps |egrep Google	
 
 get-node-url-zip:
-	kubeless function deploy get-node-url-zip --runtime nodejs6 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/zipExample/examples/nodejs/helloFunctions.zip?raw=true
+	kubeless function deploy get-node-url-zip --runtime nodejs6 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/master/examples/nodejs/helloFunctions.zip?raw=true
 
 get-node-url-zip-verify:
 	kubeless function call get-node-url-zip |egrep hello.world
@@ -724,3 +724,16 @@ get-java-deps:
 get-java-deps-verify:
 	kubeless function call get-java-deps --data '{"hello": "world"}'
 	kubectl logs -l function=get-java-deps | grep -q '.*Hello.*world! Current local time is:'
+
+get-julia:
+    kubeless function deploy get-julia --runtime julia --handler hello.foo --from-file julia/hello.jl
+
+get-julia-verify:
+    kubeless function call get-julia | egrep Hello.World
+
+get-julia-deps:
+    kubeless function deploy get-julia-deps --runtime julia --handler helloDeps.foo --from-file julia/helloDeps.jl --dependencies julia/REQUIRE
+
+get-julia-deps-verify:
+    kubeless function call get-julia-deps --data 'hello julia'
+    kubectl logs -l function=get-julia-deps | grep 'hello deps'
