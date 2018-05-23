@@ -73,6 +73,9 @@ kafka)
 nats)
     bats tests/integration-tests-nats.bats
     ;;
+kinesis)
+    bats tests/integration-tests-kinesis.bats
+    ;;    
 http)
     bats tests/integration-tests-http.bats
     ;;

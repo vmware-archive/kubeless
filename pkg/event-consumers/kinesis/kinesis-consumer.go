@@ -50,9 +50,8 @@ func init() {
 // createStreamProcessor polls and gets messages from given AWS kinesis stream and send the stream records to function service
 func createStreamProcessor(triggerObj *kubelessApi.KinesisTrigger, funcName, ns string, clientset kubernetes.Interface, stopchan, stoppedchan chan struct{}) {
 
-	// TODO: for now use 1 sec as polling period to poll Kinesis stream. But need to figure right value as per best practice, as let user specify
-	// polling period as its very subjective to application requirements.
-	ticker := time.NewTicker(time.Second)
+	// using the 250ms polling period used by AWS Lambda to poll Kinesis stream
+	ticker := time.NewTicker(250 * time.Millisecond)
 	defer ticker.Stop()
 
 	defer close(stoppedchan)
@@ -60,13 +59,19 @@ func createStreamProcessor(triggerObj *kubelessApi.KinesisTrigger, funcName, ns 
 	client := utils.GetClient()
 	secret, err := client.Core().Secrets(ns).Get(triggerObj.Spec.Secret, metav1.GetOptions{})
 	if err != nil {
-		logrus.Errorf("Error getting secret: %s necessary to connect to AWS Kinesis service. Error: %v", triggerObj.Spec.Secret, err)
+		logrus.Errorf("Failed to setup stream processor for Kinesis trigger: %s. Error getting secret: %s necessary to connect to "+
+			"AWS Kinesis service. Error: %v", triggerObj.Namespace+"/"+triggerObj.Name, triggerObj.Spec.Secret, err)
+		return
 	}
 	if _, ok := secret.Data["aws_access_key_id"]; !ok {
-		logrus.Errorf("Error getting aws_access_key_id from the secret: %s necessary to connect to AWS Kinesis service. Error: %v", triggerObj.Spec.Secret, err)
+		logrus.Errorf("Failed to setup stream processor for Kinesis trigger: %s. Error getting aws_access_key_id from the secret: %s "+
+			"necessary to connect to AWS Kinesis service. Error: %v", triggerObj.Namespace+"/"+triggerObj.Name, triggerObj.Spec.Secret, err)
+		return
 	}
 	if _, ok := secret.Data["aws_secret_access_key"]; !ok {
-		logrus.Errorf("Error getting aws_secret_access_key from the secret: %s necessary to connect to AWS Kinesis service. Error: %v", triggerObj.Spec.Secret, err)
+		logrus.Errorf("Failed to setup stream processor for Kinesis trigger: %s. Error getting aws_secret_access_key from the secret: %s "+
+			"necessary to connect to AWS Kinesis service. Error: %v", triggerObj.Namespace+"/"+triggerObj.Name, triggerObj.Spec.Secret, err)
+		return
 	}
 	awsAccessKey := string(secret.Data["aws_access_key_id"][:])
 	awsSecretAccessKey := string(secret.Data["aws_secret_access_key"][:])
@@ -76,7 +81,9 @@ func createStreamProcessor(triggerObj *kubelessApi.KinesisTrigger, funcName, ns 
 	if len(triggerObj.Spec.Endpoint) > 0 {
 		_, err = url.ParseRequestURI(triggerObj.Spec.Endpoint)
 		if err != nil {
-			logrus.Errorf("Invalid overide URL: %s for Kinesis service. Error: %v", triggerObj.Spec.Endpoint, err)
+			logrus.Errorf("Failed to setup stream processor for Kinesis trigger: %s. Invalid overide URL: %s for Kinesis service."+
+				" Error: %v", triggerObj.Namespace+"/"+triggerObj.Name, triggerObj.Spec.Endpoint, err)
+			return
 		}
 		s = session.New(&aws.Config{Region: aws.String(triggerObj.Spec.Region),
 			Endpoint:    aws.String(triggerObj.Spec.Endpoint),
@@ -87,9 +94,37 @@ func createStreamProcessor(triggerObj *kubelessApi.KinesisTrigger, funcName, ns 
 	}
 
 	kc := kinesis.New(s)
+
+	maxRetries := 5
+	retryCount := 0
+	var streamStatus *string
+	for retryCount < maxRetries {
+		streamOutput, err := kc.DescribeStream(&kinesis.DescribeStreamInput{StreamName: &triggerObj.Spec.Stream})
+		if err != nil {
+			logrus.Errorf("Failed to setup stream processor for Kinesis trigger: %s.Failed to fetch stream %s in region %s details from Kinesis. Error: %v",
+				triggerObj.Namespace+"/"+triggerObj.Name, triggerObj.Spec.Stream, triggerObj.Spec.Region, err)
+			return
+		}
+		streamStatus = streamOutput.StreamDescription.StreamStatus
+		if *streamStatus == "ACTIVE" {
+			break
+		}
+		logrus.Infof("Kinesis stream %s in region %s is not ACTIVE yet, waiting to become active ...", triggerObj.Spec.Stream, triggerObj.Spec.Region)
+		time.Sleep(10 * time.Second)
+		retryCount++
+	}
+
+	if *streamStatus != "ACTIVE" {
+		logrus.Errorf("Failed to setup stream processor for Kinesis trigger: %s. Kinesis stream %s in region %s is not ACTIVE to poll and process "+
+			"the stream records.", triggerObj.Namespace+"/"+triggerObj.Name, triggerObj.Spec.Stream, triggerObj.Spec.Region)
+		return
+	}
+
 	shardIterator, err := getShardIterator(kc, triggerObj.Spec.ShardID, triggerObj.Spec.Stream)
 	if err != nil {
-		logrus.Errorf("Error getting shard iterator necessary to read records from the Kinesis stream %s in region %s. Error: %v", triggerObj.Spec.Stream, triggerObj.Spec.Region, err)
+		logrus.Errorf("Failed to setup stream processor for Kinesis trigger: %s. Error getting shard iterator necessary to read records from the Kinesis stream %s in region %s. Error: %v",
+			triggerObj.Namespace+"/"+triggerObj.Name, triggerObj.Spec.Stream, triggerObj.Spec.Region, err)
+		return
 	}
 
 	for {

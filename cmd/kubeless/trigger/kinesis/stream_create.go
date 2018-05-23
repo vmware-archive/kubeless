@@ -65,11 +65,14 @@ var createStreamCmd = &cobra.Command{
 		}
 
 		customCreds := credentials.NewStaticCredentials(accessKey, secretKey, "")
-		s := session.New(&aws.Config{Region: aws.String(regionName),
-			Endpoint:    aws.String(endpointURL),
-			Credentials: customCreds})
-		kc := kinesis.New(s)
+		var s *session.Session
+		if len(endpointURL) > 0 {
+			s = session.New(&aws.Config{Region: aws.String(regionName), Endpoint: aws.String(endpointURL), Credentials: customCreds})
+		} else {
+			s = session.New(&aws.Config{Region: aws.String(regionName), Credentials: customCreds})
+		}
 
+		kc := kinesis.New(s)
 		_, err = kc.CreateStream(&kinesis.CreateStreamInput{ShardCount: &shardCount, StreamName: &streamName})
 		if err != nil {
 			logrus.Fatalf("Failed to create Kinesis stream. Error: %v", err)

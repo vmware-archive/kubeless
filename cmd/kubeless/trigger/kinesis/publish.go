@@ -19,6 +19,7 @@ package kinesis
 import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"net/url"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -31,7 +32,8 @@ var publishCmd = &cobra.Command{
 	Short: "publish message to a Kinesis stream",
 	Long:  `publish message to a Kinesis stream`,
 	Run: func(cmd *cobra.Command, args []string) {
-		message, err := cmd.Flags().GetString("message")
+
+		records, err := cmd.Flags().GetStringArray("records")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -58,31 +60,55 @@ var publishCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-
-		customCreds := credentials.NewStaticCredentials(accessKey, secretKey, "")
-		s := session.New(&aws.Config{Region: aws.String(region), Credentials: customCreds})
-		kc := kinesis.New(s)
-		_, err = kc.PutRecord(&kinesis.PutRecordInput{
-			Data:         []byte(message),
-			StreamName:   aws.String(streamName),
-			PartitionKey: aws.String(key)})
+		endpointURL, err := cmd.Flags().GetString("endpoint")
 		if err != nil {
-			panic(err)
+			logrus.Fatal(err)
+		}
+		if len(endpointURL) > 0 {
+			_, err = url.ParseRequestURI(endpointURL)
+			if err != nil {
+				panic(err)
+			}
+		}
+		customCreds := credentials.NewStaticCredentials(accessKey, secretKey, "")
+		var s *session.Session
+		if len(endpointURL) > 0 {
+			s = session.New(&aws.Config{Region: aws.String(region), Endpoint: aws.String(endpointURL), Credentials: customCreds})
+		} else {
+			s = session.New(&aws.Config{Region: aws.String(region), Credentials: customCreds})
+		}
+		kc := kinesis.New(s)
+		entries := make([]*kinesis.PutRecordsRequestEntry, len(records))
+		for i, record := range records {
+			entries[i] = &kinesis.PutRecordsRequestEntry{
+				Data:         []byte(record),
+				PartitionKey: aws.String(key),
+			}
+		}
+		_, err = kc.PutRecords(&kinesis.PutRecordsInput{
+			Records:    entries,
+			StreamName: aws.String(streamName),
+		})
+		if err != nil {
+			panic("Failed to put to record in the stream. Error: " + err.Error())
 		}
 	},
 }
 
 func init() {
+	var records []string
 	publishCmd.Flags().StringP("stream", "", "", "Name of the AWS Kinesis stream")
 	publishCmd.Flags().StringP("aws-region", "", "", "AWS region in which stream is available")
 	publishCmd.Flags().StringP("partition-key", "", "", "partiion key to use put message in AWS kinesis stream")
-	publishCmd.Flags().StringP("message", "", "", "Specify message to be published")
+	publishCmd.Flags().StringArray("records", records, "Specify list of records to be published to the stream")
 	publishCmd.Flags().StringP("aws_access_key_id", "", "", "AWS access key")
 	publishCmd.Flags().StringP("aws_secret_access_key", "", "", "AWS secret key")
+	publishCmd.Flags().StringP("endpoint", "", "", "Override AWS's default service URL with the given URL")
 	publishCmd.MarkFlagRequired("stream")
 	publishCmd.MarkFlagRequired("aws-region")
 	publishCmd.MarkFlagRequired("partition-key")
 	publishCmd.MarkFlagRequired("message")
 	publishCmd.MarkFlagRequired("aws_access_key_id")
 	publishCmd.MarkFlagRequired("aws_secret_access_key")
+	publishCmd.MarkFlagRequired("records")
 }

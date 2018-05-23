@@ -83,9 +83,11 @@ var createCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		_, err = url.ParseRequestURI(endpointURL)
-		if err != nil {
-			panic(err)
+		if len(endpointURL) > 0 {
+			_, err = url.ParseRequestURI(endpointURL)
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		cli := utils.GetClientOutOfCluster()
