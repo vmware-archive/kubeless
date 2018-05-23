@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: kubeless-config
-data:
-  builder-image: {{ .Values.functionBuilderImage }}
-  enable-build-step: "false"
-  runtime-images: |-
-{{ .Values.runtimeImages | indent 4 }}
