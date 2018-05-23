@@ -25,6 +25,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/kubeless/kubeless/pkg/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var createStreamCmd = &cobra.Command{
@@ -51,20 +53,34 @@ var createStreamCmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
-		accessKey, err := cmd.Flags().GetString("aws_access_key_id")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		secretKey, err := cmd.Flags().GetString("aws_secret_access_key")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		streamName, err := cmd.Flags().GetString("stream-name")
-		if err != nil {
-			logrus.Fatal(err)
-		}
 
-		customCreds := credentials.NewStaticCredentials(accessKey, secretKey, "")
+		ns, err := cmd.Flags().GetString("namespace")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
+		}
+		secretName, err := cmd.Flags().GetString("secret")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		client := utils.GetClientOutOfCluster()
+		secret, err := client.Core().Secrets(ns).Get(secretName, metav1.GetOptions{})
+		if err != nil {
+			logrus.Errorf("Error getting secret: %s necessary to connect to AWS services. Erro: %v", secretName, err)
+		}
+		if _, ok := secret.Data["aws_access_key_id"]; !ok {
+			logrus.Fatalf("Error getting aws_access_key_id from the secret: %s necessary to connect to AWS Kinesis service. Error: %v", secretName, err)
+		}
+		if _, ok := secret.Data["aws_secret_access_key"]; !ok {
+			logrus.Fatalf("Error getting aws_aaws_secret_access_keyccess_key_id from the secret: %s necessary to connect to AWS Kinesis service. Error: %v", secretName, err)
+		}
+		awsAccessKey := string(secret.Data["aws_access_key_id"][:])
+		awsSecretAccessKey := string(secret.Data["aws_secret_access_key"][:])
+
+		streamName, err := cmd.Flags().GetString("stream-name")
+		customCreds := credentials.NewStaticCredentials(awsAccessKey, awsSecretAccessKey, "")
 		var s *session.Session
 		if len(endpointURL) > 0 {
 			s = session.New(&aws.Config{Region: aws.String(regionName), Endpoint: aws.String(endpointURL), Credentials: customCreds})
@@ -85,10 +101,11 @@ func init() {
 	createStreamCmd.Flags().StringP("aws-region", "", "", "AWS region in which stream is to be created.")
 	createStreamCmd.Flags().Int64("shard-count", 1, "The number of shards that the stream will use.")
 	createStreamCmd.Flags().StringP("endpoint", "", "", "Override AWS's default service URL with the given URL")
-	createStreamCmd.Flags().StringP("aws_access_key_id", "", "", "AWS access key")
-	createStreamCmd.Flags().StringP("aws_secret_access_key", "", "", "AWS secret key")
+	createStreamCmd.Flags().StringP("secret", "", "", "Kubernetes secret that has AWS access key and secret key")
+	createStreamCmd.Flags().StringP("namespace", "", "", "Specify namespace for the Kinesis trigger")
 	createStreamCmd.MarkFlagRequired("stream-name")
 	createStreamCmd.MarkFlagRequired("aws-region")
 	createStreamCmd.MarkFlagRequired("aws_access_key_id")
 	createStreamCmd.MarkFlagRequired("aws_secret_access_key")
+	createStreamCmd.MarkFlagRequired("secret")
 }

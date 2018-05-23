@@ -32,19 +32,19 @@ kinesistriggers.kubeless.io   13h
 Kubeless cli lets you create Kubeless triggers of Kinesis type. Kubeless cli provides necessary functionality to manage the life cycle of Kinesis triggers.
 
 ```console
-± kubeless trigger kinesis
-kinesis trigger command allows users to create, list, update, delete Kinesis triggers running on Kubeless
+±kinesis trigger command allows users to create, list, update, delete Kinesis triggers running on Kubeless
 
 Usage:
   kubeless trigger kinesis SUBCOMMAND [flags]
   kubeless trigger kinesis [command]
 
 Available Commands:
-  create      Create a Kinesis trigger
-  delete      Delete a Kinesis trigger
-  list        list all Kinesis triggers deployed to Kubeless
-  publish     publish message to a Kinesis stream
-  update      Update a Kinesis trigger
+  create        Create a Kinesis trigger
+  create-stream Create a Kinesis stream
+  delete        Delete a Kinesis trigger
+  list          list all Kinesis triggers deployed to Kubeless
+  publish       publish message to a Kinesis stream
+  update        Update a Kinesis trigger
 
 Flags:
   -h, --help   help for kinesis
@@ -57,7 +57,7 @@ In order to deploy a Kinesis trigger and associate a Kubeless function to be inv
 First you need to creat Kubernetes secret that can store you AWS `aws_access_key_id` and `aws_secret_access_key`. Usually if you are using AWS cli your keys will be present in `~/.aws/credentials` or you can create AWS access keys from AWS console.
 
 ```console
-kubectl create secret generic ec2 --from-literal=aws_access_key_id=ABCAIFDB7GEGGD37HN5Q --from-literal=aws_secret_access_key=gAckl2wtNrY9aaR/OvzAOCaAg6wSkABCsyXazXrx
+kubectl create secret generic ec2 --from-literal=aws_access_key_id=$AWS_ACCESS_KEY_ID --from-literal=aws_secret_access_key=$AWS_SECRET_ACCESS_KEY
 ```
 
 Once you have created a secret you are ready to deploy Kubeless Kinesis trigger as below.
@@ -119,7 +119,7 @@ spec:
 At this point you shall be able to publish a record in to the stream either through Kubeless CLI or using AWS cli as below.
 
 ```console
-kubeless  trigger kinesis publish --aws-region us-west-2 --aws_access_key_id AKIDIDCB7NEGGD37HN5Q --aws_secret_access_key gBckl2wtMrY9aaR/OvzAOCaKg6wSkEZAsyXazXrx --partition-key "123" --stream my-kinesis-stream  --message "hello world"
+kubeless trigger kinesis publish --aws-region us-west-2  --secret ec2 --partition-key "123" --stream my-kinesis-stream  --message "hello world"
 ```
 
 or

@@ -17,14 +17,16 @@ limitations under the License.
 package kinesis
 
 import (
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 	"net/url"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var publishCmd = &cobra.Command{
@@ -52,14 +54,31 @@ var publishCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		accessKey, err := cmd.Flags().GetString("aws_access_key_id")
+		ns, err := cmd.Flags().GetString("namespace")
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		secretKey, err := cmd.Flags().GetString("aws_secret_access_key")
+		if ns == "" {
+			ns = utils.GetDefaultNamespace()
+		}
+		secretName, err := cmd.Flags().GetString("secret")
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		client := utils.GetClientOutOfCluster()
+		secret, err := client.Core().Secrets(ns).Get(secretName, metav1.GetOptions{})
+		if err != nil {
+			logrus.Errorf("Error getting secret: %s necessary to connect to AWS services. Erro: %v", secretName, err)
+		}
+		if _, ok := secret.Data["aws_access_key_id"]; !ok {
+			logrus.Fatalf("Error getting aws_access_key_id from the secret: %s necessary to connect to AWS Kinesis service. Error: %v", secretName, err)
+		}
+		if _, ok := secret.Data["aws_secret_access_key"]; !ok {
+			logrus.Fatalf("Error getting aws_aaws_secret_access_keyccess_key_id from the secret: %s necessary to connect to AWS Kinesis service. Error: %v", secretName, err)
+		}
+		awsAccessKey := string(secret.Data["aws_access_key_id"][:])
+		awsSecretAccessKey := string(secret.Data["aws_secret_access_key"][:])
+
 		endpointURL, err := cmd.Flags().GetString("endpoint")
 		if err != nil {
 			logrus.Fatal(err)
@@ -70,7 +89,7 @@ var publishCmd = &cobra.Command{
 				panic(err)
 			}
 		}
-		customCreds := credentials.NewStaticCredentials(accessKey, secretKey, "")
+		customCreds := credentials.NewStaticCredentials(awsAccessKey, awsSecretAccessKey, "")
 		var s *session.Session
 		if len(endpointURL) > 0 {
 			s = session.New(&aws.Config{Region: aws.String(region), Endpoint: aws.String(endpointURL), Credentials: customCreds})
@@ -101,9 +120,9 @@ func init() {
 	publishCmd.Flags().StringP("aws-region", "", "", "AWS region in which stream is available")
 	publishCmd.Flags().StringP("partition-key", "", "", "partiion key to use put message in AWS kinesis stream")
 	publishCmd.Flags().StringArray("records", records, "Specify list of records to be published to the stream")
-	publishCmd.Flags().StringP("aws_access_key_id", "", "", "AWS access key")
-	publishCmd.Flags().StringP("aws_secret_access_key", "", "", "AWS secret key")
 	publishCmd.Flags().StringP("endpoint", "", "", "Override AWS's default service URL with the given URL")
+	publishCmd.Flags().StringP("secret", "", "", "Kubernetes secret that has AWS access key and secret key")
+	publishCmd.Flags().StringP("namespace", "", "", "Specify namespace for the Kinesis trigger")
 	publishCmd.MarkFlagRequired("stream")
 	publishCmd.MarkFlagRequired("aws-region")
 	publishCmd.MarkFlagRequired("partition-key")
@@ -111,4 +130,5 @@ func init() {
 	publishCmd.MarkFlagRequired("aws_access_key_id")
 	publishCmd.MarkFlagRequired("aws_secret_access_key")
 	publishCmd.MarkFlagRequired("records")
+	publishCmd.MarkFlagRequired("secret")
 }

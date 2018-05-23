@@ -405,15 +405,15 @@ python-kinesis:
 	kubeless function deploy python-kinesis --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py
 	$(eval NODEPORT := $(shell kubectl get svc kinesis -o jsonpath="{.spec.ports[0].nodePort}"))
 	$(eval MINIKUBE_IP := $(shell minikube ip))
-	kubeless trigger kinesis create-stream --aws-region kinesalite --aws_access_key_id kinesalite --aws_secret_access_key kinesalite --endpoint http://$(MINIKUBE_IP):$(NODEPORT) --shard-count 1 --stream-name kubeless-stream
 	kubectl create secret generic ec2 --from-literal=aws_access_key_id=kinesalite --from-literal=aws_secret_access_key=kinesalite
+	kubeless trigger kinesis create-stream --aws-region kinesalite --secret ec2 --endpoint http://$(MINIKUBE_IP):$(NODEPORT) --shard-count 1 --stream-name kubeless-stream
 	kubeless trigger kinesis create kinesis-trigger --function-name python-kinesis --aws-region kinesalite --shard-id shardId-000000000000 --stream kubeless-stream --secret ec2 --endpoint http://$(MINIKUBE_IP):$(NODEPORT)
 
 python-kinesis-verify:
 	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
 	$(eval NODEPORT := $(shell kubectl get svc kinesis -o jsonpath="{.spec.ports[0].nodePort}"))
 	$(eval MINIKUBE_IP := $(shell minikube ip))
-	kubeless trigger kinesis publish --aws-region kinesalite --aws_access_key_id kinesalite --aws_secret_access_key kinesalite --endpoint http://$(MINIKUBE_IP):$(NODEPORT) --partition-key key1 --stream  kubeless-stream --records '{"payload":"$(DATA)"}'
+	kubeless trigger kinesis publish --aws-region kinesalite --secret ec2  --endpoint http://$(MINIKUBE_IP):$(NODEPORT) --partition-key key1 --stream  kubeless-stream --records '{"payload":"$(DATA)"}'
 	number="1"; \
 	timeout="60"; \
 	found=false; \
@@ -446,7 +446,7 @@ python-kinesis-multi-record-verify:
 	$(eval DATA2 := $(shell mktemp -u -t XXXXXXXX))
 	$(eval NODEPORT := $(shell kubectl get svc kinesis -o jsonpath="{.spec.ports[0].nodePort}"))
 	$(eval MINIKUBE_IP := $(shell minikube ip))
-	kubeless trigger kinesis publish --aws-region kinesalite --aws_access_key_id kinesalite --aws_secret_access_key kinesalite --endpoint http://$(MINIKUBE_IP):$(NODEPORT) --partition-key key1 --stream  kubeless-stream --records '{"payload":"$(DATA1)"}' --records '{"payload":"$(DATA2)"}'
+	kubeless trigger kinesis publish --aws-region kinesalite --secret ec2  --endpoint http://$(MINIKUBE_IP):$(NODEPORT) --partition-key key1 --stream  kubeless-stream --records '{"payload":"$(DATA1)"}' --records '{"payload":"$(DATA2)"}'
 	number="1"; \
 	timeout="60"; \
 	found=false; \
