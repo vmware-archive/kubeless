@@ -1,0 +1,33 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+  name: kinesis
+  labels:
+    app: kinesis
+spec:
+  type: NodePort
+  ports:
+  - port: 4567
+  selector:
+    app: kinesis
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: kinesis
+spec:
+  replicas: 1 
+  template:
+    metadata:
+      labels:
+        app: kinesis
+    spec:
+      containers:
+      - name: kinesis
+        image: saikocat/kinesalite:1.11.5
+        ports:
+        - containerPort: 4567
+        args:
+        - --port=4567

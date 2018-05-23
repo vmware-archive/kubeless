@@ -401,6 +401,74 @@ python-nats-verify:
 	echo $$logs | grep -q "event-namespace.*natstriggers.kubeless.io" && \
 	echo $$logs | grep -q "event-id.*"
 
+python-kinesis:
+	kubeless function deploy python-kinesis --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py
+	$(eval NODEPORT := $(shell kubectl get svc kinesis -o jsonpath="{.spec.ports[0].nodePort}"))
+	$(eval MINIKUBE_IP := $(shell minikube ip))
+	kubectl create secret generic ec2 --from-literal=aws_access_key_id=kinesalite --from-literal=aws_secret_access_key=kinesalite
+	kubeless trigger kinesis create-stream --aws-region kinesalite --secret ec2 --endpoint http://$(MINIKUBE_IP):$(NODEPORT) --shard-count 1 --stream-name kubeless-stream
+	kubeless trigger kinesis create kinesis-trigger --function-name python-kinesis --aws-region kinesalite --shard-id shardId-000000000000 --stream kubeless-stream --secret ec2 --endpoint http://$(MINIKUBE_IP):$(NODEPORT)
+
+python-kinesis-verify:
+	$(eval DATA := $(shell mktemp -u -t XXXXXXXX))
+	$(eval NODEPORT := $(shell kubectl get svc kinesis -o jsonpath="{.spec.ports[0].nodePort}"))
+	$(eval MINIKUBE_IP := $(shell minikube ip))
+	kubeless trigger kinesis publish --aws-region kinesalite --secret ec2  --endpoint http://$(MINIKUBE_IP):$(NODEPORT) --partition-key key1 --stream  kubeless-stream --records '{"payload":"$(DATA)"}'
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=python-kinesis`; \
+		logs=`kubectl logs $$pod | grep $(DATA)`; \
+		if [ "$$logs" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
+	# Verify event context
+	logs=`kubectl logs -l function=python-kinesis`; \
+	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-type.*application/json" && \
+	echo $$logs | grep -q "event-namespace.*kinesistriggers.kubeless.io" && \
+	echo $$logs | grep -q "event-id.*"
+
+python-kinesis-multi-record:
+	kubeless function deploy python-kinesis-multi-record --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py
+	$(eval NODEPORT := $(shell kubectl get svc kinesis -o jsonpath="{.spec.ports[0].nodePort}"))
+	$(eval MINIKUBE_IP := $(shell minikube ip))
+	kubeless trigger kinesis create kinesis-trigger-mr --function-name python-kinesis-multi-record --aws-region kinesalite --shard-id shardId-000000000000 --stream kubeless-stream --secret ec2 --endpoint http://$(MINIKUBE_IP):$(NODEPORT)
+
+python-kinesis-multi-record-verify:
+	$(eval DATA1 := $(shell mktemp -u -t XXXXXXXX))
+	$(eval DATA2 := $(shell mktemp -u -t XXXXXXXX))
+	$(eval NODEPORT := $(shell kubectl get svc kinesis -o jsonpath="{.spec.ports[0].nodePort}"))
+	$(eval MINIKUBE_IP := $(shell minikube ip))
+	kubeless trigger kinesis publish --aws-region kinesalite --secret ec2  --endpoint http://$(MINIKUBE_IP):$(NODEPORT) --partition-key key1 --stream  kubeless-stream --records '{"payload":"$(DATA1)"}' --records '{"payload":"$(DATA2)"}'
+	number="1"; \
+	timeout="60"; \
+	found=false; \
+	while [ $$number -le $$timeout ] ; do \
+		pod=`kubectl get po -oname -l function=python-kinesis-multi-record`; \
+		logs1=`kubectl logs $$pod | grep $(DATA1)`; \
+		logs2=`kubectl logs $$pod | grep $(DATA2)`; \
+		if [ "$$logs1" != "" ] && [ "$$logs2" != "" ]; then \
+			found=true; \
+			break; \
+		fi; \
+		sleep 1; \
+		number=`expr $$number + 1`; \
+	done; \
+	$$found
+	# Verify event context
+	logs=`kubectl logs -l function=python-kinesis-multi-record`; \
+	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-type.*application/json" && \
+	echo $$logs | grep -q "event-namespace.*kinesistriggers.kubeless.io" && \
+	echo $$logs | grep -q "event-id.*"
+
 nats-python-func1-topic-test:
 	kubeless function deploy nats-python-func1-topic-test --runtime python2.7 --handler pubsub.handler --from-file python/hellowithdata.py  --label topic=nats-topic-test
 

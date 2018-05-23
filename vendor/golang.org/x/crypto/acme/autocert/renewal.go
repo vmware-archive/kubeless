@@ -102,9 +102,7 @@ func (dr *domainRenewal) do(ctx context.Context) (time.Duration, error) {
 	if err != nil {
 		return 0, err
 	}
-	if err := dr.m.cachePut(ctx, dr.domain, tlscert); err != nil {
-		return 0, err
-	}
+	dr.m.cachePut(ctx, dr.domain, tlscert)
 	dr.m.stateMu.Lock()
 	defer dr.m.stateMu.Unlock()
 	// m.state is guaranteed to be non-nil at this point

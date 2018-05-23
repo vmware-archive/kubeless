@@ -20,6 +20,7 @@ import (
 	"github.com/kubeless/kubeless/cmd/kubeless/trigger/cronjob"
 	"github.com/kubeless/kubeless/cmd/kubeless/trigger/http"
 	"github.com/kubeless/kubeless/cmd/kubeless/trigger/kafka"
+	"github.com/kubeless/kubeless/cmd/kubeless/trigger/kinesis"
 	"github.com/kubeless/kubeless/cmd/kubeless/trigger/nats"
 	"github.com/spf13/cobra"
 )
@@ -39,4 +40,5 @@ func init() {
 	TriggerCmd.AddCommand(kafka.KafkaTriggerCmd)
 	TriggerCmd.AddCommand(http.HTTPTriggerCmd)
 	TriggerCmd.AddCommand(nats.NATSTriggerCmd)
+	TriggerCmd.AddCommand(kinesis.KinesisTriggerCmd)
 }

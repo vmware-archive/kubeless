@@ -42,6 +42,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&CronJobTriggerList{},
 		&NATSTrigger{},
 		&NATSTriggerList{},
+		&KinesisTrigger{},
+		&KinesisTriggerList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

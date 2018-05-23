@@ -18,6 +18,7 @@ KUBELESS_MANIFEST=kubeless-non-rbac.yaml
 KUBELESS_MANIFEST_RBAC=kubeless.yaml
 KAFKA_MANIFEST=kafka-zookeeper.yaml
 NATS_MANIFEST=nats.yaml
+KINESIS_MANIFEST=kinesis.yaml
 
 KUBECTL_BIN=$(which kubectl)
 : ${KUBECTL_BIN:?ERROR: missing binary: kubectl}
@@ -317,6 +318,26 @@ deploy_nats_trigger_controller() {
 
 expose_nats_service() {
     kubectl get svc nats -n nats-io -o yaml | sed 's/ClusterIP/NodePort/' | kubectl replace -f -
+}
+
+deploy_kinesis_trigger_controller() {
+    echo_info "Deploy Kinesis trigger controller ... "
+    kubectl create -f $KINESIS_MANIFEST
+}
+
+wait_for_kubeless_kinesis_controller_ready() {
+    echo_info "Waiting for Kinesis trigger controller pods to be ready ..."
+    k8s_wait_for_pod_ready -n kubeless -l kubeless=kinesis-trigger-controller
+}
+
+deploy_kinesalite() {
+    echo_info "Deploy Kinesalite a AWS Kinesis mock server ... "
+    kubectl apply -f ./manifests/kinesis/kinesalite.yaml
+}
+
+wait_for_kinesalite_pod() {
+    echo_info "Waiting for Kinesalite pod to be ready ..."
+    k8s_wait_for_pod_ready -l app=kinesis
 }
 
 deploy_function() {

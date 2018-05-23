@@ -10,7 +10,7 @@ In short, this library first converts YAML to JSON using go-yaml and then uses `
 
 ## Compatibility
 
-This package uses [go-yaml](https://github.com/go-yaml/yaml) and therefore supports [everything go-yaml supports](https://github.com/go-yaml/yaml#compatibility).
+This package uses [go-yaml v2](https://github.com/go-yaml/yaml) and therefore supports [everything go-yaml supports](https://github.com/go-yaml/yaml#compatibility).
 
 ## Caveats
 
@@ -44,8 +44,6 @@ import "github.com/ghodss/yaml"
 Usage is very similar to the JSON library:
 
 ```go
-package main
-
 import (
 	"fmt"
 
@@ -53,8 +51,8 @@ import (
 )
 
 type Person struct {
-	Name string `json:"name"` // Affects YAML field names too.
-	Age  int    `json:"age"`
+	Name string `json:"name"`  // Affects YAML field names too.
+	Age int `json:"name"`
 }
 
 func main() {
@@ -67,13 +65,13 @@ func main() {
 	}
 	fmt.Println(string(y))
 	/* Output:
-	age: 30
 	name: John
+	age: 30
 	*/
 
 	// Unmarshal the YAML back into a Person struct.
 	var p2 Person
-	err = yaml.Unmarshal(y, &p2)
+	err := yaml.Unmarshal(y, &p2)
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
 		return
@@ -88,14 +86,11 @@ func main() {
 `yaml.YAMLToJSON` and `yaml.JSONToYAML` methods are also available:
 
 ```go
-package main
-
 import (
 	"fmt"
 
 	"github.com/ghodss/yaml"
 )
-
 func main() {
 	j := []byte(`{"name": "John", "age": 30}`)
 	y, err := yaml.JSONToYAML(j)

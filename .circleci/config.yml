@@ -13,6 +13,7 @@ defaults: &defaults
     BUILDER_IMAGE_NAME: kubeless/function-image-builder
     KAFKA_CONTROLLER_IMAGE_NAME: bitnami/kafka-trigger-controller
     NATS_CONTROLLER_IMAGE_NAME: bitnami/nats-trigger-controller
+    KINESIS_CONTROLLER_IMAGE_NAME: bitnami/kinesis-trigger-controller
     CGO_ENABLED: "0"
     TEST_DEBUG: "1"
     GKE_VERSION: 1.8.8-gke.0
@@ -27,6 +28,7 @@ exports: &exports
     echo "export FUNCTION_IMAGE_BUILDER=${BUILDER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export KAFKA_CONTROLLER_IMAGE=${KAFKA_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export NATS_CONTROLLER_IMAGE=${NATS_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
+    echo "export KINESIS_CONTROLLER_IMAGE=${KINESIS_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV    
     echo "export KUBECFG_JPATH=/home/circleci/src/github.com/kubeless/kubeless/ksonnet-lib" >> $BASH_ENV
     echo "export PATH=$(pwd)/bats/libexec:$PATH" >> $BASH_ENV
 restore_workspace: &restore_workspace
@@ -67,6 +69,17 @@ should_test: &should_test
         export SHOULD_TEST=1
       fi
       ;;
+    # In kase of minikube+Kinesis we want to test it if
+    # it is a Pull Request related to Kinesis (discovered from the PR title)
+    # or if the build is from the "master" branch
+    minikube_kinesis)
+      if [[ -n "$CIRCLE_PULL_REQUESTS" ]]; then
+        pr_kinesis_title=$(curl -H "Authorization: token $ACCESS_TOKEN" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title || true)
+      fi
+      if [[ -z "$CIRCLE_PULL_REQUESTS" || "$pr_kinesis_title" == "" || "$pr_kinesis_title" =~ ^.*(Kinesis|kinesis).*$ ]]; then
+        export SHOULD_TEST=1
+      fi
+      ;;      
     esac
     echo "Should test? $SHOULD_TEST"
     if [[ "$SHOULD_TEST" != "1" ]]; then
@@ -100,6 +113,10 @@ workflows:
           <<: *build_allways
           requires:
             - build
+      - minikube_kinesis:
+          <<: *build_allways
+          requires:
+            - build            
       - GKE:
           <<: *build_allways
           requires:
@@ -114,6 +131,7 @@ workflows:
             - minikube_build_functions
             - minikube_kafka
             - minikube_nats
+            - minikube_kinesis
             - GKE
       - release:
           filters:
@@ -127,6 +145,7 @@ workflows:
             - minikube_build_functions
             - minikube_kafka
             - minikube_nats
+            - minikube_kinesis
             - GKE
 jobs:
   build:
@@ -146,7 +165,7 @@ jobs:
           manifests=(
             kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml
             kafka-zookeeper.yaml kafka-zookeeper-openshift.yaml
-            nats.yaml
+            nats.yaml kinesis.yaml
           )
           for f in "${manifests[@]}"; do
             sed -i.bak 's/:latest/'":${CONTROLLER_TAG}"'/g' $f
@@ -236,6 +255,20 @@ jobs:
       - run: ./script/pull-or-build-image.sh nats-controller-image
       - run: ./script/integration-tests minikube deployment
       - run: ./script/integration-tests minikube nats
+  minikube_kinesis:
+    <<: *defaults
+    machine: true
+    steps:
+      - <<: *should_test
+      - checkout
+      - <<: *exports
+      - attach_workspace:
+          at: /tmp/go
+      - <<: *restore_workspace
+      - run: ./script/pull-or-build-image.sh controller-image
+      - run: ./script/pull-or-build-image.sh kinesis-controller-image
+      - run: ./script/integration-tests minikube deployment
+      - run: ./script/integration-tests minikube kinesis      
   GKE:
     <<: *defaults
     docker:
@@ -271,6 +304,7 @@ jobs:
             $BUILDER_IMAGE_NAME 
             $KAFKA_CONTROLLER_IMAGE_NAME 
             $NATS_CONTROLLER_IMAGE_NAME
+            $KINESIS_CONTROLLER_IMAGE_NAME
           )
           for image in "${images[@]}"; do
             echo "Pulling ${image}:${CONTROLLER_TAG}"
