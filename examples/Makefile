@@ -726,13 +726,13 @@ get-java-deps-verify:
 	kubectl logs -l function=get-java-deps | grep -q '.*Hello.*world! Current local time is:'
 
 get-julia:
-    kubeless function deploy get-julia --runtime julia --handler hello.foo --from-file julia/hello.jl
+    kubeless function deploy get-julia --runtime julia0.6 --handler hello.foo --from-file julia/hello.jl
 
 get-julia-verify:
     kubeless function call get-julia | egrep Hello.World
 
 get-julia-deps:
-    kubeless function deploy get-julia-deps --runtime julia --handler helloDeps.foo --from-file julia/helloDeps.jl --dependencies julia/REQUIRE
+    kubeless function deploy get-julia-deps --runtime julia0.6 --handler helloDeps.foo --from-file julia/helloDeps.jl --dependencies julia/REQUIRE
 
 get-julia-deps-verify:
     kubeless function call get-julia-deps --data 'hello julia'

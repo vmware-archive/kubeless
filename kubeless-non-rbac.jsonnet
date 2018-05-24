@@ -196,10 +196,11 @@ local runtime_images ='[
        {
          "name": "julia",
          "version": "0.6",
-         "runtimeImage": "knightxun/julia:latest",
-         "initImage": "knightxun/julia-init:latest"
-       }
+         "runtimeImage": "knightxun/julia",
+       },
      ],
+     "fileNameSuffix": ".jl",
+     "depName": "REQUIRE"
   }
 ]';
 

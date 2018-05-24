@@ -240,8 +240,8 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 	case strings.Contains(runtime, "java"):
 		command = appendToCommand(command,
 			"mv /kubeless/pom.xml /kubeless/function-pom.xml")
-	case strings.Contains(runtime, "julia"):
-		command = appendToCommand(command,"",
+	case strings.Contains(runtime, "julia0.6"):
+		command = appendToCommand(command,"mv /kubeless/REQUIRE /root/.julia/v0.6/REQUIRE",
 			"julia -e 'Pkg.resolve()'")
 	}
 
@@ -317,6 +317,8 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 			"cp /kubeless/*.java /kubeless/function/src/main/java/io/kubeless/ && " +
 			"cp /kubeless/function-pom.xml /kubeless/function/pom.xml 2>/dev/null || true && " +
 			"mvn package > /dev/termination-log 2>&1 && mvn install > /dev/termination-log 2>&1"
+	case strings.Contains(runtime, "julia"):
+		command = "mkdir -p /home/julia/.julia/v0.6 && cp /kubeless/REQUIRE /home/julia/.julia/v0.6 &&  julia -e 'Pkg.resolve()'"
 	default:
 		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
 	}

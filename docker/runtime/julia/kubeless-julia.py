@@ -34,6 +34,7 @@ function_context = {
     
 def funcWrap(q, event, c):
     ju = julia.Julia()
+    ju.include('/kubeless/%s.jl' % os.getenv('MOD_NAME'))
     julia_function = ju.include_string(os.getenv('FUNC_HANDLER'),'/kubeless/%s.jl' % os.getenv('MOD_NAME'))
     c['function-name'] = os.getenv('FUNC_HANDLER')
     try:

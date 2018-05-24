@@ -106,14 +106,16 @@ runtimeImages: |-
       },
       {
         "ID": "julia",
+        "compiled": true,
         "versions": [
           {
             "name": "julia",
             "version": "0.6",
-            "runtimeImage": "knightxun/julia:latest",
-            "initImage": "knightxun/julia-init:latest",
-          }
-        ]
+            "runtimeImage": "knightxun/julia",
+          },
+        ],
+        "fileNameSuffix": ".jl",
+        "depName": "REQUIRE"
       }
     ]
 
