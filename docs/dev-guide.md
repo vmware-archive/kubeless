@@ -96,6 +96,7 @@ To regenerate the most updated k8s manifests file, run:
 cd $KUBELESS_WORKING_DIR
 export KUBECFG_JPATH=$PWD/ksonnet-lib
 git clone --depth=1 https://github.com/ksonnet/ksonnet-lib.git
+cd $KUBELESS_WORKING_DIR/kubeless
 make all-yaml
 ```
 
