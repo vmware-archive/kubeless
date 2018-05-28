@@ -165,8 +165,8 @@ jobs:
           mkdir build-manifests
           IFS=' ' read -r -a manifests <<< "$MANIFESTS"
           for f in "${manifests[@]}"; do
-            sed -i.bak 's/:latest/'":${CONTROLLER_TAG}"'/g' $f
-            cp $f build-manifests/
+            sed -i.bak 's/:latest/'":${CONTROLLER_TAG}"'/g' ${f}.yaml
+            cp ${f}.yaml build-manifests/
           done
       - persist_to_workspace:
           root: /home/circleci/.go_workspace
