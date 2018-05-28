@@ -77,7 +77,7 @@ function release_tag {
   local repo_domain=${2:?}
   local repo_name=${3:?}
   local body=$(get_release_body $tag $repo_domain $repo_name)
-  local release=`curl -H "Authorization: token $ACCESS_TOKEN" -s --request POST --data "$body" https://api.github.com/repos/$REPO_DOMAIN/$REPO_NAME/releases`
+  local release=`curl -H "Authorization: token $ACCESS_TOKEN" -s --request POST --data "$body" https://api.github.com/repos/$repo_domain/$repo_name/releases`
   echo $release
 }
 

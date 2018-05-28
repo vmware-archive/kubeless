@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 
-# TODO: Use kubeless
 REPO_NAME=kubeless
 REPO_DOMAIN=kubeless
 TAG=${1:?}
+MANIFESTS=${2:?} # Space separated list of manifests to publish
 
 PROJECT_DIR=$(cd $(dirname $0)/.. && pwd)
 
@@ -25,14 +25,10 @@ if [[ $repo_check == *"Not Found"* ]]; then
   echo "Not found a Github repository for $REPO_DOMAIN/$REPO_NAME, it is not possible to publish it" > /dev/stderr
   exit 1
 else
-  RELEASE_ID=$(release_tag $1 $REPO_DOMAIN $REPO_NAME | jq '.id')
+  RELEASE_ID=$(release_tag $TAG $REPO_DOMAIN $REPO_NAME | jq '.id') 
 fi
 
-manifests=(
-  kubeless kubeless-non-rbac kubeless-openshift
-  kafka-zookeeper kafka-zookeeper-openshift
-  nats
-  )
+IFS=' ' read -r -a manifests <<< "$MANIFESTS"
 for f in "${manifests[@]}"; do
   cp ${PROJECT_DIR}/${f}.yaml ${PROJECT_DIR}/${f}-${TAG}.yaml
   upload_asset $REPO_DOMAIN $REPO_NAME "$RELEASE_ID" "${PROJECT_DIR}/${f}-${TAG}.yaml"
