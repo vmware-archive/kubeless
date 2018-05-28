@@ -240,6 +240,8 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 	case strings.Contains(runtime, "java"):
 		command = appendToCommand(command,
 			"mv /kubeless/pom.xml /kubeless/function-pom.xml")
+	case strings.Contains(runtime, "ballerina"):
+		command = appendToCommand(command, "cat /kubeless/ballerina.conf")
 	}
 
 	return v1.Container{
@@ -311,6 +313,16 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 			"mvn package > /dev/termination-log 2>&1 && mvn install > /dev/termination-log 2>&1"
 	case strings.Contains(runtime, "dotnetcore"):
 		command = "/app/compile-function.sh " + installVolume.MountPath
+	case strings.Contains(runtime, "ballerina"):
+		command = fmt.Sprintf(
+			"mkdir -p /kubeless/kubeless/ && mkdir -p /kubeless/func/ && "+
+				"cp -r /ballerina/files/kubeless/*.bal /kubeless/kubeless/ && "+
+				"cp -r /kubeless/*.bal /kubeless/func/ && "+
+				"cp -r /ballerina/files/src/kubeless.tpl.bal /kubeless/ && "+
+				"sed 's/<<FUNCTION>>/%s/g' /kubeless/kubeless.tpl.bal > /kubeless/kubeless.bal && "+
+				"rm /kubeless/kubeless.tpl.bal && "+
+				"ballerina build kubeless.bal ", funcName)
+
 	default:
 		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
 	}

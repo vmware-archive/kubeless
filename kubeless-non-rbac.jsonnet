@@ -202,6 +202,20 @@ local runtime_images ='[
     ],
     "depName": "pom.xml",
     "fileNameSuffix": ".java"
+  },
+  {
+     "ID": "ballerina",
+     "compiled": true,
+     "versions": [
+       {
+          "name": "ballerina0.970.1",
+          "version": "0.970.1",
+          "runtimeImage": "kubeless/ballerina:0.970.1",
+          "initImage": "kubeless/ballerina-init:0.970.1"
+       }
+     ],
+     "depName": "ballerina.conf",
+     "fileNameSuffix": ".bal"
   }
 ]';
 

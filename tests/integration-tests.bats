@@ -51,6 +51,10 @@ load ../script/libtest
   deploy_function post-java
   deploy_function get-java-deps
   deploy_function get-nodejs-distroless
+  deploy_function get-ballerina
+  deploy_function get-ballerina-custom-port
+  deploy_function get-ballerina-data
+  deploy_function get-ballerina-deps
 }
 @test "Test function: get-python" {
   verify_function get-python
@@ -216,5 +220,21 @@ load ../script/libtest
 @test "Test function: get-node-url-zip" {
   verify_function get-node-url-zip
   kubeless_function_delete get-node-url-zip
+}
+@test "Test function: get-ballerina" {
+  verify_function get-ballerina
+  kubeless_function_delete get-ballerina
+}
+@test "Test function: get-ballerina-custom-port" {
+  verify_function get-ballerina-custom-port
+  kubeless_function_delete get-ballerina-custom-port
+}
+@test "Test function: get-ballerina-data" {
+  verify_function get-ballerina-data
+  kubeless_function_delete get-ballerina-data
+}
+@test "Test function: get-ballerina-deps" {
+  verify_function get-ballerina-deps
+  kubeless_function_delete get-ballerina-deps
 }
 # vim: ts=2 sw=2 si et syntax=sh

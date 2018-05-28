@@ -1,0 +1,9 @@
+FROM ballerina/ballerina-platform:0.970.1
+
+USER 1000
+
+# Install controller
+ADD kubeless.tpl.bal /ballerina/files/src/
+ADD kubeless/kubeless.bal /ballerina/files/kubeless/
+
+ENTRYPOINT [""]
