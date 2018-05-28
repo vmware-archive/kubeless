@@ -6,22 +6,23 @@ Kubeless lets you trigger any Kubeless function in response to ingested records 
 
 To trigger Kubeless functions in response to ingested records into the AWS kinesis stream you need to deploy Kubeless AWS Kinesis trigger controlle. Please use this manifest to deploy Kubeless AWS Kinesis trigger controller.
 
-```
+```console
 kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kinesis-$RELEASE.yaml
 ```
 
 Once you deploy the manifest you shall see Kinesis trigger controller running in the Kubeless namespace as below.
 
 ```console
-± kubectl get pods -n kubeless
+$ kubectl get pods -n kubeless
 NAME                                           READY     STATUS    RESTARTS   AGE
 kinesis-trigger-controller-65c78f9f44-v5flq    1/1       Running   0          1h
 kubeless-controller-manager-6b7cdcdc76-x6gsd   1/1       Running   0          13h
 ```
 
 You shall also notice a CRD resource type `kinesistriggers.kubeless.io` created as below.
+
 ```console
-± kubectl get crd
+$ kubectl get crd
 NAME                          AGE
 cronjobtriggers.kubeless.io   13h
 functions.kubeless.io         13h
@@ -32,7 +33,8 @@ kinesistriggers.kubeless.io   13h
 Kubeless cli lets you create Kubeless triggers of Kinesis type. Kubeless cli provides necessary functionality to manage the life cycle of Kinesis triggers.
 
 ```console
-±kinesis trigger command allows users to create, list, update, delete Kinesis triggers running on Kubeless
+$ kubeless trigger kinesis --help
+kinesis trigger command allows users to create, list, update, delete Kinesis triggers running on Kubeless
 
 Usage:
   kubeless trigger kinesis SUBCOMMAND [flags]
@@ -69,7 +71,7 @@ kubeless trigger kinesis create test-trigger --function-name post-python --aws-r
 Lets look into the flags expected. `--aws-region` is the AWS region in which your Kinesis stream is avilable. `--shard-id` is the id of shard into which records are placed. You should be able to get the `shard-id` from the stream description. `--stream` is the name of the Kinesis stream.
 
 ```console
-± aws kinesis describe-stream --stream-name my-kinesis-stream
+$ aws kinesis describe-stream --stream-name my-kinesis-stream
 {
     "StreamDescription": {
         "RetentionPeriodHours": 24,
@@ -100,7 +102,7 @@ Lets look into the flags expected. `--aws-region` is the AWS region in which you
 Once you deploy the Kinesis trigger you shall see a `kinesistrigger` CRD object as below.
 
 ```console
-± kubectl get kinesistriggers.kubeless.io test -o yaml
+$ kubectl get kinesistriggers.kubeless.io test -o yaml
 apiVersion: kubeless.io/v1beta1
 kind: KinesisTrigger
 metadata:
@@ -133,7 +135,7 @@ aws kinesis put-record --stream-name my-kinesis-stream --partition-key 123 --dat
 You shall see the log of received messages in the function pod associated with the Kinesis trigger.
 
 ```console
-± k logs post-python-59f7fc4b54-4nhbb
+$ kubectl logs post-python-59f7fc4b54-4nhbb
 Bottle v0.12.13 server starting up (using CherryPyServer())...
 Listening on http://0.0.0.0:8080/
 Hit Ctrl-C to quit.
