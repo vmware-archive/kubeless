@@ -132,7 +132,7 @@ Kubeless also supports [ingress](https://kubernetes.io/docs/concepts/services-ne
 You can delete the function and uninstall Kubeless:
 
 ```console
-$ kubeless function delete test
+$ kubeless function delete hello
 
 $ kubeless function ls
 NAME        NAMESPACE   HANDLER     RUNTIME     DEPENDENCIES    STATUS
