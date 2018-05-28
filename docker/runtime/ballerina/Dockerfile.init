@@ -2,8 +2,7 @@ FROM ballerina/ballerina-platform:0.970.1
 
 USER 1000
 
-# Install controller & Kubeless type definitions
+# Install controller
 ADD kubeless_run.tpl.bal /ballerina/files/src/
-ADD kubeless/kubeless.bal /ballerina/files/kubeless/
 
 ENTRYPOINT [""]

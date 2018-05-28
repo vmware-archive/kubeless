@@ -354,7 +354,7 @@ kubeless function deploy fibonacci --from-file fibonacci.cs --handler module.han
 #### Example
 
 ```ballerina
-import kubeless;
+import kubeless/kubeless;
 import ballerina/io;
 
 public function foo(kubeless:Event event, kubeless:Context context) returns (string|error) {
@@ -367,7 +367,7 @@ public function foo(kubeless:Event event, kubeless:Context context) returns (str
 
 #### Description
 
-The Ballerina functions should import the package `kubeless`. This [package](../docker/runtime/ballerina/kubeless/kubeless.bal) contains two types `Event` and `Context`. 
+The Ballerina functions should import the package `kubeless/kubeless`. This [package](../docker/runtime/ballerina/kubeless/kubeless.bal) contains two types `Event` and `Context`. 
  
 ```console
 $ kubeless function deploy foo 
@@ -385,7 +385,7 @@ foo
 
 $ zip -r -j foo.zip foo/
 
-$ kubeless function deploy get-ballerina-conf 
+$ kubeless function deploy foo
       --runtime ballerina0.970.1 
       --from-file foo.zip 
       --handler hellowithconf.foo
