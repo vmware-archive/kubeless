@@ -121,7 +121,7 @@ $ kubectl proxy -p 8080 &
 
 $ curl -L --data '{"Another": "Echo"}' \
   --header "Content-Type:application/json" \
-  localhost:8080/api/v1/namespaces/default/services/get-python:http-function-port/proxy/
+  localhost:8080/api/v1/namespaces/default/services/hello:http-function-port/proxy/
 {"Another": "Echo"}
 ```
 
