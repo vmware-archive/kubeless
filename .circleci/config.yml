@@ -18,6 +18,7 @@ defaults: &defaults
     TEST_DEBUG: "1"
     GKE_VERSION: 1.8.8-gke.0
     MINIKUBE_VERSION: v0.25.2
+    MANIFESTS: kubeless kubeless-non-rbac kubeless-openshift kafka-zookeeper kafka-zookeeper-openshift nats kinesis
 exports: &exports
   # It is not possible to resolve env vars in the environment section:
   # https://discuss.circleci.com/t/using-environment-variables-in-config-yml-not-working/14237
@@ -162,14 +163,10 @@ jobs:
       - run: make all-yaml
       - run: |
           mkdir build-manifests
-          manifests=(
-            kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml
-            kafka-zookeeper.yaml kafka-zookeeper-openshift.yaml
-            nats.yaml kinesis.yaml
-          )
+          IFS=' ' read -r -a manifests <<< "$MANIFESTS"
           for f in "${manifests[@]}"; do
-            sed -i.bak 's/:latest/'":${CONTROLLER_TAG}"'/g' $f
-            cp $f build-manifests/
+            sed -i.bak 's/:latest/'":${CONTROLLER_TAG}"'/g' ${f}.yaml
+            cp ${f}.yaml build-manifests/
           done
       - persist_to_workspace:
           root: /home/circleci/.go_workspace
@@ -324,4 +321,4 @@ jobs:
       - <<: *restore_workspace
       - run: make VERSION=${CIRCLE_TAG} binary-cross
       - run: for d in bundles/kubeless_*; do zip -r9 $d.zip $d/; done
-      - run: ./script/create_release.sh ${CIRCLE_TAG}
+      - run: ./script/create_release.sh ${CIRCLE_TAG} "${MANIFESTS}"
