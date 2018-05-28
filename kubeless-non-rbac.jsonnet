@@ -208,10 +208,10 @@ local runtime_images ='[
      "compiled": true,
      "versions": [
        {
-          "name": "ballerina0.970.1",
-          "version": "0.970.1",
-          "runtimeImage": "kubeless/ballerina@sha256:e9eb2b5e5fb6f8294afea7ad4c02be71d6878305d1d4542aab2e8d2ef50d8be0",
-          "initImage": "kubeless/ballerina-init@sha256:4030be0d7f513e4153993e6703d8b368a9ae8d093fcd9d322e3c1d8d30bf6eb2"
+          "name": "ballerina0.975.0",
+          "version": "0.975.0",
+          "runtimeImage": "anuruddhal/ballerina@sha256:e3d1159a7fe285ab206166e3397259b14a71aa39c9575da8ad400ecf7ff8054b",
+          "initImage": "anuruddhal/ballerina-init@sha256:f09c885bfdd48d481fd53eae4452fef4e7e6cb4b5221a2bbfbc4955b2a5f2f05"
        }
      ],
      "depName": "",
