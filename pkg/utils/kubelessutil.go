@@ -728,17 +728,36 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	// update deployment for loading dependencies
 	lr.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
 
-	livenessProbe := &v1.Probe{
-		InitialDelaySeconds: int32(3),
-		PeriodSeconds:       int32(30),
-		Handler: v1.Handler{
-			HTTPGet: &v1.HTTPGetAction{
-				Path: "/healthz",
-				Port: intstr.FromInt(int(svcPort(funcObj))),
+	livenessProbeInfo, err := lr.GetLivenessProbeInfo(funcObj.Spec.Runtime)
+	livenessProbe := &v1.Probe{}
+
+	if len(livenessProbeInfo.Exec.Command) != 0 {
+		livenessProbe = &v1.Probe{
+			InitialDelaySeconds: int32(livenessProbeInfo.InitialDelaySeconds),
+			PeriodSeconds:       int32(livenessProbeInfo.PeriodSeconds),
+			FailureThreshold:    int32(livenessProbeInfo.FailureThreshold),
+			TimeoutSeconds:      int32(livenessProbeInfo.TimeoutSeconds),
+			Handler: v1.Handler{
+				Exec: &v1.ExecAction{
+					Command: livenessProbeInfo.Exec.Command,
+				},
 			},
-		},
+		}
+	} else {
+		livenessProbe = &v1.Probe{
+			InitialDelaySeconds: int32(3),
+			PeriodSeconds:       int32(30),
+			Handler: v1.Handler{
+				HTTPGet: &v1.HTTPGetAction{
+					Path: "/healthz",
+					Port: intstr.FromInt(int(svcPort(funcObj))),
+				},
+			},
+		}
 	}
-	dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
+	if dpm.Spec.Template.Spec.Containers[0].LivenessProbe == nil {
+		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
+	}
 
 	// Add security context
 	runtimeUser := int64(1000)

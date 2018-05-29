@@ -416,3 +416,25 @@ hello world
 Note that it is possible to specify `--dependencies` as well when using custom images and install them using an Init container but that is only possible for the supported runtimes. You can get the list of supported runtimes executing `kubeless get-server-config`.
 
 When using a runtime not supported your function will be stored as `/kubeless/function` without extension. For example, injecting a file `my-function.jar` would result in the file being mounted as `/kubeless/my-fuction`).
+
+## Use a custom livenessProbe
+
+One can use kubeless-config to override the default liveness probe. By default, the liveness probe is `http-get` this can be overriden by providing the livenessprobe info in `kubeless-confg` under `runtime-images`. It has been implemented in such a way that each runtime can have its own liveness probe info. To use custom liveness probe paste the following info in `runtime-images`:
+
+```json
+"version": [],
+"livenessProbeInfo": {
+  "exec": {
+    "command": [
+      "curl",
+      "-f",
+      "http://localhost:8080/healthz"
+    ],
+  },
+  "initialDelaySeconds": 5,
+  "periodSeconds": 5,
+  "failureThreshold": 3,
+  "timeoutSeconds": 30
+},
+"depname": ""
+```

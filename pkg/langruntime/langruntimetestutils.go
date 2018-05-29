@@ -43,6 +43,13 @@ func AddFakeConfig(clientset *fake.Clientset) {
 	}, {ID: "nodejs",
 		DepName:        "package.json",
 		FileNameSuffix: ".js",
+		LivenessProbeInfo: LivenessProbe{
+			Exec: ExecInfo{
+				Command: []string{"curl", "https://localhost"},
+			},
+			InitialDelaySeconds: 5,
+			PeriodSeconds:       5,
+		},
 		Versions: []RuntimeVersion{
 			{
 				Name:      "nodejs6",
