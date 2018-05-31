@@ -104,7 +104,7 @@ func Handler(event functions.Event, context functions.Context) (string, error) {
 
 #### Description
 
-Ruby functions requires to import the package `github.com/kubeless/kubeless/pkg/functions` that is used to define the input parameters. The desired method should be exported in the package. You can specify dependencies using a `Gopkg.toml` file, dependencies are installed using [`dep`](https://github.com/golang/dep).
+Go functions require to import the package `github.com/kubeless/kubeless/pkg/functions` that is used to define the input parameters. The desired method should be exported in the package. You can specify dependencies using a `Gopkg.toml` file, dependencies are installed using [`dep`](https://github.com/golang/dep).
 
 #### Server implementation
 
