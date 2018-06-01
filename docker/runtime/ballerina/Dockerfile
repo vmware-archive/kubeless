@@ -4,4 +4,4 @@ USER 1000
 
 WORKDIR /kubeless
 
-CMD [ "ballerina", "run", "kubeless.balx"]
+CMD [ "ballerina", "run", "kubeless_run.balx"]

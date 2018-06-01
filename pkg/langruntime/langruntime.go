@@ -241,7 +241,7 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 		command = appendToCommand(command,
 			"mv /kubeless/pom.xml /kubeless/function-pom.xml")
 	case strings.Contains(runtime, "ballerina"):
-		command = appendToCommand(command, "cat /kubeless/ballerina.conf")
+		command = appendToCommand(command, "ls /kubeless/ballerina.conf")
 	}
 
 	return v1.Container{
@@ -318,10 +318,10 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 			"mkdir -p /kubeless/kubeless/ && mkdir -p /kubeless/func/ && "+
 				"cp -r /ballerina/files/kubeless/*.bal /kubeless/kubeless/ && "+
 				"cp -r /kubeless/*.bal /kubeless/func/ && "+
-				"cp -r /ballerina/files/src/kubeless.tpl.bal /kubeless/ && "+
-				"sed 's/<<FUNCTION>>/%s/g' /kubeless/kubeless.tpl.bal > /kubeless/kubeless.bal && "+
-				"rm /kubeless/kubeless.tpl.bal && "+
-				"ballerina build kubeless.bal ", funcName)
+				"cp -r /ballerina/files/src/kubeless_run.tpl.bal /kubeless/ && "+
+				"sed 's/<<FUNCTION>>/%s/g' /kubeless/kubeless_run.tpl.bal > /kubeless/kubeless_run.bal && "+
+				"rm /kubeless/kubeless_run.tpl.bal && "+
+				"ballerina build kubeless_run.bal ", funcName)
 
 	default:
 		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
