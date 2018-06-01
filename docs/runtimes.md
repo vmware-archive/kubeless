@@ -8,13 +8,14 @@ By default Kubeless has support for the following runtimes:
  - PHP: For the branch 7.2
  - Golang: For the branch 1.10
  - .NET: For the branch 2.0
+ - Ballerina: For the branch 0.970.1
 
 You can see the list of supported runtimes executing:
 
 ```console
 $ kubeless get-server-config
 INFO[0000] Current Server Config:
-INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, php7.2, go1.10
+INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, php7.2, go1.10, dotnetcore2.0, java1.8, ballerina0.970.1
 ```
 
 Each runtime is encapsulated in a container image. The reference to these images are injected in the Kubeless configuration. You can find the source code of all runtimes in [`docker/runtime`](https://github.com/kubeless/kubeless/tree/master/docker/runtime).
@@ -347,6 +348,40 @@ You can deploy them using the command:
 ```bash
 kubeless function deploy fibonacci --from-file fibonacci.cs --handler module.handler --dependencies fibonacci.csproj --runtime dotnetcore2.0
 ```
+
+### Ballerina
+
+#### Example
+
+```ballerina
+import kubeless;
+import ballerina/io;
+
+public function foo(kubeless:Event event, kubeless:Context context) returns (string|error) {
+    io:println(event);
+    io:println(context);
+    return "Hello Ballerina";
+}
+
+```
+
+#### Description
+
+Ballerina functions should import the package `kubeless`. This [package](../docker/runtime/ballerina/kubeless/kubeless.bal) contains two types `Event` and `Context`. 
+
+When using the Ballerina runtime, it is possible to provide the `ballrina.conf` file. The values in conf file is available for the function. 
+
+```console
+$ kubeless function deploy foo 
+    --runtime ballerina0.970.1 
+    --from-file foo.bal 
+    --handler foo.foo 
+    --dependencies ballerina.conf
+```
+
+#### Server implementation
+
+For the Ballerina runtime we start a [Ballerina HTTP server](../docker/runtime/ballerina/kubeless_run.tpl.bal) with two resources, '/' and '/healthz'.
 
 ## Use a custom runtime
 
