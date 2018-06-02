@@ -1,7 +1,6 @@
 ﻿using Kubeless.Core.Handlers;
 using Kubeless.Core.Interfaces;
 using Kubeless.Core.Invokers;
-using Kubeless.Core.References;
 using Kubeless.Core.Tests.Utils;
 using Kubeless.Functions;
 using System;
@@ -32,11 +31,11 @@ namespace Kubeless.Core.Tests
             //compiler.Compile(function);
 
             // Invoke
-            var invoker = new DefaultInvoker();
+            //var invoker = new CompiledFunctionInvoker();
 
-            var args = WebManager.GetHttpRequest();
+            //var args = WebManager.GetHttpRequest();
 
-            object result = invoker.Execute(function, args);
+            //object result = invoker.Execute(function, args);
         }
 
         //[InlineData("dependency-json")] //TODO: Run both tests in parallel
@@ -60,11 +59,11 @@ namespace Kubeless.Core.Tests
             //compiler.Compile(function);
 
             // Invoke
-            var invoker = new DefaultInvoker();
+            //var invoker = new DefaultInvoker();
 
-            var args = WebManager.GetHttpRequest();
+            //var args = WebManager.GetHttpRequest();
 
-            object result = invoker.Execute(function, args);
+            //object result = invoker.Execute(function, args);
         }
 
         #region Timeout
@@ -111,7 +110,7 @@ namespace Kubeless.Core.Tests
         private static object ExecuteCompiledFunction(IFunction function, int timeout = 180 * 1000)
         {
             // Invoke
-            var invoker = new TimeoutInvoker(timeout);
+            var invoker = new CompiledFunctionInvoker(timeout);
 
             var cancellationSource = new CancellationTokenSource();
 

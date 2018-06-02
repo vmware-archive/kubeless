@@ -14,11 +14,9 @@ namespace Kubeless.Core.Tests.Utils
             var basePath = Path.GetDirectoryName(functionFile);
             var baseName = Path.GetFileNameWithoutExtension(functionFile);
 
-            var code = new StringContent(functionFile);
-            var requirements = new StringContent(requirementsFile);
             var assembly = new BinaryContent(Path.Combine(basePath, $"{baseName}.dll"));
 
-            return new FunctionSettings(moduleName, functionHandler, code, requirements, assembly);
+            return new FunctionSettings(moduleName, functionHandler, assembly);
         }
 
         public static IFunction CreateFunction(string functionFile, string requirementsFile = "", string moduleName = "module", string functionHandler = "handler")

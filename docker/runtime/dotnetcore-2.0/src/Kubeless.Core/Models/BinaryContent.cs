@@ -22,12 +22,5 @@ namespace Kubeless.Core.Models
                 Exists = false;
             }
         }
-
-        public void UpdateBinaryContent(byte[] content)
-        {
-            this.Content = content;
-            File.WriteAllBytes(FilePath, content);
-            Exists = true;
-        }
     }
 }

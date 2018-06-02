@@ -168,8 +168,8 @@ local runtime_images ='[
       {
         "name": "dotnetcore2.0",
         "version": "2.0",
-        "runtimeImage": "allantargino/kubeless-dotnetcore@sha256:0ba7f27a37ff7a789de5b485d64b70be5f6767228357d843d4eb3a492c32f1ed",
-        "initImage": "allantargino/aspnetcore-build@sha256:12bb717ed47d24c0bde5d454841d0bdc3b9fd90f1e6ad24d08ac02eba40ccc8b"
+        "runtimeImage": "allantargino/kubeless-dotnetcore@sha256:6bd221880b1e6d0c303a47cd638fdf03b728b537f3e788d57167950a5e62ed36",
+        "initImage": "allantargino/aspnetcore-build@sha256:b8b0a7f8eb28927c95294bfe8e9582cf881c815fd0c1abd4edd1a8160b1f2871"
       }
     ],
     "depName": "project.csproj",
