@@ -1,5 +1,4 @@
-﻿using Kubeless.Core.Compilers;
-using Kubeless.Core.Handlers;
+﻿using Kubeless.Core.Handlers;
 using Kubeless.Core.Interfaces;
 using Kubeless.Core.Invokers;
 using Kubeless.Core.References;
@@ -27,10 +26,10 @@ namespace Kubeless.Core.Tests
             var functionFile = environment.FunctionFile;
             var assemblyFile = environment.AssemblyFile;
 
-            var compiler = new DefaultCompiler(new DefaultParser(), new WithoutDependencyReferencesManager());
+            //var compiler = new DefaultCompiler(new DefaultParser(), new WithoutDependencyReferencesManager());
             var function = FunctionCreator.CreateFunction(functionFile);
 
-            compiler.Compile(function);
+            //compiler.Compile(function);
 
             // Invoke
             var invoker = new DefaultInvoker();
@@ -55,10 +54,10 @@ namespace Kubeless.Core.Tests
             var restorer = new DependencyRestorer(environment);
             restorer.CopyAndRestore();
 
-            var compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
+            //var compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
             var function = FunctionCreator.CreateFunction(functionFile, projectFile);
 
-            compiler.Compile(function);
+            //compiler.Compile(function);
 
             // Invoke
             var invoker = new DefaultInvoker();
@@ -136,9 +135,9 @@ namespace Kubeless.Core.Tests
             restorer.CopyAndRestore();
 
             // Compile
-            var compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
+            //var compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
             var function = FunctionCreator.CreateFunction(functionFile, projectFile);
-            compiler.Compile(function);
+            //compiler.Compile(function);
 
             return function;
         }

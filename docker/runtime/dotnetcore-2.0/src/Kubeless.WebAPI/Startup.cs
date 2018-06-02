@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Kubeless.Core.Interfaces;
 using Kubeless.WebAPI.Utils;
 using Kubeless.Core.References;
-using Kubeless.Core.Compilers;
 using Kubeless.Core.Invokers;
 using System.IO;
 using Kubeless.Core.Handlers;
@@ -41,16 +40,14 @@ namespace kubeless_netcore_runtime
             var function = FunctionFactory.BuildFunction(Configuration);
 
 
-            ICompiler compiler;
-
-            string directory = Environment.GetEnvironmentVariable("DOTNETCORE_HOME");
-            if (Directory.Exists(directory))
-                compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
-            else
-                compiler = new DefaultCompiler(new DefaultParser(), new WithoutDependencyReferencesManager());
+            //string directory = Environment.GetEnvironmentVariable("DOTNETCORE_HOME");
+            //if (Directory.Exists(directory))
+            //    compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
+            //else
+            //    compiler = new DefaultCompiler(new DefaultParser(), new WithoutDependencyReferencesManager());
 
             if (!function.IsCompiled())
-                compiler.Compile(function);
+                throw new FileNotFoundException(nameof(function.FunctionSettings.ModuleName));
 
             services.AddSingleton<IFunction>(function);
 
@@ -73,7 +70,6 @@ namespace kubeless_netcore_runtime
                 AllowAnyOrigin().
                 AllowAnyMethod()
                 );
-
 
             app.UseMvc();
         }

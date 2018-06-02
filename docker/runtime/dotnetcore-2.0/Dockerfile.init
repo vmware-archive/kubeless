@@ -2,9 +2,9 @@ FROM microsoft/aspnetcore-build:2.0.0
 
 WORKDIR /app
 
-COPY kubeless.csproj .
+RUN dotnet new library -n project -o .
 
-RUN dotnet restore
+RUN dotnet add package Kubeless.Functions
 
 RUN mv /root/.dotnet /root/.nuget /
 

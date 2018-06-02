@@ -32,7 +32,7 @@ namespace Kubeless.WebAPI.Utils
             var assemblyPathConfiguration = configuration["Compiler:FunctionAssemblyPath"];
             if (string.IsNullOrEmpty(assemblyPathConfiguration))
                 throw new ArgumentNullException("Compiler:FunctionAssemblyPath");
-            var assemblyPath = string.Concat(assemblyPathConfiguration, moduleName, ".dll");
+            var assemblyPath = string.Concat(assemblyPathConfiguration, "project", ".dll");
             var assembly = new BinaryContent(assemblyPath);
 
             return new FunctionSettings(moduleName, functionHandler, code, requirements, assembly);

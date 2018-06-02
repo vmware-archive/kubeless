@@ -236,7 +236,7 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 			"dep ensure > /dev/termination-log 2>&1")
 	case strings.Contains(runtime, "dotnetcore"):
 		command = appendToCommand(command,
-			"dotnet restore "+installVolume.MountPath+" --packages "+installVolume.MountPath+"/packages")
+			"ls")
 	case strings.Contains(runtime, "java"):
 		command = appendToCommand(command,
 			"mv /kubeless/pom.xml /kubeless/function-pom.xml")
@@ -309,6 +309,9 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 			"cp /kubeless/*.java /kubeless/function/src/main/java/io/kubeless/ && " +
 			"cp /kubeless/function-pom.xml /kubeless/function/pom.xml 2>/dev/null || true && " +
 			"mvn package > /dev/termination-log 2>&1 && mvn install > /dev/termination-log 2>&1"
+	case strings.Contains(runtime, "dotnetcore"):
+		command = "if [ -s /kubeless/project.csproj ]; then echo .csproj present; else cp /app/project.csproj /kubeless/project.csproj; fi && " +
+			"dotnet publish /kubeless -o publish -c Release"
 	default:
 		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
 	}
