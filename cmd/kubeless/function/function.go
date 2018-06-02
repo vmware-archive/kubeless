@@ -57,6 +57,7 @@ func init() {
 	FunctionCmd.AddCommand(logsCmd)
 	FunctionCmd.AddCommand(describeCmd)
 	FunctionCmd.AddCommand(updateCmd)
+	FunctionCmd.AddCommand(topCmd)
 }
 
 func getKV(input string) (string, string) {
