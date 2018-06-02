@@ -163,7 +163,7 @@ local runtime_images ='[
   },
   {
     "ID": "dotnetcore",
-    "compiled": false,
+    "compiled": true,
     "versions": [
       {
         "name": "dotnetcore2.0",
