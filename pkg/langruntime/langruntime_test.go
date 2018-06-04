@@ -83,31 +83,21 @@ func TestGetFunctionImage(t *testing.T) {
 func TestGetLivenessProbe(t *testing.T) {
 	lr := SetupLangRuntime(clientset)
 	lr.ReadConfigMap()
-	livenessProbe, err := lr.GetLivenessProbeInfo("nodejs")
-	if err != nil {
-		t.Fatalf("Unable to get the livenessProbe")
-	}
+	livenessProbe := lr.GetLivenessProbeInfo("nodejs")
 
-	expectedLivenessProbe := LivenessProbe{
-		Exec: ExecInfo{
-			Command: []string{"curl", "https://localhost"},
+	expectedLivenessProbe := &v1.Probe{
+		InitialDelaySeconds: int32(5),
+		PeriodSeconds:       int32(10),
+		Handler: v1.Handler{
+			Exec: &v1.ExecAction{
+				Command: []string{"curl", "-f", "http://localhost:8080/healthz"},
+			},
 		},
-		InitialDelaySeconds: 5,
-		PeriodSeconds:       5,
 	}
 
 	if !reflect.DeepEqual(livenessProbe, expectedLivenessProbe) {
 		t.Fatalf("Expected livenessProbeInfo to be %v, but found %v", expectedLivenessProbe, livenessProbe)
 	}
-
-	if livenessProbe.InitialDelaySeconds != 5 {
-		t.Fatalf("Expected InitialDelaySeconds to be '5' but got %v", livenessProbe.InitialDelaySeconds)
-	}
-
-	if livenessProbe.PeriodSeconds != 5 {
-		t.Fatalf("Expected PeriodSeconds to be '5' but got %v", livenessProbe.PeriodSeconds)
-	}
-
 }
 
 func TestGetRuntimes(t *testing.T) {

@@ -33,27 +33,13 @@ type ImageSecret struct {
 	ImageSecret string `yaml:"imageSecret,omitempty"`
 }
 
-// ExecInfo contains the information about the commands to be executed for healthcheck
-type ExecInfo struct {
-	Command []string `yaml:"command"`
-}
-
-// LivenessProbe consists of complete struct info about the livenessProbe
-type LivenessProbe struct {
-	Exec                ExecInfo `yaml:"exec"`
-	InitialDelaySeconds int      `yaml:"initialDelaySeconds,omitempty"`
-	PeriodSeconds       int      `yaml:"periodSeconds,omitempty"`
-	TimeoutSeconds      int      `yaml:"timeoutSeconds,omitempty"`
-	FailureThreshold    int      `yaml:"failureThreshold,omitempty"`
-}
-
 // RuntimeInfo describe the runtime specifics (typical file suffix and dependency file name)
 // and the supported versions
 type RuntimeInfo struct {
 	ID                string           `yaml:"ID"`
 	Compiled          bool             `yaml:"compiled"`
 	Versions          []RuntimeVersion `yaml:"versions"`
-	LivenessProbeInfo LivenessProbe    `yaml:"livenessProbeInfo,omitempty"`
+	LivenessProbeInfo *v1.Probe        `yaml:"livenessProbeInfo,omitempty"`
 	DepName           string           `yaml:"depName"`
 	FileNameSuffix    string           `yaml:"fileNameSuffix"`
 }
@@ -125,18 +111,19 @@ func (l *Langruntimes) GetRuntimeInfo(runtime string) (RuntimeInfo, error) {
 			return runtimeInf, nil
 		}
 	}
+
 	return RuntimeInfo{}, fmt.Errorf("Unable to find %s as runtime", runtime)
 }
 
 // GetLivenessProbeInfo returs the liveness probe info regarding a runtime
-func (l *Langruntimes) GetLivenessProbeInfo(runtime string) (LivenessProbe, error) {
+func (l *Langruntimes) GetLivenessProbeInfo(runtime string) *v1.Probe {
 	runtimeID := regexp.MustCompile("^[a-zA-Z]+").FindString(runtime)
 	for _, runtimeInf := range l.AvailableRuntimes {
 		if runtimeInf.ID == runtimeID {
-			return runtimeInf.LivenessProbeInfo, nil
+			return runtimeInf.LivenessProbeInfo
 		}
 	}
-	return LivenessProbe{}, fmt.Errorf("Unable to find LivenessProbe for %s runtime", runtime)
+	return nil
 }
 
 func (l *Langruntimes) findRuntimeVersion(runtimeWithVersion string) (RuntimeVersion, error) {
