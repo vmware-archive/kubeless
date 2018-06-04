@@ -1,4 +1,4 @@
-FROM node:8
+FROM node:8 AS build-env
 
 RUN apt-get update &&  apt-get install git
 
@@ -10,6 +10,12 @@ WORKDIR kubeless_rt/
 
 RUN npm install
 
+
+FROM gcr.io/distroless/nodejs
+COPY --from=build-env /kubeless_rt /kubeless_rt
+
+WORKDIR kubeless_rt/
+
 USER 1000
 
-CMD ["node", "kubeless.js"]
+CMD ["kubeless.js"]
