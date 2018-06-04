@@ -120,6 +120,20 @@ local runtime_images ='[
     "fileNameSuffix": ".js"
   },
   {
+    "ID": "nodejs_distroless",
+    "compiled": false,
+    "versions": [
+      {
+        "name": "node8",
+        "version": "8",
+        "runtimeImage": "henrike42/kubeless/runtimes/nodejs/distroless:0.0.1",
+        "initImage": "node:8"
+      }
+    ],
+    "depName": "package.json",
+    "fileNameSuffix": ".js"
+  },
+  {
     "ID": "ruby",
     "compiled": false,
     "versions": [
