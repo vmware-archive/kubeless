@@ -54,7 +54,7 @@ load ../script/libtest
   deploy_function get-ballerina
   deploy_function get-ballerina-custom-port
   deploy_function get-ballerina-data
-  deploy_function get-ballerina-deps
+  deploy_function get-ballerina-conf
 }
 @test "Test function: get-python" {
   verify_function get-python
