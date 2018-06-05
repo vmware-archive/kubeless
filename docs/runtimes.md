@@ -47,6 +47,68 @@ $ kubeless function deploy myFunction --runtime nodejs6 \
                                 --from-file test.js
 ```
 
+**For Webpack Users**
+
+Your webpacked functions will be `require()`-d in so your bundle should work out of the box. However, if your bundle size is approaching 1mb you should take advantage of Kubeless' ability to install dependencies for you instead of bundling them all into your payload. 
+
+You will need to customize your webpack config to suit your own project, but below is an sample config of how to achieve this in Webpack 4.x:
+
+_webpack.config.js_
+```js
+const path = require("path");
+const nodeExternals = require("webpack-node-externals");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
+
+module.exports = {
+  entry: {
+    handlers: "./handlers.js"
+  },
+  node: {
+    __filename: true,
+    __dirname: true
+  },
+  target: "node",
+  // do not include dependencies in the bundle
+  externals: [nodeExternals()],
+  devtool: "source-map",
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        use: "babel-loader",
+        // do not transpile the depedencies
+        exclude: /node_modules/
+      }
+    ]
+  },
+  plugins: [
+    // do include the project's `package.json` in the bundle
+    new CopyWebpackPlugin([
+      {
+        from: path.join(__dirname, "path", "to", "your", "package.json"),
+        to: "package.json"
+      }
+    ])
+  ]
+};
+```
+
+Additionally, in your babel config, you can specify the transpile target to be the version of node you're using for your runtime. This is an example for Babel 7.x:
+
+```js
+module.exports = {
+  plugins: [
+    "@babel/plugin-proposal-class-properties",
+    "@babel/plugin-proposal-object-rest-spread",
+    "@babel/plugin-syntax-dynamic-import",
+    "@babel/plugin-transform-runtime"
+  ],
+  // note the target node version here for nodejs8
+  presets: [["@babel/preset-env", { targets: { node: "8.10" } }]]
+};
+
+```
+
 #### Server implementation
 
 For the Node.js runtime we start an [Express](http://expressjs.com) server and we include the routes for serving the health check and exposing the monitoring metrics. Apart from that we enable [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS) requests and [Morgan](https://github.com/expressjs/morgan) for handling the logging in the server. Monitoring is supported if the function is synchronous or if it uses promises.
