@@ -235,8 +235,8 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 			"cd $GOPATH/src/kubeless",
 			"dep ensure > /dev/termination-log 2>&1")
 	case strings.Contains(runtime, "dotnetcore"):
-		command = appendToCommand(command,
-			"dotnet restore "+installVolume.MountPath+" --packages "+installVolume.MountPath+"/packages")
+		logrus.Warn("dotnetcore does not require a dependencies file")
+		return v1.Container{}, nil
 	case strings.Contains(runtime, "java"):
 		command = appendToCommand(command,
 			"mv /kubeless/pom.xml /kubeless/function-pom.xml")
@@ -309,6 +309,8 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 			"cp /kubeless/*.java /kubeless/function/src/main/java/io/kubeless/ && " +
 			"cp /kubeless/function-pom.xml /kubeless/function/pom.xml 2>/dev/null || true && " +
 			"mvn package > /dev/termination-log 2>&1 && mvn install > /dev/termination-log 2>&1"
+	case strings.Contains(runtime, "dotnetcore"):
+		command = "/app/compile-function.sh " + installVolume.MountPath
 	default:
 		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
 	}

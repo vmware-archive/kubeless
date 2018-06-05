@@ -2,18 +2,18 @@
 using Kubeless.Core.Invoker;
 using Kubeless.Functions;
 using System;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 
 namespace Kubeless.Core.Invokers
 {
-    public class TimeoutInvoker : IInvoker
+    public class CompiledFunctionInvoker : IInvoker
     {
         private readonly int _functionTimeout;
 
-        public TimeoutInvoker(int functionTimeout)
+        public CompiledFunctionInvoker(int functionTimeout)
         {
             _functionTimeout = functionTimeout;
 
