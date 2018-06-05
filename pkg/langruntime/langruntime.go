@@ -309,9 +309,7 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 			"cp /kubeless/function-pom.xml /kubeless/function/pom.xml 2>/dev/null || true && " +
 			"mvn package > /dev/termination-log 2>&1 && mvn install > /dev/termination-log 2>&1"
 	case strings.Contains(runtime, "dotnetcore"):
-		command = "if [ -s /kubeless/project.csproj ]; then echo .csproj present; else cp /app/project.csproj /kubeless/project.csproj; fi && " +
-			"dotnet restore /kubeless --packages /kubeless/packages && " +
-			"dotnet publish /kubeless -o publish -c Release --no-restore"
+		command = "/app/compile-function.sh " + installVolume.MountPath
 	default:
 		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
 	}
