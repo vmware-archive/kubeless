@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2017 Bitnami
+// Copyright (c) 2017-2018 Bitnami
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,30 +20,30 @@ import kubeless;
 
 // A service endpoint represents a listener
 endpoint http:Listener listener {
-    // Read listner port via ENV.
-    port:config: getAsInt("FUNC_PORT", default = 8080)
+    //Listner port is 8090 redirected by proxy
+    port: 8090
 };
 
 @http:ServiceConfig {
-    basePath: "/"
+    basePath: "/",
+    compression: "NEVER"
 }
 
 service<http:Service> controller bind listener {
+    //Initialize context from environment variables
+    kubeless:Context context = {
+        function_name: config:getAsString("FUNC_HANDLER"),
+        time_out: config:getAsString("FUNC_TIMEOUT"),
+        runtime: config:getAsString("FUNC_RUNTIME"),
+        memory_limit: config:getAsString("FUNC_MEMORY_LIMIT")
+    };
 
     @http:ResourceConfig {
-        methods: ["GET", "POST", "DELETE", "PATCH"],
+        methods: ["GET", "POST", "DELETE", "PATCH", "PUT"],
         path: "/"
     }
     handler(endpoint caller, http:Request request) {
-        kubeless:Context context = {};
         kubeless:Event event = {};
-
-        //Read environment variables and set them to context
-        context.function_name = config:getAsString("FUNC_HANDLER");
-        context.time_out = config:getAsString("FUNC_TIMEOUT");
-        context.runtime = config:getAsString("FUNC_RUNTIME");
-        context.memory_limit = config:getAsString("FUNC_MEMORY_LIMIT");
-
         //Read requests and set them to event
         match request.getPayloadAsString() {
             string payload => {
@@ -80,8 +80,7 @@ service<http:Service> controller bind listener {
                 response_payload = e.message;
             }
         }
-        response.setTextPayload(response_payload);
-
+        response.setPayload(response_payload);
         // Send a response back to caller
         // Errors are ignored with '_'
         // -> indicates a synchronous network-bound call
@@ -103,5 +102,4 @@ service<http:Service> controller bind listener {
         // -> indicates a synchronous network-bound call
         _ = caller->respond(response);
     }
-
 }

@@ -4,4 +4,8 @@ USER 1000
 
 WORKDIR /kubeless
 
-CMD [ "ballerina", "run", "kubeless_run.balx"]
+ENV FUNC_PROCESS="ballerina run kubeless_run.balx"
+
+ADD proxy /
+
+CMD [ "/proxy" ]

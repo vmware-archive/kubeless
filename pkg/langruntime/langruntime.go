@@ -315,9 +315,10 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 		command = "/app/compile-function.sh " + installVolume.MountPath
 	case strings.Contains(runtime, "ballerina"):
 		command = fmt.Sprintf(
-			"mkdir -p /kubeless/kubeless/ && mkdir -p /kubeless/func/ && "+
+			"mkdir -p /kubeless/kubeless/ /kubeless/func/ && "+
 				"cp -r /ballerina/files/kubeless/*.bal /kubeless/kubeless/ && "+
 				"cp -r /kubeless/*.bal /kubeless/func/ && "+
+				"touch /kubeless/kubeless.toml && "+
 				"cp -r /ballerina/files/src/kubeless_run.tpl.bal /kubeless/ && "+
 				"sed 's/<<FUNCTION>>/%s/g' /kubeless/kubeless_run.tpl.bal > /kubeless/kubeless_run.bal && "+
 				"rm /kubeless/kubeless_run.tpl.bal && "+
