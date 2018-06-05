@@ -126,7 +126,7 @@ local runtime_images ='[
       {
         "name": "node8",
         "version": "8",
-        "runtimeImage": "henrike42/kubeless/runtimes/nodejs/distroless:0.0.1",
+        "runtimeImage": "henrike42/kubeless/runtimes/nodejs/distroless:0.0.2",
         "initImage": "node:8"
       }
     ],
