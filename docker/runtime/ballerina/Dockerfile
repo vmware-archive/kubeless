@@ -4,7 +4,7 @@ USER 1000
 
 WORKDIR /kubeless
 
-ENV FUNC_PROCESS="ballerina run kubeless_run.balx"
+ENV FUNC_PROCESS="ballerina run kubeless_run.balx -c kubeless.toml"
 
 ADD proxy /
 

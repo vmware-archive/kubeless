@@ -210,11 +210,11 @@ local runtime_images ='[
        {
           "name": "ballerina0.970.1",
           "version": "0.970.1",
-          "runtimeImage": "kubeless/ballerina:0.970.1",
-          "initImage": "kubeless/ballerina-init:0.970.1"
+          "runtimeImage": "anuruddhal/ballerina:0.970.1",
+          "initImage": "anuruddhal/ballerina-init:0.970.1"
        }
      ],
-     "depName": "ballerina.conf",
+     "depName": "",
      "fileNameSuffix": ".bal"
   }
 ]';

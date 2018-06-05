@@ -241,7 +241,7 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 		command = appendToCommand(command,
 			"mv /kubeless/pom.xml /kubeless/function-pom.xml")
 	case strings.Contains(runtime, "ballerina"):
-		command = appendToCommand(command, "ls /kubeless/ballerina.conf")
+		return v1.Container{}, fmt.Errorf("Ballerina does not require a dependencies file")
 	}
 
 	return v1.Container{
@@ -317,6 +317,7 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 		command = fmt.Sprintf(
 			"mkdir -p /kubeless/kubeless/ /kubeless/func/ && "+
 				"cp -r /ballerina/files/kubeless/*.bal /kubeless/kubeless/ && "+
+				"ls -altr && "+
 				"cp -r /kubeless/*.bal /kubeless/func/ && "+
 				"touch /kubeless/kubeless.toml && "+
 				"cp -r /ballerina/files/src/kubeless_run.tpl.bal /kubeless/ && "+

@@ -818,8 +818,9 @@ get-ballerina-data:
 get-ballerina-data-verify:
 	kubeless function call get-ballerina-data --data '{"hello":"world"}' |egrep hello
 
-get-ballerina-deps:
-	kubeless function deploy get-ballerina-deps --runtime ballerina0.970.1 --from-file ballerina/hellowithdeps.bal --handler hellowithdeps.foo --dependencies ballerina/ballerina.conf
+get-ballerina-conf:
+	zip -r -j bar.zip ballerina/hello_with_conf/
+	kubeless function deploy get-ballerina-conf --runtime ballerina0.970.1 --from-file bar.zip --handler hello_with_conf.bar
 
-get-ballerina-deps-verify:
-	kubeless function call get-ballerina-deps |egrep john
+get-ballerina-conf-verify:
+	kubeless function call get-ballerina-conf |egrep john

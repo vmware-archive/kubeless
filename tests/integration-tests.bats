@@ -233,8 +233,8 @@ load ../script/libtest
   verify_function get-ballerina-data
   kubeless_function_delete get-ballerina-data
 }
-@test "Test function: get-ballerina-deps" {
-  verify_function get-ballerina-deps
-  kubeless_function_delete get-ballerina-deps
+@test "Test function: get-ballerina-conf" {
+  verify_function get-ballerina-conf
+  kubeless_function_delete get-ballerina-conf
 }
 # vim: ts=2 sw=2 si et syntax=sh

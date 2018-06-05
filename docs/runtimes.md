@@ -367,16 +367,28 @@ public function foo(kubeless:Event event, kubeless:Context context) returns (str
 
 #### Description
 
-Ballerina functions should import the package `kubeless`. This [package](../docker/runtime/ballerina/kubeless/kubeless.bal) contains two types `Event` and `Context`. 
-
-When using the Ballerina runtime, it is possible to provide the `ballerina.conf` file. The values in conf file is available for the function. 
-
+The Ballerina functions should import the package `kubeless`. This [package](../docker/runtime/ballerina/kubeless/kubeless.bal) contains two types `Event` and `Context`. 
+ 
 ```console
 $ kubeless function deploy foo 
     --runtime ballerina0.970.1 
     --from-file foo.bal 
     --handler foo.foo 
-    --dependencies ballerina.conf
+```
+
+When using the Ballerina runtime, it is possible to provide a configuration via `kubeless.toml` file. The values in kubeless.toml file are available for the function. The function(.bal file) and conf file should be in the same directory.
+The zip file containing both files should be passed to the Kubeless CLI.
+```console
+foo
+├── hellowithconf.bal
+└── kubeless.toml
+
+$ zip -r -j foo.zip foo/
+
+$ kubeless function deploy get-ballerina-conf 
+      --runtime ballerina0.970.1 
+      --from-file foo.zip 
+      --handler hellowithconf.foo
 ```
 
 #### Server implementation
