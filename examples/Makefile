@@ -792,3 +792,9 @@ get-java-deps:
 get-java-deps-verify:
 	kubeless function call get-java-deps --data '{"hello": "world"}'
 	kubectl logs -l function=get-java-deps | grep -q '.*Hello.*world! Current local time is:'
+
+get-nodejs-distroless:
+	kubeless function deploy get-nodejs-distroless --runtime nodejs_distroless8 --handler helloget.foo --from-file nodejs/helloget.js
+
+get-nodejs-distroless-verify:
+	kubeless function call get-nodejs-distroless |egrep hello.world

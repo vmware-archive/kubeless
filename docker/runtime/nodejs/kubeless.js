@@ -23,7 +23,9 @@ const funcHandler = process.env.FUNC_HANDLER;
 const timeout = Number(process.env.FUNC_TIMEOUT || '180');
 const funcPort = Number(process.env.FUNC_PORT || '8080');
 
-const modRootPath = require.main.filename.replace('kubeless.js', 'kubeless');
+const modKubeless = require.main.filename;
+const modRootPath = path.join(modKubeless, '..', '..', 'kubeless');
+
 const modPath = path.join(modRootPath, `${modName}.js`);
 const libPath = path.join(modRootPath, 'node_modules');
 const pkgPath = path.join(modRootPath, 'package.json');

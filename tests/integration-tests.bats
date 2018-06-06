@@ -50,6 +50,7 @@ load ../script/libtest
   deploy_function get-java
   deploy_function post-java
   deploy_function get-java-deps
+  deploy_function get-nodejs-distroless
 }
 @test "Test function: get-python" {
   verify_function get-python
@@ -198,6 +199,9 @@ load ../script/libtest
 }
 @test "Test function: get-java-deps" {
   verify_function get-java-deps
+}
+@test "Test function: get-nodejs-distroless" {
+  verify_function get-nodejs-distroless
 }
 @test "Test no-errors" {
   if kubectl logs -n kubeless -l kubeless=controller | grep "level=error"; then
