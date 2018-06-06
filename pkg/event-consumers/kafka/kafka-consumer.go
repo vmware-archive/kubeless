@@ -54,6 +54,13 @@ func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, 
 	config.Group.Return.Notifications = true
 	config.Consumer.Offsets.Initial = sarama.OffsetNewest
 
+	var err error
+	config.Net.TLS.Config, config.Net.TLS.Enable, err = GetTLSConfiguration(os.Getenv("KAFKA_CACERTS"), os.Getenv("KAFKA_CERT"), os.Getenv("KAFKA_KEY"), os.Getenv("KAFKA_INSECURE"))
+	if err != nil {
+		logrus.Fatalf("Failed to set tls configuration: %v", err)
+	}
+	config.Net.SASL.User, config.Net.SASL.Password, config.Net.SASL.Enable = GetSASLConfiguration(os.Getenv("KAFKA_USERNAME"), os.Getenv("KAFKA_PASSWORD"))
+
 	// Init consumer
 	brokersSlice := []string{broker}
 	topicsSlice := []string{topic}
