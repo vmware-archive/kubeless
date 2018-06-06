@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // Langruntimes struct for getting configmap
@@ -116,14 +117,29 @@ func (l *Langruntimes) GetRuntimeInfo(runtime string) (RuntimeInfo, error) {
 }
 
 // GetLivenessProbeInfo returs the liveness probe info regarding a runtime
-func (l *Langruntimes) GetLivenessProbeInfo(runtime string) *v1.Probe {
+func (l *Langruntimes) GetLivenessProbeInfo(runtime string, port int) *v1.Probe {
+	livenessProbe := &v1.Probe{
+		InitialDelaySeconds: int32(3),
+		PeriodSeconds:       int32(30),
+		Handler: v1.Handler{
+			HTTPGet: &v1.HTTPGetAction{
+				Path: "/healthz",
+				Port: intstr.FromInt(port),
+			},
+		},
+	}
+
 	runtimeID := regexp.MustCompile("^[a-zA-Z]+").FindString(runtime)
 	for _, runtimeInf := range l.AvailableRuntimes {
 		if runtimeInf.ID == runtimeID {
-			return runtimeInf.LivenessProbeInfo
+			if runtimeInf.LivenessProbeInfo != nil {
+				return runtimeInf.LivenessProbeInfo
+			} else {
+				return livenessProbe
+			}
 		}
 	}
-	return nil
+	return livenessProbe
 }
 
 func (l *Langruntimes) findRuntimeVersion(runtimeWithVersion string) (RuntimeVersion, error) {

@@ -23,16 +23,6 @@ func AddFakeConfig(clientset *fake.Clientset) {
 					"runtimeImage": "kubeless/python@sha256:0f3b64b654df5326198e481cd26e73ecccd905aae60810fc9baea4dcbb61f697",
 					"imagePullSecrets": [{"ImageSecret": "p1"}, {"ImageSecret": "p2"}]
 				},
-				{
-					"name": "python34",
-					"version": "3.4",
-					"imagePullSecrets": [{"ImageSecret": "p1"}, {"ImageSecret": "p2"}]
-				},
-				{
-					"name": "python36",
-					"version": "3.6",
-					"imagePullSecrets": [{"ImageSecret": "p1"}, {"ImageSecret": "p2"}]
-				}
 			],
 			"fileNameSuffix": ".py"
 		},
@@ -56,11 +46,6 @@ func AddFakeConfig(clientset *fake.Clientset) {
 					"version": "6",
 					"initImage": "node:6.10",
 					"imagePullSecrets": [{"ImageSecret": "p1"}, {"ImageSecret": "p2"}]
-				},
-				{
-					"name": "nodejs8",
-					"version": "8",
-					"imagePullSecrets": [{"ImageSecret": "p1"}, {"ImageSecret": "p2"}]
 				}
 			],
 			"fileNameSuffix": ".js"
@@ -77,31 +62,6 @@ func AddFakeConfig(clientset *fake.Clientset) {
 				},
 			],
 			"fileNameSuffix": ".rb"
-		},
-		{
-			"ID": "dotnetcore",
-			"depName": "requirements.xml",
-			"versions": [
-				{
-					"name": "dotnetcore2.0",
-					"version": "2.0",
-					"imagePullSecrets": [{"ImageSecret": "p1"}, {"ImageSecret": "p2"}]
-				},
-			],
-			"fileNameSuffix": ".cs"
-		},
-		{
-			"ID": "php",
-			"depName": "composer.json",
-			"versions": [
-				{
-					"name": "php7.2",
-					"version": "7.2",
-					InitImage: "composer:1.6",
-					"imagePullSecrets": [{"ImageSecret": "p1"}, {"ImageSecret": "p2"}]
-				},
-			],
-			"fileNameSuffix": ".php"
 		},
 	]`
 
