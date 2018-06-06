@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // Langruntimes struct for getting configmap
@@ -36,11 +37,12 @@ type ImageSecret struct {
 // RuntimeInfo describe the runtime specifics (typical file suffix and dependency file name)
 // and the supported versions
 type RuntimeInfo struct {
-	ID             string           `yaml:"ID"`
-	Compiled       bool             `yaml:"compiled"`
-	Versions       []RuntimeVersion `yaml:"versions"`
-	DepName        string           `yaml:"depName"`
-	FileNameSuffix string           `yaml:"fileNameSuffix"`
+	ID                string           `yaml:"ID"`
+	Compiled          bool             `yaml:"compiled"`
+	Versions          []RuntimeVersion `yaml:"versions"`
+	LivenessProbeInfo *v1.Probe        `yaml:"livenessProbeInfo,omitempty"`
+	DepName           string           `yaml:"depName"`
+	FileNameSuffix    string           `yaml:"fileNameSuffix"`
 }
 
 // New initializes a langruntime object
@@ -110,7 +112,34 @@ func (l *Langruntimes) GetRuntimeInfo(runtime string) (RuntimeInfo, error) {
 			return runtimeInf, nil
 		}
 	}
+
 	return RuntimeInfo{}, fmt.Errorf("Unable to find %s as runtime", runtime)
+}
+
+// GetLivenessProbeInfo returs the liveness probe info regarding a runtime
+func (l *Langruntimes) GetLivenessProbeInfo(runtime string, port int) *v1.Probe {
+	livenessProbe := &v1.Probe{
+		InitialDelaySeconds: int32(3),
+		PeriodSeconds:       int32(30),
+		Handler: v1.Handler{
+			HTTPGet: &v1.HTTPGetAction{
+				Path: "/healthz",
+				Port: intstr.FromInt(port),
+			},
+		},
+	}
+
+	runtimeID := regexp.MustCompile("^[a-zA-Z]+").FindString(runtime)
+	for _, runtimeInf := range l.AvailableRuntimes {
+		if runtimeInf.ID == runtimeID {
+			if runtimeInf.LivenessProbeInfo != nil {
+				return runtimeInf.LivenessProbeInfo
+			} else {
+				return livenessProbe
+			}
+		}
+	}
+	return livenessProbe
 }
 
 func (l *Langruntimes) findRuntimeVersion(runtimeWithVersion string) (RuntimeVersion, error) {

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/ghodss/yaml"
@@ -255,4 +256,129 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 			t.Fatalf("Expecting annotation %s but received %s", expectedPodAnnotations[i], dpm.ObjectMeta.Annotations[i])
 		}
 	}
+}
+
+func TestEnsureK8sResourcesWithLivenessProbeFromConfigMap(t *testing.T) {
+	namespace := "default"
+	funcName := "foo"
+	var replicas int32
+	replicas = 10
+	funcLabels := map[string]string{
+		"foo": "bar",
+	}
+	funcAnno := map[string]string{
+		"bar": "foo",
+		"xyz": "valuefromfunc",
+	}
+	funcObj := kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      funcName,
+			Namespace: namespace,
+			Labels:    funcLabels,
+			UID:       "foo-uid",
+		},
+		Spec: kubelessApi.FunctionSpec{
+			Function: "function",
+			Deps:     "deps",
+			Handler:  "foo.bar",
+			Runtime:  "ruby2.4",
+			Deployment: v1beta1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: funcAnno,
+				},
+				Spec: v1beta1.DeploymentSpec{
+					Replicas: &replicas,
+					Template: v1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Annotations: funcAnno,
+						},
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{
+								{
+									Env: []v1.EnvVar{
+										{
+											Name:  "foo",
+											Value: "bar",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	runtimeImages := `[
+		{
+			"ID": "ruby",
+			"depName": "Gemfile",
+			"fileNameSuffix": ".rb",
+			"versions": [
+				{
+					"name": "ruby24",
+					"version": "2.4",
+					"initImage": "bitnami/ruby:2.4",
+					"imagePullSecrets":[]
+				}
+			],
+			"livenessProbeInfo":{
+				"exec": {
+					"command": [
+						"curl",
+						"-f",
+						"http://localhost:8080/healthz"
+					],
+				},
+				"initialDelaySeconds": 5,
+				"periodSeconds": 10
+			}
+		}
+	]`
+
+	clientset := fake.NewSimpleClientset()
+	kubelessConfigMap := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "kubeless-config",
+		},
+		Data: map[string]string{"runtime-images": runtimeImages},
+	}
+
+	_, err := clientset.CoreV1().ConfigMaps(namespace).Create(kubelessConfigMap)
+	if err != nil {
+		logrus.Fatal("Unable to create configmap")
+	}
+
+	config, err := clientset.CoreV1().ConfigMaps(namespace).Get("kubeless-config", metav1.GetOptions{})
+	if err != nil {
+		logrus.Fatal("Unable to read the configmap")
+	}
+	var lr = langruntime.New(config)
+	lr.ReadConfigMap()
+
+	controller := FunctionController{
+		logger:      logrus.WithField("pkg", "controller"),
+		clientset:   clientset,
+		langRuntime: lr,
+		config:      config,
+	}
+
+	if err := controller.ensureK8sResources(&funcObj); err != nil {
+		t.Fatalf("Creating/Updating resources returned err: %v", err)
+	}
+	dpm, _ := clientset.ExtensionsV1beta1().Deployments(namespace).Get(funcName, metav1.GetOptions{})
+	expectedLivenessProbe := &v1.Probe{
+		InitialDelaySeconds: int32(5),
+		PeriodSeconds:       int32(10),
+		Handler: v1.Handler{
+			Exec: &v1.ExecAction{
+				Command: []string{"curl", "-f", "http://localhost:8080/healthz"},
+			},
+		},
+	}
+
+	if !reflect.DeepEqual(dpm.Spec.Template.Spec.Containers[0].LivenessProbe, expectedLivenessProbe) {
+		t.Fatalf("LivenessProbe found is '%v', although expected was '%v'", dpm.Spec.Template.Spec.Containers[0].LivenessProbe, expectedLivenessProbe)
+	}
+
 }

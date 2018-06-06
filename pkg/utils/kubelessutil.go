@@ -728,17 +728,11 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	// update deployment for loading dependencies
 	lr.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
 
-	livenessProbe := &v1.Probe{
-		InitialDelaySeconds: int32(3),
-		PeriodSeconds:       int32(30),
-		Handler: v1.Handler{
-			HTTPGet: &v1.HTTPGetAction{
-				Path: "/healthz",
-				Port: intstr.FromInt(int(svcPort(funcObj))),
-			},
-		},
+	livenessProbeInfo := lr.GetLivenessProbeInfo(funcObj.Spec.Runtime, int(svcPort(funcObj)))
+
+	if dpm.Spec.Template.Spec.Containers[0].LivenessProbe == nil {
+		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbeInfo
 	}
-	dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
 
 	// Add security context
 	runtimeUser := int64(1000)
