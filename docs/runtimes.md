@@ -3,7 +3,7 @@
 By default Kubeless has support for the following runtimes:
 
  - Python: For the branches 2.7, 3.4 and 3.6
- - NodeJS: For the branches 6 and 8
+ - NodeJS: For the branches 6 and 8, as well as NodeJS [distroless](https://github.com/GoogleContainerTools/distroless) for the branch 8
  - Ruby: For the branch 2.4
  - PHP: For the branch 7.2
  - Golang: For the branch 1.10
@@ -50,6 +50,23 @@ $ kubeless function deploy myFunction --runtime nodejs6 \
 #### Server implementation
 
 For the Node.js runtime we start an [Express](http://expressjs.com) server and we include the routes for serving the health check and exposing the monitoring metrics. Apart from that we enable [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS) requests and [Morgan](https://github.com/expressjs/morgan) for handling the logging in the server. Monitoring is supported if the function is synchronous or if it uses promises.
+
+#### Distroless Variant
+
+There is the [distroless](https://github.com/GoogleContainerTools/distroless) variant of the Node.js 8 runtime.
+The distroless Node.js runtime contains only the kubeless function and its runtime dependencies.
+In particular, this variant does not contain package manager, shells or any other programs which are part of a standard Linux distribution. 
+
+The same example Node.js function from above can then be deployed:
+
+```console
+$ kubeless function deploy myFunction --runtime nodejs_distroless8 \
+                                --env NPM_REGISTRY=http://my-registry.com \
+                                --env NPM_SCOPE=@myorg \
+                                --dependencies package.json \
+                                --handler test.foobar \
+                                --from-file test.js
+```
 
 ### Python
 
