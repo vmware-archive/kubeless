@@ -45,15 +45,26 @@ service<http:Service> controller bind listener {
     handler(endpoint caller, http:Request request) {
         kubeless:Event event = {};
         //Read requests and set them to event
-        match request.getPayloadAsString() {
-            string payload => {
-                event.data = payload;
-            }
-            error e => {
-                io:println("Error in Payload :" + e.message);
+        if (request.hasHeader("Content-Length")){
+            int|error result = <int>request.getHeader("Content-Length");
+            match result {
+                int legnth => {
+                    if (legnth > 0){
+                        match request.getPayloadAsString() {
+                            string payload => {
+                                event.data = payload;
+                            }
+                            error e => {
+                                io:println("Error while extracting payload: " + e.message);
+                            }
+                        }
+                    }
+                }
+                error e => {
+                    io:println("Error while reading header: " + e.message);
+                }
             }
         }
-
         //Read headers and set event info.
         if (request.hasHeader("event-id")){
             event.event_id = request.getHeader("event-id");
