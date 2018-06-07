@@ -51,6 +51,7 @@ load ../script/libtest
   deploy_function post-java
   deploy_function get-java-deps
   deploy_function get-nodejs-distroless
+  deploy_function get-nodejs-distroless-deps
   deploy_function get-ballerina
   deploy_function get-ballerina-custom-port
   deploy_function get-ballerina-data
@@ -206,6 +207,9 @@ load ../script/libtest
 }
 @test "Test function: get-nodejs-distroless" {
   verify_function get-nodejs-distroless
+}
+@test "Test function: get-nodejs-distroless-deps" {
+  verify_function get-nodejs-distroless-deps
 }
 @test "Test no-errors" {
   if kubectl logs -n kubeless -l kubeless=controller | grep "level=error"; then
