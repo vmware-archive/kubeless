@@ -1,4 +1,4 @@
-import kubeless;
+import kubeless/kubeless;
 import ballerina/io;
 
 public function foo(kubeless:Event event, kubeless:Context context) returns (string|error) {

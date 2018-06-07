@@ -210,8 +210,8 @@ local runtime_images ='[
        {
           "name": "ballerina0.970.1",
           "version": "0.970.1",
-          "runtimeImage": "kubeless/ballerina@sha256:b1f4f0cb65258d3035ae9eec2ae37a7c0d7e4eac6b150da5fb7933668114a409",
-          "initImage": "kubeless/ballerina-init@sha256:5acecccb9d05d298606c8514ee16b25bab76e4a2f35eda30601bb7f229e01cfd"
+          "runtimeImage": "kubeless/ballerina@sha256:e9eb2b5e5fb6f8294afea7ad4c02be71d6878305d1d4542aab2e8d2ef50d8be0",
+          "initImage": "kubeless/ballerina-init@sha256:4030be0d7f513e4153993e6703d8b368a9ae8d093fcd9d322e3c1d8d30bf6eb2"
        }
      ],
      "depName": "",

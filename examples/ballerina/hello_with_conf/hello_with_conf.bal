@@ -1,4 +1,4 @@
-import kubeless;
+import kubeless/kubeless;
 import ballerina/io;
 import ballerina/config;
 

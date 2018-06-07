@@ -16,7 +16,7 @@ import ballerina/http;
 import ballerina/io;
 import ballerina/config;
 import func;
-import kubeless;
+import kubeless/kubeless;
 
 // A service endpoint represents a listener
 endpoint http:Listener listener {
