@@ -11,6 +11,8 @@ const express = require('express');
 const helper = require('./lib/helper');
 const morgan = require('morgan');
 
+const isStream = require('is-stream');
+
 const app = express();
 app.use(morgan('combined'));
 const bodParserOptions = {
@@ -86,7 +88,15 @@ function modExecute(handler, req, res, end) {
             data,
             'extensions': { request: req, response: res },
         };
-        Promise.resolve(func(event, context))
+
+        const funcResult = func(event, context);
+
+        if(isStream(funcResult)){
+            res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+            return funcResult.pipe(res);
+        }
+
+        Promise.resolve(funcResult)
         // Finalize
             .then(rval => modFinalize(rval, res, end))
             // Catch asynchronous errors
