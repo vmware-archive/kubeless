@@ -23,6 +23,7 @@ load ../script/libtest
   deploy_function get-python-custom-port
   deploy_function get-nodejs
   deploy_function get-nodejs-custom-port
+  deploy_function get-nodejs-stream
   deploy_function get-nodejs-deps
   deploy_function timeout-nodejs
   deploy_function get-nodejs-multi
@@ -81,6 +82,10 @@ load ../script/libtest
 @test "Test function: get-nodejs-custom-port" {
   verify_function get-nodejs-custom-port
   kubeless_function_delete get-nodejs-custom-port
+}
+@test "Test function: get-nodejs-stream" {
+  verify_function get-nodejs-stream
+  kubeless_function_delete get-nodejs-stream
 }
 @test "Test function: get-nodejs-deps" {
   verify_function get-nodejs-deps
