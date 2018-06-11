@@ -18,6 +18,7 @@ package kafka
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/Shopify/sarama"
 	"github.com/bsm/sarama-cluster"
@@ -55,12 +56,21 @@ func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, 
 	config.Consumer.Offsets.Initial = sarama.OffsetNewest
 
 	var err error
-	config.Net.TLS.Config, config.Net.TLS.Enable, err = GetTLSConfiguration(os.Getenv("KAFKA_CACERTS"), os.Getenv("KAFKA_CERT"), os.Getenv("KAFKA_KEY"), os.Getenv("KAFKA_INSECURE"))
-	if err != nil {
-		logrus.Fatalf("Failed to set tls configuration: %v", err)
-	}
-	config.Net.SASL.User, config.Net.SASL.Password, config.Net.SASL.Enable = GetSASLConfiguration(os.Getenv("KAFKA_USERNAME"), os.Getenv("KAFKA_PASSWORD"))
 
+	if enableTLS, _ := strconv.ParseBool(os.Getenv("KAFKA_ENABLE_TLS")); enableTLS {
+		config.Net.TLS.Enable = true
+		config.Net.TLS.Config, err = GetTLSConfiguration(os.Getenv("KAFKA_CACERTS"), os.Getenv("KAFKA_CERT"), os.Getenv("KAFKA_KEY"), os.Getenv("KAFKA_INSECURE"))
+		if err != nil {
+			logrus.Fatalf("Failed to set tls configuration: %v", err)
+		}
+	}
+	if enableSASL, _ := strconv.ParseBool(os.Getenv("KAFKA_ENABLE_SASL")); enableSASL {
+		config.Net.SASL.Enable = true
+		config.Net.SASL.User, config.Net.SASL.Password, err = GetSASLConfiguration(os.Getenv("KAFKA_USERNAME"), os.Getenv("KAFKA_PASSWORD"))
+		if err != nil {
+			logrus.Fatalf("Failed to set SASL configuration: %v", err)
+		}
+	}
 	// Init consumer
 	brokersSlice := []string{broker}
 	topicsSlice := []string{topic}

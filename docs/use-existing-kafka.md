@@ -130,7 +130,7 @@ $ kubectl logs -f pubsub-python-5445bdcb64-48bv2
 hello world
 ```
 
-When using SASL you can add `KAFKA_USERNAME` and `KAFKA_PASSWORD` env var to set authentification (might use a secret):
+When using SASL you must add `KAFKA_ENABLE_SASL`, `KAFKA_USERNAME` and `KAFKA_PASSWORD` env var to set authentification (might use a secret).:
 ```yaml
 $ echo '
 ---
@@ -155,8 +155,9 @@ spec:
         imagePullPolicy: IfNotPresent
         name: kafka-trigger-controller
         env:
-        - name: KAFKA_BROKERS
-          value: kafka.pubsub:9092 # CHANGE THIS!
+        ...
+        - name: KAFKA_ENABLE_SASL
+          value: true # CHANGE THIS!
         - name: KAFKA_USERNAME
           value: kafka-sasl-username # CHANGE THIS!
         - name: KAFKA_PASSWORD
@@ -164,4 +165,7 @@ spec:
 ...
 ```
 
-When using SSL to secure kafka communication, you can set `KAFKA_CACERTS`, `KAFKA_CERT`, `KAFKA_KEY` and `KAFKA_INSECURE` if necessary.
+When using SSL to secure kafka communication, you must set `KAFKA_ENABLE_TLS`, and specify some of these: 
+* `KAFKA_CACERTS` to check server certificate
+* `KAFKA_CERT` and `KAFKA_KEY` to check client certificate
+* `KAFKA_INSECURE` to skip TLS verfication

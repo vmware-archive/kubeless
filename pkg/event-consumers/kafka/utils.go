@@ -19,24 +19,37 @@ package kafka
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"io/ioutil"
 	"strconv"
-
-	"github.com/sirupsen/logrus"
 )
 
-// GetTLSConfiguration build TLS configuration for kafka
-func GetTLSConfiguration(caFile string, certFile string, keyFile string, insecure string) (*tls.Config, bool, error) {
-	logrus.Debugf("configure tls %s %s %s %b", caFile, certFile, keyFile, insecure)
-	isInsecure, _ := strconv.ParseBool(insecure)
-	if (caFile == "" && (certFile == "" || keyFile == "")) && !isInsecure {
-		return nil, false, nil
+var (
+	// ErrorCrtFileMandatory when private key is provided but certificate not.
+	ErrorCrtFileMandatory = errors.New("client certificate is mandatory when private key file is provided")
+	// ErrorKeyFileMandatory when certificate is provided but private not.
+	ErrorKeyFileMandatory = errors.New("client private key is mandatory when certificate file is provided")
+	// ErrorUsernameOrPasswordMandatory when username or password is not provided
+	ErrorUsernameOrPasswordMandatory = errors.New("username and password is mandatory")
+)
+
+// GetTLSConfiguration build TLS configuration for kafka, return tlsConfig associated with kafka connection.
+func GetTLSConfiguration(caFile string, certFile string, keyFile string, insecure string) (*tls.Config, error) {
+
+	if certFile != "" && keyFile == "" {
+		return nil, ErrorKeyFileMandatory
 	}
+	if keyFile != "" && certFile == "" {
+		return nil, ErrorCrtFileMandatory
+	}
+
+	isInsecure, _ := strconv.ParseBool(insecure)
 	t := &tls.Config{}
+
 	if caFile != "" {
 		caCert, err := ioutil.ReadFile(caFile)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
@@ -46,21 +59,19 @@ func GetTLSConfiguration(caFile string, certFile string, keyFile string, insecur
 	if certFile != "" && keyFile != "" {
 		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 		t.Certificates = []tls.Certificate{cert}
 	}
 
 	t.InsecureSkipVerify = isInsecure
-	logrus.Debugf("TLS config %+v", t)
-
-	return t, true, nil
+	return t, nil
 }
 
-// GetSASLConfiguration build SASL configuration for kafka
-func GetSASLConfiguration(username string, password string) (string, string, bool) {
-	if username != "" && password != "" {
-		return username, password, true
+// GetSASLConfiguration build SASL configuration for kafka.
+func GetSASLConfiguration(username string, password string) (string, string, error) {
+	if username == "" || password == "" {
+		return "", "", ErrorUsernameOrPasswordMandatory
 	}
-	return "", "", false
+	return username, password, nil
 }
