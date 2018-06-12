@@ -5,6 +5,8 @@ KUBECFG = kubecfg
 DOCKER = docker
 CONTROLLER_IMAGE = kubeless-controller-manager:latest
 FUNCTION_IMAGE_BUILDER = kubeless-function-image-builder:latest
+HTTP_CONTROLLER_IMAGE = http-trigger-controller:latest
+CRONJOB_CONTROLLER_IMAGE = cronjob-trigger-controller:latest
 KAFKA_CONTROLLER_IMAGE = kafka-trigger-controller:latest
 NATS_CONTROLLER_IMAGE = nats-trigger-controller:latest
 KINESIS_CONTROLLER_IMAGE = kinesis-trigger-controller:latest
@@ -39,7 +41,7 @@ binary-cross:
 	$(KUBECFG) show -o yaml $< > $@.tmp
 	mv $@.tmp $@
 
-all-yaml: kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml kafka-zookeeper.yaml kafka-zookeeper-openshift.yaml nats.yaml kinesis.yaml
+all-yaml: kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml kafka-zookeeper.yaml kafka-zookeeper-openshift.yaml nats.yaml kinesis.yaml http.yaml cronjob.yaml
 
 kubeless.yaml: kubeless.jsonnet
 
@@ -48,6 +50,10 @@ kubeless-non-rbac.yaml: kubeless-non-rbac.jsonnet
 kubeless-openshift.yaml: kubeless-openshift.jsonnet
 
 kafka-zookeeper.yaml: kafka-zookeeper.jsonnet
+
+cronjob.yaml: cronjob.jsonnet
+
+http.yaml: http.jsonnet
 
 nats.yaml: nats.jsonnet
 
@@ -79,6 +85,24 @@ kafka-controller-build:
 
 kafka-controller-image: docker/kafka-controller
 	$(DOCKER) build -t $(KAFKA_CONTROLLER_IMAGE) $<
+
+cronjob-controller-build:
+	./script/binary-controller -os=$(OS) -arch=$(ARCH) cronjob-controller github.com/kubeless/kubeless/cmd/cronjob-trigger-controller
+
+cronjob-controller-image: docker/cronjob-controller
+	$(DOCKER) build -t $(CRONJOB_CONTROLLER_IMAGE) $<
+
+docker/cronjob-controller: cronjob-controller-build
+	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/cronjob-controller $@
+
+http-controller-build:
+	./script/binary-controller -os=$(OS) -arch=$(ARCH) http-controller github.com/kubeless/kubeless/cmd/http-trigger-controller
+
+http-controller-image: docker/http-controller
+	$(DOCKER) build -t $(HTTP_CONTROLLER_IMAGE) $<
+
+docker/http-controller: http-controller-build
+	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/http-controller $@
 
 nats-controller-build:
 	./script/binary-controller -os=$(OS) -arch=$(ARCH) nats-controller github.com/kubeless/kubeless/cmd/nats-trigger-controller

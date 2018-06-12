@@ -28,11 +28,6 @@ local controller_roles = [
     verbs: ["get"],
   },
   {
-    apiGroups: ["kubeless.io"],
-    resources: ["functions", "httptriggers", "cronjobtriggers"],
-    verbs: ["get", "list", "watch", "update", "delete"],
-  },
-  {
     apiGroups: ["batch"],
     resources: ["cronjobs", "jobs"],
     verbs: ["create", "get", "delete", "deletecollection", "list", "update", "patch"],

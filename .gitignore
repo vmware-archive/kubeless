@@ -155,6 +155,8 @@ docker/kafka-controller/kafka-controller
 docker/function-image-builder/imbuilder
 docker/nats-controller/nats-controller
 docker/kinesis-controller/kinesis-controller
+docker/http-controller/http-controller
+docker/cronjob-controller/cronjob-controller
 ksonnet-lib/
 kubeless-openshift.yaml
 kubeless-non-rbac.yaml
@@ -163,3 +165,5 @@ kafka-zookeeper.yaml
 kafka-zookeeper-openshift.yaml
 nats.yaml
 kinesis.yaml
+http.yaml
+cronjob.yaml

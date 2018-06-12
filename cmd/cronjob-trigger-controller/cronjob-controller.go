@@ -14,9 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Kubeless controller binary.
-//
-// See github.com/kubeless/kubeless/pkg/controller
 package main
 
 import (
@@ -25,50 +22,36 @@ import (
 	"os/signal"
 	"syscall"
 
-	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
+	"github.com/kubeless/kubeless/pkg/client/informers/externalversions"
 	"github.com/kubeless/kubeless/pkg/controller"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/kubeless/kubeless/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/rest"
-)
-
-const (
-	globalUsage = `` //TODO: adding explanation
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "kubeless-controller",
-	Short: "Kubeless controller",
-	Long:  globalUsage,
+	Use:   "cronjob-trigger-controller",
+	Short: "Kubeless cronjob trigger controller",
+	Long:  "Kubeless cronjob trigger controller",
 	Run: func(cmd *cobra.Command, args []string) {
 		kubelessClient, err := utils.GetFunctionClientInCluster()
 		if err != nil {
 			logrus.Fatalf("Cannot get kubeless client: %v", err)
 		}
 
-		functionCfg := controller.Config{
-			KubeCli:        utils.GetClient(),
-			FunctionClient: kubelessClient,
+		cronJobTriggerCfg := controller.CronJobTriggerConfig{
+			KubeCli:       utils.GetClient(),
+			TriggerClient: kubelessClient,
 		}
 
-		restCfg, err := rest.InClusterConfig()
-		if err != nil {
-			logrus.Fatalf("Cannot get REST client: %v", err)
-		}
-		// ServiceMonitor client is needed for handling monitoring resources
-		smclient, err := monitoringv1alpha1.NewForConfig(restCfg)
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
-		functionController := controller.NewFunctionController(functionCfg, smclient)
+		sharedInformerFactory := externalversions.NewSharedInformerFactory(kubelessClient, 0)
+		cronJobTriggerController := controller.NewCronJobTriggerController(cronJobTriggerCfg, sharedInformerFactory)
 
 		stopCh := make(chan struct{})
 		defer close(stopCh)
 
-		go functionController.Run(stopCh)
+		go cronJobTriggerController.Run(stopCh)
 
 		sigterm := make(chan os.Signal, 1)
 		signal.Notify(sigterm, syscall.SIGTERM)
@@ -78,7 +61,7 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
-	logrus.Infof("Running Kubeless controller manager version: %v", version.Version)
+	logrus.Infof("Running Kubeless cronjob trigger controller version: %v", version.Version)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
