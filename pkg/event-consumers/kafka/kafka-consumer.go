@@ -63,6 +63,7 @@ func init() {
 	}
 	if enableSASL, _ := strconv.ParseBool(os.Getenv("KAFKA_ENABLE_SASL")); enableSASL {
 		config.Net.SASL.Enable = true
+		config.Version = sarama.V0_10_0_0
 		config.Net.SASL.User, config.Net.SASL.Password, err = GetSASLConfiguration(os.Getenv("KAFKA_USERNAME"), os.Getenv("KAFKA_PASSWORD"))
 		if err != nil {
 			logrus.Fatalf("Failed to set SASL configuration: %v", err)
