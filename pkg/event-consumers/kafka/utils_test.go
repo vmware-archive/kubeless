@@ -17,14 +17,11 @@ limitations under the License.
 package kafka
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestGetTLSConfiguration(t *testing.T) {
@@ -37,22 +34,20 @@ func TestGetTLSConfiguration(t *testing.T) {
 	fakeFile := buildFakeTempFile(t)
 	defer os.Remove(fakeFile.Name())
 
-	var tlsTests = []struct {
-		input struct {
-			caFile   string
-			certFile string
-			keyFile  string
-			insecure string
-		}
+	type testInput struct {
+		caFile   string
+		certFile string
+		keyFile  string
+		insecure string
+	}
+	type tlsTest struct {
+		input    testInput
 		expected string
-	}{
+	}
+
+	var tlsTests = []tlsTest{
 		{
-			input: struct {
-				caFile   string
-				certFile string
-				keyFile  string
-				insecure string
-			}{
+			input: testInput{
 				caFile:   "",
 				certFile: certFile.Name(),
 				keyFile:  keyFile.Name(),
@@ -61,12 +56,7 @@ func TestGetTLSConfiguration(t *testing.T) {
 			expected: "",
 		},
 		{
-			input: struct {
-				caFile   string
-				certFile string
-				keyFile  string
-				insecure string
-			}{
+			input: testInput{
 				caFile:   "",
 				certFile: "",
 				keyFile:  keyFile.Name(),
@@ -75,12 +65,7 @@ func TestGetTLSConfiguration(t *testing.T) {
 			expected: ErrorCrtFileMandatory.Error(),
 		},
 		{
-			input: struct {
-				caFile   string
-				certFile string
-				keyFile  string
-				insecure string
-			}{
+			input: testInput{
 				caFile:   "",
 				certFile: certFile.Name(),
 				keyFile:  "",
@@ -89,12 +74,7 @@ func TestGetTLSConfiguration(t *testing.T) {
 			expected: ErrorKeyFileMandatory.Error(),
 		},
 		{
-			input: struct {
-				caFile   string
-				certFile string
-				keyFile  string
-				insecure string
-			}{
+			input: testInput{
 				caFile:   "",
 				certFile: "",
 				keyFile:  "",
@@ -103,12 +83,7 @@ func TestGetTLSConfiguration(t *testing.T) {
 			expected: "",
 		},
 		{
-			input: struct {
-				caFile   string
-				certFile string
-				keyFile  string
-				insecure string
-			}{
+			input: testInput{
 				caFile:   "",
 				certFile: "",
 				keyFile:  "",
@@ -117,12 +92,7 @@ func TestGetTLSConfiguration(t *testing.T) {
 			expected: "",
 		},
 		{
-			input: struct {
-				caFile   string
-				certFile string
-				keyFile  string
-				insecure string
-			}{
+			input: testInput{
 				caFile:   "",
 				certFile: "",
 				keyFile:  "",
@@ -131,12 +101,7 @@ func TestGetTLSConfiguration(t *testing.T) {
 			expected: "",
 		},
 		{
-			input: struct {
-				caFile   string
-				certFile string
-				keyFile  string
-				insecure string
-			}{
+			input: testInput{
 				caFile:   caFile.Name(),
 				certFile: "",
 				keyFile:  "",
@@ -145,12 +110,7 @@ func TestGetTLSConfiguration(t *testing.T) {
 			expected: "",
 		},
 		{
-			input: struct {
-				caFile   string
-				certFile string
-				keyFile  string
-				insecure string
-			}{
+			input: testInput{
 				caFile:   fakeFile.Name(),
 				certFile: "",
 				keyFile:  "",
@@ -159,13 +119,8 @@ func TestGetTLSConfiguration(t *testing.T) {
 			expected: "",
 		},
 		{
-			input: struct {
-				caFile   string
-				certFile string
-				keyFile  string
-				insecure string
-			}{
-				caFile:   fmt.Sprintf("%s/%s", os.TempDir(), randomString(64)),
+			input: testInput{
+				caFile:   "a_clearly_non_existent_path",
 				certFile: "",
 				keyFile:  "",
 				insecure: "",
@@ -173,40 +128,25 @@ func TestGetTLSConfiguration(t *testing.T) {
 			expected: "no such file or directory",
 		},
 		{
-			input: struct {
-				caFile   string
-				certFile string
-				keyFile  string
-				insecure string
-			}{
+			input: testInput{
 				caFile:   "",
 				certFile: certFile.Name(),
-				keyFile:  fmt.Sprintf("%s/%s", os.TempDir(), randomString(64)),
+				keyFile:  "a_clearly_non_existent_path",
 				insecure: "",
 			},
 			expected: "no such file or directory",
 		},
 		{
-			input: struct {
-				caFile   string
-				certFile string
-				keyFile  string
-				insecure string
-			}{
+			input: testInput{
 				caFile:   "",
-				certFile: fmt.Sprintf("%s/%s", os.TempDir(), randomString(64)),
+				certFile: "a_clearly_non_existent_path",
 				keyFile:  keyFile.Name(),
 				insecure: "",
 			},
 			expected: "no such file or directory",
 		},
 		{
-			input: struct {
-				caFile   string
-				certFile string
-				keyFile  string
-				insecure string
-			}{
+			input: testInput{
 				caFile:   "",
 				certFile: certFile.Name(),
 				keyFile:  fakeFile.Name(),
@@ -215,12 +155,7 @@ func TestGetTLSConfiguration(t *testing.T) {
 			expected: "failed to find any PEM data in key input",
 		},
 		{
-			input: struct {
-				caFile   string
-				certFile string
-				keyFile  string
-				insecure string
-			}{
+			input: testInput{
 				caFile:   "",
 				certFile: fakeFile.Name(),
 				keyFile:  keyFile.Name(),
@@ -239,84 +174,62 @@ func TestGetTLSConfiguration(t *testing.T) {
 }
 
 func TestGetSASLConfiguration(t *testing.T) {
-	var saslTests = []struct {
-		input struct {
-			user     string
-			password string
-		}
-		expected struct {
-			user     string
-			password string
-			err      error
-		}
-	}{
+	type testInput struct {
+		user     string
+		password string
+	}
+
+	type testExpected struct {
+		user     string
+		password string
+		err      error
+	}
+
+	type saslTest struct {
+		input    testInput
+		expected testExpected
+	}
+
+	var saslTests = []saslTest{
 		{
-			input: struct {
-				user     string
-				password string
-			}{
+			input: testInput{
 				user:     "",
 				password: "",
 			},
-			expected: struct {
-				user     string
-				password string
-				err      error
-			}{
+			expected: testExpected{
 				user:     "",
 				password: "",
 				err:      ErrorUsernameOrPasswordMandatory,
 			},
 		},
 		{
-			input: struct {
-				user     string
-				password string
-			}{
+			input: testInput{
 				user:     "test",
 				password: "",
 			},
-			expected: struct {
-				user     string
-				password string
-				err      error
-			}{
+			expected: testExpected{
 				user:     "",
 				password: "",
 				err:      ErrorUsernameOrPasswordMandatory,
 			},
 		},
 		{
-			input: struct {
-				user     string
-				password string
-			}{
+			input: testInput{
 				user:     "",
 				password: "test",
 			},
-			expected: struct {
-				user     string
-				password string
-				err      error
-			}{
+			expected: testExpected{
 				user:     "",
 				password: "",
 				err:      ErrorUsernameOrPasswordMandatory,
 			},
 		},
 		{
-			input: struct {
-				user     string
-				password string
-			}{
+			input: testInput{
 				user:     "test",
 				password: "test",
 			},
-			expected: struct {
-				user     string
-				password string
-				err      error
-			}{
+			expected: testExpected{
 				user:     "test",
 				password: "test",
 				err:      nil,
@@ -497,22 +410,4 @@ testing`)
 		t.Fatal(err)
 	}
 	return fakeFile
-}
-
-const charset = "abcdefghijklmnopqrstuvwxyz" +
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-var seededRand *rand.Rand = rand.New(
-	rand.NewSource(time.Now().UnixNano()))
-
-func randomStringWithCharset(length int, charset string) string {
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
-	}
-	return string(b)
-}
-
-func randomString(length int) string {
-	return randomStringWithCharset(length, charset)
 }

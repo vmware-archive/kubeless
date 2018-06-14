@@ -32,6 +32,7 @@ var (
 	stoppedM  map[string](chan struct{})
 	consumerM map[string]bool
 	brokers   string
+	config    *cluster.Config
 )
 
 func init() {
@@ -39,17 +40,13 @@ func init() {
 	stoppedM = make(map[string](chan struct{}))
 	consumerM = make(map[string]bool)
 
+	// Init config
 	// taking brokers from env var
 	brokers = os.Getenv("KAFKA_BROKERS")
 	if brokers == "" {
 		brokers = "kafka.kubeless:9092"
 	}
-}
-
-// createConsumerProcess gets messages to a Kafka topic from the broker and send the payload to function service
-func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, clientset kubernetes.Interface, stopchan, stoppedchan chan struct{}) {
-	// Init config
-	config := cluster.NewConfig()
+	config = cluster.NewConfig()
 
 	config.Consumer.Return.Errors = true
 	config.Group.Return.Notifications = true
@@ -71,6 +68,11 @@ func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, 
 			logrus.Fatalf("Failed to set SASL configuration: %v", err)
 		}
 	}
+
+}
+
+// createConsumerProcess gets messages to a Kafka topic from the broker and send the payload to function service
+func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, clientset kubernetes.Interface, stopchan, stoppedchan chan struct{}) {
 	// Init consumer
 	brokersSlice := []string{broker}
 	topicsSlice := []string{topic}
