@@ -17,12 +17,12 @@ limitations under the License.
 package function
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
@@ -38,9 +38,6 @@ import (
 
 	"github.com/prometheus/common/expfmt"
 )
-
-// TODO - testing
-// TODO - yaml, json
 
 var topCmd = &cobra.Command{
 	Use:     "top",
@@ -66,7 +63,7 @@ var topCmd = &cobra.Command{
 
 		apiV1Client := utils.GetClientOutOfCluster()
 		kubelessClient, err := utils.GetKubelessClientOutCluster()
-		handler := &PrometheusMetricsHandler{metricsPath: "/metrics"}
+		handler := &PrometheusMetricsHandler{}
 
 		err = doTop(cmd.OutOrStdout(), kubelessClient, apiV1Client, handler, ns, functionName, output)
 		if err != nil {
@@ -75,12 +72,15 @@ var topCmd = &cobra.Command{
 	},
 }
 
-type functionMetrics struct {
-	FunctionName       string `json:"function_name,omitempty"`
-	Namespace          string `json:"namespace,omitempty"`
-	FunctionRawMetrics string `json:"function_raw_metrics,omitempty"`
-	// map[METHOD][METRIC_NAME]
-	MetricsMap map[string]map[string]float64 `json:",omitempty"`
+// Metric contains metrics for a functions
+type Metric struct {
+	FunctionName         string  `json:"function,omitempty"`
+	Namespace            string  `json:"namespace,omitempty"`
+	Method               string  `json:"method,omitempty"`
+	TotalCalls           float64 `json:"total_calls,omitempty"`
+	TotalFailures        float64 `json:"total_failures,omitempty"`
+	TotalDurationSeconds float64 `json:"total_duration_seconds,omitempty"`
+	AvgDurationSeconds   float64 `json:"avg_duration_seconds,omitempty"`
 }
 
 func init() {
@@ -91,13 +91,11 @@ func init() {
 
 // MetricsRetriever is an interface for retreiving metrics from an endpoint
 type MetricsRetriever interface {
-	getMetrics(kubernetes.Interface, string, string, string) ([]byte, error)
+	getRawMetrics(kubernetes.Interface, string, string) ([]byte, error)
 }
 
 // PrometheusMetricsHandler is a handler for retreiving metrics from Prometheus
-type PrometheusMetricsHandler struct {
-	metricsPath string
-}
+type PrometheusMetricsHandler struct{}
 
 func getFunctions(kubelessClient versioned.Interface, namespace, functionName string) ([]*kubelessApi.Function, error) {
 	var functionList *kubelessApi.FunctionList
@@ -105,90 +103,104 @@ func getFunctions(kubelessClient versioned.Interface, namespace, functionName st
 	var err error
 	if functionName == "" {
 		functionList, err = kubelessClient.KubelessV1beta1().Functions(namespace).List(metav1.ListOptions{})
+		if err != nil {
+			return []*kubelessApi.Function{}, err
+		}
 	} else {
 		f, err = kubelessClient.KubelessV1beta1().Functions(namespace).Get(functionName, metav1.GetOptions{})
+		if err != nil {
+			return []*kubelessApi.Function{}, err
+		}
 		functionList = &kubelessApi.FunctionList{
 			Items: []*kubelessApi.Function{
 				f,
 			},
 		}
 	}
-	if err != nil {
-		return []*kubelessApi.Function{}, err
-	}
 	return functionList.Items, nil
 }
 
-func parseMetrics(metrics *functionMetrics) error {
+func parseMetrics(namespace, functionName string, rawMetrics []byte) ([]*Metric, error) {
 	parser := expfmt.TextParser{}
-	parsedData, err := parser.TextToMetricFamilies(strings.NewReader(metrics.FunctionRawMetrics))
+	parsedData, err := parser.TextToMetricFamilies(bytes.NewReader(rawMetrics))
 	if err != nil {
-		fmt.Printf("error while parsing metrics ", err)
-		return err
+		return nil, err
 	}
+
+	tmp := map[string]*Metric{}
+	var parsedMetrics []*Metric
 
 	metricsOfInterest := []string{"function_duration_seconds", "function_calls_total", "function_failures_total"}
 	for _, m := range metricsOfInterest {
 		for _, metric := range parsedData[m].GetMetric() {
-			// a function can have metrics for each method (GET, POST, etc.) - group metrics by method and show a single line per method
+			// a function can have metrics for multiple methods (GET, POST, etc.)
+			// method names can be values other than GET/POST/PUT/DELETE
 			for _, label := range metric.GetLabel() {
 				if label.GetName() == "method" {
-					if metrics.MetricsMap[label.GetValue()] == nil {
-						metrics.MetricsMap[label.GetValue()] = make(map[string]float64)
+					if _, ok := tmp[label.GetValue()]; !ok {
+						tmp[label.GetValue()] = &Metric{
+							FunctionName: functionName,
+							Namespace:    namespace,
+							Method:       label.GetValue(),
+						}
+					}
+					if m == "function_failures_total" {
+						tmp[label.GetValue()].TotalFailures = metric.GetCounter().GetValue()
 					}
 					if m == "function_duration_seconds" {
-						metrics.MetricsMap[label.GetValue()][m] = metric.GetHistogram().GetSampleSum()
-					} else {
-						metrics.MetricsMap[label.GetValue()][m] = metric.GetCounter().GetValue()
+						tmp[label.GetValue()].TotalDurationSeconds = metric.GetHistogram().GetSampleSum()
+					}
+					if m == "function_calls_total" {
+						tmp[label.GetValue()].TotalCalls = metric.GetCounter().GetValue()
+						if tmp[label.GetValue()].TotalCalls > 0 {
+							tmp[label.GetValue()].AvgDurationSeconds = float64(tmp[label.GetValue()].TotalDurationSeconds) / tmp[label.GetValue()].TotalCalls
+						}
 					}
 				}
 			}
 		}
 	}
-	return nil
-}
 
-func calculateMetrics(metrics *functionMetrics) {
-	for _, v := range metrics.MetricsMap {
-		if v["function_calls_total"] > 0 {
-			v["function_average_duration_seconds"] = v["function_duration_seconds"] / v["function_calls_total"]
+	// if the funciton hasn't been invoked, add an item to the list so the function displays in the output
+	if len(tmp) == 0 {
+		tmp[""] = &Metric{
+			FunctionName: functionName,
+			Namespace:    namespace,
 		}
 	}
-}
 
-func (h *PrometheusMetricsHandler) getMetrics(apiV1Client kubernetes.Interface, namespace, functionName, port string) ([]byte, error) {
-	req := apiV1Client.CoreV1().RESTClient().Get().Namespace(namespace).Resource("services").SubResource("proxy").Name(functionName + ":" + port).Suffix(h.metricsPath)
-	res, err := req.Do().Raw()
-	if err != nil {
-		return []byte{}, err
+	for _, v := range tmp {
+		parsedMetrics = append(parsedMetrics, v)
 	}
-	return res, nil
+
+	return parsedMetrics, nil
 }
 
-func getFunctionMetrics(apiV1Client kubernetes.Interface, h MetricsRetriever, namespace, functionName string) functionMetrics {
-	metrics := functionMetrics{}
-	metrics.FunctionName = functionName
-	metrics.Namespace = namespace
-	metrics.MetricsMap = make(map[string]map[string]float64)
+func (h *PrometheusMetricsHandler) getRawMetrics(apiV1Client kubernetes.Interface, namespace, functionName string) ([]byte, error) {
 	svc, err := apiV1Client.CoreV1().Services(namespace).Get(functionName, metav1.GetOptions{})
 	if err != nil {
-		return metrics
+		return []byte{}, err
 	}
 
 	port := strconv.Itoa(int(svc.Spec.Ports[0].Port))
 	if svc.Spec.Ports[0].Name != "" {
 		port = svc.Spec.Ports[0].Name
 	}
-	res, err := h.getMetrics(apiV1Client, namespace, functionName, port)
+	req := apiV1Client.CoreV1().RESTClient().Get().Namespace(namespace).Resource("services").SubResource("proxy").Name(functionName + ":" + port).Suffix("/metrics")
+	return req.Do().Raw()
+}
 
+func getFunctionMetrics(apiV1Client kubernetes.Interface, h MetricsRetriever, namespace, functionName string) []*Metric {
+
+	res, err := h.getRawMetrics(apiV1Client, namespace, functionName)
 	if err != nil {
-		return metrics
+		return []*Metric{}
 	}
-	metrics.FunctionRawMetrics = string(res)
 
-	// swallow the error if metrics parsing fails - display will show the function name but no metrics
-	_ = parseMetrics(&metrics)
-	calculateMetrics(&metrics)
+	metrics, err := parseMetrics(namespace, functionName, res)
+	if err != nil {
+		return []*Metric{}
+	}
 	return metrics
 }
 
@@ -198,51 +210,42 @@ func doTop(w io.Writer, kubelessClient versioned.Interface, apiV1Client kubernet
 		return fmt.Errorf("Error listing functions: %v", err)
 	}
 
-	var metrics []functionMetrics
-	ch := make(chan functionMetrics, len(functions))
+	ch := make(chan []*Metric, len(functions))
 	for _, f := range functions {
 		go func(f *kubelessApi.Function) {
 			ch <- getFunctionMetrics(apiV1Client, handler, ns, f.ObjectMeta.Name)
 		}(f)
 	}
 
-metricsLoop:
-	for len(metrics) < len(functions) {
+	var metrics []*Metric
+
+	i := 0
+	for i < len(functions) {
 		select {
 		case r := <-ch:
-			metrics = append(metrics, r)
+			metrics = append(metrics, r...)
+			i++
 		// timeout all go routines after 5 seconds to avoid hanging at the cmd line
 		case <-time.After(5 * time.Second):
-			break metricsLoop
+			i = len(functions)
 		}
 	}
 
 	// sort the results - useful when using 'watch kubeless function top'
-	sort.Slice(metrics, func(i, j int) bool { return metrics[i].FunctionName < metrics[j].FunctionName })
+	sort.Slice(metrics, func(i, j int) bool {
+		return metrics[i].FunctionName < metrics[j].FunctionName
+	})
 	return printTop(w, metrics, apiV1Client, output)
 }
 
-func printTop(w io.Writer, metrics []functionMetrics, cli kubernetes.Interface, output string) error {
+func printTop(w io.Writer, metrics []*Metric, cli kubernetes.Interface, output string) error {
 	if output == "" {
 		table := uitable.New()
 		table.MaxColWidth = 50
 		table.Wrap = true
 		table.AddRow("NAME", "NAMESPACE", "METHOD", "TOTAL_CALLS", "TOTAL_FAILURES", "TOTAL_DURATION_SECONDS", "AVG_DURATION_SECONDS")
 		for _, f := range metrics {
-			n := f.FunctionName
-			ns := f.Namespace
-			if len(f.MetricsMap) > 0 {
-				for k, metrics := range f.MetricsMap {
-					method := k
-					totalCalls := strconv.FormatFloat(metrics["function_calls_total"], 'f', -1, 32)
-					durationSeconds := strconv.FormatFloat(metrics["function_duration_seconds"], 'f', -1, 32)
-					totalFailures := strconv.FormatFloat(metrics["function_failures_total"], 'f', -1, 32)
-					avgDuration := strconv.FormatFloat(metrics["function_average_duration_seconds"], 'f', -1, 32)
-					table.AddRow(n, ns, method, totalCalls, totalFailures, durationSeconds, avgDuration)
-				}
-			} else {
-				table.AddRow(n, ns)
-			}
+			table.AddRow(f.FunctionName, f.Namespace, f.Method, f.TotalCalls, f.TotalFailures, f.TotalDurationSeconds, f.AvgDurationSeconds)
 		}
 		fmt.Fprintln(w, table)
 	} else {

@@ -41,7 +41,7 @@ type testMetricsHandler struct{}
 
 // handler used for testing purposes only
 // satisfies the MetricsRetriever interface, gets metrics from the test http server (URL to test http server stored in svc.SelfLink field)
-func (h *testMetricsHandler) getMetrics(apiClient kubernetes.Interface, namespace, functionName, _ string) ([]byte, error) {
+func (h *testMetricsHandler) getRawMetrics(apiClient kubernetes.Interface, namespace, functionName string) ([]byte, error) {
 	svc, err := apiClient.CoreV1().Services(namespace).Get(functionName, metav1.GetOptions{})
 	if err != nil {
 		return []byte{}, err
@@ -51,8 +51,7 @@ func (h *testMetricsHandler) getMetrics(apiClient kubernetes.Interface, namespac
 		return nil, err
 	}
 	defer b.Body.Close()
-	body, err := ioutil.ReadAll(b.Body)
-	return body, nil
+	return ioutil.ReadAll(b.Body)
 }
 
 func topOutput(t *testing.T, client versioned.Interface, apiV1Client kubernetes.Interface, h MetricsRetriever, ns, functionName, output string) string {
@@ -64,12 +63,6 @@ func topOutput(t *testing.T, client versioned.Interface, apiV1Client kubernetes.
 
 	return buf.String()
 }
-
-// DONE - multiple methods
-// DONE - multiple functions
-// DONE - single function
-// different namespace
-// DONE - json/yaml
 
 func TestTop(t *testing.T) {
 
@@ -191,7 +184,7 @@ func TestTop(t *testing.T) {
 			# TYPE promhttp_metric_handler_requests_total counter
 			promhttp_metric_handler_requests_total{code="200"} 10798
 			promhttp_metric_handler_requests_total{code="500"} 0
-			promhttp_metric_handler_requests_total{code="503"} 0			
+			promhttp_metric_handler_requests_total{code="503"} 0
 
 `)
 	}))
@@ -351,7 +344,7 @@ func TestTop(t *testing.T) {
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
-				v1.ServicePort{
+				{
 					Name:       "p1",
 					Port:       int32(8080),
 					TargetPort: intstr.FromInt(8080),
@@ -369,7 +362,7 @@ func TestTop(t *testing.T) {
 		},
 		Spec: v1.ServiceSpec{
 			Ports: []v1.ServicePort{
-				v1.ServicePort{
+				{
 					Name:       "p1",
 					Port:       int32(8080),
 					TargetPort: intstr.FromInt(8080),
