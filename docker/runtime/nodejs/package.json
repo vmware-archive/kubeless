@@ -10,8 +10,8 @@
   "homepage": "https://github.com/serverless/serverless-kubeless#readme",
   "dependencies": {
     "body-parser": "^1.17.2",
+    "end-of-stream": "^1.4.1",
     "express": "^4.15.3",
-    "is-stream": "^1.1.0",
     "morgan": "^1.8.2",
     "prom-client": "^10.0.2"
   }
