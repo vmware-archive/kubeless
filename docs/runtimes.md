@@ -378,6 +378,7 @@ $ kubeless function deploy foo
 
 When using the Ballerina runtime, it is possible to provide a configuration via `kubeless.toml` file. The values in kubeless.toml file are available for the function. The function(.bal file) and conf file should be in the same directory.
 The zip file containing both files should be passed to the Kubeless CLI.
+
 ```console
 foo
 ├── hellowithconf.bal
