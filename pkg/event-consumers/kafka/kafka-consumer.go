@@ -18,6 +18,7 @@ package kafka
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/Shopify/sarama"
 	"github.com/bsm/sarama-cluster"
@@ -31,6 +32,7 @@ var (
 	stoppedM  map[string](chan struct{})
 	consumerM map[string]bool
 	brokers   string
+	config    *cluster.Config
 )
 
 func init() {
@@ -38,22 +40,40 @@ func init() {
 	stoppedM = make(map[string](chan struct{}))
 	consumerM = make(map[string]bool)
 
+	// Init config
 	// taking brokers from env var
 	brokers = os.Getenv("KAFKA_BROKERS")
 	if brokers == "" {
 		brokers = "kafka.kubeless:9092"
 	}
-}
-
-// createConsumerProcess gets messages to a Kafka topic from the broker and send the payload to function service
-func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, clientset kubernetes.Interface, stopchan, stoppedchan chan struct{}) {
-	// Init config
-	config := cluster.NewConfig()
+	config = cluster.NewConfig()
 
 	config.Consumer.Return.Errors = true
 	config.Group.Return.Notifications = true
 	config.Consumer.Offsets.Initial = sarama.OffsetNewest
 
+	var err error
+
+	if enableTLS, _ := strconv.ParseBool(os.Getenv("KAFKA_ENABLE_TLS")); enableTLS {
+		config.Net.TLS.Enable = true
+		config.Net.TLS.Config, err = GetTLSConfiguration(os.Getenv("KAFKA_CACERTS"), os.Getenv("KAFKA_CERT"), os.Getenv("KAFKA_KEY"), os.Getenv("KAFKA_INSECURE"))
+		if err != nil {
+			logrus.Fatalf("Failed to set tls configuration: %v", err)
+		}
+	}
+	if enableSASL, _ := strconv.ParseBool(os.Getenv("KAFKA_ENABLE_SASL")); enableSASL {
+		config.Net.SASL.Enable = true
+		config.Version = sarama.V0_10_0_0
+		config.Net.SASL.User, config.Net.SASL.Password, err = GetSASLConfiguration(os.Getenv("KAFKA_USERNAME"), os.Getenv("KAFKA_PASSWORD"))
+		if err != nil {
+			logrus.Fatalf("Failed to set SASL configuration: %v", err)
+		}
+	}
+
+}
+
+// createConsumerProcess gets messages to a Kafka topic from the broker and send the payload to function service
+func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, clientset kubernetes.Interface, stopchan, stoppedchan chan struct{}) {
 	// Init consumer
 	brokersSlice := []string{broker}
 	topicsSlice := []string{topic}
