@@ -17,6 +17,10 @@ limitations under the License.
 package kinesis
 
 import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/ghodss/yaml"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -79,6 +83,17 @@ var updateCmd = &cobra.Command{
 				logrus.Fatalf("Unable to find Function %s in namespace %s. Error %s", functionName, ns, err)
 			}
 		}
+
+		dryrun, err := cmd.Flags().GetBool("dryrun")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		if regionName != "" {
 			kinesisTrigger.Spec.Region = regionName
 		}
@@ -91,6 +106,28 @@ var updateCmd = &cobra.Command{
 		if streamName != "" {
 			kinesisTrigger.Spec.Stream = streamName
 		}
+
+		if dryrun == true {
+			if output == "json" {
+				j, err := json.MarshalIndent(kinesisTrigger, "", "    ")
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(j[:]))
+				return
+			}  else if output == "yaml" {
+				y, err := yaml.Marshal(kinesisTrigger)
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(y[:]))
+				return
+			} else {
+				logrus.Infof("Output format needs to be yaml or json")
+				return
+			}
+		}
+
 		err = utils.UpdateKinesisTriggerCustomResource(kubelessClient, kinesisTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to update Kinesis trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
@@ -105,4 +142,6 @@ func init() {
 	updateCmd.Flags().StringP("shard-id", "", "", "Shard-ID of the AWS kinesis stream")
 	updateCmd.Flags().StringP("function-name", "", "", "Name of the Kubeless function to be associated with AWS Kinesis stream")
 	updateCmd.Flags().StringP("secret", "", "", "Kubernetes secret that has AWS access key and secret key")
+	updateCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
+	updateCmd.Flags().StringP("output", "o", "yaml", "Output format")
 }

@@ -56,5 +56,5 @@ var deleteCmd = &cobra.Command{
 }
 
 func init() {
-	deleteCmd.Flags().StringP("namespace", "", "", "Specify namespace of the Kafka trigger")
+	deleteCmd.Flags().StringP("namespace", "n", "", "Specify namespace of the Kafka trigger")
 }

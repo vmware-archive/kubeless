@@ -17,9 +17,13 @@ limitations under the License.
 package http
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/ghodss/yaml"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,6 +54,16 @@ var createCmd = &cobra.Command{
 		}
 
 		functionName, err := cmd.Flags().GetString("function-name")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		dryrun, err := cmd.Flags().GetBool("dryrun")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		output, err := cmd.Flags().GetString("output")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -133,6 +147,27 @@ var createCmd = &cobra.Command{
 		}
 		httpTrigger.Spec.BasicAuthSecret = basicAuthSecret
 
+		if dryrun == true {
+			if output == "json" {
+				j, err := json.MarshalIndent(httpTrigger, "", "    ")
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(j[:]))
+				return
+			}  else if output == "yaml" {
+				y, err := yaml.Marshal(httpTrigger)
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(y[:]))
+				return
+			} else {
+				logrus.Infof("Output format needs to be yaml or json")
+				return
+			}
+		}
+
 		err = utils.CreateHTTPTriggerCustomResource(kubelessClient, &httpTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to deploy HTTP trigger %s in namespace %s. Error: %s", triggerName, ns, err)
@@ -142,7 +177,7 @@ var createCmd = &cobra.Command{
 }
 
 func init() {
-	createCmd.Flags().StringP("namespace", "", "", "Specify namespace for the HTTP trigger")
+	createCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the HTTP trigger")
 	createCmd.Flags().StringP("function-name", "", "", "Name of the function to be associated with trigger")
 	createCmd.Flags().StringP("path", "", "", "Ingress path for the function")
 	createCmd.Flags().StringP("hostname", "", "", "Specify a valid hostname for the function")
@@ -150,5 +185,7 @@ func init() {
 	createCmd.Flags().StringP("gateway", "", "nginx", "Specify a valid gateway for the Ingress. Supported: nginx, traefik, kong")
 	createCmd.Flags().StringP("basic-auth-secret", "", "", "Specify an existing secret name for basic authentication")
 	createCmd.Flags().StringP("tls-secret", "", "", "Specify an existing secret that contains a TLS private key and certificate to secure ingress")
+	createCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
+	createCmd.Flags().StringP("output", "o", "yaml", "Output format")
 	createCmd.MarkFlagRequired("function-name")
 }

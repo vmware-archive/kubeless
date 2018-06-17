@@ -17,9 +17,14 @@ limitations under the License.
 package http
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/ghodss/yaml"
+
 )
 
 var updateCmd = &cobra.Command{
@@ -111,6 +116,37 @@ var updateCmd = &cobra.Command{
 			httpTrigger.Spec.BasicAuthSecret = basicAuthSecret
 		}
 
+		dryrun, err := cmd.Flags().GetBool("dryrun")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		if dryrun == true {
+			if output == "json" {
+				j, err := json.MarshalIndent(httpTrigger, "", "    ")
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(j[:]))
+				return
+			}  else if output == "yaml" {
+				y, err := yaml.Marshal(httpTrigger)
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(y[:]))
+				return
+			} else {
+				logrus.Infof("Output format needs to be yaml or json")
+				return
+			}
+		}
+
 		err = utils.UpdateHTTPTriggerCustomResource(kubelessClient, httpTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to deploy HTTP trigger %s in namespace %s. Error: %s", triggerName, ns, err)
@@ -120,7 +156,7 @@ var updateCmd = &cobra.Command{
 }
 
 func init() {
-	updateCmd.Flags().StringP("namespace", "", "", "Specify namespace for the HTTP trigger")
+	updateCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the HTTP trigger")
 	updateCmd.Flags().StringP("function-name", "", "", "Name of the function to be associated with trigger")
 	updateCmd.Flags().StringP("path", "", "", "Ingress path for the function")
 	updateCmd.Flags().StringP("hostname", "", "", "Specify a valid hostname for the function")
@@ -128,4 +164,6 @@ func init() {
 	updateCmd.Flags().StringP("gateway", "", "", "Specify a valid gateway for the Ingress")
 	updateCmd.Flags().StringP("basic-auth-secret", "", "", "Specify an existing secret name for basic authentication")
 	updateCmd.Flags().StringP("tls-secret", "", "", "Specify an existing secret that contains a TLS private key and certificate to secure ingress")
+	updateCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
+	updateCmd.Flags().StringP("output", "o", "yaml", "Output format")
 }

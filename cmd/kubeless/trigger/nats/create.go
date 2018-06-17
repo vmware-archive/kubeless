@@ -17,6 +17,10 @@ limitations under the License.
 package nats
 
 import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/ghodss/yaml"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -55,6 +59,16 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		dryrun, err := cmd.Flags().GetBool("dryrun")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		labelSelector, err := metav1.ParseToLabelSelector(functionSelector)
 		if err != nil {
 			logrus.Fatal("Invalid label selector specified " + err.Error())
@@ -79,6 +93,28 @@ var createCmd = &cobra.Command{
 		}
 		natsTrigger.Spec.FunctionSelector.MatchLabels = labelSelector.MatchLabels
 		natsTrigger.Spec.Topic = topic
+
+		if dryrun == true {
+			if output == "json" {
+				j, err := json.MarshalIndent(natsTrigger, "", "    ")
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(j[:]))
+				return
+			}  else if output == "yaml" {
+				y, err := yaml.Marshal(natsTrigger)
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(y[:]))
+				return
+			} else {
+				logrus.Infof("Output format needs to be yaml or json")
+				return
+			}
+		}
+
 		err = utils.CreateNatsTriggerCustomResource(kubelessClient, &natsTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to create NATS trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
@@ -89,9 +125,11 @@ var createCmd = &cobra.Command{
 }
 
 func init() {
-	createCmd.Flags().StringP("namespace", "", "", "Specify namespace for the NATS trigger")
+	createCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the NATS trigger")
 	createCmd.Flags().StringP("trigger-topic", "", "", "Specify topic to listen to in NATS")
 	createCmd.Flags().StringP("function-selector", "", "", "Selector (label query) to select function on (e.g. -function-selector key1=value1,key2=value2)")
 	createCmd.MarkFlagRequired("trigger-topic")
 	createCmd.MarkFlagRequired("function-selector")
+	createCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
+	createCmd.Flags().StringP("output", "o", "yaml", "Output format")
 }

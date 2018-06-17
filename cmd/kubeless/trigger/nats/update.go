@@ -17,6 +17,10 @@ limitations under the License.
 package nats
 
 import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/ghodss/yaml"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -74,6 +78,37 @@ var updateCmd = &cobra.Command{
 			natsTrigger.Spec.FunctionSelector.MatchLabels = labelSelector.MatchLabels
 		}
 
+		dryrun, err := cmd.Flags().GetBool("dryrun")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		if dryrun == true {
+			if output == "json" {
+				j, err := json.MarshalIndent(natsTrigger, "", "    ")
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(j[:]))
+				return
+			}  else if output == "yaml" {
+				y, err := yaml.Marshal(natsTrigger)
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(y[:]))
+				return
+			} else {
+				logrus.Infof("Output format needs to be yaml or json")
+				return
+			}
+		}
+
 		err = utils.UpdateNatsTriggerCustomResource(kubelessClient, natsTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to update NATS trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
@@ -83,7 +118,9 @@ var updateCmd = &cobra.Command{
 }
 
 func init() {
-	updateCmd.Flags().StringP("namespace", "", "", "Specify namespace for the NATS trigger")
+	updateCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the NATS trigger")
 	updateCmd.Flags().StringP("trigger-topic", "", "", "Specify topic to listen to in NATS")
 	updateCmd.Flags().StringP("function-selector", "", "", "Selector (label query) to select function on (e.g. -function-selector key1=value1,key2=value2)")
+	updateCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
+	updateCmd.Flags().StringP("output", "o", "yaml", "Output format")
 }
