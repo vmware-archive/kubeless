@@ -105,7 +105,7 @@ function modFinalize(result, res, end) {
 
     switch(typeof result) {
         case 'string':
-        case 'undefined'
+        case 'undefined':
             res.end(result);
             break;
         case 'object':
