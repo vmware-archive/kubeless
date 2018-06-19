@@ -35,13 +35,14 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	fFake "github.com/kubeless/kubeless/pkg/client/clientset/versioned/fake"
+	"github.com/kubeless/kubeless/pkg/utils"
 )
 
 type testMetricsHandler struct{}
 
 // handler used for testing purposes only
 // satisfies the MetricsRetriever interface, gets metrics from the test http server (URL to test http server stored in svc.SelfLink field)
-func (h *testMetricsHandler) getRawMetrics(apiClient kubernetes.Interface, namespace, functionName string) ([]byte, error) {
+func (h *testMetricsHandler) GetRawMetrics(apiClient kubernetes.Interface, namespace, functionName string) ([]byte, error) {
 	svc, err := apiClient.CoreV1().Services(namespace).Get(functionName, metav1.GetOptions{})
 	if err != nil {
 		return []byte{}, err
@@ -54,7 +55,7 @@ func (h *testMetricsHandler) getRawMetrics(apiClient kubernetes.Interface, names
 	return ioutil.ReadAll(b.Body)
 }
 
-func topOutput(t *testing.T, client versioned.Interface, apiV1Client kubernetes.Interface, h MetricsRetriever, ns, functionName, output string) string {
+func topOutput(t *testing.T, client versioned.Interface, apiV1Client kubernetes.Interface, h utils.MetricsRetriever, ns, functionName, output string) string {
 	var buf bytes.Buffer
 
 	if err := doTop(&buf, client, apiV1Client, h, ns, functionName, output); err != nil {

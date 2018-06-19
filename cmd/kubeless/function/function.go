@@ -31,6 +31,7 @@ import (
 	"unicode/utf8"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -366,4 +367,22 @@ func getDeploymentStatus(cli kubernetes.Interface, funcName, ns string) (string,
 		status += " NOT READY"
 	}
 	return status, nil
+}
+
+func getFunctions(kubelessClient versioned.Interface, namespace, functionName string) ([]*kubelessApi.Function, error) {
+	if functionName == "" {
+		f, err := kubelessClient.KubelessV1beta1().Functions(namespace).List(metav1.ListOptions{})
+		if err != nil {
+			return []*kubelessApi.Function{}, err
+		}
+		return f.Items, nil
+	}
+
+	f, err := kubelessClient.KubelessV1beta1().Functions(namespace).Get(functionName, metav1.GetOptions{})
+	if err != nil {
+		return []*kubelessApi.Function{}, err
+	}
+	return []*kubelessApi.Function{
+		f,
+	}, nil
 }
