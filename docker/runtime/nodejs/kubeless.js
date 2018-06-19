@@ -11,8 +11,6 @@ const express = require('express');
 const helper = require('./lib/helper');
 const morgan = require('morgan');
 
-const eos = require('end-of-stream');
-
 const app = express();
 app.use(morgan('combined'));
 const bodParserOptions = {
@@ -88,14 +86,7 @@ function modExecute(handler, req, res, end) {
             data,
             'extensions': { request: req, response: res },
         };
-
-        const funcResult = func(event, context);
-
-        if(isStream(funcResult)){
-            return handleStream(funcResult, req, res, end);
-        }
-
-        Promise.resolve(funcResult)
+        Promise.resolve(func(event, context))
         // Finalize
             .then(rval => modFinalize(rval, res, end))
             // Catch asynchronous errors
@@ -107,29 +98,14 @@ function modExecute(handler, req, res, end) {
     }
 }
 
-function isStream(o){
-    return o !== null &&
-	typeof o === 'object' &&
-	typeof o.pipe === 'function';
-}
-
-function handleStream(stream, req, res, end){
-    // ensure we deal with the end of the stream
-    eos(stream, (err) => {
-        if (err) {
-            return handleError(err, res, funcLabel(req), end)
-        }
-
-        end();
-    });
-
-    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-    stream.pipe(res);
-}
-
 function modFinalize(result, res, end) {
+    if(res.finished){
+        return end();
+    }
+
     switch(typeof result) {
         case 'string':
+        case 'undefined'
             res.end(result);
             break;
         case 'object':
