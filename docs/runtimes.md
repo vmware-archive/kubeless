@@ -407,7 +407,7 @@ Apart than changing the configuration, it is possible to use a custom runtime sp
  - It runs a web server listening in the port 8080
  - It exposes the endpoint `/healthz` to perform the container [liveness probe](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/)
 
-You can check the list of desired features that a runtime image should have [in this document](/docs/implementing-new-runtime).
+You can check the list of desired features that a runtime image should have [in this document](/docs/implementing-new-runtime.md).
 
 To deploy the container image you just need to specify it using the Kubeless CLI:
 
