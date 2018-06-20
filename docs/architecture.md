@@ -33,7 +33,7 @@ A _Trigger_ represents an event source the functions associated to it. When an e
 
 ### Runtime
 
-A _Runtime_ represents language and runtime specific environment in which function will be executed. Please see [runtimes](/docs/runtimes) for more details.
+A _Runtime_ represents language and runtime specific environment in which function will be executed. Please see [runtimes](/docs/runtimes.md) for more details.
 
 ## Design
 
