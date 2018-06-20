@@ -400,7 +400,7 @@ For the Ballerina runtime we start a [Ballerina HTTP server](../docker/runtime/b
 
 The Kubeless configuration defines a set of default container images per supported runtime variant.
 
-These default container images can be configured via Kubernetes environment variables on the Kubeless controller's deployment container. Or modifying the `kubeless-config` ConfigMap that is deployed along with the Kubeless controller. For more information about how to modify the Kubeless configuration check [this guide](/docs/function-controller-configuration).
+These default container images can be configured via Kubernetes environment variables on the Kubeless controller's deployment container. Or modifying the `kubeless-config` ConfigMap that is deployed along with the Kubeless controller. For more information about how to modify the Kubeless configuration check [this guide](/docs/function-controller-configuration.md).
 
 Apart than changing the configuration, it is possible to use a custom runtime specifying the image that the function will use. This way you are able to use any language or any binary with Kubeless as far as the image satisfies the following conditions:
 
