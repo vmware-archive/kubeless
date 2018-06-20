@@ -99,17 +99,15 @@ function modExecute(handler, req, res, end) {
 }
 
 function modFinalize(result, res, end) {
-    if(res.finished){
-        return end();
-    }
-
-    switch(typeof result) {
+    if (!res.finished) switch(typeof result) {
         case 'string':
-        case 'undefined':
             res.end(result);
             break;
         case 'object':
-            res.json(result);
+            res.json(result); // includes res.end(), null also handled
+            break;
+        case 'undefined':
+            res.end();
             break;
         default:
             res.end(JSON.stringify(result));
