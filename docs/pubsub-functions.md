@@ -4,7 +4,7 @@ You can trigger any Kubeless function by a PubSub mechanism. The PubSub function
 
 ## Kafka
 
-In Kubeless [release page](https://github.com/kubeless/kubeless/releases), you can find the manifest to quickly deploy a collection of Kafka and Zookeeper statefulsets. If you have a Kafka cluster already running in the same Kubernetes environment, you can also deploy PubSub function with it. Check out [this tutorial](/docs/use-existing-kafka) for more details how to do that.
+In Kubeless [release page](https://github.com/kubeless/kubeless/releases), you can find the manifest to quickly deploy a collection of Kafka and Zookeeper statefulsets. If you have a Kafka cluster already running in the same Kubernetes environment, you can also deploy PubSub function with it. Check out [this tutorial](/docs/use-existing-kafka.md) for more details how to do that.
 
 If you want to deploy the manifest we provide to deploy Kafka and Zookeeper execute the following command:
 
