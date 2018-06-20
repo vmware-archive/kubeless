@@ -22,7 +22,7 @@ spec:
 
 The fields that a Function specification can contain are:
 
- - Runtime: Runtime ID and version that the function will use. It should match one of the availables in the [Kubeless configuration](/docs/function-controller-configuration).
+ - Runtime: Runtime ID and version that the function will use. It should match one of the availables in the [Kubeless configuration](/docs/function-controller-configuration.md).
  - Timeout: Maximum timeout for the given function. After that time, the function execution will be terminated.
  - Handler: Pair of `<file_name>.<function_name>`. When using `zip` in `function-content-type` the `<file_name>` will be used to find the file with the function to expose. In other case it will be used just as a final file name. `<function_name>` is used to select the function to run from the exported functions of `<file_name>`. This field is mandatory and should match with an exported function.
  - Deps: Dependencies of the function. The format of this field will depend on the runtime, e.g. a `package.json` for NodeJS functions or a `Gemfile` for Ruby.
