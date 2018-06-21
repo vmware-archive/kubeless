@@ -125,6 +125,21 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 	}, nil
 }
 
+func addDefaultLabel(labels map[string]string) map[string]string {
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels["created-by"] = "kubeless"
+	return labels
+}
+
+func hasDefaultLabel(labels map[string]string) bool {
+	if labels == nil || labels["created-by"] != "kubeless" {
+		return false
+	}
+	return true
+}
+
 // CreateIngress creates ingress rule for a specific function
 func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTPTrigger, or []metav1.OwnerReference) error {
 	funcSvc, err := client.CoreV1().Services(httpTriggerObj.ObjectMeta.Namespace).Get(httpTriggerObj.Spec.FunctionName, metav1.GetOptions{})
@@ -137,7 +152,7 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 			Name:            httpTriggerObj.Name,
 			Namespace:       httpTriggerObj.Namespace,
 			OwnerReferences: or,
-			Labels:          httpTriggerObj.ObjectMeta.Labels,
+			Labels:          addDefaultLabel(httpTriggerObj.ObjectMeta.Labels),
 		},
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
@@ -218,8 +233,11 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 		if err != nil {
 			return err
 		}
+		if !hasDefaultLabel(newIngress.ObjectMeta.Labels) {
+			return fmt.Errorf("Found a conflicting ingress object %s/%s. Aborting", httpTriggerObj.Namespace, httpTriggerObj.Name)
+		}
 		if len(ingress.ObjectMeta.Labels) > 0 {
-			newIngress.ObjectMeta.Labels = ingress.ObjectMeta.Labels
+			newIngress.ObjectMeta.Labels = mergeMap(newIngress.ObjectMeta.Labels, ingress.ObjectMeta.Labels)
 		}
 		newIngress.ObjectMeta.OwnerReferences = or
 		newIngress.Spec = ingress.Spec
@@ -280,7 +298,7 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *kubelessApi.Funct
 	configMap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            funcObj.ObjectMeta.Name,
-			Labels:          funcObj.ObjectMeta.Labels,
+			Labels:          addDefaultLabel(funcObj.ObjectMeta.Labels),
 			OwnerReferences: or,
 		},
 		Data: configMapData,
@@ -294,6 +312,9 @@ func EnsureFuncConfigMap(client kubernetes.Interface, funcObj *kubelessApi.Funct
 		newConfigMap, err = client.Core().ConfigMaps(funcObj.ObjectMeta.Namespace).Get(funcObj.ObjectMeta.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
+		}
+		if !hasDefaultLabel(newConfigMap.ObjectMeta.Labels) {
+			return fmt.Errorf("Found a conflicting configmap object %s/%s. Aborting", funcObj.ObjectMeta.Namespace, funcObj.ObjectMeta.Name)
 		}
 		newConfigMap.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
 		newConfigMap.ObjectMeta.OwnerReferences = or
@@ -334,7 +355,7 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *kubelessApi.Functio
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            funcObj.ObjectMeta.Name,
-			Labels:          funcObj.ObjectMeta.Labels,
+			Labels:          addDefaultLabel(funcObj.ObjectMeta.Labels),
 			OwnerReferences: or,
 		},
 		Spec: serviceSpec(funcObj),
@@ -348,6 +369,9 @@ func EnsureFuncService(client kubernetes.Interface, funcObj *kubelessApi.Functio
 		newSvc, err = client.Core().Services(funcObj.ObjectMeta.Namespace).Get(funcObj.ObjectMeta.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
+		}
+		if !hasDefaultLabel(newSvc.ObjectMeta.Labels) {
+			return fmt.Errorf("Found a conflicting service object %s/%s. Aborting", funcObj.ObjectMeta.Namespace, funcObj.ObjectMeta.Name)
 		}
 		newSvc.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
 		newSvc.ObjectMeta.OwnerReferences = or
@@ -463,10 +487,12 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 		if err != nil {
 			return err
 		}
-		result.InitContainers = append(
-			result.InitContainers,
-			depsInstallContainer,
-		)
+		if depsInstallContainer.Name != "" {
+			result.InitContainers = append(
+				result.InitContainers,
+				depsInstallContainer,
+			)
+		}
 	}
 
 	// add compilation init container if needed
@@ -525,10 +551,9 @@ func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function,
 			Name:            jobName,
 			Namespace:       funcObj.ObjectMeta.Namespace,
 			OwnerReferences: or,
-			Labels: map[string]string{
-				"created-by": "kubeless",
-				"function":   funcObj.ObjectMeta.Name,
-			},
+			Labels: addDefaultLabel(map[string]string{
+				"function": funcObj.ObjectMeta.Name,
+			}),
 		},
 		Spec: batchv1.JobSpec{
 			Template: v1.PodTemplateSpec{
@@ -645,7 +670,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	}
 
 	//append data to dpm deployment
-	dpm.Labels = mergeMap(dpm.Labels, funcObj.Labels)
+	dpm.Labels = addDefaultLabel(mergeMap(dpm.Labels, funcObj.Labels))
 	dpm.Spec.Template.Labels = mergeMap(dpm.Spec.Template.Labels, funcObj.Labels)
 	dpm.Annotations = mergeMap(dpm.Annotations, funcObj.Annotations)
 	dpm.Spec.Template.Annotations = mergeMap(dpm.Spec.Template.Annotations, funcObj.Annotations)
@@ -726,17 +751,11 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	// update deployment for loading dependencies
 	lr.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
 
-	livenessProbe := &v1.Probe{
-		InitialDelaySeconds: int32(3),
-		PeriodSeconds:       int32(30),
-		Handler: v1.Handler{
-			HTTPGet: &v1.HTTPGetAction{
-				Path: "/healthz",
-				Port: intstr.FromInt(int(svcPort(funcObj))),
-			},
-		},
+	livenessProbeInfo := lr.GetLivenessProbeInfo(funcObj.Spec.Runtime, int(svcPort(funcObj)))
+
+	if dpm.Spec.Template.Spec.Containers[0].LivenessProbe == nil {
+		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbeInfo
 	}
-	dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbe
 
 	// Add security context
 	runtimeUser := int64(1000)
@@ -753,6 +772,12 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		// just certain fields (to avoid race conditions)
 		var newDpm *v1beta1.Deployment
 		newDpm, err = client.ExtensionsV1beta1().Deployments(funcObj.ObjectMeta.Namespace).Get(funcObj.ObjectMeta.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if !hasDefaultLabel(newDpm.ObjectMeta.Labels) {
+			return fmt.Errorf("Found a conflicting deployment object %s/%s. Aborting", funcObj.ObjectMeta.Namespace, funcObj.ObjectMeta.Name)
+		}
 		newDpm.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
 		newDpm.ObjectMeta.Annotations = funcObj.Spec.Deployment.ObjectMeta.Annotations
 		newDpm.ObjectMeta.OwnerReferences = or
@@ -805,7 +830,7 @@ func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, s
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            jobName,
 			Namespace:       funcObj.ObjectMeta.Namespace,
-			Labels:          funcObj.ObjectMeta.Labels,
+			Labels:          addDefaultLabel(funcObj.ObjectMeta.Labels),
 			OwnerReferences: or,
 		},
 		Spec: batchv1beta1.CronJobSpec{
@@ -840,6 +865,9 @@ func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, s
 		if err != nil {
 			return err
 		}
+		if !hasDefaultLabel(newCronJob.ObjectMeta.Labels) {
+			return fmt.Errorf("Found a conflicting cronjob object %s/%s. Aborting", funcObj.ObjectMeta.Namespace, funcObj.ObjectMeta.Name)
+		}
 		newCronJob.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
 		newCronJob.ObjectMeta.OwnerReferences = or
 		newCronJob.Spec = job.Spec
@@ -857,9 +885,9 @@ func CreateServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, 
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      funcObj.ObjectMeta.Name,
 					Namespace: ns,
-					Labels: map[string]string{
+					Labels: addDefaultLabel(map[string]string{
 						"service-monitor": "function",
-					},
+					}),
 					OwnerReferences: or,
 				},
 				Spec: monitoringv1alpha1.ServiceMonitorSpec{

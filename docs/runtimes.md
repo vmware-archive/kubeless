@@ -3,18 +3,19 @@
 By default Kubeless has support for the following runtimes:
 
  - Python: For the branches 2.7, 3.4 and 3.6
- - NodeJS: For the branches 6 and 8
+ - NodeJS: For the branches 6 and 8, as well as NodeJS [distroless](https://github.com/GoogleContainerTools/distroless) for the branch 8
  - Ruby: For the branch 2.4
  - PHP: For the branch 7.2
  - Golang: For the branch 1.10
  - .NET: For the branch 2.0
+ - Ballerina: For the branch 0.970.1
 
 You can see the list of supported runtimes executing:
 
 ```console
 $ kubeless get-server-config
 INFO[0000] Current Server Config:
-INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, php7.2, go1.10
+INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, php7.2, go1.10, dotnetcore2.0, java1.8, ballerina0.970.1
 ```
 
 Each runtime is encapsulated in a container image. The reference to these images are injected in the Kubeless configuration. You can find the source code of all runtimes in [`docker/runtime`](https://github.com/kubeless/kubeless/tree/master/docker/runtime).
@@ -47,9 +48,35 @@ $ kubeless function deploy myFunction --runtime nodejs6 \
                                 --from-file test.js
 ```
 
+Depending on the size of the payload sent to the NodeJS function it is possible to find the error `413 PayloadTooLargeError`. It is possible to increase this limit setting the environment variable `REQ_MB_LIMIT`. This will define the maximum size in MB that the function will accept:
+
+```console
+$ kubeless function deploy myFunction --runtime nodejs6 \
+                                --env REQ_MB_LIMIT=50 \
+                                --handler test.foobar \
+                                --from-file test.js
+```
+
 #### Server implementation
 
 For the Node.js runtime we start an [Express](http://expressjs.com) server and we include the routes for serving the health check and exposing the monitoring metrics. Apart from that we enable [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS) requests and [Morgan](https://github.com/expressjs/morgan) for handling the logging in the server. Monitoring is supported if the function is synchronous or if it uses promises.
+
+#### Distroless Variant
+
+There is the [distroless](https://github.com/GoogleContainerTools/distroless) variant of the Node.js 8 runtime.
+The distroless Node.js runtime contains only the kubeless function and its runtime dependencies.
+In particular, this variant does not contain package manager, shells or any other programs which are part of a standard Linux distribution. 
+
+The same example Node.js function from above can then be deployed:
+
+```console
+$ kubeless function deploy myFunction --runtime nodejs_distroless8 \
+                                --env NPM_REGISTRY=http://my-registry.com \
+                                --env NPM_SCOPE=@myorg \
+                                --dependencies package.json \
+                                --handler test.foobar \
+                                --from-file test.js
+```
 
 ### Python
 
@@ -104,7 +131,7 @@ func Handler(event functions.Event, context functions.Context) (string, error) {
 
 #### Description
 
-Ruby functions requires to import the package `github.com/kubeless/kubeless/pkg/functions` that is used to define the input parameters. The desired method should be exported in the package. You can specify dependencies using a `Gopkg.toml` file, dependencies are installed using [`dep`](https://github.com/golang/dep).
+Go functions require to import the package `github.com/kubeless/kubeless/pkg/functions` that is used to define the input parameters. The desired method should be exported in the package. You can specify dependencies using a `Gopkg.toml` file, dependencies are installed using [`dep`](https://github.com/golang/dep).
 
 #### Server implementation
 
@@ -331,6 +358,53 @@ You can deploy them using the command:
 kubeless function deploy fibonacci --from-file fibonacci.cs --handler module.handler --dependencies fibonacci.csproj --runtime dotnetcore2.0
 ```
 
+### Ballerina
+
+#### Example
+
+```ballerina
+import kubeless/kubeless;
+import ballerina/io;
+
+public function foo(kubeless:Event event, kubeless:Context context) returns (string|error) {
+    io:println(event);
+    io:println(context);
+    return "Hello Ballerina";
+}
+
+```
+
+#### Description
+
+The Ballerina functions should import the package `kubeless/kubeless`. This [package](../docker/runtime/ballerina/kubeless/kubeless.bal) contains two types `Event` and `Context`. 
+ 
+```console
+$ kubeless function deploy foo 
+    --runtime ballerina0.970.1 
+    --from-file foo.bal 
+    --handler foo.foo 
+```
+
+When using the Ballerina runtime, it is possible to provide a configuration via `kubeless.toml` file. The values in kubeless.toml file are available for the function. The function(.bal file) and conf file should be in the same directory.
+The zip file containing both files should be passed to the Kubeless CLI.
+
+```console
+foo
+├── hellowithconf.bal
+└── kubeless.toml
+
+$ zip -r -j foo.zip foo/
+
+$ kubeless function deploy foo
+      --runtime ballerina0.970.1 
+      --from-file foo.zip 
+      --handler hellowithconf.foo
+```
+
+#### Server implementation
+
+For the Ballerina runtime we start a [Ballerina HTTP server](../docker/runtime/ballerina/kubeless_run.tpl.bal) with two resources, '/' and '/healthz'.
+
 ## Use a custom runtime
 
 The Kubeless configuration defines a set of default container images per supported runtime variant.
@@ -399,3 +473,25 @@ hello world
 Note that it is possible to specify `--dependencies` as well when using custom images and install them using an Init container but that is only possible for the supported runtimes. You can get the list of supported runtimes executing `kubeless get-server-config`.
 
 When using a runtime not supported your function will be stored as `/kubeless/function` without extension. For example, injecting a file `my-function.jar` would result in the file being mounted as `/kubeless/my-fuction`).
+
+## Use a custom livenessProbe
+
+One can use kubeless-config to override the default liveness probe. By default, the liveness probe is `http-get` this can be overriden by providing the livenessprobe info in `kubeless-confg` under `runtime-images`. It has been implemented in such a way that each runtime can have its own liveness probe info. To use custom liveness probe paste the following info in `runtime-images`:
+
+```json
+"version": [],
+"livenessProbeInfo": {
+  "exec": {
+    "command": [
+      "curl",
+      "-f",
+      "http://localhost:8080/healthz"
+    ],
+  },
+  "initialDelaySeconds": 5,
+  "periodSeconds": 5,
+  "failureThreshold": 3,
+  "timeoutSeconds": 30
+},
+"depname": ""
+```

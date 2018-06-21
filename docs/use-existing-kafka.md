@@ -129,3 +129,43 @@ Open another terminal and check for the pubsub function log to see if it receive
 $ kubectl logs -f pubsub-python-5445bdcb64-48bv2
 hello world
 ```
+
+When using SASL you must add `KAFKA_ENABLE_SASL`, `KAFKA_USERNAME` and `KAFKA_PASSWORD` env var to set authentification (might use a secret).:
+```yaml
+$ echo '
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    kubeless: kafka-trigger-controller
+  name: kafka-trigger-controller
+  namespace: kubeless
+spec:
+  selector:
+    matchLabels:
+      kubeless: kafka-trigger-controller
+  template:
+    metadata:
+      labels:
+        kubeless: kafka-trigger-controller
+    spec:
+      containers:
+      - image: bitnami/kafka-trigger-controller:latest
+        imagePullPolicy: IfNotPresent
+        name: kafka-trigger-controller
+        env:
+        ...
+        - name: KAFKA_ENABLE_SASL
+          value: true # CHANGE THIS!
+        - name: KAFKA_USERNAME
+          value: kafka-sasl-username # CHANGE THIS!
+        - name: KAFKA_PASSWORD
+          value: kafka-sasl-password # CHANGE THIS!
+...
+```
+
+When using SSL to secure kafka communication, you must set `KAFKA_ENABLE_TLS`, and specify some of these: 
+* `KAFKA_CACERTS` to check server certificate
+* `KAFKA_CERT` and `KAFKA_KEY` to check client certificate
+* `KAFKA_INSECURE` to skip TLS verfication

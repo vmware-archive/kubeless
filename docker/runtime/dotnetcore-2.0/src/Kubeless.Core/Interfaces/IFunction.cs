@@ -4,6 +4,6 @@
     {
         IFunctionSettings FunctionSettings { get; }
 
-        bool IsCompiled();
+        bool IsCompiled(); //TODO: Change to IsValid?
     }
 }

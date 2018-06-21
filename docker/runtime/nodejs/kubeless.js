@@ -11,19 +11,26 @@ const express = require('express');
 const helper = require('./lib/helper');
 const morgan = require('morgan');
 
+const bodySizeLimit = Number(process.env.REQ_MB_LIMIT || '1');
+
 const app = express();
 app.use(morgan('combined'));
 const bodParserOptions = {
-    type: '*/*'
+    type: '*/*',
+    limit: `${bodySizeLimit}mb`,
 };
 app.use(bodyParser.raw(bodParserOptions));
+app.use(bodyParser.json({ limit: `${bodySizeLimit}mb` }));
+app.use(bodyParser.urlencoded({ limit: `${bodySizeLimit}mb`, extended: true }));
 
 const modName = process.env.MOD_NAME;
 const funcHandler = process.env.FUNC_HANDLER;
 const timeout = Number(process.env.FUNC_TIMEOUT || '180');
 const funcPort = Number(process.env.FUNC_PORT || '8080');
 
-const modRootPath = require.main.filename.replace('kubeless.js', 'kubeless');
+const modKubeless = require.main.filename;
+const modRootPath = path.join(modKubeless, '..', '..', 'kubeless');
+
 const modPath = path.join(modRootPath, `${modName}.js`);
 const libPath = path.join(modRootPath, 'node_modules');
 const pkgPath = path.join(modRootPath, 'package.json');

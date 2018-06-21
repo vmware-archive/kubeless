@@ -106,13 +106,27 @@ local runtime_images ='[
       {
         "name": "node6",
         "version": "6",
-        "runtimeImage": "andyhume/kubeless-nodejs:6",
+        "runtimeImage": "kubeless/nodejs@sha256:f2a338c62d010687137c0880d1b68bea926f71a7111251a4622db8ae8c036898",
         "initImage": "node:6.10"
       },
       {
         "name": "node8",
         "version": "8",
-        "runtimeImage": "andyhume/kubeless-nodejs:8",
+        "runtimeImage": "kubeless/nodejs@sha256:3b5180a9e0bdce043f0f455758561cf4ad62406fcc80140c2393a2c3a1ff88ac",
+        "initImage": "node:8"
+      }
+    ],
+    "depName": "package.json",
+    "fileNameSuffix": ".js"
+  },
+  {
+    "ID": "nodejs_distroless",
+    "compiled": false,
+    "versions": [
+      {
+        "name": "node8",
+        "version": "8",
+        "runtimeImage": "henrike42/kubeless/runtimes/nodejs/distroless:0.0.2",
         "initImage": "node:8"
       }
     ],
@@ -163,13 +177,13 @@ local runtime_images ='[
   },
   {
     "ID": "dotnetcore",
-    "compiled": false,
+    "compiled": true,
     "versions": [
       {
         "name": "dotnetcore2.0",
         "version": "2.0",
-        "runtimeImage": "allantargino/kubeless-dotnetcore@sha256:0ba7f27a37ff7a789de5b485d64b70be5f6767228357d843d4eb3a492c32f1ed",
-        "initImage": "allantargino/aspnetcore-build@sha256:12bb717ed47d24c0bde5d454841d0bdc3b9fd90f1e6ad24d08ac02eba40ccc8b"
+        "runtimeImage": "allantargino/kubeless-dotnetcore@sha256:1699b07d9fc0276ddfecc2f823f272d96fd58bbab82d7e67f2fd4982a95aeadc",
+        "initImage": "allantargino/aspnetcore-build@sha256:0d60f845ff6c9c019362a68b87b3920f3eb2d32f847f2d75e4d190cc0ce1d81c"
       }
     ],
     "depName": "project.csproj",
@@ -188,6 +202,20 @@ local runtime_images ='[
     ],
     "depName": "pom.xml",
     "fileNameSuffix": ".java"
+  },
+  {
+     "ID": "ballerina",
+     "compiled": true,
+     "versions": [
+       {
+          "name": "ballerina0.970.1",
+          "version": "0.970.1",
+          "runtimeImage": "kubeless/ballerina@sha256:e9eb2b5e5fb6f8294afea7ad4c02be71d6878305d1d4542aab2e8d2ef50d8be0",
+          "initImage": "kubeless/ballerina-init@sha256:4030be0d7f513e4153993e6703d8b368a9ae8d093fcd9d322e3c1d8d30bf6eb2"
+       }
+     ],
+     "depName": "",
+     "fileNameSuffix": ".bal"
   }
 ]';
 

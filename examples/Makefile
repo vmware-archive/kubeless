@@ -3,6 +3,7 @@ get-python:
 
 get-python-verify:
 	kubeless function call get-python |egrep hello.world
+	kubeless function top --function get-python --out yaml |egrep total_calls.*[1-100000]
 
 get-python-update:
 	$(eval TMPDIR := $(shell mktemp -d))
@@ -798,3 +799,42 @@ get-java-deps:
 get-java-deps-verify:
 	kubeless function call get-java-deps --data '{"hello": "world"}'
 	kubectl logs -l function=get-java-deps | grep -q '.*Hello.*world! Current local time is:'
+
+get-nodejs-distroless:
+	kubeless function deploy get-nodejs-distroless --runtime nodejs_distroless8 --handler helloget.foo --from-file nodejs/helloget.js
+
+get-nodejs-distroless-verify:
+	kubeless function call get-nodejs-distroless |egrep hello.world
+
+get-nodejs-distroless-deps:
+	kubeless function deploy get-nodejs-distroless-deps --runtime nodejs_distroless8 --handler helloget.handler --from-file nodejs/hellowithdeps.js --dependencies nodejs/package.json
+
+get-nodejs-distroless-deps-verify:
+	kubeless function call get-nodejs-distroless-deps --data '{"hello": "world"}' | grep -q 'hello.*world.*date.*UTC'
+
+get-ballerina:
+	kubeless function deploy get-ballerina --runtime ballerina0.970.1 --from-file ballerina/helloget.bal --handler helloget.foo
+
+get-ballerina-verify:
+	kubeless function call get-ballerina |egrep Hello.World.Ballerina
+
+get-ballerina-custom-port:
+	kubeless function deploy get-ballerina-custom-port --runtime ballerina0.970.1 --handler helloget.foo --from-file ballerina/helloget.bal --port 8083
+
+get-ballerina-custom-port-verify:
+	kubectl get svc get-ballerina-custom-port -o yaml | grep 'targetPort: 8083'
+	kubeless function call get-ballerina-custom-port |egrep Hello.World.Ballerina
+
+get-ballerina-data:
+	kubeless function deploy get-ballerina-data --runtime ballerina0.970.1 --from-file ballerina/hellowithdata.bal --handler hellowithdata.foo
+
+get-ballerina-data-verify:
+	kubeless function call get-ballerina-data --data '{"hello":"world"}' |egrep hello
+
+get-ballerina-conf:
+	zip -r -j ballerina/bar.zip ballerina/hello_with_conf/
+	kubeless function deploy get-ballerina-conf --runtime ballerina0.970.1 --from-file ballerina/bar.zip --handler hello_with_conf.bar
+	rm ballerina/bar.zip
+
+get-ballerina-conf-verify:
+	kubeless function call get-ballerina-conf | egrep john

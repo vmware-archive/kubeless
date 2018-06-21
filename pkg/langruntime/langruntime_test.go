@@ -38,17 +38,12 @@ func TestGetFunctionFileNames(t *testing.T) {
 
 	expectedValues := []string{"requirements.txt", "test.py"}
 	check(clientset, lr, "python2.7", "test", expectedValues, t)
-	check(clientset, lr, "python3.4", "test", expectedValues, t)
 
 	expectedValues = []string{"package.json", "test.js"}
 	check(clientset, lr, "nodejs6", "test", expectedValues, t)
-	check(clientset, lr, "nodejs8", "test", expectedValues, t)
 
 	expectedValues = []string{"Gemfile", "test.rb"}
 	check(clientset, lr, "ruby2.4", "test", expectedValues, t)
-
-	expectedValues = []string{"requirements.xml", "test.cs"}
-	check(clientset, lr, "dotnetcore2.0", "test", expectedValues, t)
 }
 
 func TestGetFunctionImage(t *testing.T) {
@@ -80,12 +75,32 @@ func TestGetFunctionImage(t *testing.T) {
 	os.Unsetenv("RUBY2.4_RUNTIME")
 }
 
+func TestGetLivenessProbe(t *testing.T) {
+	lr := SetupLangRuntime(clientset)
+	lr.ReadConfigMap()
+	livenessProbe := lr.GetLivenessProbeInfo("nodejs", 8080)
+
+	expectedLivenessProbe := &v1.Probe{
+		InitialDelaySeconds: int32(5),
+		PeriodSeconds:       int32(10),
+		Handler: v1.Handler{
+			Exec: &v1.ExecAction{
+				Command: []string{"curl", "-f", "http://localhost:8080/healthz"},
+			},
+		},
+	}
+
+	if !reflect.DeepEqual(livenessProbe, expectedLivenessProbe) {
+		t.Fatalf("Expected livenessProbeInfo to be %v, but found %v", expectedLivenessProbe, livenessProbe)
+	}
+}
+
 func TestGetRuntimes(t *testing.T) {
 	lr := SetupLangRuntime(clientset)
 	lr.ReadConfigMap()
 
 	runtimes := strings.Join(lr.GetRuntimes(), ", ")
-	expectedRuntimes := "python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, dotnetcore2.0, php7.2"
+	expectedRuntimes := "python2.7, nodejs6, ruby2.4"
 	if runtimes != expectedRuntimes {
 		t.Errorf("Expected %s but got %s", expectedRuntimes, runtimes)
 	}

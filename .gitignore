@@ -141,6 +141,11 @@ artifacts/
 *.nuget.props
 *.nuget.targets
 
+# IDEA Files
+.idea/
+*.iml
+*.ipr
+*.iws
 
 # Kubeless specific
 bats/
