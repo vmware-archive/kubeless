@@ -477,7 +477,7 @@ One can use kubeless-config to override the default liveness probe. By default, 
       "curl",
       "-f",
       "http://localhost:8080/healthz"
-    ],
+    ]
   },
   "initialDelaySeconds": 5,
   "periodSeconds": 5,
