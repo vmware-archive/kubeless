@@ -1,0 +1,33 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.4'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'com.github.johnrengelman.shadow'
+version = '0.1'
+jar {
+    manifest {
+        attributes 'Implementation-Title': 'JVM-Runtime',
+                   'Implementation-Version': version
+    }
+}
+
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile group: 'io.prometheus', name: 'simpleclient', version: '0.3.0'
+    compile group: 'io.prometheus', name: 'simpleclient_hotspot', version: '0.3.0'
+    compile group: 'io.prometheus', name: 'simpleclient_httpserver', version: '0.3.0'
+    compile group: 'io.prometheus', name: 'simpleclient_pushgateway', version: '0.3.0'
+    compile group: 'log4j', name: 'log4j', version: '1.2.17'
+
+    testCompile group: 'junit', name: 'junit', version: '4.+'
+}
