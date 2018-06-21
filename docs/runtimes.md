@@ -48,6 +48,15 @@ $ kubeless function deploy myFunction --runtime nodejs6 \
                                 --from-file test.js
 ```
 
+Depending on the size of the payload sent to the NodeJS function it is possible to find the error `413 PayloadTooLargeError`. It is possible to increase this limit setting the environment variable `REQ_MB_LIMIT`. This will define the maximum size in MB that the function will accept:
+
+```console
+$ kubeless function deploy myFunction --runtime nodejs6 \
+                                --env REQ_MB_LIMIT=50 \
+                                --handler test.foobar \
+                                --from-file test.js
+```
+
 #### Server implementation
 
 For the Node.js runtime we start an [Express](http://expressjs.com) server and we include the routes for serving the health check and exposing the monitoring metrics. Apart from that we enable [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS) requests and [Morgan](https://github.com/expressjs/morgan) for handling the logging in the server. Monitoring is supported if the function is synchronous or if it uses promises.

@@ -11,12 +11,17 @@ const express = require('express');
 const helper = require('./lib/helper');
 const morgan = require('morgan');
 
+const bodySizeLimit = Number(process.env.REQ_MB_LIMIT || '1');
+
 const app = express();
 app.use(morgan('combined'));
 const bodParserOptions = {
-    type: '*/*'
+    type: '*/*',
+    limit: `${bodySizeLimit}mb`,
 };
 app.use(bodyParser.raw(bodParserOptions));
+app.use(bodyParser.json({ limit: `${bodySizeLimit}mb` }));
+app.use(bodyParser.urlencoded({ limit: `${bodySizeLimit}mb`, extended: true }));
 
 const modName = process.env.MOD_NAME;
 const funcHandler = process.env.FUNC_HANDLER;
