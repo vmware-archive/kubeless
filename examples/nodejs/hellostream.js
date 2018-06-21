@@ -12,14 +12,16 @@ function fromString(string) {
   });
 }
 
-module.exports = (event, context) => {
-    return new Promise((resolve, reject) => {
-        const {res} = event.extension;
-        const stream = fromString('hello world');
+module.exports = {
+    foo: function(event, context) {
+        return new Promise((resolve, reject) => {
+            const {response} = event.extensions;
+            const stream = fromString('hello world!');
 
-        eos(stream, err => err ? reject(err) : resolve(stream));
+            eos(stream, err => err ? reject(err) : resolve(stream));
 
-        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-        stream.pipe(res);
-    });
+            response.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+            stream.pipe(response);
+        });
+    }
 }

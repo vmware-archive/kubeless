@@ -104,7 +104,7 @@ get-nodejs-custom-port-verify:
 	kubeless function call get-nodejs-custom-port |egrep hello.world
 
 get-nodejs-stream:
-	kubeless function deploy get-nodejs-stream --runtime nodejs6 --handler helloget.foo --from-file nodejs/hellostream.js --dependencies nodejs/package.json
+	kubeless function deploy get-nodejs-stream --runtime nodejs6 --handler hellostream.foo --from-file nodejs/hellostream.js --dependencies nodejs/package.json
 
 get-nodejs-stream-verify:
 	kubeless function call get-nodejs-stream |egrep hello.world
