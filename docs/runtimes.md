@@ -8,14 +8,14 @@ By default Kubeless has support for the following runtimes:
  - PHP: For the branch 7.2
  - Golang: For the branch 1.10
  - .NET: For the branch 2.0
- - Ballerina: For the branch 0.970.1
+ - Ballerina: For the branch 0.975.0
 
 You can see the list of supported runtimes executing:
 
 ```console
 $ kubeless get-server-config
 INFO[0000] Current Server Config:
-INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, php7.2, go1.10, dotnetcore2.0, java1.8, ballerina0.970.1
+INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, php7.2, go1.10, dotnetcore2.0, java1.8, ballerina0.975.0
 ```
 
 Each runtime is encapsulated in a container image. The reference to these images are injected in the Kubeless configuration. You can find the source code of all runtimes in [`docker/runtime`](https://github.com/kubeless/kubeless/tree/master/docker/runtime).
@@ -380,7 +380,7 @@ The Ballerina functions should import the package `kubeless/kubeless`. This [pac
  
 ```console
 $ kubeless function deploy foo 
-    --runtime ballerina0.970.1 
+    --runtime ballerina0.975.0 
     --from-file foo.bal 
     --handler foo.foo 
 ```
@@ -396,7 +396,7 @@ foo
 $ zip -r -j foo.zip foo/
 
 $ kubeless function deploy foo
-      --runtime ballerina0.970.1 
+      --runtime ballerina0.975.0 
       --from-file foo.zip 
       --handler hellowithconf.foo
 ```

@@ -1,4 +1,4 @@
-public type Event{
+public type Event record {
     string data;
     string event_id;
     string event_type;
@@ -7,7 +7,7 @@ public type Event{
     map extensions;
 };
 
-public type Context{
+public type Context record {
     string function_name;
     string time_out;
     string runtime;
