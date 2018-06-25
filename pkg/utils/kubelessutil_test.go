@@ -815,7 +815,7 @@ func TestEnsureCronJob(t *testing.T) {
 	if *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds != int64(120) {
 		t.Errorf("Unexpected ActiveDeadlineSeconds: %d", *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds)
 	}
-	expectedCommand := []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", f1Name, ns)}
+	expectedCommand := []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.k8s.local:8080", f1Name, ns)}
 	runtimeContainer := cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0]
 	if runtimeContainer.Image != "unzip" {
 		t.Errorf("Unexpected image %s", runtimeContainer.Image)

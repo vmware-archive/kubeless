@@ -52,7 +52,7 @@ func GetHTTPReq(clientset kubernetes.Interface, funcName, namespace, eventNamesp
 		return nil, err
 	}
 
-	req, err := http.NewRequest(method, fmt.Sprintf("http://%s.%s.svc.cluster.local:%s", funcName, namespace, funcPort), strings.NewReader(body))
+	req, err := http.NewRequest(method, fmt.Sprintf("http://%s.%s.svc.k8s.local:%s", funcName, namespace, funcPort), strings.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create request %v", err)
 	}
