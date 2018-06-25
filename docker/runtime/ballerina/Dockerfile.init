@@ -6,5 +6,6 @@ WORKDIR /kubeless
 
 # Install controller
 ADD kubeless_run.tpl.bal /ballerina/files/src/
+ADD compile-function.sh /compile-function.sh
 
 ENTRYPOINT [""]
