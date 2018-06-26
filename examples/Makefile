@@ -104,6 +104,12 @@ get-nodejs-custom-port-verify:
 	kubectl get svc get-nodejs-custom-port -o yaml | grep 'targetPort: 8083'
 	kubeless function call get-nodejs-custom-port |egrep hello.world
 
+get-nodejs-stream:
+	kubeless function deploy get-nodejs-stream --runtime nodejs6 --handler hellostream.foo --from-file nodejs/hellostream.js --dependencies nodejs/package.json
+
+get-nodejs-stream-verify:
+	kubeless function call get-nodejs-stream |egrep hello.world
+
 timeout-nodejs:
 	$(eval TMPDIR := $(shell mktemp -d))
 	printf 'module.exports = { foo: function (event, context) { while(true) {} } }\n' > $(TMPDIR)/hello-loop.js
