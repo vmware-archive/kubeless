@@ -46,8 +46,8 @@ Kubeless fully supports two major versions of Kubernetes (1.8 and 1.9) at the mo
 | Platform | Kubernetes Version | HTTP functions | Scheduled functions | PubSub (Kafka) functions | PubSub (NATS) functions | Autoscaling (CPU) |
 | ------------- | ----- | - | - | - | - | - |
 | GKE           | 1.7.X | ✓ | X | ✓ | ✓ | X |
-| GKE (CI)      | 1.8.X | ✓ | ✓ | ✓ | ✓ | ✓ |
-| GKE           | 1.9.X | ✓ | ✓ | ✓ | ✓ | ✓ |
+| GKE           | 1.8.X | ✓ | ✓ | ✓ | ✓ | ✓ |
+| GKE (CI)      | 1.9.X | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Minikube      | 1.7.X | ✓ | X | ✓ | ✓ | ✓ |
 | Minikube      | 1.8.X | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Minikube (CI) | 1.9.X | ✓ | ✓ | ✓ | ✓ | ✓ |
