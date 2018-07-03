@@ -16,7 +16,7 @@ defaults: &defaults
     KINESIS_CONTROLLER_IMAGE_NAME: bitnami/kinesis-trigger-controller
     CGO_ENABLED: "0"
     TEST_DEBUG: "1"
-    GKE_VERSION: 1.8.10-gke.0
+    GKE_VERSION: 1.9.7-gke.3
     MINIKUBE_VERSION: v0.25.2
     MANIFESTS: kubeless kubeless-non-rbac kubeless-openshift kafka-zookeeper kafka-zookeeper-openshift nats kinesis
 exports: &exports
