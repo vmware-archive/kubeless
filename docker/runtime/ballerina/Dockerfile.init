@@ -1,4 +1,4 @@
-FROM ballerina/ballerina-platform:0.975.0
+FROM ballerina/ballerina-platform:0.980.0
 
 USER 1000
 
