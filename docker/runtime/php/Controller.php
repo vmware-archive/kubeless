@@ -24,7 +24,7 @@ class Controller
     $this->app = new \Slim\App();
     $this->timeout = (!empty(getenv('FUNC_TIMEOUT')) ? getenv('FUNC_TIMEOUT') : 180);
     $this->root = (!empty(getenv('MOD_ROOT_PATH')) ? getenv('MOD_ROOT_PATH') : '/kubeless/');
-    $this->file = sprintf("/kubeless/%s.php", getenv('MOD_NAME'));
+    $this->file = sprintf("%s%s.php", $this->root, getenv('MOD_NAME'));
     $this->function = getenv('FUNC_HANDLER');
     $this->currentDir = getcwd();
     $this->functionContext = (object) array(
