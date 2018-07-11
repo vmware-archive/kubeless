@@ -91,7 +91,7 @@ service<http:Service> controller bind listener {
                 response_payload = e.message;
             }
         }
-        response.setPayload(response_payload);
+        response.setPayload(untaint response_payload);
         // Send a response back to caller
         // Errors are ignored with '_'
         // -> indicates a synchronous network-bound call

@@ -1,4 +1,4 @@
-FROM ballerina/ballerina:0.975.0
+FROM ballerina/ballerina:0.980.0
 
 USER 1000
 
