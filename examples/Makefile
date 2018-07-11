@@ -801,7 +801,7 @@ get-java-deps-verify:
 	kubectl logs -l function=get-java-deps | grep -q '.*Hello.*world! Current local time is:'
 
 get-jvm-java:
-	kubeless function deploy get-jvm-java --runtime jvm1.8 --from-file jvm/java/build/libs/jvm-test-0.1-all.jar --handler io_ino_Handler.sayHello
+	kubeless function deploy get-jvm-java --runtime jvm1.8 --from-file jvm/java/test-java-jvm.jar --handler io_ino_Handler.sayHello
 
 get-jvm-java-verify:
 	kubeless function call get-jvm-java | grep "Hello world"
