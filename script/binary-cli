@@ -17,7 +17,7 @@
 set -e
 
 OS_PLATFORM_ARG=(-os="darwin linux windows")
-OS_ARCH_ARG=(-arch="386 amd64")
+OS_ARCH_ARG=(-arch="amd64")
 
 GIT_COMMIT=$(git describe --tags --dirty)
 BUILD_DATE=$(date)
