@@ -67,10 +67,9 @@ class Controller
           )
         );
         $res = call_user_func($this->function, $event, $this->functionContext);
-        $event->extensions->response->getBody()->write($res);
         ob_end_clean();
         chdir($this->currentDir);
-        return $event->extensions->response;
+        return $res;
       } else {
           sleep($this->timeout);
           posix_kill($pid, SIGKILL);
