@@ -50,30 +50,32 @@ class Controller
         throw new \Exception(sprintf("Function %s not exist", $this->function));
       }
       $pid = pcntl_fork();
-      if ($pid == 0) {
-        $data = $request->getBody()->getContents();
-        if ($_SERVER['HTTP_CONTENT_TYPE'] == 'application/json') {
-          $data = json_decode($data);
-        }
-        $event = (object) array(
-          'data' => $data,
-          'event-type' => $_SERVER['HTTP_EVENT_TYPE'],
-          'event-id' => $_SERVER['HTTP_EVENT_ID'],
-          'event-time' => $_SERVER['HTTP_EVENT_TIME'],
-          'event-namespace' => $_SERVER['HTTP_EVENT_NAMESPACE'],
-          'extensions' => (object) array(
-            'request' => $request,
-            'response' => $response,
-          )
-        );
-        $res = call_user_func($this->function, $event, $this->functionContext);
-        ob_end_clean();
-        chdir($this->currentDir);
-        return $res;
-      } else {
-          sleep($this->timeout);
-          posix_kill($pid, SIGKILL);
-          throw new TimeoutFunctionException();
+      switch ($pid) {
+          case 0:
+              $data = $request->getBody()->getContents();
+              if ($_SERVER['HTTP_CONTENT_TYPE'] == 'application/json') {
+                  $data = json_decode($data);
+              }
+              $event = (object) array(
+                  'data' => $data,
+                  'event-type' => $_SERVER['HTTP_EVENT_TYPE'],
+                  'event-id' => $_SERVER['HTTP_EVENT_ID'],
+                  'event-time' => $_SERVER['HTTP_EVENT_TIME'],
+                  'event-namespace' => $_SERVER['HTTP_EVENT_NAMESPACE'],
+                  'extensions' => (object) array(
+                      'request' => $request,
+                      'response' => $response,
+                  )
+              );
+              $res = call_user_func($this->function, $event, $this->functionContext);
+              ob_end_clean();
+              chdir($this->currentDir);
+              return $res;
+          case -1:
+              throw new TimeoutFunctionException();
+          default:
+              sleep($this->timeout);
+              posix_kill($pid, SIGKILL);
       }
   }
 
