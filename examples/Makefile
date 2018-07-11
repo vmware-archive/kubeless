@@ -800,6 +800,12 @@ get-java-deps-verify:
 	kubeless function call get-java-deps --data '{"hello": "world"}'
 	kubectl logs -l function=get-java-deps | grep -q '.*Hello.*world! Current local time is:'
 
+get-jvm-java:
+	kubeless function deploy get-jvm-java --runtime jvm1.8 --from-file jvm/java/test-java-jvm.jar --handler io_ino_Handler.sayHello
+
+get-jvm-java-verify:
+	kubeless function call get-jvm-java | grep "Hello world"
+
 get-nodejs-distroless:
 	kubeless function deploy get-nodejs-distroless --runtime nodejs_distroless8 --handler helloget.foo --from-file nodejs/helloget.js
 

@@ -51,6 +51,7 @@ load ../script/libtest
   deploy_function get-java
   deploy_function post-java
   deploy_function get-java-deps
+  deploy_function get-jvm-java
   deploy_function get-nodejs-distroless
   deploy_function get-nodejs-distroless-deps
   deploy_function get-ballerina
@@ -198,6 +199,10 @@ load ../script/libtest
 @test "Test function: get-python-secrets" {
   verify_function get-python-secrets
   kubeless_function_delete get-python-secrets
+}
+@test "Test function: get-jvm-java" {
+  verify_function get-jvm-java
+  kubeless_function_delete get-jvm-java
 }
 @test "Test function: get-java" {
   verify_function get-java
