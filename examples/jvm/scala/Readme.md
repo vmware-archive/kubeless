@@ -1,6 +1,6 @@
 # Scala on runtime JVM
 
-!! WIP the jar-file is to large for the storage backend
+!! WIP the jar-file is to large for the storage backend, you have to pass a url to the jar file.
 
 `sbt assembly` Build the jar with all deps
 
