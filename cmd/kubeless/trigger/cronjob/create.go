@@ -106,7 +106,7 @@ var createCmd = &cobra.Command{
 				}
 				fmt.Println(string(j[:]))
 				return
-			}  else if output == "yaml" {
+			} else if output == "yaml" {
 				y, err := yaml.Marshal(cronJobTrigger)
 				if err != nil {
 					logrus.Fatal(err)
@@ -118,7 +118,7 @@ var createCmd = &cobra.Command{
 				return
 			}
 		}
-		
+
 		err = utils.CreateCronJobCustomResource(kubelessClient, &cronJobTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to create cronjob trigger object %s in namespace %s. Error: %s", triggerName, ns, err)

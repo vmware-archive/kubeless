@@ -137,7 +137,7 @@ var createCmd = &cobra.Command{
 				}
 				fmt.Println(string(j[:]))
 				return
-			}  else if output == "yaml" {
+			} else if output == "yaml" {
 				y, err := yaml.Marshal(kinesisTrigger)
 				if err != nil {
 					logrus.Fatal(err)

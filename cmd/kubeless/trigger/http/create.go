@@ -20,10 +20,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ghodss/yaml"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/ghodss/yaml"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -155,7 +155,7 @@ var createCmd = &cobra.Command{
 				}
 				fmt.Println(string(j[:]))
 				return
-			}  else if output == "yaml" {
+			} else if output == "yaml" {
 				y, err := yaml.Marshal(httpTrigger)
 				if err != nil {
 					logrus.Fatal(err)

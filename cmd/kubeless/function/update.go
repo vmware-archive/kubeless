@@ -21,12 +21,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/ghodss/yaml"
-
 )
 
 var updateCmd = &cobra.Command{
@@ -176,7 +175,7 @@ var updateCmd = &cobra.Command{
 				}
 				fmt.Println(string(j[:]))
 				return
-			}  else if output == "yaml" {
+			} else if output == "yaml" {
 				y, err := yaml.Marshal(f)
 				if err != nil {
 					logrus.Fatal(err)
