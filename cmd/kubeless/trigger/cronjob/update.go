@@ -125,6 +125,4 @@ func init() {
 	updateCmd.Flags().StringP("function", "", "", "Name of the function to be associated with trigger")
 	updateCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
 	updateCmd.Flags().StringP("output", "o", "yaml", "Output format")
-	updateCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
-	updateCmd.Flags().StringP("output", "o", "yaml", "Output format")
 }
