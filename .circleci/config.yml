@@ -31,21 +31,6 @@ restore_workspace: &restore_workspace
     make bootstrap
     sudo cp -r /tmp/go/bin/* /usr/local/bin/
     cp -r /tmp/go/src/github.com/kubeless/kubeless/*yaml .
-should_test: &should_test
-  run: |
-    case $CIRCLE_JOB in
-    # In case of GKE we will only want to build if it is
-    # a build of a branch in the kubeless/kubeless repository
-    GKE)
-      echo $CIRCLE_PULL_REQUESTS
-      if [[ -n "$GKE_ADMIN" && -z "$CIRCLE_PULL_REQUESTS" ]]; then
-        export SHOULD_TEST=1
-      fi
-      ;;
-    echo "Should test? $SHOULD_TEST"
-    if [[ "$SHOULD_TEST" != "1" ]]; then
-      circleci step halt
-    fi
 #### End of definitions
 
 workflows:
@@ -165,7 +150,15 @@ jobs:
     docker:
       - image: circleci/golang:1.9 
     steps:
-      - <<: *should_test
+      - run: |
+          # In case of GKE we will only want to build if it is
+          # a build of a branch in the kubeless/kubeless repository
+          if [[ -n "$GKE_ADMIN" && -z "$CIRCLE_PULL_REQUESTS" ]]; then
+            export SHOULD_TEST=1
+          fi
+          if [[ "$SHOULD_TEST" != "1" ]]; then
+            circleci step halt
+          fi
       - checkout
       - <<: *exports
       - attach_workspace:

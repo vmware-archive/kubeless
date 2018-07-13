@@ -35,12 +35,12 @@ local functionControllerContainer =
   container.env(controllerEnv);
 
 local httpTriggerControllerContainer =
-  container.default("kubeless-controller-manager", "bitnami/http-trigger-controller:v1.0.0-alpha.7") +
+  container.default("http-trigger-controller", "bitnami/http-trigger-controller:v1.0.0-alpha.7") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(controllerEnv);
 
 local cronjobTriggerContainer =
-  container.default("kubeless-controller-manager", "bitnami/cronjob-trigger-controller:v1.0.0-alpha.7") +
+  container.default("cronjob-trigger-controller", "bitnami/cronjob-trigger-controller:v1.0.0-alpha.7") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(controllerEnv);
 
