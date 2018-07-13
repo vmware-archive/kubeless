@@ -94,10 +94,10 @@ var createCmd = &cobra.Command{
 
 		if dryrun == true {
 			res, err := utils.DryRunFmt(output, kafkaTrigger)
-            if err != nil {
-            	logrus.Fatal(err);
-            }
-            fmt.Println(res);
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			fmt.Println(res)
 			return
 		}
 

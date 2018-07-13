@@ -28,6 +28,7 @@ import (
 	"time"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
+	"github.com/ghodss/yaml"
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/sirupsen/logrus"
@@ -41,8 +42,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	"github.com/ghodss/yaml"
-
 )
 
 func appendToCommand(orig string, command ...string) string {
@@ -979,19 +978,19 @@ func GetKubelessConfig(cli kubernetes.Interface, cliAPIExtensions clientsetAPIEx
 
 func DryRunFmt(format string, trigger interface{}) (string, error) {
 	switch format {
-			case "json":
-				j, err := json.MarshalIndent(trigger, "", "    ")
-				if err != nil {
-					return "", err
-				}
-				return string(j[:]), nil
-			case "yaml":
-				 y, err := yaml.Marshal(trigger)
-				if err != nil {
-					return "", err
-				}
-				return string(y[:]), nil
-			default:
-				return "",  fmt.Errorf("Output format needs to be yaml or json")
-			}
+	case "json":
+		j, err := json.MarshalIndent(trigger, "", "    ")
+		if err != nil {
+			return "", err
+		}
+		return string(j[:]), nil
+	case "yaml":
+		y, err := yaml.Marshal(trigger)
+		if err != nil {
+			return "", err
+		}
+		return string(y[:]), nil
+	default:
+		return "", fmt.Errorf("Output format needs to be yaml or json")
+	}
 }

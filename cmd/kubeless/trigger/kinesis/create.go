@@ -129,10 +129,10 @@ var createCmd = &cobra.Command{
 
 		if dryrun == true {
 			res, err := utils.DryRunFmt(output, kinesisTrigger)
-            if err != nil {
-            	logrus.Fatal(err);
-            }
-            fmt.Println(res);
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			fmt.Println(res)
 			return
 		}
 

@@ -147,10 +147,10 @@ var createCmd = &cobra.Command{
 
 		if dryrun == true {
 			res, err := utils.DryRunFmt(output, httpTrigger)
-            if err != nil {
-            	logrus.Fatal(err);
-            }
-            fmt.Println(res);
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			fmt.Println(res)
 			return
 		}
 

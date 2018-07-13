@@ -90,10 +90,10 @@ var updateCmd = &cobra.Command{
 
 		if dryrun == true {
 			res, err := utils.DryRunFmt(output, cronJobTrigger)
-            if err != nil {
-            	logrus.Fatal(err);
-            }
-            fmt.Println(res);
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			fmt.Println(res)
 			return
 		}
 
