@@ -19,7 +19,7 @@ local crd = [
 ];
 
 local controllerContainer =
-  container.default("kinesis-trigger-controller", "bitnami/kinesis-trigger-controller:latest") +
+  container.default("kinesis-trigger-controller", "bitnami/kinesis-trigger-controller:v1.0.0-alpha.7") +
   container.imagePullPolicy("IfNotPresent");
 
 local kubelessLabel = {kubeless: "kinesis-trigger-controller"};

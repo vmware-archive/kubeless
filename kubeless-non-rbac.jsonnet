@@ -29,8 +29,18 @@ local controllerEnv = [
    },
 ];
 
-local controllerContainer =
-  container.default("kubeless-controller-manager", "bitnami/kubeless-controller-manager:latest") +
+local functionControllerContainer =
+  container.default("kubeless-function-controller", "bitnami/kubeless-function-controller:latest") +
+  container.imagePullPolicy("IfNotPresent") +
+  container.env(controllerEnv);
+
+local httpTriggerControllerContainer =
+  container.default("kubeless-controller-manager", "bitnami/http-trigger-controller:v1.0.0-alpha.7") +
+  container.imagePullPolicy("IfNotPresent") +
+  container.env(controllerEnv);
+
+local cronjobTriggerContainer =
+  container.default("kubeless-controller-manager", "bitnami/cronjob-trigger-controller:v1.0.0-alpha.7") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(controllerEnv);
 
@@ -40,7 +50,7 @@ local controllerAccount =
   serviceAccount.default(controller_account_name, namespace);
 
 local controllerDeployment =
-  deployment.default("kubeless-controller-manager", controllerContainer, namespace) +
+  deployment.default("kubeless-controller-manager", [functionControllerContainer, httpTriggerControllerContainer, cronjobTriggerContainer], namespace) +
   {metadata+:{labels: kubelessLabel}} +
   {spec+: {selector: {matchLabels: kubelessLabel}}} +
   {spec+: {template+: {spec+: {serviceAccountName: controllerAccount.metadata.name}}}} +

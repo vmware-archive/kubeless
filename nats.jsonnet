@@ -19,7 +19,7 @@ local crd = [
 ];
 
 local controllerContainer =
-  container.default("nats-trigger-controller", "bitnami/nats-trigger-controller:latest") +
+  container.default("nats-trigger-controller", "bitnami/nats-trigger-controller:v1.0.0-alpha.7") +
   container.imagePullPolicy("IfNotPresent");
 
 local kubelessLabel = {kubeless: "nats-trigger-controller"};

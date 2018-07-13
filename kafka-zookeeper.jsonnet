@@ -21,7 +21,7 @@ local crd = [
 ];
 
 local controllerContainer =
-  container.default("kafka-trigger-controller", "bitnami/kafka-trigger-controller:latest") +
+  container.default("kafka-trigger-controller", "bitnami/kafka-trigger-controller:v1.0.0-alpha.7") +
   container.imagePullPolicy("IfNotPresent");
 
 local kubelessLabel = {kubeless: "kafka-trigger-controller"};
