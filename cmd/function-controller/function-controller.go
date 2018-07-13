@@ -14,6 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Kubeless controller binary.
+//
+// See github.com/kubeless/kubeless/pkg/controller
 package main
 
 import (
@@ -22,11 +25,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	"github.com/kubeless/kubeless/pkg/controller"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/kubeless/kubeless/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -34,8 +39,8 @@ const (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "kafka-controller",
-	Short: "Kafka controller",
+	Use:   "kubeless-controller",
+	Short: "Kubeless controller",
 	Long:  globalUsage,
 	Run: func(cmd *cobra.Command, args []string) {
 		kubelessClient, err := utils.GetFunctionClientInCluster()
@@ -43,16 +48,27 @@ var rootCmd = &cobra.Command{
 			logrus.Fatalf("Cannot get kubeless client: %v", err)
 		}
 
-		kafkaTriggerCfg := controller.KafkaTriggerConfig{
-			TriggerClient: kubelessClient,
+		functionCfg := controller.Config{
+			KubeCli:        utils.GetClient(),
+			FunctionClient: kubelessClient,
 		}
 
-		kafkaTriggerController := controller.NewKafkaTriggerController(kafkaTriggerCfg)
+		restCfg, err := rest.InClusterConfig()
+		if err != nil {
+			logrus.Fatalf("Cannot get REST client: %v", err)
+		}
+		// ServiceMonitor client is needed for handling monitoring resources
+		smclient, err := monitoringv1alpha1.NewForConfig(restCfg)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		functionController := controller.NewFunctionController(functionCfg, smclient)
 
 		stopCh := make(chan struct{})
 		defer close(stopCh)
 
-		go kafkaTriggerController.Run(stopCh)
+		go functionController.Run(stopCh)
 
 		sigterm := make(chan os.Signal, 1)
 		signal.Notify(sigterm, syscall.SIGTERM)
@@ -62,7 +78,7 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
-	logrus.Infof("Running Kafka controller version: %v", version.Version)
+	logrus.Infof("Running Kubeless controller manager version: %v", version.Version)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

@@ -20,9 +20,11 @@ import (
 	"fmt"
 	"strings"
 
+	cronjobApi "github.com/kubeless/cronjob-trigger/pkg/apis/kubeless/v1beta1"
+	cronjobUtils "github.com/kubeless/cronjob-trigger/pkg/utils"
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/langruntime"
-	"github.com/kubeless/kubeless/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -34,9 +36,9 @@ var deployCmd = &cobra.Command{
 	Short: "deploy a function to Kubeless",
 	Long:  `deploy a function to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cli := utils.GetClientOutOfCluster()
-		apiExtensionsClientset := utils.GetAPIExtensionsClientOutOfCluster()
-		config, err := utils.GetKubelessConfig(cli, apiExtensionsClientset)
+		cli := kubelessUtils.GetClientOutOfCluster()
+		apiExtensionsClientset := kubelessUtils.GetAPIExtensionsClientOutOfCluster()
+		config, err := kubelessUtils.GetKubelessConfig(cli, apiExtensionsClientset)
 		if err != nil {
 			logrus.Fatalf("Unable to read the configmap: %v", err)
 		}
@@ -95,7 +97,7 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
 		deps, err := cmd.Flags().GetString("dependencies")
@@ -182,13 +184,13 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		kubelessClient, err := kubelessUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
 		logrus.Infof("Deploying function...")
-		err = utils.CreateFunctionCustomResource(kubelessClient, f)
+		err = kubelessUtils.CreateFunctionCustomResource(kubelessClient, f)
 		if err != nil {
 			logrus.Fatalf("Failed to deploy %s. Received:\n%s", funcName, err)
 		}
@@ -196,7 +198,7 @@ var deployCmd = &cobra.Command{
 		logrus.Infof("Check the deployment status executing 'kubeless function ls %s'", funcName)
 
 		if schedule != "" {
-			cronJobTrigger := kubelessApi.CronJobTrigger{}
+			cronJobTrigger := cronjobApi.CronJobTrigger{}
 			cronJobTrigger.TypeMeta = metav1.TypeMeta{
 				Kind:       "CronJobTrigger",
 				APIVersion: "kubeless.io/v1beta1",
@@ -211,7 +213,11 @@ var deployCmd = &cobra.Command{
 			}
 			cronJobTrigger.Spec.FunctionName = funcName
 			cronJobTrigger.Spec.Schedule = schedule
-			err = utils.CreateCronJobCustomResource(kubelessClient, &cronJobTrigger)
+			cronjobClient, err := cronjobUtils.GetKubelessClientOutCluster()
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			err = cronjobUtils.CreateCronJobCustomResource(cronjobClient, &cronJobTrigger)
 			if err != nil {
 				logrus.Fatalf("Failed to deploy cron job trigger %s. Received:\n%s", funcName, err)
 			}

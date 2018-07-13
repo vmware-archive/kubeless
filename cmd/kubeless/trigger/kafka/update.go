@@ -20,7 +20,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/kubeless/kubeless/pkg/utils"
+	kafkaUtils "github.com/kubeless/kafka-trigger/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -39,15 +40,15 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		kafkaClient, err := kafkaUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
 
-		kafkaTrigger, err := utils.GetKafkaTriggerCustomResource(kubelessClient, triggerName, ns)
+		kafkaTrigger, err := kafkaUtils.GetKafkaTriggerCustomResource(kafkaClient, triggerName, ns)
 		if err != nil {
 			logrus.Fatalf("Unable to find Kafka trigger %s in namespace %s. Error %s", triggerName, ns, err)
 		}
@@ -74,7 +75,7 @@ var updateCmd = &cobra.Command{
 			kafkaTrigger.Spec.FunctionSelector.MatchLabels = labelSelector.MatchLabels
 		}
 
-		err = utils.UpdateKafkaTriggerCustomResource(kubelessClient, kafkaTrigger)
+		err = kafkaUtils.UpdateKafkaTriggerCustomResource(kafkaClient, kafkaTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to update Kafka trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
 		}

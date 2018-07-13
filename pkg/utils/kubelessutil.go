@@ -25,14 +25,12 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"time"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	clientsetAPIExtensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -42,6 +40,22 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 )
+
+// GetFunctionPort returns the port for a function service
+func GetFunctionPort(clientset kubernetes.Interface, namespace, functionName string) (string, error) {
+	svc, err := clientset.CoreV1().Services(namespace).Get(functionName, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("Unable to find the service for function %s", functionName)
+	}
+	return strconv.Itoa(int(svc.Spec.Ports[0].Port)), nil
+}
+
+// IsJSON returns true if the string is json
+func IsJSON(s string) bool {
+	var js map[string]interface{}
+	return json.Unmarshal([]byte(s), &js) == nil
+
+}
 
 func appendToCommand(orig string, command ...string) string {
 	if len(orig) > 0 {
@@ -138,116 +152,6 @@ func hasDefaultLabel(labels map[string]string) bool {
 		return false
 	}
 	return true
-}
-
-// CreateIngress creates ingress rule for a specific function
-func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTPTrigger, or []metav1.OwnerReference) error {
-	funcSvc, err := client.CoreV1().Services(httpTriggerObj.ObjectMeta.Namespace).Get(httpTriggerObj.Spec.FunctionName, metav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("Unable to find the function internal service: %v", funcSvc)
-	}
-
-	ingress := &v1beta1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            httpTriggerObj.Name,
-			Namespace:       httpTriggerObj.Namespace,
-			OwnerReferences: or,
-			Labels:          addDefaultLabel(httpTriggerObj.ObjectMeta.Labels),
-		},
-		Spec: v1beta1.IngressSpec{
-			Rules: []v1beta1.IngressRule{
-				{
-					Host: httpTriggerObj.Spec.HostName,
-					IngressRuleValue: v1beta1.IngressRuleValue{
-						HTTP: &v1beta1.HTTPIngressRuleValue{
-							Paths: []v1beta1.HTTPIngressPath{
-								{
-									Path: "/" + httpTriggerObj.Spec.Path,
-									Backend: v1beta1.IngressBackend{
-										ServiceName: funcSvc.Name,
-										ServicePort: funcSvc.Spec.Ports[0].TargetPort,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	ingressAnnotations := make(map[string]string)
-
-	// If exposed URL in the backend service differs from the specified path in the Ingress rule.
-	// Without a rewrite any request will return 404. Set the annotation ingress.kubernetes.io/rewrite-target
-	// to the path expected by the service
-	ingressAnnotations["nginx.ingress.kubernetes.io/rewrite-target"] = "/"
-
-	if len(httpTriggerObj.Spec.BasicAuthSecret) > 0 {
-		switch gateway := httpTriggerObj.Spec.Gateway; gateway {
-		case "nginx":
-			ingressAnnotations["kubernetes.io/ingress.class"] = "nginx"
-			ingressAnnotations["nginx.ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
-			ingressAnnotations["nginx.ingress.kubernetes.io/auth-type"] = "basic"
-			break
-		case "traefik":
-			ingressAnnotations["kubernetes.io/ingress.class"] = "traefik"
-			ingressAnnotations["ingress.kubernetes.io/auth-secret"] = httpTriggerObj.Spec.BasicAuthSecret
-			ingressAnnotations["ingress.kubernetes.io/auth-type"] = "basic"
-			break
-		case "kong":
-			return fmt.Errorf("Setting basic authentication with Kong is not yet supported")
-		}
-	}
-
-	if len(httpTriggerObj.Spec.TLSSecret) > 0 && httpTriggerObj.Spec.TLSAcme {
-		return fmt.Errorf("Can not create ingress object from HTTP trigger spec with both TLSSecret and IngressTLS specified")
-	}
-
-	//  secure an Ingress by specified secret that contains a TLS private key and certificate
-	if len(httpTriggerObj.Spec.TLSSecret) > 0 {
-		ingress.Spec.TLS = []v1beta1.IngressTLS{
-			{
-				SecretName: httpTriggerObj.Spec.TLSSecret,
-				Hosts:      []string{httpTriggerObj.Spec.HostName},
-			},
-		}
-	}
-
-	// add annotations and TLS configuration for kube-lego
-	if httpTriggerObj.Spec.TLSAcme {
-		ingressAnnotations["kubernetes.io/tls-acme"] = "true"
-		ingressAnnotations["nginx.ingress.kubernetes.io/ssl-redirect"] = "true"
-		ingress.Spec.TLS = []v1beta1.IngressTLS{
-			{
-				Hosts:      []string{httpTriggerObj.Spec.HostName},
-				SecretName: httpTriggerObj.Name + "-tls",
-			},
-		}
-	}
-	ingress.ObjectMeta.Annotations = ingressAnnotations
-	_, err = client.ExtensionsV1beta1().Ingresses(httpTriggerObj.Namespace).Create(ingress)
-	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		var newIngress *v1beta1.Ingress
-		newIngress, err = client.ExtensionsV1beta1().Ingresses(httpTriggerObj.Namespace).Get(ingress.Name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		if !hasDefaultLabel(newIngress.ObjectMeta.Labels) {
-			return fmt.Errorf("Found a conflicting ingress object %s/%s. Aborting", httpTriggerObj.Namespace, httpTriggerObj.Name)
-		}
-		if len(ingress.ObjectMeta.Labels) > 0 {
-			newIngress.ObjectMeta.Labels = mergeMap(newIngress.ObjectMeta.Labels, ingress.ObjectMeta.Labels)
-		}
-		newIngress.ObjectMeta.OwnerReferences = or
-		newIngress.Spec = ingress.Spec
-		_, err = client.ExtensionsV1beta1().Ingresses(httpTriggerObj.Namespace).Update(newIngress)
-		if err != nil && k8sErrors.IsAlreadyExists(err) {
-			// The configmap may already exist and there is nothing to update
-			return nil
-		}
-	}
-	return err
 }
 
 func splitHandler(handler string) (string, string, error) {
@@ -796,83 +700,6 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		}
 	}
 
-	return err
-}
-
-// EnsureCronJob creates/updates a function cron job
-func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, schedule, reqImage string, or []metav1.OwnerReference, reqImagePullSecret []v1.LocalObjectReference) error {
-	var maxSucccessfulHist, maxFailedHist int32
-	maxSucccessfulHist = 3
-	maxFailedHist = 1
-	var timeout int
-	if funcObj.Spec.Timeout != "" {
-		var err error
-		timeout, err = strconv.Atoi(funcObj.Spec.Timeout)
-		if err != nil {
-			return fmt.Errorf("Unable convert %s to a valid timeout", funcObj.Spec.Timeout)
-		}
-	} else {
-		timeout, _ = strconv.Atoi(defaultTimeout)
-	}
-	activeDeadlineSeconds := int64(timeout)
-	jobName := fmt.Sprintf("trigger-%s", funcObj.ObjectMeta.Name)
-	var headersString = ""
-	timestamp := time.Now().UTC()
-	eventID, err := GetRandString(11)
-	if err != nil {
-		return fmt.Errorf("Failed to create a event-ID %v", err)
-	}
-	headersString = headersString + " -H \"event-id: " + eventID + "\""
-	headersString = headersString + " -H \"event-time: " + timestamp.String() + "\""
-	headersString = headersString + " -H \"event-type: application/json\""
-	headersString = headersString + " -H \"event-namespace: cronjobtrigger.kubeless.io\""
-	job := &batchv1beta1.CronJob{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            jobName,
-			Namespace:       funcObj.ObjectMeta.Namespace,
-			Labels:          addDefaultLabel(funcObj.ObjectMeta.Labels),
-			OwnerReferences: or,
-		},
-		Spec: batchv1beta1.CronJobSpec{
-			Schedule:                   schedule,
-			SuccessfulJobsHistoryLimit: &maxSucccessfulHist,
-			FailedJobsHistoryLimit:     &maxFailedHist,
-			JobTemplate: batchv1beta1.JobTemplateSpec{
-				Spec: batchv1.JobSpec{
-					ActiveDeadlineSeconds: &activeDeadlineSeconds,
-					Template: v1.PodTemplateSpec{
-						Spec: v1.PodSpec{
-							ImagePullSecrets: reqImagePullSecret,
-							Containers: []v1.Container{
-								{
-									Image: reqImage,
-									Name:  "trigger",
-									Args:  []string{"curl", "-Lv", headersString, fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.ObjectMeta.Name, funcObj.ObjectMeta.Namespace)},
-								},
-							},
-							RestartPolicy: v1.RestartPolicyNever,
-						},
-					},
-				},
-			},
-		},
-	}
-
-	_, err = client.BatchV1beta1().CronJobs(funcObj.ObjectMeta.Namespace).Create(job)
-	if err != nil && k8sErrors.IsAlreadyExists(err) {
-		newCronJob := &batchv1beta1.CronJob{}
-		newCronJob, err = client.BatchV1beta1().CronJobs(funcObj.ObjectMeta.Namespace).Get(jobName, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		if !hasDefaultLabel(newCronJob.ObjectMeta.Labels) {
-			return fmt.Errorf("Found a conflicting cronjob object %s/%s. Aborting", funcObj.ObjectMeta.Namespace, funcObj.ObjectMeta.Name)
-		}
-		newCronJob.ObjectMeta.Labels = funcObj.ObjectMeta.Labels
-		newCronJob.ObjectMeta.OwnerReferences = or
-		newCronJob.Spec = job.Spec
-		_, err = client.BatchV1beta1().CronJobs(funcObj.ObjectMeta.Namespace).Update(newCronJob)
-	}
 	return err
 }
 

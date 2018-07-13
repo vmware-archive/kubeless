@@ -20,7 +20,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/kubeless/kubeless/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
+	natsUtils "github.com/kubeless/nats-trigger/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -39,15 +40,15 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		natsClient, err := natsUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
 
-		natsTrigger, err := utils.GetNatsTriggerCustomResource(kubelessClient, triggerName, ns)
+		natsTrigger, err := natsUtils.GetNatsTriggerCustomResource(natsClient, triggerName, ns)
 		if err != nil {
 			logrus.Fatalf("Unable to find NATS trigger %s in namespace %s. Error %s", triggerName, ns, err)
 		}
@@ -74,7 +75,7 @@ var updateCmd = &cobra.Command{
 			natsTrigger.Spec.FunctionSelector.MatchLabels = labelSelector.MatchLabels
 		}
 
-		err = utils.UpdateNatsTriggerCustomResource(kubelessClient, natsTrigger)
+		err = natsUtils.UpdateNatsTriggerCustomResource(natsClient, natsTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to update NATS trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
 		}

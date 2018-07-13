@@ -17,11 +17,12 @@ limitations under the License.
 package http
 
 import (
-	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	httpApi "github.com/kubeless/http-trigger/pkg/apis/kubeless/v1beta1"
+	httpUtils "github.com/kubeless/http-trigger/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -41,7 +42,7 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
 		path, err := cmd.Flags().GetString("path")
@@ -54,17 +55,17 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		kubelessClient, err := kubelessUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
 
-		_, err = utils.GetFunctionCustomResource(kubelessClient, functionName, ns)
+		_, err = kubelessUtils.GetFunctionCustomResource(kubelessClient, functionName, ns)
 		if err != nil {
 			logrus.Fatalf("Unable to find Function %s in namespace %s. Error %s", functionName, ns, err)
 		}
 
-		httpTrigger := kubelessApi.HTTPTrigger{}
+		httpTrigger := httpApi.HTTPTrigger{}
 		httpTrigger.TypeMeta = metav1.TypeMeta{
 			Kind:       "HTTPTrigger",
 			APIVersion: "kubeless.io/v1beta1",
@@ -113,11 +114,11 @@ var createCmd = &cobra.Command{
 		if hostName == "" && gateway == "nginx" {
 			// We assume that Nginx will be listening in the port 80
 			// of the cluster plublic IP
-			config, err := utils.BuildOutOfClusterConfig()
+			config, err := kubelessUtils.BuildOutOfClusterConfig()
 			if err != nil {
 				logrus.Fatal(err)
 			}
-			hostName, err = utils.GetLocalHostname(config, functionName)
+			hostName, err = httpUtils.GetLocalHostname(config, functionName)
 			if err != nil {
 				logrus.Fatal(err)
 			}
@@ -133,7 +134,11 @@ var createCmd = &cobra.Command{
 		}
 		httpTrigger.Spec.BasicAuthSecret = basicAuthSecret
 
-		err = utils.CreateHTTPTriggerCustomResource(kubelessClient, &httpTrigger)
+		httpClient, err := httpUtils.GetKubelessClientOutCluster()
+		if err != nil {
+			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
+		}
+		err = httpUtils.CreateHTTPTriggerCustomResource(httpClient, &httpTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to deploy HTTP trigger %s in namespace %s. Error: %s", triggerName, ns, err)
 		}

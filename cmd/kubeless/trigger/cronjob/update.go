@@ -21,7 +21,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/kubeless/kubeless/pkg/utils"
+	cronjobUtils "github.com/kubeless/cronjob-trigger/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 )
 
 var updateCmd = &cobra.Command{
@@ -51,7 +52,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
 		functionName, err := cmd.Flags().GetString("function")
@@ -59,23 +60,28 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		kubelessClient, err := kubelessUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
 
-		_, err = utils.GetFunctionCustomResource(kubelessClient, functionName, ns)
+		cronJobClient, err := cronjobUtils.GetKubelessClientOutCluster()
+		if err != nil {
+			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
+		}
+
+		_, err = kubelessUtils.GetFunctionCustomResource(kubelessClient, functionName, ns)
 		if err != nil {
 			logrus.Fatalf("Unable to find Function %s in namespace %s. Error %s", triggerName, ns, err)
 		}
 
-		cronJobTrigger, err := utils.GetCronJobCustomResource(kubelessClient, triggerName, ns)
+		cronJobTrigger, err := cronjobUtils.GetCronJobCustomResource(cronJobClient, triggerName, ns)
 		if err != nil {
 			logrus.Fatalf("Unable to find Cronjob trigger %s in namespace %s. Error %s", triggerName, ns, err)
 		}
 		cronJobTrigger.Spec.FunctionName = functionName
 		cronJobTrigger.Spec.Schedule = schedule
-		err = utils.UpdateCronJobCustomResource(kubelessClient, cronJobTrigger)
+		err = cronjobUtils.UpdateCronJobCustomResource(cronJobClient, cronJobTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to update cronjob trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
 		}

@@ -18,14 +18,6 @@ limitations under the License.
 
 package v1beta1
 
-// CronJobTriggerListerExpansion allows custom methods to be added to
-// CronJobTriggerLister.
-type CronJobTriggerListerExpansion interface{}
-
-// CronJobTriggerNamespaceListerExpansion allows custom methods to be added to
-// CronJobTriggerNamespaceLister.
-type CronJobTriggerNamespaceListerExpansion interface{}
-
 // FunctionListerExpansion allows custom methods to be added to
 // FunctionLister.
 type FunctionListerExpansion interface{}
@@ -33,35 +25,3 @@ type FunctionListerExpansion interface{}
 // FunctionNamespaceListerExpansion allows custom methods to be added to
 // FunctionNamespaceLister.
 type FunctionNamespaceListerExpansion interface{}
-
-// HTTPTriggerListerExpansion allows custom methods to be added to
-// HTTPTriggerLister.
-type HTTPTriggerListerExpansion interface{}
-
-// HTTPTriggerNamespaceListerExpansion allows custom methods to be added to
-// HTTPTriggerNamespaceLister.
-type HTTPTriggerNamespaceListerExpansion interface{}
-
-// KafkaTriggerListerExpansion allows custom methods to be added to
-// KafkaTriggerLister.
-type KafkaTriggerListerExpansion interface{}
-
-// KafkaTriggerNamespaceListerExpansion allows custom methods to be added to
-// KafkaTriggerNamespaceLister.
-type KafkaTriggerNamespaceListerExpansion interface{}
-
-// KinesisTriggerListerExpansion allows custom methods to be added to
-// KinesisTriggerLister.
-type KinesisTriggerListerExpansion interface{}
-
-// KinesisTriggerNamespaceListerExpansion allows custom methods to be added to
-// KinesisTriggerNamespaceLister.
-type KinesisTriggerNamespaceListerExpansion interface{}
-
-// NATSTriggerListerExpansion allows custom methods to be added to
-// NATSTriggerLister.
-type NATSTriggerListerExpansion interface{}
-
-// NATSTriggerNamespaceListerExpansion allows custom methods to be added to
-// NATSTriggerNamespaceLister.
-type NATSTriggerNamespaceListerExpansion interface{}

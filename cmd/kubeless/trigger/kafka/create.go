@@ -20,8 +20,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
-	"github.com/kubeless/kubeless/pkg/utils"
+	kafkaApi "github.com/kubeless/kafka-trigger/pkg/apis/kubeless/v1beta1"
+	kafkaUtils "github.com/kubeless/kafka-trigger/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -42,7 +43,7 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
 		topic, err := cmd.Flags().GetString("trigger-topic")
@@ -60,12 +61,7 @@ var createCmd = &cobra.Command{
 			logrus.Fatal("Invalid lable selector specified " + err.Error())
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
-		if err != nil {
-			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
-		}
-
-		kafkaTrigger := kubelessApi.KafkaTrigger{}
+		kafkaTrigger := kafkaApi.KafkaTrigger{}
 		kafkaTrigger.TypeMeta = metav1.TypeMeta{
 			Kind:       "KafkaTrigger",
 			APIVersion: "kubeless.io/v1beta1",
@@ -79,7 +75,11 @@ var createCmd = &cobra.Command{
 		}
 		kafkaTrigger.Spec.FunctionSelector.MatchLabels = labelSelector.MatchLabels
 		kafkaTrigger.Spec.Topic = topic
-		err = utils.CreateKafkaTriggerCustomResource(kubelessClient, &kafkaTrigger)
+		kafkaClient, err := kafkaUtils.GetKubelessClientOutCluster()
+		if err != nil {
+			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
+		}
+		err = kafkaUtils.CreateKafkaTriggerCustomResource(kafkaClient, &kafkaTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to create Kafka trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
 		}
