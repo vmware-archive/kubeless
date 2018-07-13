@@ -45,7 +45,7 @@ k8s_wait_for_pod_ready() {
     # Retries just in case it is not stable
     local -i successCount=0
     while [ "$successCount" -lt "3" ]; do
-        if kubectl get pod "${@}" |&grep -q Running; then
+        if kubectl get pod "${@}" | grep -q Running; then
             ((successCount=successCount+1))
         fi
         ((cnt=cnt-1)) || return 1
@@ -74,7 +74,7 @@ k8s_wait_for_uniq_pod() {
 k8s_wait_for_pod_gone() {
     echo_info "Waiting for pod '${@}' to be gone ... "
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
-    until kubectl get pod "${@}" |&grep -q No.resources.found; do
+    until kubectl get pod "${@}" | grep -q No.resources.found; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
@@ -83,7 +83,7 @@ k8s_wait_for_pod_logline() {
     local string="${1:?}"; shift
     local -i cnt=${TEST_MAX_WAIT_SEC:?}
     echo_info "Waiting for '${@}' to show logline '${string}' ..."
-    until kubectl logs "${@}"|&grep -q "${string}"; do
+    until kubectl logs "${@}"| grep -q "${string}"; do
         ((cnt=cnt-1)) || return 1
         sleep 1
     done
@@ -177,7 +177,7 @@ _wait_for_kubeless_controller_ready() {
 }
 _wait_for_kubeless_controller_logline() {
     local string="${1:?}"
-    k8s_wait_for_pod_logline "${string}" -n kubeless -l kubeless=controller
+    k8s_wait_for_pod_logline "${string}" -n kubeless -l kubeless=controller -c kubeless-function-controller
 }
 wait_for_ingress() {
     echo_info "Waiting until Nginx pod is ready ..."
@@ -232,7 +232,7 @@ _deploy_simple_function() {
 _call_simple_function() {
     # Artifact to dodge 'bats' lack of support for positively testing _for_ errors
     case "${1:?}" in
-        1) make -C examples get-python-verify |& egrep Error.1;;
+        1) make -C examples get-python-verify |  egrep Error.1;;
         0) make -C examples get-python-verify;;
     esac
 }
@@ -250,7 +250,7 @@ verify_k8s_tools() {
     done
 }
 verify_rbac_mode() {
-    kubectl api-versions |&grep -q rbac && return 0
+    kubectl api-versions | grep -q rbac && return 0
     echo "ERROR: Please run w/RBAC, eg minikube as: minikube start --extra-config=apiserver.Authorization.Mode=RBAC"
     return 1
 }
