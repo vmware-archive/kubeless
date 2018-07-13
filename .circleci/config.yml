@@ -9,11 +9,8 @@ defaults: &defaults
   working_directory: /home/circleci/.go_workspace/src/github.com/kubeless/kubeless
   environment:
     GOPATH: /home/circleci/.go_workspace
-    CONTROLLER_IMAGE_NAME: bitnami/kubeless-controller-manager
+    CONTROLLER_IMAGE_NAME: bitnami/kubeless-function-controller
     BUILDER_IMAGE_NAME: kubeless/function-image-builder
-    KAFKA_CONTROLLER_IMAGE_NAME: bitnami/kafka-trigger-controller
-    NATS_CONTROLLER_IMAGE_NAME: bitnami/nats-trigger-controller
-    KINESIS_CONTROLLER_IMAGE_NAME: bitnami/kinesis-trigger-controller
     CGO_ENABLED: "0"
     TEST_DEBUG: "1"
     GKE_VERSION: 1.9.7-gke.3
@@ -27,9 +24,6 @@ exports: &exports
     echo "export CONTROLLER_TAG=${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export FUNCTION_IMAGE_BUILDER=${BUILDER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
-    echo "export KAFKA_CONTROLLER_IMAGE=${KAFKA_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
-    echo "export NATS_CONTROLLER_IMAGE=${NATS_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
-    echo "export KINESIS_CONTROLLER_IMAGE=${KINESIS_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV    
     echo "export KUBECFG_JPATH=/home/circleci/src/github.com/kubeless/kubeless/ksonnet-lib" >> $BASH_ENV
     echo "export PATH=$(pwd)/bats/libexec:$PATH" >> $BASH_ENV
 restore_workspace: &restore_workspace
@@ -48,40 +42,6 @@ should_test: &should_test
         export SHOULD_TEST=1
       fi
       ;;
-    # In kase of minikube+kafka we want to test it if
-    # it is a Pull Request related to Kafka (discovered from the PR title)
-    # or if the build is from the "master" branch
-    minikube_kafka)
-      if [[ -n "$CIRCLE_PULL_REQUESTS" ]]; then
-        pr_kafka_title=$(curl -H "Authorization: token $ACCESS_TOKEN" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${CIRCLE_PR_NUMBER}" | grep title || true)
-      fi
-      if [[ -z "$CIRCLE_PULL_REQUESTS" || "$pr_kafka_title" == "" || "$pr_kafka_title" =~ ^.*(Kafka|kafka|KAFKA).*$ ]]; then
-        export SHOULD_TEST=1
-      fi
-      ;;
-    # In kase of minikube+NATS we want to test it if
-    # it is a Pull Request related to NATS (discovered from the PR title)
-    # or if the build is from the "master" branch
-    minikube_nats)
-      if [[ -n "$CIRCLE_PULL_REQUESTS" ]]; then
-        pr_nats_title=$(curl -H "Authorization: token $ACCESS_TOKEN" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title || true)
-      fi
-      if [[ -z "$CIRCLE_PULL_REQUESTS" || "$pr_nats_title" == "" || "$pr_nats_title" =~ ^.*(Nats|nats|NATS).*$ ]]; then
-        export SHOULD_TEST=1
-      fi
-      ;;
-    # In kase of minikube+Kinesis we want to test it if
-    # it is a Pull Request related to Kinesis (discovered from the PR title)
-    # or if the build is from the "master" branch
-    minikube_kinesis)
-      if [[ -n "$CIRCLE_PULL_REQUESTS" ]]; then
-        pr_kinesis_title=$(curl -H "Authorization: token $ACCESS_TOKEN" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title || true)
-      fi
-      if [[ -z "$CIRCLE_PULL_REQUESTS" || "$pr_kinesis_title" == "" || "$pr_kinesis_title" =~ ^.*(Kinesis|kinesis).*$ ]]; then
-        export SHOULD_TEST=1
-      fi
-      ;;      
-    esac
     echo "Should test? $SHOULD_TEST"
     if [[ "$SHOULD_TEST" != "1" ]]; then
       circleci step halt
@@ -98,26 +58,10 @@ workflows:
           <<: *build_allways
           requires:
             - build
-      - minikube_core_triggers:
-          <<: *build_allways
-          requires:
-            - build
       - minikube_build_functions:
           <<: *build_allways
           requires:
             - build
-      - minikube_kafka:
-          <<: *build_allways
-          requires:
-            - build
-      - minikube_nats:
-          <<: *build_allways
-          requires:
-            - build
-      - minikube_kinesis:
-          <<: *build_allways
-          requires:
-            - build            
       - GKE:
           <<: *build_allways
           requires:
@@ -128,11 +72,7 @@ workflows:
               only: master
           requires:
             - minikube
-            - minikube_core_triggers
             - minikube_build_functions
-            - minikube_kafka
-            - minikube_nats
-            - minikube_kinesis
             - GKE
       - release:
           filters:
@@ -142,11 +82,7 @@ workflows:
               ignore: /.*/
           requires:
             - minikube
-            - minikube_core_triggers
             - minikube_build_functions
-            - minikube_kafka
-            - minikube_nats
-            - minikube_kinesis
             - GKE
 jobs:
   build:
@@ -224,48 +160,6 @@ jobs:
       - run: "sed -i.bak 's/function-registry-tls-verify: \"true\"/function-registry-tls-verify: \"false\"/g' kubeless.yaml"
       - run: ./script/integration-tests minikube deployment
       - run: ./script/integration-tests minikube prebuilt_functions
-  minikube_kafka:
-    <<: *defaults
-    machine: true
-    steps:
-      - <<: *should_test
-      - checkout
-      - <<: *exports
-      - attach_workspace:
-          at: /tmp/go
-      - <<: *restore_workspace
-      - run: ./script/pull-or-build-image.sh controller-image
-      - run: ./script/pull-or-build-image.sh kafka-controller-image
-      - run: ./script/integration-tests minikube deployment
-      - run: ./script/integration-tests minikube kafka
-  minikube_nats:
-    <<: *defaults
-    machine: true
-    steps:
-      - <<: *should_test
-      - checkout
-      - <<: *exports
-      - attach_workspace:
-          at: /tmp/go
-      - <<: *restore_workspace
-      - run: ./script/pull-or-build-image.sh controller-image
-      - run: ./script/pull-or-build-image.sh nats-controller-image
-      - run: ./script/integration-tests minikube deployment
-      - run: ./script/integration-tests minikube nats
-  minikube_kinesis:
-    <<: *defaults
-    machine: true
-    steps:
-      - <<: *should_test
-      - checkout
-      - <<: *exports
-      - attach_workspace:
-          at: /tmp/go
-      - <<: *restore_workspace
-      - run: ./script/pull-or-build-image.sh controller-image
-      - run: ./script/pull-or-build-image.sh kinesis-controller-image
-      - run: ./script/integration-tests minikube deployment
-      - run: ./script/integration-tests minikube kinesis      
   GKE:
     <<: *defaults
     docker:
@@ -299,9 +193,6 @@ jobs:
           images=( 
             $CONTROLLER_IMAGE_NAME
             $BUILDER_IMAGE_NAME 
-            $KAFKA_CONTROLLER_IMAGE_NAME 
-            $NATS_CONTROLLER_IMAGE_NAME
-            $KINESIS_CONTROLLER_IMAGE_NAME
           )
           for image in "${images[@]}"; do
             echo "Pulling ${image}:${CONTROLLER_TAG}"
