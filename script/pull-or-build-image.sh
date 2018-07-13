@@ -13,7 +13,7 @@ function push() {
 }
 
 case "${TARGET}" in
-    "function-controller-image")
+    "function-controller")
       image=${CONTROLLER_IMAGE:?}
       docker pull $image || make $TARGET CONTROLLER_IMAGE=$image
       push $image
