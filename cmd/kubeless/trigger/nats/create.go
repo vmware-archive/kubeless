@@ -17,10 +17,8 @@ limitations under the License.
 package nats
 
 import (
-	"encoding/json"
 	"fmt"
 
-	"github.com/ghodss/yaml"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -95,24 +93,12 @@ var createCmd = &cobra.Command{
 		natsTrigger.Spec.Topic = topic
 
 		if dryrun == true {
-			if output == "json" {
-				j, err := json.MarshalIndent(natsTrigger, "", "    ")
-				if err != nil {
-					logrus.Fatal(err)
-				}
-				fmt.Println(string(j[:]))
-				return
-			} else if output == "yaml" {
-				y, err := yaml.Marshal(natsTrigger)
-				if err != nil {
-					logrus.Fatal(err)
-				}
-				fmt.Println(string(y[:]))
-				return
-			} else {
-				logrus.Infof("Output format needs to be yaml or json")
-				return
-			}
+			res, err := utils.DryRunFmt(output, natsTrigger)
+            if err != nil {
+            	logrus.Fatal(err);
+            }
+            fmt.Println(res);
+			return
 		}
 
 		err = utils.CreateNatsTriggerCustomResource(kubelessClient, &natsTrigger)

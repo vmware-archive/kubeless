@@ -17,10 +17,8 @@ limitations under the License.
 package cronjob
 
 import (
-	"encoding/json"
 	"fmt"
 
-	"github.com/ghodss/yaml"
 	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -91,24 +89,12 @@ var updateCmd = &cobra.Command{
 		cronJobTrigger.Spec.Schedule = schedule
 
 		if dryrun == true {
-			if output == "json" {
-				j, err := json.MarshalIndent(cronJobTrigger, "", "    ")
-				if err != nil {
-					logrus.Fatal(err)
-				}
-				fmt.Println(string(j[:]))
-				return
-			} else if output == "yaml" {
-				y, err := yaml.Marshal(cronJobTrigger)
-				if err != nil {
-					logrus.Fatal(err)
-				}
-				fmt.Println(string(y[:]))
-				return
-			} else {
-				logrus.Infof("Output format needs to be yaml or json")
-				return
-			}
+			res, err := utils.DryRunFmt(output, cronJobTrigger)
+            if err != nil {
+            	logrus.Fatal(err);
+            }
+            fmt.Println(res);
+			return
 		}
 
 		err = utils.UpdateCronJobCustomResource(kubelessClient, cronJobTrigger)
