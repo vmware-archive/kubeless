@@ -56,7 +56,7 @@ docker/function-controller: controller-build
 controller-build:
 	./script/binary-controller -os=$(OS) -arch=$(ARCH)
 
-controller-image: docker/function-controller
+function-controller: docker/function-controller
 	$(DOCKER) build -t $(CONTROLLER_IMAGE) $<
 
 docker/function-image-builder: function-image-builder-build
