@@ -1,1 +1,0 @@
-A new Prometheus instance has been created.

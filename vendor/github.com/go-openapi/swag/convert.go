@@ -36,16 +36,16 @@ func IsFloat64AJSONInteger(f float64) bool {
 }
 
 var evaluatesAsTrue = map[string]struct{}{
-	"true":     struct{}{},
-	"1":        struct{}{},
-	"yes":      struct{}{},
-	"ok":       struct{}{},
-	"y":        struct{}{},
-	"on":       struct{}{},
-	"selected": struct{}{},
-	"checked":  struct{}{},
-	"t":        struct{}{},
-	"enabled":  struct{}{},
+	"true":     {},
+	"1":        {},
+	"yes":      {},
+	"ok":       {},
+	"y":        {},
+	"on":       {},
+	"selected": {},
+	"checked":  {},
+	"t":        {},
+	"enabled":  {},
 }
 
 // ConvertBool turn a string into a boolean
@@ -159,7 +159,7 @@ func FormatInt16(value int16) string {
 
 // FormatInt32 turns an int32 into a string
 func FormatInt32(value int32) string {
-	return strconv.FormatInt(int64(value), 10)
+	return strconv.Itoa(int(value))
 }
 
 // FormatInt64 turns an int64 into a string
