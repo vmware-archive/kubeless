@@ -30,7 +30,7 @@ local controllerEnv = [
 ];
 
 local functionControllerContainer =
-  container.default("kubeless-function-controller", "bitnami/kubeless-function-controller:latest") +
+  container.default("kubeless-function-controller", "kubeless/function-controller:latest") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(controllerEnv);
 
