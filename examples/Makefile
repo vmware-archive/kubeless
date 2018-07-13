@@ -272,6 +272,7 @@ get-dotnetcore:
 
 get-dotnetcore-verify:
 	kubeless function call get-dotnetcore |egrep hello.world
+	kubeless function top --function get-dotnetcore --out yaml |egrep "Function does not expose metrics" 
 
 get-dotnetcore-dependency:
 	kubeless function deploy get-dotnetcore-dependency --runtime dotnetcore2.0 --handler module.handler --from-file dotnetcore/dependency-yaml.cs --dependencies dotnetcore/dependency-yaml.csproj
