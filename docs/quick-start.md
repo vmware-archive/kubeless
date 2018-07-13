@@ -34,7 +34,7 @@ functions.kubeless.io         1h
 httptriggers.kubeless.io      1h
 ```
 
-> Details on [installing kubeless in a different namespace](/docs/function-controller-configuration#install-kubeless-in-different-namespace) can be found here.
+> Details on [installing kubeless in a different namespace](/docs/function-controller-configuration.md#install-kubeless-in-different-namespace) can be found here.
 
 For installing `kubeless` CLI using execute:
 
