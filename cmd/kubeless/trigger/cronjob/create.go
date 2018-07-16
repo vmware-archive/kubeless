@@ -54,6 +54,14 @@ var createCmd = &cobra.Command{
 			ns = utils.GetDefaultNamespace()
 		}
 
+		clusterDomain, err := cmd.Flags().GetString("cluster-domain")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		if clusterDomain == "" {
+			clusterDomain = "cluster.local" // utils.GetDefaultClusterDomain()
+		}
+
 		functionName, err := cmd.Flags().GetString("function")
 		if err != nil {
 			logrus.Fatal(err)
@@ -75,8 +83,9 @@ var createCmd = &cobra.Command{
 			APIVersion: "kubeless.io/v1beta1",
 		}
 		cronJobTrigger.ObjectMeta = metav1.ObjectMeta{
-			Name:      triggerName,
-			Namespace: ns,
+			Name:           triggerName,
+			ClusterDomain:  ClusterDomain,
+			Namespace:      ns,
 		}
 		cronJobTrigger.ObjectMeta.Labels = map[string]string{
 			"created-by": "kubeless",
@@ -93,6 +102,7 @@ var createCmd = &cobra.Command{
 
 func init() {
 	createCmd.Flags().StringP("namespace", "", "", "Specify namespace for the cronjob trigger")
+	createCmd.Flags().StringP("cluster-domain", "", "", "Specify the cluster-domain for the cronjob trigger")
 	createCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	createCmd.Flags().StringP("function", "", "", "Name of the function to be associated with trigger")
 	createCmd.MarkFlagRequired("function")

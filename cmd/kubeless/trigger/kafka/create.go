@@ -45,6 +45,14 @@ var createCmd = &cobra.Command{
 			ns = utils.GetDefaultNamespace()
 		}
 
+		clusterDomain, err := cmd.Flags().GetString("cluster-domain")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		if clusterDomain == "" {
+			clusterDomain = "cluster.local" // utils.GetDefaultClusterDomain()
+		}
+
 		topic, err := cmd.Flags().GetString("trigger-topic")
 		if err != nil {
 			logrus.Fatal(err)
@@ -71,8 +79,9 @@ var createCmd = &cobra.Command{
 			APIVersion: "kubeless.io/v1beta1",
 		}
 		kafkaTrigger.ObjectMeta = metav1.ObjectMeta{
-			Name:      triggerName,
-			Namespace: ns,
+			Name:           triggerName,
+			ClusterDomain:  clusterDomain,
+			Namespace:      ns,
 		}
 		kafkaTrigger.ObjectMeta.Labels = map[string]string{
 			"created-by": "kubeless",
@@ -90,6 +99,7 @@ var createCmd = &cobra.Command{
 
 func init() {
 	createCmd.Flags().StringP("namespace", "", "", "Specify namespace for the kafka trigger")
+	createCmd.Flags().StringP("cluster-domain", "", "", "Specify the cluster domain for the kafka trigger")
 	createCmd.Flags().StringP("trigger-topic", "", "", "Specify topic to listen to in Kafka broker")
 	createCmd.Flags().StringP("function-selector", "", "", "Selector (label query) to select function on (e.g. -function-selector key1=value1,key2=value2)")
 	createCmd.MarkFlagRequired("trigger-topic")

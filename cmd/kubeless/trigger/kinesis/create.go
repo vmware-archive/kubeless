@@ -46,6 +46,14 @@ var createCmd = &cobra.Command{
 			ns = utils.GetDefaultNamespace()
 		}
 
+		clusterDomain, err := cmd.Flags().GetString("cluster-domain")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		if clusterDomain == "" {
+			clusterDomain = "cluster.local" // utils.GetDefaultClusterDomain()
+		}
+
 		functionName, err := cmd.Flags().GetString("function-name")
 		if err != nil {
 			logrus.Fatal(err)
@@ -102,8 +110,9 @@ var createCmd = &cobra.Command{
 			APIVersion: "kubeless.io/v1beta1",
 		}
 		kinesisTrigger.ObjectMeta = metav1.ObjectMeta{
-			Name:      triggerName,
-			Namespace: ns,
+			Name:           triggerName,
+			ClusterDomain:  clusterDomain,
+			Namespace:      ns,
 		}
 		kinesisTrigger.ObjectMeta.Labels = map[string]string{
 			"created-by": "kubeless",
@@ -125,6 +134,7 @@ var createCmd = &cobra.Command{
 
 func init() {
 	createCmd.Flags().StringP("namespace", "", "", "Specify namespace for the Kinesis trigger")
+	createCmd.Flags().StringP("cluster-domain", "", "", "Specify the cluster domain for the Kinesis trigger")
 	createCmd.Flags().StringP("stream", "", "", "Name of the AWS Kinesis stream")
 	createCmd.Flags().StringP("aws-region", "", "", "AWS region in which stream is available")
 	createCmd.Flags().StringP("shard-id", "", "", "Shard-ID of the AWS kinesis stream")
