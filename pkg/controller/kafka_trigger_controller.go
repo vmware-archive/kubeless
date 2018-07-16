@@ -197,6 +197,11 @@ func (c *KafkaTriggerController) syncKafkaTrigger(key string) error {
 		return errors.New("Kafka Trigger Topic can't be empty. Please check the trigger object %s" + key)
 	}
 
+	clusterDomain := triggerObj.Spec.ClusterDomain
+	if clusterDomain == "" {
+		clusterDomain := "cluster.local"
+	}
+
 	// Kafka trigger API object is marked for deletion (DeletionTimestamp != nil), so lets process the delete update
 	if triggerObj.ObjectMeta.DeletionTimestamp != nil {
 
@@ -263,7 +268,7 @@ func (c *KafkaTriggerController) syncKafkaTrigger(key string) error {
 
 	for _, function := range functions {
 		funcName := function.ObjectMeta.Name
-		err = kafka.CreateKafkaConsumer(triggerObjName, funcName, ns, topic, c.kubernetesClient)
+		err = kafka.CreateKafkaConsumer(triggerObjName, funcName, ns, clusterDomain, topic, c.kubernetesClient)
 		if err != nil {
 			c.logger.Errorf("Failed to create the Kafka consumer for the function %s associated with the Kafka trigger %s due to %v: ", funcName, key, err)
 		}
@@ -310,7 +315,7 @@ func (c *KafkaTriggerController) FunctionAddedDeletedUpdated(obj interface{}, de
 			c.logger.Infof("Successfully removed Kafka consumer for Function: %s", functionObj.Name)
 		} else {
 			c.logger.Infof("We got a Kafka trigger  %s that function %s need to be associated so create Kafka consumer", triggerObj.Name, functionObj.Name)
-			kafka.CreateKafkaConsumer(triggerObj.Name, functionObj.Name, functionObj.Namespace, triggerObj.Spec.Topic, c.kubernetesClient)
+			kafka.CreateKafkaConsumer(triggerObj.Name, functionObj.Name, functionObj.Namespace, triggerObj.Spec.ClusterDomain, triggerObj.Spec.Topic, c.kubernetesClient)
 			c.logger.Infof("Successfully created Kafka consumer for Function: %s", functionObj.Name)
 		}
 	}

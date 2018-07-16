@@ -73,7 +73,7 @@ func init() {
 }
 
 // createConsumerProcess gets messages to a Kafka topic from the broker and send the payload to function service
-func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, clientset kubernetes.Interface, stopchan, stoppedchan chan struct{}) {
+func createConsumerProcess(broker, topic, funcName, ns, clusterDomain, consumerGroupID string, clientset kubernetes.Interface, stopchan, stoppedchan chan struct{}) {
 	// Init consumer
 	brokersSlice := []string{broker}
 	topicsSlice := []string{topic}
@@ -94,7 +94,7 @@ func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, 
 			if more {
 				logrus.Infof("Received Kafka message Partition: %d Offset: %d Key: %s Value: %s ", msg.Partition, msg.Offset, string(msg.Key), string(msg.Value))
 				logrus.Infof("Sending message %s to function %s", msg, funcName)
-				req, err := utils.GetHTTPReq(clientset, funcName, ns, "kafkatriggers.kubeless.io", "POST", string(msg.Value))
+				req, err := utils.GetHTTPReq(clientset, funcName, ns, "kafkatriggers.kubeless.io", clusterDomain, "POST", string(msg.Value))
 				if err != nil {
 					logrus.Errorf("Unable to elaborate request: %v", err)
 				} else {
@@ -123,13 +123,13 @@ func createConsumerProcess(broker, topic, funcName, ns, consumerGroupID string, 
 }
 
 // CreateKafkaConsumer creates a goroutine that subscribes to Kafka topic
-func CreateKafkaConsumer(triggerObjName, funcName, ns, topic string, clientset kubernetes.Interface) error {
+func CreateKafkaConsumer(triggerObjName, funcName, ns, clusterDomain, topic string, clientset kubernetes.Interface) error {
 	consumerID := generateUniqueConsumerGroupID(triggerObjName, funcName, ns, topic)
 	if !consumerM[consumerID] {
 		logrus.Infof("Creating Kafka consumer for the function %s associated with for trigger %s", funcName, triggerObjName)
 		stopM[consumerID] = make(chan struct{})
 		stoppedM[consumerID] = make(chan struct{})
-		go createConsumerProcess(brokers, topic, funcName, ns, consumerID, clientset, stopM[consumerID], stoppedM[consumerID])
+		go createConsumerProcess(brokers, topic, funcName, ns, clusterDomain, consumerID, clientset, stopM[consumerID], stoppedM[consumerID])
 		consumerM[consumerID] = true
 		logrus.Infof("Created Kafka consumer for the function %s associated with for trigger %s", funcName, triggerObjName)
 	} else {

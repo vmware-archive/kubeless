@@ -245,7 +245,7 @@ func (c *KinesisTriggerController) syncKinesisTrigger(key string) error {
 		return fmt.Errorf("Unable to find secret %s in namespace %s. Error %v", triggerObj.Spec.Secret, ns, err)
 	}
 
-	err = kinesis.CreateKinesisStreamConsumer(triggerObj, triggerObj.Spec.FunctionName, triggerObj.Namespace, c.kubernetesClient)
+	err = kinesis.CreateKinesisStreamConsumer(triggerObj, triggerObj.Spec.FunctionName, triggerObj.Namespace, triggerObj.Spec.ClusterDomain, c.kubernetesClient)
 	if err != nil {
 		c.logger.Errorf("Error creating Kinesis stream processor. Error: %v", err)
 	}

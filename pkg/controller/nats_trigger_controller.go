@@ -197,6 +197,11 @@ func (c *NatsTriggerController) syncNatsTrigger(key string) error {
 		return errors.New("NATS Trigger Topic can't be empty. Please check the trigger object %s" + key)
 	}
 
+	clusterDomain := triggerObj.Spec.ClusterDomain
+	if clusterDomain == "" {
+		clusterDomain := "cluster.local"
+	}
+
 	// NATS trigger API object is marked for deletion (DeletionTimestamp != nil), so lets process the delete update
 	if triggerObj.ObjectMeta.DeletionTimestamp != nil {
 
@@ -263,7 +268,7 @@ func (c *NatsTriggerController) syncNatsTrigger(key string) error {
 
 	for _, function := range functions {
 		funcName := function.ObjectMeta.Name
-		err = nats.CreateNATSConsumer(triggerObjName, funcName, ns, topic, c.kubernetesClient)
+		err = nats.CreateNATSConsumer(triggerObjName, funcName, ns, clusterDomain, topic, c.kubernetesClient)
 		if err != nil {
 			c.logger.Errorf("Failed to create the NATS consumer for the function %s associated with the NATS trigger %s due to %v: ", funcName, key, err)
 		}
@@ -310,7 +315,7 @@ func (c *NatsTriggerController) FunctionAddedDeletedUpdated(obj interface{}, del
 			c.logger.Infof("Successfully removed NATS consumer for Function: %s", functionObj.Name)
 		} else {
 			c.logger.Infof("We got a NATS trigger  %s that function %s need to be associated so create NATS consumer", triggerObj.Name, functionObj.Name)
-			nats.CreateNATSConsumer(triggerObj.Name, functionObj.Name, functionObj.Namespace, triggerObj.Spec.Topic, c.kubernetesClient)
+			nats.CreateNATSConsumer(triggerObj.Name, functionObj.Name, functionObj.Namespace, triggerObj.Spec.ClusterDomain, triggerObj.Spec.Topic, c.kubernetesClient)
 			c.logger.Infof("Successfully created NATS consumer for Function: %s", functionObj.Name)
 		}
 	}

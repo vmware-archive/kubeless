@@ -48,7 +48,7 @@ func init() {
 }
 
 // createStreamProcessor polls and gets messages from given AWS kinesis stream and send the stream records to function service
-func createStreamProcessor(triggerObj *kubelessApi.KinesisTrigger, funcName, ns string, clientset kubernetes.Interface, stopchan, stoppedchan chan struct{}) {
+func createStreamProcessor(triggerObj *kubelessApi.KinesisTrigger, funcName, ns string, clusterDomain, clientset kubernetes.Interface, stopchan, stoppedchan chan struct{}) {
 
 	// using the 250ms polling period used by AWS Lambda to poll Kinesis stream
 	ticker := time.NewTicker(250 * time.Millisecond)
@@ -146,7 +146,7 @@ func createStreamProcessor(triggerObj *kubelessApi.KinesisTrigger, funcName, ns 
 		if len(records.Records) > 0 {
 			for _, record := range records.Records {
 				data := string(record.Data[:])
-				req, err := utils.GetHTTPReq(clientset, funcName, ns, "kinesistriggers.kubeless.io", "POST", data)
+				req, err := utils.GetHTTPReq(clientset, funcName, ns, "kinesistriggers.kubeless.io", clusterDomain, "POST", data)
 				if err != nil {
 					logrus.Errorf("Unable to elaborate request: %v", err)
 				} else {
@@ -183,7 +183,7 @@ func getShardIterator(kc *kinesis.Kinesis, shardID, streamName string) (*string,
 }
 
 // CreateKinesisStreamConsumer creates a goroutine that polls the Kinesis stream for new records and forwards the data to function
-func CreateKinesisStreamConsumer(triggerObj *kubelessApi.KinesisTrigger, funcName, ns string, clientset kubernetes.Interface) error {
+func CreateKinesisStreamConsumer(triggerObj *kubelessApi.KinesisTrigger, funcName, ns string, clusterDomain, clientset kubernetes.Interface) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 	uniqueID := generateUniqueStreamProcessorID(triggerObj.Name, funcName, ns, triggerObj.Spec.Stream)
@@ -191,7 +191,7 @@ func CreateKinesisStreamConsumer(triggerObj *kubelessApi.KinesisTrigger, funcNam
 		logrus.Infof("Creating Kinesis stream processor for the function %s associated with Kinesis trigger %s", funcName, triggerObj.Name)
 		stopM[uniqueID] = make(chan struct{})
 		stoppedM[uniqueID] = make(chan struct{})
-		go createStreamProcessor(triggerObj, funcName, ns, clientset, stopM[uniqueID], stoppedM[uniqueID])
+		go createStreamProcessor(triggerObj, funcName, ns, clusterDomain, clientset, stopM[uniqueID], stoppedM[uniqueID])
 		streamProcessors[uniqueID] = true
 		logrus.Infof("Created Kinesis stream processor for the function %s associated with Kinesis trigger %s", funcName, triggerObj.Name)
 	} else {

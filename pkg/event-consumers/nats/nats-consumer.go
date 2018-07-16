@@ -48,7 +48,7 @@ func init() {
 }
 
 // createConsumerProcess gets messages for a topic from the NATS server and send the payload to function service
-func createConsumerProcess(topic, funcName, ns, queueGroupID string, clientset kubernetes.Interface, stopchan, stoppedchan chan struct{}) {
+func createConsumerProcess(topic, funcName, ns, clusterDomain, queueGroupID string, clientset kubernetes.Interface, stopchan, stoppedchan chan struct{}) {
 
 	nc, err := nats.Connect(url)
 	if err != nil {
@@ -60,7 +60,7 @@ func createConsumerProcess(topic, funcName, ns, queueGroupID string, clientset k
 	subscription, err := nc.QueueSubscribe(topic, queueGroupID, func(msg *nats.Msg) {
 		logrus.Debugf("Received Message %v on Topic: %v Queue: %v", string(msg.Data), msg.Subject, msg.Sub.Queue)
 		logrus.Infof("Sending message %s to function %s", string(msg.Data), funcName)
-		req, err := utils.GetHTTPReq(clientset, funcName, ns, "natstriggers.kubeless.io", "POST", string(msg.Data))
+		req, err := utils.GetHTTPReq(clientset, funcName, ns, "natstriggers.kubeless.io", clusterDomain, "POST", string(msg.Data))
 		if err != nil {
 			logrus.Errorf("Unable to elaborate request: %v", err)
 		} else {
@@ -90,7 +90,7 @@ func createConsumerProcess(topic, funcName, ns, queueGroupID string, clientset k
 }
 
 // CreateNATSConsumer creates a goroutine that subscribes to NATS topic
-func CreateNATSConsumer(triggerObjName, funcName, ns, topic string, clientset kubernetes.Interface) error {
+func CreateNATSConsumer(triggerObjName, funcName, ns, clusterDomain, topic string, clientset kubernetes.Interface) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 	queueGroupID := generateUniqueQueueGroupName(triggerObjName, funcName, ns, topic)
@@ -98,7 +98,7 @@ func CreateNATSConsumer(triggerObjName, funcName, ns, topic string, clientset ku
 		logrus.Infof("Creating NATS consumer for the function %s associated with for trigger %s", funcName, triggerObjName)
 		stopM[queueGroupID] = make(chan struct{})
 		stoppedM[queueGroupID] = make(chan struct{})
-		go createConsumerProcess(topic, funcName, ns, queueGroupID, clientset, stopM[queueGroupID], stoppedM[queueGroupID])
+		go createConsumerProcess(topic, funcName, ns, clusterDomain, queueGroupID, clientset, stopM[queueGroupID], stoppedM[queueGroupID])
 		consumerM[queueGroupID] = true
 		logrus.Infof("Created NATS consumer for the function %s associated with for trigger %s", funcName, triggerObjName)
 	} else {
