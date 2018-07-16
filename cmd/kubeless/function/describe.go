@@ -79,18 +79,24 @@ func print(f kubelessApi.Function, name, output string) error {
 		if err != nil {
 			return err
 		}
-		env, err := json.Marshal(f.Spec.Deployment.Spec.Template.Spec.Containers[0].Env)
-		if err != nil {
-			return err
+		var env, memory string
+		if len(f.Spec.Deployment.Spec.Template.Spec.Containers) != 0 {
+			b, err := json.Marshal(f.Spec.Deployment.Spec.Template.Spec.Containers[0].Env)
+			if err != nil {
+				return err
+			}
+			env = string(b)
+			memory = f.Spec.Deployment.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()
 		}
+
 		table.AddRow("Name:", name)
-		table.AddRow("Namespace:", fmt.Sprintf(f.ObjectMeta.Namespace))
-		table.AddRow("Handler:", fmt.Sprintf(f.Spec.Handler))
-		table.AddRow("Runtime:", fmt.Sprintf(f.Spec.Runtime))
-		table.AddRow("Label:", fmt.Sprintf(string(label)))
-		table.AddRow("Envvar:", fmt.Sprintf(string(env)))
-		table.AddRow("Memory:", fmt.Sprintf(f.Spec.Deployment.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().String()))
-		table.AddRow("Dependencies:", fmt.Sprintf(f.Spec.Deps))
+		table.AddRow("Namespace:", f.ObjectMeta.Namespace)
+		table.AddRow("Handler:", f.Spec.Handler)
+		table.AddRow("Runtime:", f.Spec.Runtime)
+		table.AddRow("Label:", string(label))
+		table.AddRow("Envvar:", env)
+		table.AddRow("Memory:", memory)
+		table.AddRow("Dependencies:", f.Spec.Deps)
 		fmt.Println(table)
 	case "json":
 		b, err := json.MarshalIndent(f, "", "  ")

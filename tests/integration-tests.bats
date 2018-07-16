@@ -23,6 +23,7 @@ load ../script/libtest
   deploy_function get-python-custom-port
   deploy_function get-nodejs
   deploy_function get-nodejs-custom-port
+  deploy_function get-nodejs-stream
   deploy_function get-nodejs-deps
   deploy_function timeout-nodejs
   deploy_function get-nodejs-multi
@@ -50,6 +51,7 @@ load ../script/libtest
   deploy_function get-java
   deploy_function post-java
   deploy_function get-java-deps
+  deploy_function get-jvm-java
   deploy_function get-nodejs-distroless
   deploy_function get-nodejs-distroless-deps
   deploy_function get-ballerina
@@ -87,6 +89,10 @@ load ../script/libtest
 @test "Test function: get-nodejs-custom-port" {
   verify_function get-nodejs-custom-port
   kubeless_function_delete get-nodejs-custom-port
+}
+@test "Test function: get-nodejs-stream" {
+  verify_function get-nodejs-stream
+  kubeless_function_delete get-nodejs-stream
 }
 @test "Test function: get-nodejs-deps" {
   verify_function get-nodejs-deps
@@ -193,6 +199,10 @@ load ../script/libtest
 @test "Test function: get-python-secrets" {
   verify_function get-python-secrets
   kubeless_function_delete get-python-secrets
+}
+@test "Test function: get-jvm-java" {
+  verify_function get-jvm-java
+  kubeless_function_delete get-jvm-java
 }
 @test "Test function: get-java" {
   verify_function get-java

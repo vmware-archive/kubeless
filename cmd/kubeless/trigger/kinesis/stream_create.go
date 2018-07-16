@@ -102,7 +102,7 @@ func init() {
 	createStreamCmd.Flags().Int64("shard-count", 1, "The number of shards that the stream will use.")
 	createStreamCmd.Flags().StringP("endpoint", "", "", "Override AWS's default service URL with the given URL")
 	createStreamCmd.Flags().StringP("secret", "", "", "Kubernetes secret that has AWS access key and secret key")
-	createStreamCmd.Flags().StringP("namespace", "", "", "Specify namespace for the Kinesis trigger")
+	createStreamCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the Kinesis trigger")
 	createStreamCmd.MarkFlagRequired("stream-name")
 	createStreamCmd.MarkFlagRequired("aws-region")
 	createStreamCmd.MarkFlagRequired("aws_access_key_id")

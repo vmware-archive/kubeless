@@ -112,9 +112,13 @@ func printTop(w io.Writer, metrics []*utils.Metric, cli kubernetes.Interface, ou
 		table := uitable.New()
 		table.MaxColWidth = 50
 		table.Wrap = true
-		table.AddRow("NAME", "NAMESPACE", "METHOD", "TOTAL_CALLS", "TOTAL_FAILURES", "TOTAL_DURATION_SECONDS", "AVG_DURATION_SECONDS")
+		table.AddRow("NAME", "NAMESPACE", "METHOD", "TOTAL_CALLS", "TOTAL_FAILURES", "TOTAL_DURATION_SECONDS", "AVG_DURATION_SECONDS", "MESSAGE")
 		for _, f := range metrics {
-			table.AddRow(f.FunctionName, f.Namespace, f.Method, f.TotalCalls, f.TotalFailures, f.TotalDurationSeconds, f.AvgDurationSeconds)
+			if f.Message != "" {
+				table.AddRow(f.FunctionName, f.Namespace, "", "", "", "", "", f.Message)
+			} else {
+				table.AddRow(f.FunctionName, f.Namespace, f.Method, f.TotalCalls, f.TotalFailures, f.TotalDurationSeconds, f.AvgDurationSeconds, "")
+			}
 		}
 		fmt.Fprintln(w, table)
 	} else {

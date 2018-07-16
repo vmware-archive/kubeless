@@ -16,6 +16,8 @@ kafka       ClusterIP   10.55.253.151   <none>        9092/TCP            7h
 zookeeper   ClusterIP   10.55.248.146   <none>        2181/TCP            7h
 ```
 
+**Note**: If you want to use the command `kubeless topic` you need add a label to your Kafka deployment (`kubeless=kafka`) in order for the CLI to find it. 
+
 And Kubeless already running at `kubeless` namespace:
 
 ```console

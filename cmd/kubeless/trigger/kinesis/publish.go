@@ -122,7 +122,7 @@ func init() {
 	publishCmd.Flags().StringArray("records", records, "Specify list of records to be published to the stream")
 	publishCmd.Flags().StringP("endpoint", "", "", "Override AWS's default service URL with the given URL")
 	publishCmd.Flags().StringP("secret", "", "", "Kubernetes secret that has AWS access key and secret key")
-	publishCmd.Flags().StringP("namespace", "", "", "Specify namespace for the Kinesis trigger")
+	publishCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the Kinesis trigger")
 	publishCmd.MarkFlagRequired("stream")
 	publishCmd.MarkFlagRequired("aws-region")
 	publishCmd.MarkFlagRequired("partition-key")

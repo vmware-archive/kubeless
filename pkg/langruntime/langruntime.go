@@ -271,6 +271,8 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 			"mv /kubeless/pom.xml /kubeless/function-pom.xml")
 	case strings.Contains(runtime, "ballerina"):
 		return v1.Container{}, fmt.Errorf("Ballerina does not require a dependencies file")
+	case strings.Contains(runtime, "jvm"):
+		return v1.Container{}, fmt.Errorf("jvm does not require a dependencies file")
 	}
 
 	return v1.Container{
@@ -340,6 +342,8 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 			"cp /kubeless/*.java /kubeless/function/src/main/java/io/kubeless/ && " +
 			"cp /kubeless/function-pom.xml /kubeless/function/pom.xml 2>/dev/null || true && " +
 			"mvn package > /dev/termination-log 2>&1 && mvn install > /dev/termination-log 2>&1"
+	case strings.Contains(runtime, "jvm"):
+		command = "mv /kubeless/* /kubeless/payload.jar && cp /opt/*.jar /kubeless/ > /dev/termination-log 2>&1"
 	case strings.Contains(runtime, "dotnetcore"):
 		command = "/app/compile-function.sh " + installVolume.MountPath
 	case strings.Contains(runtime, "ballerina"):

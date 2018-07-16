@@ -41,3 +41,5 @@ import:
   version: 3e58d42c9cfe5cd9429f1a21ad8f35cd859ba829
 - package: github.com/aws/aws-sdk-go
   version: v1.13.50
+- package: github.com/ghodss/yaml
+  version: v1.0.0
