@@ -847,7 +847,7 @@ func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, s
 								{
 									Image: reqImage,
 									Name:  "trigger",
-									Args:  []string{"curl", "-Lv", headersString, fmt.Sprintf("http://%s.%s.svc.k8s.local:8080", funcObj.ObjectMeta.Name, funcObj.ObjectMeta.Namespace)},
+									Args:  []string{"curl", "-Lv", headersString, fmt.Sprintf("http://%s.%s.svc.%s:8080", funcObj.ObjectMeta.Name, funcObj.ObjectMeta.Namespace, funcObj.ObjectMeta.CluserDomain)},
 								},
 							},
 							RestartPolicy: v1.RestartPolicyNever,

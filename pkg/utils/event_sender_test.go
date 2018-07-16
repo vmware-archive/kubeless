@@ -40,14 +40,14 @@ func TestGetHTTPRequest(t *testing.T) {
 		},
 	}
 	clientset := fake.NewSimpleClientset(&svc)
-	req, err := GetHTTPReq(clientset, "foo", "myns", "kafkatriggers.kubeless.io", "cluster.local", "POST", "my msg")
+	req, err := GetHTTPReq(clientset, "foo", "myns", "kafkatriggers.kubeless.io", "cluster.domain", "POST", "my msg")
 	if err != nil {
 		t.Errorf("Unexpected error %v", err)
 	}
 	if req.Method != "POST" {
 		t.Errorf("Unexpected method %s", req.Method)
 	}
-	if req.URL.String() != "http://foo.myns.svc.k8s.local:1234" {
+	if req.URL.String() != "http://foo.myns.svc.cluster.domain:1234" {
 		t.Errorf("Unexpected URL %s", req.URL.String())
 	}
 	body, err := ioutil.ReadAll(req.Body)

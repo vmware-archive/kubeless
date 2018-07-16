@@ -45,14 +45,14 @@ func GetFunctionPort(clientset kubernetes.Interface, namespace, functionName str
 }
 
 // GetHTTPReq returns the http request object that can be used to send a event with payload to function service
-func GetHTTPReq(clientset kubernetes.Interface, funcName, namespace, eventNamespace, method, body string) (*http.Request, error) {
+func GetHTTPReq(clientset kubernetes.Interface, funcName, namespace, clusterDomain, eventNamespace, method, body string) (*http.Request, error) {
 
 	funcPort, err := GetFunctionPort(clientset, namespace, funcName)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest(method, fmt.Sprintf("http://%s.%s.svc.k8s.local:%s", funcName, namespace, funcPort), strings.NewReader(body))
+	req, err := http.NewRequest(method, fmt.Sprintf("http://%s.%s.svc.%s:%s", funcName, namespace, clusterDomain, funcPort), strings.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create request %v", err)
 	}
