@@ -831,6 +831,7 @@ func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, s
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            jobName,
 			Namespace:       funcObj.ObjectMeta.Namespace,
+			ClusterDomain:   funcObj.ObjectMeta.ClusterDomain,
 			Labels:          addDefaultLabel(funcObj.ObjectMeta.Labels),
 			OwnerReferences: or,
 		},
