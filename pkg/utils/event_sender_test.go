@@ -47,7 +47,7 @@ func TestGetHTTPRequest(t *testing.T) {
 	if req.Method != "POST" {
 		t.Errorf("Unexpected method %s", req.Method)
 	}
-	if req.URL.String() != "http://foo.myns.svc.cluster.local:1234" {
+	if req.URL.String() != "http://foo.myns.svc.k8s.local:1234" {
 		t.Errorf("Unexpected URL %s", req.URL.String())
 	}
 	body, err := ioutil.ReadAll(req.Body)

@@ -106,13 +106,13 @@ local runtime_images ='[
       {
         "name": "node6",
         "version": "6",
-        "runtimeImage": "kubeless/nodejs@sha256:0a8a72af4cc3bfbfd4fe9bd309cbf486e7493d0dc32a691673b3f0d3fae07487",
+        "runtimeImage": "kubeless/nodejs@sha256:013facddb0f66c150844192584d823d7dfb2b5b8d79fd2ae98439c86685da657",
         "initImage": "node:6.10"
       },
       {
         "name": "node8",
         "version": "8",
-        "runtimeImage": "kubeless/nodejs@sha256:76ee28dc7e3613845fface2d1c56afc2e6e2c6d6392c724795a7ccc2f5e60582",
+        "runtimeImage": "kubeless/nodejs@sha256:b155d7e20e333044b60009c12a25a97c84eed610f2a3d9d314b47449dbdae0e5",
         "initImage": "node:8"
       }
     ],
@@ -208,10 +208,10 @@ local runtime_images ='[
      "compiled": true,
      "versions": [
        {
-          "name": "ballerina0.970.1",
-          "version": "0.970.1",
-          "runtimeImage": "kubeless/ballerina@sha256:e9eb2b5e5fb6f8294afea7ad4c02be71d6878305d1d4542aab2e8d2ef50d8be0",
-          "initImage": "kubeless/ballerina-init@sha256:4030be0d7f513e4153993e6703d8b368a9ae8d093fcd9d322e3c1d8d30bf6eb2"
+          "name": "ballerina0.975.0",
+          "version": "0.975.0",
+          "runtimeImage": "kubeless/ballerina@sha256:83e51423972f4b0d6b419bee0b4afb3bb87d2bf1b604ebc4366c430e7cc28a35",
+          "initImage": "kubeless/ballerina-init@sha256:05857ce439a7e290f9d86f8cb38ea3b574670c0c0e91af93af06686fa21ecf4f"
        }
      ],
      "depName": "",

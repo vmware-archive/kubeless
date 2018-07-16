@@ -343,14 +343,7 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 	case strings.Contains(runtime, "dotnetcore"):
 		command = "/app/compile-function.sh " + installVolume.MountPath
 	case strings.Contains(runtime, "ballerina"):
-		command = fmt.Sprintf(
-			"mkdir /kubeless/func/ && "+
-				"cp -r /kubeless/*.bal /kubeless/func/ && "+
-				"touch /kubeless/kubeless.toml && "+
-				"cp -r /ballerina/files/src/kubeless_run.tpl.bal /kubeless/ && "+
-				"sed 's/<<FUNCTION>>/%s/g' /kubeless/kubeless_run.tpl.bal > /kubeless/kubeless_run.bal && "+
-				"rm /kubeless/kubeless_run.tpl.bal && "+
-				"ballerina build kubeless_run.bal ", funcName)
+		command = fmt.Sprintf("/compile-function.sh %s", funcName)
 
 	default:
 		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
