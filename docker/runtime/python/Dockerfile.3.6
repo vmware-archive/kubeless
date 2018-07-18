@@ -9,7 +9,8 @@ RUN wget -nc -P /tmp/bitnami/pkg/cache/ https://downloads.bitnami.com/files/stac
 
 ENV BITNAMI_APP_NAME="python" \
     BITNAMI_IMAGE_VERSION="3.6.3-r0" \
-    PATH="/opt/bitnami/python/bin:$PATH"
+    PATH="/opt/bitnami/python/bin:$PATH" \
+    PYTHONPATH="/kubeless/:$PYTHONPATH"
 
 RUN curl https://bootstrap.pypa.io/get-pip.py --output get-pip.py
 RUN python ./get-pip.py
