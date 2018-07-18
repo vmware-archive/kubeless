@@ -72,10 +72,30 @@ class Controller
               chdir($this->currentDir);
               return $res;
           case -1:
-              throw new TimeoutFunctionException();
+              throw new \RuntimeException();
           default:
-              sleep($this->timeout);
-              posix_kill($pid, SIGKILL);
+              $startTime = microtime(true);
+
+              while ($pid > 0) {
+                  $res = pcntl_waitpid($pid, $status, WNOHANG);
+
+                  // Deal with an exited process
+                  if ($res == -1 || $res > 0) {
+                      if (pcntl_wifsignaled($status)) {
+                          throw new TimeoutFunctionException();
+                      }
+                      $pid = 0;
+                  }
+
+                  // Deal with a timeout
+                  $timeElapsed = microtime(true) - $startTime;
+                  if ($timeElapsed > $this->timeout) {
+                      posix_kill($pid, SIGKILL);
+                  }
+
+                  // Sleep for a little while to save the processor.
+                  usleep(10000);
+              }
       }
   }
 
