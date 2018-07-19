@@ -293,7 +293,7 @@ func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runti
 	case strings.Contains(runtime, "python"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "PYTHONPATH",
-			Value: path.Join(depsPath, "lib/python"+l.getVersionFromRuntime(runtime)+"/site-packages"),
+			Value: strings.Join(path.Join(depsPath, "lib/python"+l.getVersionFromRuntime(runtime)+"/site-packages"), depsPath),
 		})
 	case strings.Contains(runtime, "nodejs"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
