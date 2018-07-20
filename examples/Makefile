@@ -15,7 +15,7 @@ get-python-update-verify:
 	kubeless function call get-python |egrep hello.world.updated
 
 get-python-deps:
-	zip hellowithdeps.zip hellowithdeps.py  hellowithdepshelper.py
+	zip hellowithdeps.zip python/hellowithdeps.py  python/hellowithdepshelper.py
 	kubeless function deploy get-python-deps --runtime python2.7 --handler helloget.foo --from-file python/hellowithdeps.zip --dependencies python/requirements.txt
 
 get-python-deps-verify:
