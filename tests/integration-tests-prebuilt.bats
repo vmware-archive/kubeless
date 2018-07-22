@@ -34,7 +34,7 @@ load ../script/libtest
   # Speed up pod start when the image is ready
   restart_function get-python
   verify_function get-python
-  kubectl logs -n kubeless -l kubeless=controller | grep "Started function build job"
+  kubectl logs -n kubeless -l kubeless=controller -c kubeless-function-controller | grep "Started function build job"
   kubectl get deployment -o yaml get-python | grep image | grep $(minikube ip):5000
 }
 
