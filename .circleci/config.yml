@@ -158,6 +158,7 @@ jobs:
       - <<: *exports
       - run: make bootstrap
       - run: make VERSION=${CONTROLLER_TAG} binary
+      - run: make VERSION=${CONTROLLER_TAG} binary-cross
       - run: make test
       - run: make validation
       - run: make all-yaml
@@ -177,6 +178,8 @@ jobs:
           path: /home/circleci/.go_workspace/bin/kubeless
       - store_artifacts:
           path: build-manifests
+      - store_artifacts:
+          path: bundles
   minikube:
     <<: *defaults
     machine: true
