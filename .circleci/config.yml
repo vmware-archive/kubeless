@@ -199,6 +199,7 @@ jobs:
       - image: circleci/golang:1.9
     steps:
       - <<: *exports
+      - checkout
       - attach_workspace:
           at: /tmp/go
       - <<: *restore_workspace
