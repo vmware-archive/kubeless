@@ -17,9 +17,11 @@ limitations under the License.
 package function
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	cronjobApi "github.com/kubeless/cronjob-trigger/pkg/apis/kubeless/v1beta1"
 	cronjobUtils "github.com/kubeless/cronjob-trigger/pkg/utils"
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
@@ -139,7 +141,18 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		headless, err := cmd.Flags().GetBool("headless")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		dryrun, err := cmd.Flags().GetBool("dryrun")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -179,9 +192,29 @@ var deployCmd = &cobra.Command{
 		}
 
 		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, imagePullPolicy, port, headless, envs, labels, secrets, defaultFunctionSpec)
-
 		if err != nil {
 			logrus.Fatal(err)
+		}
+
+		if dryrun == true {
+			if output == "json" {
+				j, err := json.MarshalIndent(f, "", "    ")
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(j[:]))
+				return
+			} else if output == "yaml" {
+				y, err := yaml.Marshal(f)
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(y[:]))
+				return
+			} else {
+				logrus.Infof("Output format needs to be yaml or json")
+				return
+			}
 		}
 
 		kubelessClient, err := kubelessUtils.GetKubelessClientOutCluster()
@@ -240,6 +273,8 @@ func init() {
 	deployCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
 	deployCmd.Flags().StringP("image-pull-policy", "", "Always", "Image pull policy")
 	deployCmd.Flags().StringP("timeout", "", "180", "Maximum timeout (in seconds) for the function to complete its execution")
+	deployCmd.Flags().StringP("output", "o", "yaml", "Output format")
 	deployCmd.Flags().Bool("headless", false, "Deploy http-based function without a single service IP and load balancing support from Kubernetes. See: https://kubernetes.io/docs/concepts/services-networking/service/#headless-services")
+	deployCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
 	deployCmd.Flags().Int32("port", 8080, "Deploy http-based function with a custom port")
 }

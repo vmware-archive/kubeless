@@ -29,6 +29,7 @@ type Metric struct {
 	FunctionName         string  `json:"function,omitempty"`
 	Namespace            string  `json:"namespace,omitempty"`
 	Method               string  `json:"method,omitempty"`
+	Message              string  `json:"message,omitempty"`
 	TotalCalls           float64 `json:"total_calls,omitempty"`
 	TotalFailures        float64 `json:"total_failures,omitempty"`
 	TotalDurationSeconds float64 `json:"total_duration_seconds,omitempty"`
@@ -116,12 +117,24 @@ func GetFunctionMetrics(apiV1Client kubernetes.Interface, h MetricsRetriever, na
 
 	res, err := h.GetRawMetrics(apiV1Client, namespace, functionName)
 	if err != nil {
-		return []*Metric{}
+		return []*Metric{
+			{
+				FunctionName: functionName,
+				Namespace:    namespace,
+				Message:      "Function does not expose metrics",
+			},
+		}
 	}
 
 	metrics, err := parseMetrics(namespace, functionName, res)
 	if err != nil {
-		return []*Metric{}
+		return []*Metric{
+			{
+				FunctionName: functionName,
+				Namespace:    namespace,
+				Message:      "Unable to get function metrics",
+			},
+		}
 	}
 	return metrics
 }

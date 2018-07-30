@@ -17,6 +17,8 @@ limitations under the License.
 package kafka
 
 import (
+	"fmt"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -56,6 +58,16 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		dryrun, err := cmd.Flags().GetBool("dryrun")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		labelSelector, err := metav1.ParseToLabelSelector(functionSelector)
 		if err != nil {
 			logrus.Fatal("Invalid lable selector specified " + err.Error())
@@ -75,6 +87,16 @@ var createCmd = &cobra.Command{
 		}
 		kafkaTrigger.Spec.FunctionSelector.MatchLabels = labelSelector.MatchLabels
 		kafkaTrigger.Spec.Topic = topic
+
+		if dryrun == true {
+			res, err := kubelessUtils.DryRunFmt(output, kafkaTrigger)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			fmt.Println(res)
+			return
+		}
+
 		kafkaClient, err := kafkaUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
@@ -89,9 +111,11 @@ var createCmd = &cobra.Command{
 }
 
 func init() {
-	createCmd.Flags().StringP("namespace", "", "", "Specify namespace for the kafka trigger")
+	createCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the kafka trigger")
 	createCmd.Flags().StringP("trigger-topic", "", "", "Specify topic to listen to in Kafka broker")
 	createCmd.Flags().StringP("function-selector", "", "", "Selector (label query) to select function on (e.g. -function-selector key1=value1,key2=value2)")
 	createCmd.MarkFlagRequired("trigger-topic")
 	createCmd.MarkFlagRequired("function-selector")
+	createCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
+	createCmd.Flags().StringP("output", "o", "yaml", "Output format")
 }

@@ -17,6 +17,8 @@ limitations under the License.
 package cronjob
 
 import (
+	"fmt"
+
 	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -60,6 +62,16 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		dryrun, err := cmd.Flags().GetBool("dryrun")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		kubelessClient, err := kubelessUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
@@ -81,6 +93,16 @@ var updateCmd = &cobra.Command{
 		}
 		cronJobTrigger.Spec.FunctionName = functionName
 		cronJobTrigger.Spec.Schedule = schedule
+
+		if dryrun == true {
+			res, err := kubelessUtils.DryRunFmt(output, cronJobTrigger)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			fmt.Println(res)
+			return
+		}
+
 		err = cronjobUtils.UpdateCronJobCustomResource(cronJobClient, cronJobTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to update cronjob trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
@@ -90,7 +112,9 @@ var updateCmd = &cobra.Command{
 }
 
 func init() {
-	updateCmd.Flags().StringP("namespace", "", "", "Specify namespace of the cronjob trigger")
+	updateCmd.Flags().StringP("namespace", "n", "", "Specify namespace of the cronjob trigger")
 	updateCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	updateCmd.Flags().StringP("function", "", "", "Name of the function to be associated with trigger")
+	updateCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
+	updateCmd.Flags().StringP("output", "o", "yaml", "Output format")
 }
