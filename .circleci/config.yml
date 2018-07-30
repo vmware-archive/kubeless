@@ -98,6 +98,10 @@ workflows:
           <<: *build_allways
           requires:
             - build
+      - build-cross-binaries:
+          <<: *build_allways
+          requires:
+            - build
       - minikube_core_triggers:
           <<: *build_allways
           requires:
@@ -158,7 +162,6 @@ jobs:
       - <<: *exports
       - run: make bootstrap
       - run: make VERSION=${CONTROLLER_TAG} binary
-      - run: make VERSION=${CONTROLLER_TAG} binary-cross
       - run: make test
       - run: make validation
       - run: make all-yaml
@@ -178,8 +181,6 @@ jobs:
           path: /home/circleci/.go_workspace/bin/kubeless
       - store_artifacts:
           path: build-manifests
-      - store_artifacts:
-          path: bundles
   minikube:
     <<: *defaults
     machine: true
@@ -192,6 +193,18 @@ jobs:
       - run: ./script/pull-or-build-image.sh controller-image
       - run: ./script/integration-tests minikube deployment
       - run: ./script/integration-tests minikube basic
+  build-cross-binaries:
+    <<: *defaults
+    docker:
+      - image: circleci/golang:1.9
+    steps:
+      - <<: *exports
+      - attach_workspace:
+          at: /tmp/go
+      - <<: *restore_workspace
+      - run: make VERSION=${CIRCLE_TAG} binary-cross
+      - store_artifacts:
+          path: bundles
   minikube_core_triggers:
     <<: *defaults
     machine: true
