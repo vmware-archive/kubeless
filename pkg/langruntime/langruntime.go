@@ -291,9 +291,10 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runtime string) {
 	switch {
 	case strings.Contains(runtime, "python"):
+		pythonPaths := []string{path.Join(depsPath, "lib/python"+l.getVersionFromRuntime(runtime)+"/site-packages"), depsPath}
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "PYTHONPATH",
-			Value: path.Join(depsPath, "lib/python"+l.getVersionFromRuntime(runtime)+"/site-packages"),
+			Value: strings.Join(pythonPaths, ":"),
 		})
 	case strings.Contains(runtime, "nodejs"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{

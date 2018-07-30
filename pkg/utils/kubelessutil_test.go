@@ -538,7 +538,7 @@ func TestEnsureDeployment(t *testing.T) {
 			},
 			{
 				Name:  "PYTHONPATH",
-				Value: "/kubeless/lib/python2.7/site-packages",
+				Value: "/kubeless/lib/python2.7/site-packages:/kubeless",
 			},
 		},
 		VolumeMounts: []v1.VolumeMount{
