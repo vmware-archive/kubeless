@@ -86,6 +86,15 @@ make binary-cross
 
 The binaries accordingly located at `bundles/kubeless_$OS_$arch` folder.
 
+### Building Trigger Controllers
+
+Each Kubeless trigger controller is being developed on its own repository. You can find more information about those controllers in their repositories:
+
+ - [HTTP Trigger](https://github.com/kubeless/http-trigger)
+ - [CronJob Trigger](https://github.com/kubeless/cronjob-trigger)
+ - [Kafka Trigger](https://github.com/kubeless/kafka-trigger)
+ - [NATS Trigger](https://github.com/kubeless/nats-trigger)
+
 ### Building k8s manifests file
 
 To regenerate the most updated k8s manifests file, run:
@@ -103,7 +112,6 @@ make all-yaml
 If everything is ok, you'll have generated manifests file under the `$KUBELESS_WORKING_DIR` root directory:
 
 ```
-kafka-zookeeper.yaml
 kubeless-openshift.yaml
 kubeless-non-rbac.yaml
 kubeless.yaml
@@ -112,7 +120,6 @@ kubeless.yaml
 You can also generate them separated using the following commands:
 
 ```bash
-make kafka-zookeeper.yaml
 make kubeless-openshift.yaml
 make kubeless-non-rbac.yaml
 make kubeless.yaml
@@ -147,12 +154,6 @@ In order to upload your kubeless controller image to Kubernetes, you should use 
 ```bash
 kubectl create ns kubeless
 kubectl create -f <path-to-yaml-file>/kubeless.yaml
-```
-
-To deploy kafka and zookeeper
-
-```bash
-kubectl create -f <path-to-yaml-file>/kafka-zookeeper.yaml
 ```
 
 ### Working on your local branch
@@ -275,6 +276,6 @@ Example of shell script to setup a local environment, build the kubeless binarie
 
 ## Manage dependencies
 
-We use [Glide](https://github.com/Masterminds/glide) to vendor the dependencies. Take a quick look at the README to understand how it works. Packages that Kubeless relies on are listed at [glide.yaml](https://github.com/kubeless/kubeless/blob/master/glide.yaml).
+We use [dep](https://github.com/golang/dep) to vendor the dependencies. Take a quick look at the README to understand how it works. Packages that Kubeless relies on are listed at [Gopkg.toml](https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md).
 
 Happy hacking!
