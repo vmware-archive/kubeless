@@ -43,6 +43,10 @@ workflows:
           <<: *build_allways
           requires:
             - build
+      - build-cross-binaries:
+          <<: *build_allways
+          requires:
+            - build
       - minikube_build_functions:
           <<: *build_allways
           requires:
@@ -110,6 +114,19 @@ jobs:
       - run: ./script/pull-or-build-image.sh function-controller
       - run: ./script/integration-tests minikube deployment
       - run: ./script/integration-tests minikube basic
+  build-cross-binaries:
+    <<: *defaults
+    docker:
+      - image: circleci/golang:1.9
+    steps:
+      - <<: *exports
+      - checkout
+      - attach_workspace:
+          at: /tmp/go
+      - <<: *restore_workspace
+      - run: make VERSION=${CIRCLE_TAG} binary-cross
+      - store_artifacts:
+          path: bundles
   minikube_core_triggers:
     <<: *defaults
     machine: true

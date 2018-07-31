@@ -71,8 +71,9 @@ func GetClient() kubernetes.Interface {
 
 // BuildOutOfClusterConfig returns k8s config
 func BuildOutOfClusterConfig() (*rest.Config, error) {
-	kubeconfigPath := os.Getenv("KUBECONFIG")
-	if kubeconfigPath == "" {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	kubeconfigEnv := os.Getenv("KUBECONFIG")
+	if kubeconfigEnv == "" {
 		home := os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
 		if home == "" {
 			for _, h := range []string{"HOME", "USERPROFILE"} {
@@ -81,9 +82,15 @@ func BuildOutOfClusterConfig() (*rest.Config, error) {
 				}
 			}
 		}
-		kubeconfigPath = filepath.Join(home, ".kube", "config")
+		kubeconfigPath := filepath.Join(home, ".kube", "config")
+		loadingRules.ExplicitPath = kubeconfigPath
 	}
-	return clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		loadingRules, &clientcmd.ConfigOverrides{}).ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
 }
 
 // GetClientOutOfCluster returns a k8s clientset to the request from outside of cluster
