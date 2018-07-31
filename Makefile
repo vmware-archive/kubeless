@@ -36,7 +36,7 @@ binary-cross:
 	$(KUBECFG) show -o yaml $< > $@.tmp
 	mv $@.tmp $@
 
-all-yaml: kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml kafka-zookeeper.yaml kafka-zookeeper-openshift.yaml nats.yaml kinesis.yaml
+all-yaml: kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml kafka-zookeeper.yaml
 
 kubeless.yaml: kubeless.jsonnet
 

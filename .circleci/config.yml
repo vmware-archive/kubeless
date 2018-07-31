@@ -15,7 +15,7 @@ defaults: &defaults
     TEST_DEBUG: "1"
     GKE_VERSION: 1.9.7-gke.3
     MINIKUBE_VERSION: v0.25.2
-    MANIFESTS: kubeless kubeless-non-rbac kubeless-openshift kafka-zookeeper kafka-zookeeper-openshift nats kinesis
+    MANIFESTS: kubeless kubeless-non-rbac kubeless-openshift
 exports: &exports
   # It is not possible to resolve env vars in the environment section:
   # https://discuss.circleci.com/t/using-environment-variables-in-config-yml-not-working/14237
@@ -127,21 +127,6 @@ jobs:
       - run: make VERSION=${CIRCLE_TAG} binary-cross
       - store_artifacts:
           path: bundles
-  minikube_core_triggers:
-    <<: *defaults
-    machine: true
-    steps:
-      - checkout
-      - <<: *exports
-      - attach_workspace:
-          at: /tmp/go
-      - <<: *restore_workspace
-      - run: sudo apt-get update -y
-      - run: sudo apt-get install -y apache2-utils
-      - run: ./script/pull-or-build-image.sh function-controller
-      - run: ./script/integration-tests minikube deployment
-      - run: ./script/integration-tests minikube cronjob
-      - run: ./script/integration-tests minikube http
   minikube_build_functions:
     <<: *defaults
     machine: true
