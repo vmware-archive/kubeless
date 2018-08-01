@@ -4,13 +4,13 @@ You can trigger any Kubeless function by a PubSub mechanism. The PubSub function
 
 ## Kafka
 
-In Kubeless [release page](https://github.com/kubeless/kubeless/releases), you can find the manifest to quickly deploy a collection of Kafka and Zookeeper statefulsets. If you have a Kafka cluster already running in the same Kubernetes environment, you can also deploy PubSub function with it. Check out [this tutorial](/docs/use-existing-kafka) for more details how to do that.
+In Kafka [release page](https://github.com/kubeless/kafka-trigger/releases), you can find the manifest to quickly deploy a collection of Kafka and Zookeeper statefulsets. If you have a Kafka cluster already running in the same Kubernetes environment, you can also deploy PubSub function with it. Check out [this tutorial](/docs/use-existing-kafka) for more details how to do that.
 
 If you want to deploy the manifest we provide to deploy Kafka and Zookeeper execute the following command:
 
 ```console
-$ export RELEASE=$(curl -s https://api.github.com/repos/kubeless/kubeless/releases/latest | grep tag_name | cut -d '"' -f 4)
-$ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kafka-zookeeper-$RELEASE.yaml
+$ export RELEASE=$(curl -s https://api.github.com/repos/kubeless/kafka-trigger/releases/latest | grep tag_name | cut -d '"' -f 4)
+$ kubectl create -f https://github.com/kubeless/kafka-trigger/releases/download/$RELEASE/kafka-zookeeper-$RELEASE.yaml
 ```
 
 > NOTE: Kafka statefulset uses a PVC (persistent volume claim). Depending on the configuration of your cluster you may need to provision a PV (Persistent Volume) that matches the PVC or configure dynamic storage provisioning. Otherwise Kafka pod will fail to get scheduled. Also note that Kafka is only required for PubSub functions, you can still use http triggered functions. Please refer to [PV](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) documentation on how to provision storage for PVC.
@@ -94,7 +94,8 @@ Above command will create NATS cluster IP service `nats.nats-io.svc.cluster.loca
 Now use this manifest to deploy Kubeless NATS triggers controller.
 
 ```console
-kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/nats-$RELEASE.yaml
+$ export RELEASE=$(curl -s https://api.github.com/repos/kubeless/nats-trigger/releases/latest | grep tag_name | cut -d '"' -f 4)
+$ kubectl create -f https://github.com/kubeless/nats-trigger/releases/download/$RELEASE/nats-$RELEASE.yaml
 ```
 
 By default NATS trigger controller expects NATS cluster is available as Kubernetes cluster service `nats.nats-io.svc.cluster.local:4222`. You can overide the default NATS cluster url used by setting the environment variable `NATS_URL` in the manifest. Once NATS trigger controller is setup you can deploy the function and associate function with a topic on the NATS cluster.

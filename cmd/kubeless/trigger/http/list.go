@@ -21,8 +21,9 @@ import (
 	"io"
 
 	"github.com/gosuri/uitable"
-	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
-	"github.com/kubeless/kubeless/pkg/utils"
+	"github.com/kubeless/http-trigger/pkg/client/clientset/versioned"
+	httpUtils "github.com/kubeless/http-trigger/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,15 +40,15 @@ var listCmd = &cobra.Command{
 			logrus.Fatal(err.Error())
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		httpClient, err := httpUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
 
-		if err := doList(cmd.OutOrStdout(), kubelessClient, ns); err != nil {
+		if err := doList(cmd.OutOrStdout(), httpClient, ns); err != nil {
 			logrus.Fatal(err.Error())
 		}
 	},

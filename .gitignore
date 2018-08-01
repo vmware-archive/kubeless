@@ -155,11 +155,8 @@ artifacts/
 # Kubeless specific
 bats/
 bundles/
-docker/controller-manager/kubeless-controller-manager
-docker/kafka-controller/kafka-controller
+docker/function-controller/kubeless-function-controller
 docker/function-image-builder/imbuilder
-docker/nats-controller/nats-controller
-docker/kinesis-controller/kinesis-controller
 ksonnet-lib/
 kubeless-openshift.yaml
 kubeless-non-rbac.yaml

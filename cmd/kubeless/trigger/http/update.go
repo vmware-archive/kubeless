@@ -19,7 +19,8 @@ package http
 import (
 	"fmt"
 
-	"github.com/kubeless/kubeless/pkg/utils"
+	httpUtils "github.com/kubeless/http-trigger/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -39,15 +40,20 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		kubelessClient, err := kubelessUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
 
-		httpTrigger, err := utils.GetHTTPTriggerCustomResource(kubelessClient, triggerName, ns)
+		httpClient, err := httpUtils.GetKubelessClientOutCluster()
+		if err != nil {
+			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
+		}
+
+		httpTrigger, err := httpUtils.GetHTTPTriggerCustomResource(httpClient, triggerName, ns)
 		if err != nil {
 			logrus.Fatalf("Unable to find HTTP trigger %s in namespace %s. Error %s", triggerName, ns, err)
 		}
@@ -58,7 +64,7 @@ var updateCmd = &cobra.Command{
 		}
 
 		if functionName != "" {
-			_, err = utils.GetFunctionCustomResource(kubelessClient, functionName, ns)
+			_, err = kubelessUtils.GetFunctionCustomResource(kubelessClient, functionName, ns)
 			if err != nil {
 				logrus.Fatalf("Unable to find Function %s in namespace %s. Error %s", functionName, ns, err)
 			}
@@ -124,7 +130,7 @@ var updateCmd = &cobra.Command{
 		}
 
 		if dryrun == true {
-			res, err := utils.DryRunFmt(output, httpTrigger)
+			res, err := kubelessUtils.DryRunFmt(output, httpTrigger)
 			if err != nil {
 				logrus.Fatal(err)
 			}
@@ -132,7 +138,7 @@ var updateCmd = &cobra.Command{
 			return
 		}
 
-		err = utils.UpdateHTTPTriggerCustomResource(kubelessClient, httpTrigger)
+		err = httpUtils.UpdateHTTPTriggerCustomResource(httpClient, httpTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to deploy HTTP trigger %s in namespace %s. Error: %s", triggerName, ns, err)
 		}

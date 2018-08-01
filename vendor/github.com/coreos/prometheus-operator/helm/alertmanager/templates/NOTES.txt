@@ -1,1 +1,0 @@
-A new Alertmanager instance has been created.

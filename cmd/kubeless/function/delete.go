@@ -20,7 +20,6 @@ import (
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 var deleteCmd = &cobra.Command{
@@ -44,24 +43,6 @@ var deleteCmd = &cobra.Command{
 		kubelessClient, err := utils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatal(err)
-		}
-
-		// For convenience `kubeless function create` command also creates http/cronjob/kafka trigger object with same
-		// name as that of function implicitly depending on which flag specified. Delete if there is any trigger obj with
-		// function name.
-		err = utils.DeleteHTTPTriggerCustomResource(kubelessClient, funcName, ns)
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			logrus.Errorf("Failed to delete HTTP trigger associated with the function %s", funcName)
-		}
-
-		err = utils.DeleteCronJobCustomResource(kubelessClient, funcName, ns)
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			logrus.Errorf("Failed to delete Cronjob trigger associated with the function %s", funcName)
-		}
-
-		err = utils.DeleteKafkaTriggerCustomResource(kubelessClient, funcName, ns)
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			logrus.Errorf("Failed to delete Kafka trigger associated with the function %s", funcName)
 		}
 
 		err = utils.DeleteFunctionCustomResource(kubelessClient, funcName, ns)

@@ -22,8 +22,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
-	"github.com/kubeless/kubeless/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
+	natsApi "github.com/kubeless/nats-trigger/pkg/apis/kubeless/v1beta1"
+	natsUtils "github.com/kubeless/nats-trigger/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -44,7 +45,7 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
 		topic, err := cmd.Flags().GetString("trigger-topic")
@@ -72,12 +73,12 @@ var createCmd = &cobra.Command{
 			logrus.Fatal("Invalid label selector specified " + err.Error())
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		natsClient, err := natsUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
 
-		natsTrigger := kubelessApi.NATSTrigger{}
+		natsTrigger := natsApi.NATSTrigger{}
 		natsTrigger.TypeMeta = metav1.TypeMeta{
 			Kind:       "NATSTrigger",
 			APIVersion: "kubeless.io/v1beta1",
@@ -93,7 +94,7 @@ var createCmd = &cobra.Command{
 		natsTrigger.Spec.Topic = topic
 
 		if dryrun == true {
-			res, err := utils.DryRunFmt(output, natsTrigger)
+			res, err := kubelessUtils.DryRunFmt(output, natsTrigger)
 			if err != nil {
 				logrus.Fatal(err)
 			}
@@ -101,7 +102,7 @@ var createCmd = &cobra.Command{
 			return
 		}
 
-		err = utils.CreateNatsTriggerCustomResource(kubelessClient, &natsTrigger)
+		err = natsUtils.CreateNatsTriggerCustomResource(natsClient, &natsTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to create NATS trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
 		}

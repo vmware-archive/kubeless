@@ -53,18 +53,8 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=kubeless.io, Version=v1beta1
-	case v1beta1.SchemeGroupVersion.WithResource("cronjobtriggers"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Kubeless().V1beta1().CronJobTriggers().Informer()}, nil
 	case v1beta1.SchemeGroupVersion.WithResource("functions"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Kubeless().V1beta1().Functions().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("httptriggers"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Kubeless().V1beta1().HTTPTriggers().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("kafkatriggers"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Kubeless().V1beta1().KafkaTriggers().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("kinesistriggers"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Kubeless().V1beta1().KinesisTriggers().Informer()}, nil
-	case v1beta1.SchemeGroupVersion.WithResource("natstriggers"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Kubeless().V1beta1().NATSTriggers().Informer()}, nil
 
 	}
 

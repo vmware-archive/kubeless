@@ -23,8 +23,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
-	"github.com/kubeless/kubeless/pkg/utils"
+	cronjobApi "github.com/kubeless/cronjob-trigger/pkg/apis/kubeless/v1beta1"
+	cronjobUtils "github.com/kubeless/cronjob-trigger/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -53,7 +54,7 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
 		functionName, err := cmd.Flags().GetString("function")
@@ -71,17 +72,22 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		kubelessClient, err := kubelessUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
 
-		_, err = utils.GetFunctionCustomResource(kubelessClient, functionName, ns)
+		cronJobClient, err := cronjobUtils.GetKubelessClientOutCluster()
+		if err != nil {
+			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
+		}
+
+		_, err = kubelessUtils.GetFunctionCustomResource(kubelessClient, functionName, ns)
 		if err != nil {
 			logrus.Fatalf("Unable to find Function %s in namespace %s. Error %s", functionName, ns, err)
 		}
 
-		cronJobTrigger := kubelessApi.CronJobTrigger{}
+		cronJobTrigger := cronjobApi.CronJobTrigger{}
 		cronJobTrigger.TypeMeta = metav1.TypeMeta{
 			Kind:       "CronJobTrigger",
 			APIVersion: "kubeless.io/v1beta1",
@@ -97,7 +103,7 @@ var createCmd = &cobra.Command{
 		cronJobTrigger.Spec.Schedule = schedule
 
 		if dryrun == true {
-			res, err := utils.DryRunFmt(output, cronJobTrigger)
+			res, err := kubelessUtils.DryRunFmt(output, cronJobTrigger)
 			if err != nil {
 				logrus.Fatal(err)
 			}
@@ -105,7 +111,7 @@ var createCmd = &cobra.Command{
 			return
 		}
 
-		err = utils.CreateCronJobCustomResource(kubelessClient, &cronJobTrigger)
+		err = cronjobUtils.CreateCronJobCustomResource(cronJobClient, &cronJobTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to create cronjob trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
 		}
