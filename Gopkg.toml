@@ -102,20 +102,20 @@
   name = "golang.org/x/net"
 
 [[constraint]]
-  version = "kubernetes-1.8.7"
+  version = "kubernetes-1.10.0"
   name = "k8s.io/api"
 
 [[constraint]]
-  version = "kubernetes-1.8.7"
+  version = "kubernetes-1.10.0"
   name = "k8s.io/apiextensions-apiserver"
 
 [[constraint]]
-  version = "kubernetes-1.8.7"
+  version = "kubernetes-1.10.0"
   name = "k8s.io/apimachinery"
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "v5.0.0"
+  version = "v7.0.0"
 
 [prune]
   go-tests = true
