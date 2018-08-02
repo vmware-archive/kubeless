@@ -76,7 +76,13 @@ type Config struct {
 func NewFunctionController(cfg Config, smclient *monitoringv1alpha1.MonitoringV1alpha1Client) *FunctionController {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
-	informer := kv1beta1.NewFunctionInformer(cfg.FunctionClient, corev1.NamespaceAll, 0, cache.Indexers{})
+	apiExtensionsClientset := utils.GetAPIExtensionsClientInCluster()
+	config, err := utils.GetKubelessConfig(cfg.KubeCli, apiExtensionsClientset)
+	if err != nil {
+		logrus.Fatalf("Unable to read the configmap: %s", err)
+	}
+
+	informer := kv1beta1.NewFunctionInformer(cfg.FunctionClient, config.Data["functions-namespace"], 0, cache.Indexers{})
 
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -102,12 +108,6 @@ func NewFunctionController(cfg Config, smclient *monitoringv1alpha1.MonitoringV1
 			}
 		},
 	})
-
-	apiExtensionsClientset := utils.GetAPIExtensionsClientInCluster()
-	config, err := utils.GetKubelessConfig(cfg.KubeCli, apiExtensionsClientset)
-	if err != nil {
-		logrus.Fatalf("Unable to read the configmap: %s", err)
-	}
 
 	var lr = langruntime.New(config)
 	lr.ReadConfigMap()
