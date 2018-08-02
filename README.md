@@ -58,16 +58,11 @@ We would love to get your help, feel free to lend a hand. We are currently looki
 
 * Add other runtimes, currently Python, NodeJS, Ruby, PHP, .NET and Ballerina are supported. We are also providing a way to use custom runtime. Please check [this doc](./docs/runtimes.md) for more details.
 * Investigate other messaging bus (e.g SQS, rabbitMQ)
-* Use a standard interface for events
 * Optimize for functions startup time
 * Add distributed tracing (maybe using istio)
 
 ## Community
 
 **Issues**: If you find any issues, please [file it](https://github.com/kubeless/kubeless/issues).
-
-**Meetings**: [Thursday at 10:30 UTC](https://meet.google.com/rbr-gcjp-xxz) (Weekly). [Convert to your timezone](http://www.thetimezoneconverter.com/?t=10:30&tz=UTC)
-
-Meeting notes and agenda can be found [here](https://docs.google.com/document/d/1-OsikjjQVHVFoXBHUbkRogrzzZijQ9MumFpLfWCCjwk/edit). Meeting records can be found [here](https://www.youtube.com/user/bitrock5/)
 
 **Slack**: We're fairly active on [slack](http://slack.k8s.io) and you can find us in the #kubeless channel.
