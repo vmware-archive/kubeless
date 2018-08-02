@@ -1,6 +1,6 @@
 # Controller configurations for Functions
 
-### Using ConfigMap
+## Using ConfigMap
 
 Configurations for functions can be done in `ConfigMap`: `kubeless-config` which is a part of `Kubeless` deployment manifests.
 
@@ -83,7 +83,7 @@ spec:
     type: ClusterIP
 ```
 
-### Install kubeless in different namespace
+## Install kubeless in different namespace
 
 If you have installed kubeless into some other namespace (which is not called `kubeless`) or changed the name of the config file from kubeless-config to something else, then you have to export the kubeless namespace and the name of kubeless config as environment variables before using kubless cli. This can be done as follows:
 
@@ -118,6 +118,104 @@ The priority of deciding the `namespace` and `config name` (highest to lowest) i
 - Environment variables
 - Annotations in `functions.kubeless.io` CRD
 - default: `namespace` is `kubeless` and `ConfigMap` is `kubeless-config`
+
+### Install several instances of kubeless (multi-tenancy)
+
+It is possible to install Kubeless in several namespaces. This allow administrators to have several instances of Kubeless that can be configured differently (for example using different runtime images or with different Docker credentials).
+
+In order to install Kubeless in a custom namespace (or in several ones) it's necessary to:
+
+ - Install the `CustomResourceDefinitions` and `ClusterRoles` as in the default scenario. These resources are not namespaced which means that you need to install them just once. It is also recommendable to split the current rules of the `ClusterRole` into two different roles: one just for accessing cluster-wide resources like `CustomResourceDefinitions` and a second one with the rest of resources. That way it's possible to attach the first `ClusterRole` to a `ClusterRoleBinding` as the default scenario but attaching the second one with a namespaced `RoleBinding` to avoind unauthorized access to other namespaces. More information about `RBAC` [here](https://kubernetes.io/docs/reference/access-authn-authz/rbac/).
+ - The rest of the resources you can find in the installation manifest (`Deployment`, `ConfigMap`, `ServiceAccount`...) are namespaced. This means that it's required to modify the `metadata.namespace` of each one of those to target the correct namespace.
+ - The next step is to set in the Kubeless ConfigMap the namespace in which the controller should listen for functions. This is set in the variable `functions-namespace`. If this value is empty it will try to find functions in all namespaces.
+
+This is an example of a manifest (simplified) for a Kubeless instance deployed in the namespace "test":
+
+```yaml
+# RBAC Configuration
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: kubeless-controller-read
+rules:
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - get
+  - list
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: kubeless-controller-deployer
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - services
+  - configmaps
+  verbs:
+  ... # The rest of the ClusterRole has been omitted
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: controller-acct
+  namespace: test
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: kubeless-controller-read-test
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubeless-controller-read
+subjects:
+- kind: ServiceAccount
+  name: controller-acct
+  namespace: test
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: kubeless-controller-deployer
+  namespace: test
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubeless-controller-deployer
+subjects:
+- kind: ServiceAccount
+  name: controller-acct
+
+# Kubeless Configuration
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubeless-config
+  namespace: test
+data:
+  functions-namespace: "test"
+  ...  # The rest of the ConfigMap data has been omitted
+
+# Kubeless core controller
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    kubeless: controller
+  name: kubeless-controller-manager
+  namespace: test
+spec:
+  ... # The rest of the Deployment has been omitted
+```
+
+The same process should be followed for any trigger controller installed (Kafka, Nats, ...): Adapt the RBAC configuration and change the resources namespace. These controllers will read the `functions-namespace` property from the main ConfigMap.
 
 ## Using custom images
 
