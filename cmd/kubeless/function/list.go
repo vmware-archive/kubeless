@@ -185,23 +185,21 @@ func printFunctions(w io.Writer, functions []*kubelessApi.Function, cli kubernet
 		}
 		fmt.Fprintln(w, table)
 	} else {
-		for _, f := range functions {
-			switch output {
-			case "json":
-				b, err := json.MarshalIndent(f, "", "  ")
-				if err != nil {
-					return err
-				}
-				fmt.Fprintln(w, string(b))
-			case "yaml":
-				b, err := yaml.Marshal(f)
-				if err != nil {
-					return err
-				}
-				fmt.Fprintln(w, string(b))
-			default:
-				return fmt.Errorf("Wrong output format. Please use only json|yaml")
+		switch output {
+		case "json":
+			b, err := json.MarshalIndent(functions, "", "  ")
+			if err != nil {
+				return err
 			}
+			fmt.Fprintln(w, string(b))
+		case "yaml":
+			b, err := yaml.Marshal(functions)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintln(w, string(b))
+		default:
+			return fmt.Errorf("Wrong output format. Please use only json|yaml")
 		}
 	}
 	return nil
