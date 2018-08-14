@@ -7,8 +7,8 @@ This package contain Ballerina type definitions used in Ballerina Kubeless integ
 ## Compatibility
 |                    |    Version     |  
 |:------------------:|:--------------:|
-| Ballerina Language |   0.980.0      |
-| Kubeless Package   |   0.0.6        |
+| Ballerina Language |   0.981.0      |
+| Kubeless Package   |   0.0.8        |
 
 
 ## Sample
