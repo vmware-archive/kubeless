@@ -31,6 +31,7 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/sirupsen/logrus"
+	"io/ioutil"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
@@ -41,7 +42,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"io/ioutil"
 )
 
 // GetFunctionPort returns the port for a function service
