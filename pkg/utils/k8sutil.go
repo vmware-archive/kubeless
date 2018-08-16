@@ -56,7 +56,7 @@ const (
 
 // GetClient returns a k8s clientset to the request from inside of cluster
 func GetClient() kubernetes.Interface {
-	config, err := rest.InClusterConfig()
+	config, err := GetOverriddenClientConfig()
 	if err != nil {
 		logrus.Fatalf("Can not get kubernetes config: %v", err)
 	}
@@ -123,7 +123,11 @@ func GetAPIExtensionsClientOutOfCluster() clientsetAPIExtensions.Interface {
 
 // GetAPIExtensionsClientInCluster returns a k8s clientset to access APIExtensions from inside of cluster
 func GetAPIExtensionsClientInCluster() clientsetAPIExtensions.Interface {
-	config, err := rest.InClusterConfig()
+	config, err := GetOverriddenClientConfig()
+	if err != nil {
+		config, err = rest.InClusterConfig()
+	}
+
 	if err != nil {
 		logrus.Fatalf("Can not get kubernetes config: %v", err)
 	}
@@ -136,10 +140,14 @@ func GetAPIExtensionsClientInCluster() clientsetAPIExtensions.Interface {
 
 // GetFunctionClientInCluster returns function clientset to the request from inside of cluster
 func GetFunctionClientInCluster() (versioned.Interface, error) {
-	config, err := rest.InClusterConfig()
+	config, err := GetOverriddenClientConfig()
+	if err != nil {
+		config, err = rest.InClusterConfig()
+	}
 	if err != nil {
 		return nil, err
 	}
+
 	kubelessClient, err := versioned.NewForConfig(config)
 	if err != nil {
 		return nil, err

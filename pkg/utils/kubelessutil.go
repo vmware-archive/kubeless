@@ -40,6 +40,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"io/ioutil"
 )
 
 // GetFunctionPort returns the port for a function service
@@ -758,6 +760,23 @@ func GetOwnerReference(kind, apiVersion, name string, uid types.UID) ([]metav1.O
 			UID:        uid,
 		},
 	}, nil
+}
+
+// GetControllerRestClientConfig returns necessary Config object to authenticate k8s clients if env variable is set
+func GetOverriddenClientConfig() (*rest.Config, error) {
+	config, err := rest.InClusterConfig()
+
+	tokenFile := os.Getenv("KUBELESS_TOKEN_FILE_PATH")
+	if len(tokenFile) == 0 {
+		return config, err
+	}
+	tokenBytes, err := ioutil.ReadFile(tokenFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read file containing oauth token: %s", err)
+	}
+	config.BearerToken = string(tokenBytes)
+
+	return config, nil
 }
 
 func getConfigLocation(apiExtensionsClientset clientsetAPIExtensions.Interface) (ConfigLocation, error) {
