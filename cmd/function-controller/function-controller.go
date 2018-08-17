@@ -31,7 +31,6 @@ import (
 	"github.com/kubeless/kubeless/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/rest"
 )
 
 const (
@@ -53,7 +52,7 @@ var rootCmd = &cobra.Command{
 			FunctionClient: kubelessClient,
 		}
 
-		restCfg, err := rest.InClusterConfig()
+		restCfg, err := utils.GetInClusterConfig()
 		if err != nil {
 			logrus.Fatalf("Cannot get REST client: %v", err)
 		}
