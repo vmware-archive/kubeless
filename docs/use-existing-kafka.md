@@ -57,7 +57,6 @@ spec:
       serviceAccountName: controller-acct
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
-description: CRD object for Kafka trigger type
 kind: CustomResourceDefinition
 metadata:
   name: kafkatriggers.kubeless.io
