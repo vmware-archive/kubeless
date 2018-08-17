@@ -96,7 +96,6 @@ or the following information can be added to `functions.kubeless.io` `CustomReso
 
 ```yaml
 apiVersion: apiextensions.k8s.io/v1beta1
-description: Kubernetes Native Serverless Framework
 kind: CustomResourceDefinition
 metadata:
   name: functions.kubeless.io

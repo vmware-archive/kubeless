@@ -17,7 +17,6 @@ First step is to create a new CRD for the event source. CRD for the new triggers
 
 ```yaml
 apiVersion: apiextensions.k8s.io/v1beta1
-description: CRD object for Kafka trigger type
 kind: CustomResourceDefinition
 metadata:
   name: kafkatriggers.kubeless.io
