@@ -762,8 +762,8 @@ func GetOwnerReference(kind, apiVersion, name string, uid types.UID) ([]metav1.O
 	}, nil
 }
 
-// GetControllerRestClientConfig returns necessary Config object to authenticate k8s clients if env variable is set
-func GetOverriddenClientConfig() (*rest.Config, error) {
+// GetInClusterConfig returns necessary Config object to authenticate k8s clients if env variable is set
+func GetInClusterConfig() (*rest.Config, error) {
 	config, err := rest.InClusterConfig()
 
 	tokenFile := os.Getenv("KUBELESS_TOKEN_FILE_PATH")
