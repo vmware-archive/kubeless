@@ -62,21 +62,18 @@ local crd = [
     kind: "CustomResourceDefinition",
     metadata: objectMeta.name("functions.kubeless.io"),
     spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "functions", singular: "function", kind: "Function"}},
-    description: "Kubernetes Native Serverless Framework",
   },
   {
     apiVersion: "apiextensions.k8s.io/v1beta1",
     kind: "CustomResourceDefinition",
     metadata: objectMeta.name("httptriggers.kubeless.io"),
     spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "httptriggers", singular: "httptrigger", kind: "HTTPTrigger"}},
-    description: "CRD object for HTTP trigger type",
   },
   {
     apiVersion: "apiextensions.k8s.io/v1beta1",
     kind: "CustomResourceDefinition",
     metadata: objectMeta.name("cronjobtriggers.kubeless.io"),
     spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "cronjobtriggers", singular: "cronjobtrigger", kind: "CronJobTrigger"}},
-    description: "CRD object for HTTP trigger type",
   }
 ];
 
@@ -218,10 +215,10 @@ local runtime_images ='[
      "compiled": true,
      "versions": [
        {
-          "name": "ballerina0.980.0",
-          "version": "0.980.0",
-          "runtimeImage": "ballerina/kubeless-ballerina@sha256:bce4d386dac4e037f6d1e5ec4953988466bbbd795e551dcbec361b8f07435fa6",
-          "initImage": "ballerina/kubeless-ballerina-init@sha256:ea4e3458ce2e13ca073f3a65ce7711641e46ab9eaf5f7753aec496ed6ba18777"
+          "name": "ballerina0.981.0",
+          "version": "0.981.0",
+          "runtimeImage": "ballerina/kubeless-ballerina@sha256:a025841010cfdf8136396efef31d4155283770d331ded6a9003e6e55f02db2e5",
+          "initImage": "ballerina/kubeless-ballerina-init@sha256:a04ca9d289c62397d0b493876f6a9ff4cc425563a47aa7e037c3b850b8ceb3e8"
        }
      ],
      "depName": "",

@@ -96,7 +96,6 @@ or the following information can be added to `functions.kubeless.io` `CustomReso
 
 ```yaml
 apiVersion: apiextensions.k8s.io/v1beta1
-description: Kubernetes Native Serverless Framework
 kind: CustomResourceDefinition
 metadata:
   name: functions.kubeless.io
@@ -230,3 +229,34 @@ It is possible to configure the different images that Kubeless uses for deploy a
  - The image used to populate the base image with the function. This is called `provision-image`. This image should have at least `unzip` and `curl`. It is also possible to specify `provision-image-secret` to specify a secret to pull that image from a private registry. 
  - The image used to build function images. This is called `builder-image`. This image is optional since its usage can be disabled with the property `enable-build-step`. A Dockerfile to build this image can be found [here](https://github.com/kubeless/kubeless/tree/master/docker/function-image-builder). It is also possible to specify `builder-image-secret` to specify a secret to pull that image from a private registry.
  
+## Authenticate Kubeless Function Controller using OAuth Bearer Token
+
+In some non-RBAC k8s deployments using webhook authorization, service accounts may have insufficient privileges to perform all k8s operations that the Kubeless Function Controller requires for interacting with the cluster. It's possible to override the default behavior of the Kubeless Function Controller using a k8s serviceaccount for authentication with the cluster and instead use a provided OAuth Bearer token for all k8s operations. 
+
+This can be done by creating a k8s secret and mounting that secret as a volume on controller pods, then setting the environmental variable `KUBELESS_TOKEN_FILE_PATH` to the filepath of that secret. Be sure to set this environmental variable on the controller template spec or to every pod created in the deployment.
+
+For example, if the bearer token is mounted at /mnt/secrets/bearer-token, this k8s spec can use it:
+
+```yaml
+# Kubeless core controller
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: kubeless-controller-manager
+  namespace: kubeless
+  labels:
+    kubeless: controller
+spec:
+  template:
+    metadata:
+      labels:
+        kubeless: controller
+    spec:
+      containers:
+      - env:
+        - name: KUBELESS_TOKEN_FILE_PATH
+          value: /mnt/secrets/bearer-token
+  ... # The rest of the Deployment has been omitted
+```
+

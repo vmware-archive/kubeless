@@ -52,7 +52,7 @@ var rootCmd = &cobra.Command{
 			FunctionClient: kubelessClient,
 		}
 
-		restCfg, err := utils.GetOverriddenClientConfig()
+		restCfg, err := utils.GetInClusterConfig()
 		if err != nil {
 			logrus.Fatalf("Cannot get REST client: %v", err)
 		}
