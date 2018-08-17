@@ -231,11 +231,12 @@ It is possible to configure the different images that Kubeless uses for deploy a
  
 ## Authenticate Kubeless Function Controller using OAuth Bearer Token
 
-In some non-RBAC k8s deployments using webhook authorization, service accounts may have insufficient privileges to perform all k8s operations that the Kubeless Function Controller requires for interacting with the cluster. It's possible to override the default behavior of the Kubeless Function Controller of using a k8s serviceaccount for authentication with the cluster and instead use a provided OAuth Bearer token for all k8s operations. 
+In some non-RBAC k8s deployments using webhook authorization, service accounts may have insufficient privileges to perform all k8s operations that the Kubeless Function Controller requires for interacting with the cluster. It's possible to override the default behavior of the Kubeless Function Controller using a k8s serviceaccount for authentication with the cluster and instead use a provided OAuth Bearer token for all k8s operations. 
 
 This can be done by creating a k8s secret and mounting that secret as a volume on controller pods, then setting the environmental variable `KUBELESS_TOKEN_FILE_PATH` to the filepath of that secret. Be sure to set this environmental variable on the controller template spec or to every pod created in the deployment.
 
 For example, if the bearer token is mounted at /mnt/secrets/bearer-token, this k8s spec can use it:
+
 ```yaml
 # Kubeless core controller
 ---
