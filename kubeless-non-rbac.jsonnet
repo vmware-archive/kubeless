@@ -62,21 +62,18 @@ local crd = [
     kind: "CustomResourceDefinition",
     metadata: objectMeta.name("functions.kubeless.io"),
     spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "functions", singular: "function", kind: "Function"}},
-    description: "Kubernetes Native Serverless Framework",
   },
   {
     apiVersion: "apiextensions.k8s.io/v1beta1",
     kind: "CustomResourceDefinition",
     metadata: objectMeta.name("httptriggers.kubeless.io"),
     spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "httptriggers", singular: "httptrigger", kind: "HTTPTrigger"}},
-    description: "CRD object for HTTP trigger type",
   },
   {
     apiVersion: "apiextensions.k8s.io/v1beta1",
     kind: "CustomResourceDefinition",
     metadata: objectMeta.name("cronjobtriggers.kubeless.io"),
     spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "cronjobtriggers", singular: "cronjobtrigger", kind: "CronJobTrigger"}},
-    description: "CRD object for HTTP trigger type",
   }
 ];
 
