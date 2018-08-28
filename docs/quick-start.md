@@ -12,12 +12,12 @@ There are several kubeless manifests being shipped for multiple k8s environments
 * `kubeless-non-rbac-$RELEASE.yaml` is used for non-RBAC Kubernetes cluster.
 * `kubeless-openshift-$RELEASE.yaml` is used to deploy Kubeless to OpenShift (1.5+).
 
-For example, this below is a show case of deploying kubeless to a non-RBAC Kubernetes cluster.
+For example, this below is a show case of deploying kubeless to a Kubernetes cluster (with RBAC available).
 
 ```console
 $ export RELEASE=$(curl -s https://api.github.com/repos/kubeless/kubeless/releases/latest | grep tag_name | cut -d '"' -f 4)
 $ kubectl create ns kubeless
-$ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-non-rbac-$RELEASE.yaml
+$ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 
 $ kubectl get pods -n kubeless
 NAME                                           READY     STATUS    RESTARTS   AGE
@@ -137,7 +137,7 @@ $ kubeless function delete hello
 $ kubeless function ls
 NAME        NAMESPACE   HANDLER     RUNTIME     DEPENDENCIES    STATUS
 
-$ kubectl delete -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-non-rbac-$RELEASE.yaml
+$ kubectl delete -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 ```
 
 ## Examples
