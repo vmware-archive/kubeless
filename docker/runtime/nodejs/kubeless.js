@@ -79,14 +79,17 @@ function modExecute(handler, req, res, end) {
         throw new Error(`Unable to load ${handler}`);
 
     try {
-        let event;
-        let cType = contentType.parse(req);
+        let event = {
+            data: {},
+        }
         if (req.body.length > 0) {
-            if (cType.type.startsWith('application/cloudevents')){
+            let cType;
+            if(req.get('content-type'))
+                cType = contentType.parse(req);
+            if (cType && cType.type.startsWith('application/cloudevents')){
                 if (cType.type.endsWith('+json')){
 
                     event = JSON.parse(req.body.toString('utf-8'));
-                    console.log('Event: '+req.body.toString());
                 }
                 else {
                     handleError(new Error(`Content-type ${cType.type} not supported`));
@@ -107,12 +110,13 @@ function modExecute(handler, req, res, end) {
                 Object.keys(req.headers).forEach(key => {
                     if (key.match(/^ce-x-+/)) event.extensions[key.substring(5)] = req.headers[key];
                 })
-                if (cType.type === 'application/json' || cType.type.endsWith('+json')) {
+                if (cType && (cType.type === 'application/json' || cType.type.endsWith('+json'))) {
                     event.data = JSON.parse(req.body.toString('utf-8'));
                 }
                 else{
                     event.data = req.body;
                 }
+
             }
         }
         Promise.resolve(func(event, context))
