@@ -88,14 +88,18 @@ function modExecute(handler, req, res, end) {
             else {
                 event = {
                     'eventType': req.get('CE-EventType'),
+                    'eventTypeVersion': req.get('CE-EventTypeVersion'),
                     'eventID': req.get('CE-EventID'),
                     'eventTime': req.get('CE-EventTime'),
-                    'eventSource': req.get('CE-EventSource'),
+                    'source': req.get('CE-EventSource'),
+                    'schemaURL': req.get('CE-SchemaURL'),
                     'cloudEventsVersion' : req.get('CE-CloudEventsVersion'),
-                    'contentType': cType.toString(),
-                    'extensions': { request: req },
+                    'contentType': req.get('content-type'),
+                    'extensions': { request: req, response: res },
                 };
-
+                Object.keys(req.headers).forEach(key => {
+                    if (key.match(/^ce-x-+/)) event.extensions[key.substring(5)] = req.headers[key];
+                })
                 if (cType.type === 'application/json' || cType.type.endsWith('+json')) {
                     event.data = JSON.parse(req.body.toString('utf-8'));
                 }
