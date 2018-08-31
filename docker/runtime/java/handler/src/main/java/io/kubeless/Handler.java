@@ -124,12 +124,19 @@ public class Handler {
                     logger.error("Method: " + methodName + " not found");
                 } else if (e instanceof InvocationTargetException) {
                     logger.error("Failed to Invoke Method: " + methodName);
+                    logger.error(e.getCause());
                 } else if (e instanceof InstantiationException) {
                     logger.error("Failed to instantiate method: " + methodName);
                 } else {
                     logger.error("An exception occured running Class: " + className + " method: " + methodName);
                     e.printStackTrace();
                 }
+                String response = "Error: 500 Internal Server Error";
+                logger.info("Response: " + response);
+                he.sendResponseHeaders(500, response.length());
+                OutputStream os = he.getResponseBody();
+                os.write(response.getBytes());
+                os.close();
             } finally {
                 requestTimer.observeDuration();
             }
