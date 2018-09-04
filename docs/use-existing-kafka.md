@@ -132,6 +132,7 @@ hello world
 ```
 
 When using SASL you must add `KAFKA_ENABLE_SASL`, `KAFKA_USERNAME` and `KAFKA_PASSWORD` env var to set authentification (might use a secret).:
+
 ```yaml
 $ echo '
 ---
