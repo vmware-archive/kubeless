@@ -411,68 +411,89 @@ The Kubeless configuration defines a set of default container images per support
 
 These default container images can be configured via Kubernetes environment variables on the Kubeless controller's deployment container. Or modifying the `kubeless-config` ConfigMap that is deployed along with the Kubeless controller. For more information about how to modify the Kubeless configuration check [this guide](/docs/function-controller-configuration).
 
-Apart than changing the configuration, it is possible to use a custom runtime specifying the image that the function will use. This way you are able to use any language or any binary with Kubeless as far as the image satisfies the following conditions:
+Apart than changing the configuration, it is possible to use a custom runtime specifying the image that the function will use. If you are interested in developing a new runtime from scratch (i.e. for a new language) you should follow [this guide](/docs/implementing-new-runtime). In the linked guide you can find the requirements that a new runtime should fulfill and how you can submit new runtimes to the Kubeless project.
 
- - It runs a web server listening in the port 8080
- - It exposes the endpoint `/healthz` to perform the container [liveness probe](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/)
+In any case, if you want to use one of the existing runtimes but you want to modify it to support a specific feature you can easily do that. The first thing is to modify the files in [`docker/runtime`](https://github.com/kubeless/kubeless/tree/master/docker/runtime) folder. For example, if we want to add the `lodash` `npm` module globally in the NodeJS runtime we can modify its [Dockerfile](https://github.com/kubeless/kubeless/tree/master/docker/runtime/nodejs/Dockerfile.8):
 
-You can check the list of desired features that a runtime image should have [in this document](/docs/implementing-new-runtime).
-
-To deploy the container image you just need to specify it using the Kubeless CLI:
-
-```console
-$ kubeless function deploy --runtime-image bitnami/tomcat:9.0 webserver
-$ kubeless function ls
-NAME     	NAMESPACE	HANDLER         	RUNTIME  	TYPE	TOPIC
-webserver	default  	                	         	HTTP
-```
-
-Now you can call your function like any other:
-
-```console
-$ kubeless function call webserver
+```patch
 ...
-<h2>If you're seeing this, you've successfully installed Tomcat. Congratulations!</h2>
+  RUN apt-get update && apt-get install git
++ RUN npm install -g lodash
+
+...
 ```
 
-Note that you can also use your own image and inject different functions. That means you have to manage how your runtime starts and looks for the injected function and executes it. Kubeless injects the function into the runtime container via a [Kubernetes ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configmap/) object mounted at `/kubeless` folder, so make sure your runtime looks for function at that folder. Let's see an example:
-
-First we need to create a base image. For this example we will use the Python web server that you can find [in the runtimes folder](../docker/runtime/python-2.7/http-trigger/kubeless.py). We will use the following Dockerfile:
-
-```dockerfile
-FROM python:2.7-slim
-
-RUN pip install bottle==0.12.13 cherrypy==8.9.1 wsgi-request-logger prometheus_client lxml
-
-ADD kubeless.py /
-
-EXPOSE 8080
-CMD ["python", "/kubeless.py"]
-```
-
-Once you have built the image you need to push it to a registry to make it available within your cluster. Finally you can call the `deploy` command specifying the custom runtime image and the function you want to inject:
+Now we can use the Makefile in the folder to generate the base image:
 
 ```console
-$ kubeless function deploy \
-  --runtime-image tuna/kubeless-python:0.0.6 \
-  --from-file ./handler.py \
-  --handler handler.hello \
-  --runtime python2.7 \
-  hello
-$ kubeless function ls
-NAME      	NAMESPACE	HANDLER     	RUNTIME  	TYPE	TOPIC
-get-python	default  	foo.foo	      python2.7	HTTP
-$ kubeless function call get-python
-Connecting to function...
-Forwarding from 127.0.0.1:30000 -> 8080
-Forwarding from [::1]:30000 -> 8080
-Handling connection for 30000
-hello world
+▶ make build8
+docker build -t kubeless/nodejs:8$RUNTIME_TAG_MODIFIER -f Dockerfile.8 .
+Sending build context to Docker daemon  7.059MB
+Step 1/10 : FROM node:8
+ ---> 55791187f71c
+Step 2/10 : RUN apt-get update &&  apt-get install git
+ ---> Using cache
+ ---> 70f1565e9353
+Step 3/10 : RUN npm install -g lodash
+ ---> Running in 03602280a37d
++ lodash@4.17.10
+added 1 package in 1.369s
+...
+Successfully built d68eccb2568b
+Successfully tagged kubeless/nodejs:8
 ```
 
-Note that it is possible to specify `--dependencies` as well when using custom images and install them using an Init container but that is only possible for the supported runtimes. You can get the list of supported runtimes executing `kubeless get-server-config`.
+We can now retag the image and push it using a different account:
 
-When using a runtime not supported your function will be stored as `/kubeless/function` without extension. For example, injecting a file `my-function.jar` would result in the file being mounted as `/kubeless/my-fuction`).
+```console
+▶ docker tag kubeless/nodejs:8 andresmgot/nodejs-with-lodash:8
+
+▶ docker push andresmgot/nodejs-with-lodash:8
+The push refers to repository [docker.io/andresmgot/nodejs-with-lodash]
+5a9aabfdd819: Pushed
+...
+8: digest: sha256:dfd26034130e5aae5a3db7b3df969649c44c3f7d1168bee7c4e1e6e7e75726d7 size: 3261
+```
+
+Finally in order to use this new flavor we need to add it to the Kubeless config. We will just copy the official `nodejs` runtime and rename it to reflect the changes:
+
+```console
+▶ kubectl edit -n kubeless configmap kubeless-config
+# Add the following object within the "runtime-images" array
+#      {
+#        "ID": "nodejsWithLodash",
+#        "compiled": false,
+#        "versions": [
+#          {
+#            "name": "node8",
+#            "version": "8",
+#            "runtimeImage": "andresmgot/nodejs-with-lodash:8",
+#            "initImage": "node:8"
+#          }
+#        ],
+#        "depName": "package.json",
+#        "fileNameSuffix": ".js"
+#      },
+configmap "kubeless-config" edited
+```
+
+> NOTE: You should just use lowercase and uppercase characters for the ID. The runtime selection is made concatenating the runtime ID and the version (i.e. nodejsWithLodash8 for this example)
+
+The last step in order to deploy a function with the new runtime is to restart the Kubeless controller pod:
+
+```console
+▶ kubectl delete pods -n kubeless -l kubeless=controller
+pod "kubeless-controller-manager-67fbc78f6d-w2vnk" deleted
+
+▶ kubeless function deploy my-nodejs-func --runtime nodejsWithLodash8 --handler helloget.foo --from-file examples/nodejs/helloget.js
+INFO[0000] Deploying function...
+INFO[0000] Function my-nodejs-func submitted for deployment
+INFO[0000] Check the deployment status executing 'kubeless function ls my-nodejs-func'
+
+# Wait for the function pod to be deployed
+▶ kubectl exec -it my-nodejs-func-55546fcf68-78fpz -- npm list -g | grep lodash
++-- lodash@4.17.10
+```
 
 ## Use a custom livenessProbe
 
