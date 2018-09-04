@@ -12,6 +12,9 @@ mod = imp.load_source('function',
                       '/kubeless/%s.py' % os.getenv('MOD_NAME'))
 func = getattr(mod, os.getenv('FUNC_HANDLER'))
 func_port = os.getenv('FUNC_PORT', 8080)
+certfile = os.getenv('CERT_FILE_PATH', None)
+keyfile = os.getenv('KEY_FILE_PATH', None)
+
 
 timeout = float(os.getenv('FUNC_TIMEOUT', 180))
 
@@ -93,4 +96,4 @@ if __name__ == '__main__':
         app,
         [logging.StreamHandler(stream=sys.stdout)],
         requestlogger.ApacheFormatter())
-    bottle.run(loggedapp, server='cherrypy', host='0.0.0.0', port=func_port)
+    bottle.run(loggedapp, server='cherrypy', host='0.0.0.0', port=func_port, certfile=certfile, keyfile=keyfile)
