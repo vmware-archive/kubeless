@@ -115,4 +115,4 @@ if __name__ == '__main__':
         app,
         [logging.StreamHandler(stream=sys.stdout)],
         requestlogger.ApacheFormatter())
-    bottle.run(loggedapp, server=server, debug=True, host='0.0.0.0', port=func_port)
+    bottle.run(loggedapp, server=server, host='0.0.0.0', port=func_port)
