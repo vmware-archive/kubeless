@@ -90,7 +90,10 @@ def handler(event, context):
 
 #### Description
 
-Python functions should define the desired method. You can specify dependencies using a `requirements.txt` file.
+Python functions should define the desired method. You can specify dependencies using a `requirements.txt` file. 
+
+##### Intra-network Encryption
+If you set the environmental variables `KEY_FILE_PATH` and `CERT_FILE_PATH` on python function pods, you can configure the python runtimes to listen on HTTPS instead of HTTP, using files at the locations set by the environmental variables. You are responsible for ensuring that the TLS cert and private key are available at the file paths you specify.
 
 #### Server implementation
 
