@@ -22,7 +22,7 @@ In case a custom init image is required, create a Dockerfile under the folder `d
 
 The goal of this image is to have available any tools or files necessary to compile a function or install dependencies. It is not necessary to specify the `CMD` to compile or install dependencies, that will be specified in the Kubeless source code.
 
-In case that the function server needs to be compiled at this step, see the requirements [in the next section](create-a-runtime-image).
+In case that the function server needs to be compiled at this step, see the requirements in the next section.
 
 See an example of an init image for [Go](https://github.com/kubeless/kubeless/blob/master/docker/runtime/golang/Dockerfile.init).
 
