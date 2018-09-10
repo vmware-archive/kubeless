@@ -1,4 +1,4 @@
-# Kubeless on Azure Container Services
+# Kubeless on Azure Kubernetes Service
 
 ## 1. Introduction
 
@@ -7,9 +7,9 @@ This guide goes over the required steps for deploying Kubeless in Azure AKS (Azu
  - [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest) (`az`): This CLI will be used to create the cluster in AKS.
  - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/): Used for installing Kubeless.
 
-## 2. Creating an ACS Kubernetes cluster
+## 2. Creating an AKS cluster
 
-In order to get Kubeless up and running on top of AKS of course you'll need an AKS Kubernetes cluster. Fortunately, Microsoft already did a great job documenting the entire process to accomplish that. You can reach out that documentation following [this link](https://docs.microsoft.com/en-us/azure/aks/kubernetes-walkthrough#create-aks-cluster).
+In order to get Kubeless up and running on top of AKS of course you'll need an AKS cluster. Fortunately, Microsoft already did a great job documenting the entire process to accomplish that. You can reach out that documentation following [this link](https://docs.microsoft.com/en-us/azure/aks/kubernetes-walkthrough#create-aks-cluster).
 
 ### Important notes regarding the cluster creation itself
 
