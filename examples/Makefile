@@ -178,10 +178,12 @@ post-go-verify:
 	echo $$logs | grep -q "cli.kubeless.io"
 
 get-python-metadata:
-	kubeless function deploy get-python-metadata --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --env foo:bar,bar=foo,foo --memory 128Mi --label foo:bar,bar=foo,foobar
+	kubeless function deploy get-python-metadata --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --env foo:bar,bar=foo --memory 128Mi --label foo:bar,bar=foo,foobar
 
 get-python-metadata-verify:
 	kubeless function call get-python-metadata |egrep hello.world
+	kubectl get po -o jsonpath='{.items[0].spec.containers[0].env}' -l function=get-python-metadata | grep "name:foo value:bar"
+	kubectl get po -o jsonpath='{.items[0].spec.containers[0].env}' -l function=get-python-metadata | grep "name:bar value:foo"
 
 get-python-secrets:
 	kubectl create secret generic test-secret --from-literal=key=MY_KEY || true
