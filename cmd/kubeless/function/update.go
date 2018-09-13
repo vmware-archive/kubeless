@@ -86,7 +86,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		envs, err := cmd.Flags().GetStringArray("env")
+		envs, err := cmd.Flags().GetStringSlice("env")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -210,7 +210,7 @@ func init() {
 	updateCmd.Flags().StringP("cpu", "", "", "Request amount of cpu for the function.")
 	updateCmd.Flags().StringSliceP("label", "l", []string{}, "Specify labels of the function")
 	updateCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")
-	updateCmd.Flags().StringArrayP("env", "e", []string{}, "Specify environment variable of the function")
+	updateCmd.Flags().StringSliceP("env", "e", []string{}, "Specify environment variable of the function")
 	updateCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 	updateCmd.Flags().StringP("dependencies", "d", "", "Specify a file containing list of dependencies for the function")
 	updateCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")

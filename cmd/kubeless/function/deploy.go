@@ -69,7 +69,7 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		envs, err := cmd.Flags().GetStringArray("env")
+		envs, err := cmd.Flags().GetStringSlice("env")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -264,7 +264,7 @@ func init() {
 	deployCmd.Flags().StringP("from-file", "f", "", "Specify code file or a URL to the code file")
 	deployCmd.Flags().StringSliceP("label", "l", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")
-	deployCmd.Flags().StringArrayP("env", "e", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
+	deployCmd.Flags().StringSliceP("env", "e", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "d", "", "Specify a file containing list of dependencies for the function")
 	deployCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
