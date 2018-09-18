@@ -9,15 +9,13 @@ defaults: &defaults
   working_directory: /home/circleci/.go_workspace/src/github.com/kubeless/kubeless
   environment:
     GOPATH: /home/circleci/.go_workspace
-    CONTROLLER_IMAGE_NAME: bitnami/kubeless-controller-manager
+    CONTROLLER_IMAGE_NAME: kubeless/function-controller
     BUILDER_IMAGE_NAME: kubeless/function-image-builder
-    KAFKA_CONTROLLER_IMAGE_NAME: bitnami/kafka-trigger-controller
-    NATS_CONTROLLER_IMAGE_NAME: bitnami/nats-trigger-controller
-    KINESIS_CONTROLLER_IMAGE_NAME: bitnami/kinesis-trigger-controller
     CGO_ENABLED: "0"
     TEST_DEBUG: "1"
-    GKE_VERSION: 1.8.8-gke.0
+    GKE_VERSION: 1.9.7-gke.5
     MINIKUBE_VERSION: v0.25.2
+    MANIFESTS: kubeless kubeless-non-rbac kubeless-openshift
 exports: &exports
   # It is not possible to resolve env vars in the environment section:
   # https://discuss.circleci.com/t/using-environment-variables-in-config-yml-not-working/14237
@@ -26,9 +24,6 @@ exports: &exports
     echo "export CONTROLLER_TAG=${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export FUNCTION_IMAGE_BUILDER=${BUILDER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
-    echo "export KAFKA_CONTROLLER_IMAGE=${KAFKA_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
-    echo "export NATS_CONTROLLER_IMAGE=${NATS_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
-    echo "export KINESIS_CONTROLLER_IMAGE=${KINESIS_CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV    
     echo "export KUBECFG_JPATH=/home/circleci/src/github.com/kubeless/kubeless/ksonnet-lib" >> $BASH_ENV
     echo "export PATH=$(pwd)/bats/libexec:$PATH" >> $BASH_ENV
 restore_workspace: &restore_workspace
@@ -36,55 +31,6 @@ restore_workspace: &restore_workspace
     make bootstrap
     sudo cp -r /tmp/go/bin/* /usr/local/bin/
     cp -r /tmp/go/src/github.com/kubeless/kubeless/*yaml .
-should_test: &should_test
-  run: |
-    case $CIRCLE_JOB in
-    # In case of GKE we will only want to build if it is
-    # a build of a branch in the kubeless/kubeless repository
-    GKE)
-      echo $CIRCLE_PULL_REQUESTS
-      if [[ -n "$GKE_ADMIN" && -z "$CIRCLE_PULL_REQUESTS" ]]; then
-        export SHOULD_TEST=1
-      fi
-      ;;
-    # In kase of minikube+kafka we want to test it if
-    # it is a Pull Request related to Kafka (discovered from the PR title)
-    # or if the build is from the "master" branch
-    minikube_kafka)
-      if [[ -n "$CIRCLE_PULL_REQUESTS" ]]; then
-        pr_kafka_title=$(curl -H "Authorization: token $ACCESS_TOKEN" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${CIRCLE_PR_NUMBER}" | grep title || true)
-      fi
-      if [[ -z "$CIRCLE_PULL_REQUESTS" || "$pr_kafka_title" == "" || "$pr_kafka_title" =~ ^.*(Kafka|kafka|KAFKA).*$ ]]; then
-        export SHOULD_TEST=1
-      fi
-      ;;
-    # In kase of minikube+NATS we want to test it if
-    # it is a Pull Request related to NATS (discovered from the PR title)
-    # or if the build is from the "master" branch
-    minikube_nats)
-      if [[ -n "$CIRCLE_PULL_REQUESTS" ]]; then
-        pr_nats_title=$(curl -H "Authorization: token $ACCESS_TOKEN" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title || true)
-      fi
-      if [[ -z "$CIRCLE_PULL_REQUESTS" || "$pr_nats_title" == "" || "$pr_nats_title" =~ ^.*(Nats|nats|NATS).*$ ]]; then
-        export SHOULD_TEST=1
-      fi
-      ;;
-    # In kase of minikube+Kinesis we want to test it if
-    # it is a Pull Request related to Kinesis (discovered from the PR title)
-    # or if the build is from the "master" branch
-    minikube_kinesis)
-      if [[ -n "$CIRCLE_PULL_REQUESTS" ]]; then
-        pr_kinesis_title=$(curl -H "Authorization: token $ACCESS_TOKEN" "https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/${TRAVIS_PULL_REQUEST}" | grep title || true)
-      fi
-      if [[ -z "$CIRCLE_PULL_REQUESTS" || "$pr_kinesis_title" == "" || "$pr_kinesis_title" =~ ^.*(Kinesis|kinesis).*$ ]]; then
-        export SHOULD_TEST=1
-      fi
-      ;;      
-    esac
-    echo "Should test? $SHOULD_TEST"
-    if [[ "$SHOULD_TEST" != "1" ]]; then
-      circleci step halt
-    fi
 #### End of definitions
 
 workflows:
@@ -97,7 +43,7 @@ workflows:
           <<: *build_allways
           requires:
             - build
-      - minikube_core_triggers:
+      - build-cross-binaries:
           <<: *build_allways
           requires:
             - build
@@ -105,18 +51,6 @@ workflows:
           <<: *build_allways
           requires:
             - build
-      - minikube_kafka:
-          <<: *build_allways
-          requires:
-            - build
-      - minikube_nats:
-          <<: *build_allways
-          requires:
-            - build
-      - minikube_kinesis:
-          <<: *build_allways
-          requires:
-            - build            
       - GKE:
           <<: *build_allways
           requires:
@@ -127,11 +61,7 @@ workflows:
               only: master
           requires:
             - minikube
-            - minikube_core_triggers
             - minikube_build_functions
-            - minikube_kafka
-            - minikube_nats
-            - minikube_kinesis
             - GKE
       - release:
           filters:
@@ -141,11 +71,7 @@ workflows:
               ignore: /.*/
           requires:
             - minikube
-            - minikube_core_triggers
             - minikube_build_functions
-            - minikube_kafka
-            - minikube_nats
-            - minikube_kinesis
             - GKE
 jobs:
   build:
@@ -162,14 +88,10 @@ jobs:
       - run: make all-yaml
       - run: |
           mkdir build-manifests
-          manifests=(
-            kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml
-            kafka-zookeeper.yaml kafka-zookeeper-openshift.yaml
-            nats.yaml kinesis.yaml
-          )
+          IFS=' ' read -r -a manifests <<< "$MANIFESTS"
           for f in "${manifests[@]}"; do
-            sed -i.bak 's/:latest/'":${CONTROLLER_TAG}"'/g' $f
-            cp $f build-manifests/
+            sed -i.bak 's/:latest/'":${CONTROLLER_TAG}"'/g' ${f}.yaml
+            cp ${f}.yaml build-manifests/
           done
       - persist_to_workspace:
           root: /home/circleci/.go_workspace
@@ -189,24 +111,22 @@ jobs:
           at: /tmp/go
       - <<: *exports
       - <<: *restore_workspace
-      - run: ./script/pull-or-build-image.sh controller-image
+      - run: ./script/pull-or-build-image.sh function-controller
       - run: ./script/integration-tests minikube deployment
       - run: ./script/integration-tests minikube basic
-  minikube_core_triggers:
+  build-cross-binaries:
     <<: *defaults
-    machine: true
+    docker:
+      - image: circleci/golang:1.9
     steps:
-      - checkout
       - <<: *exports
+      - checkout
       - attach_workspace:
           at: /tmp/go
       - <<: *restore_workspace
-      - run: sudo apt-get update -y
-      - run: sudo apt-get install -y apache2-utils
-      - run: ./script/pull-or-build-image.sh controller-image
-      - run: ./script/integration-tests minikube deployment
-      - run: ./script/integration-tests minikube cronjob
-      - run: ./script/integration-tests minikube http
+      - run: make VERSION=${CIRCLE_TAG} binary-cross
+      - store_artifacts:
+          path: bundles
   minikube_build_functions:
     <<: *defaults
     machine: true
@@ -216,7 +136,7 @@ jobs:
       - attach_workspace:
           at: /tmp/go
       - <<: *restore_workspace
-      - run: ./script/pull-or-build-image.sh controller-image
+      - run: ./script/pull-or-build-image.sh function-controller
       - run: ./script/pull-or-build-image.sh function-image-builder
       - run: "echo '{\"host\": \"unix:///var/run/docker.sock\", \"storage-driver\": \"overlay2\", \"insecure-registries\" : [\"0.0.0.0/0\"]}' > /tmp/daemon.json"
       - run: sudo mv /tmp/daemon.json /etc/docker/daemon.json
@@ -227,54 +147,20 @@ jobs:
       - run: "sed -i.bak 's/function-registry-tls-verify: \"true\"/function-registry-tls-verify: \"false\"/g' kubeless.yaml"
       - run: ./script/integration-tests minikube deployment
       - run: ./script/integration-tests minikube prebuilt_functions
-  minikube_kafka:
-    <<: *defaults
-    machine: true
-    steps:
-      - <<: *should_test
-      - checkout
-      - <<: *exports
-      - attach_workspace:
-          at: /tmp/go
-      - <<: *restore_workspace
-      - run: ./script/pull-or-build-image.sh controller-image
-      - run: ./script/pull-or-build-image.sh kafka-controller-image
-      - run: ./script/integration-tests minikube deployment
-      - run: ./script/integration-tests minikube kafka
-  minikube_nats:
-    <<: *defaults
-    machine: true
-    steps:
-      - <<: *should_test
-      - checkout
-      - <<: *exports
-      - attach_workspace:
-          at: /tmp/go
-      - <<: *restore_workspace
-      - run: ./script/pull-or-build-image.sh controller-image
-      - run: ./script/pull-or-build-image.sh nats-controller-image
-      - run: ./script/integration-tests minikube deployment
-      - run: ./script/integration-tests minikube nats
-  minikube_kinesis:
-    <<: *defaults
-    machine: true
-    steps:
-      - <<: *should_test
-      - checkout
-      - <<: *exports
-      - attach_workspace:
-          at: /tmp/go
-      - <<: *restore_workspace
-      - run: ./script/pull-or-build-image.sh controller-image
-      - run: ./script/pull-or-build-image.sh kinesis-controller-image
-      - run: ./script/integration-tests minikube deployment
-      - run: ./script/integration-tests minikube kinesis      
   GKE:
     <<: *defaults
     docker:
       - image: circleci/golang:1.9 
     steps:
-      - <<: *should_test
+      - run: |
+          # In case of GKE we will only want to build if it is
+          # a build of a branch in the kubeless/kubeless repository
+          if [[ -n "$GKE_ADMIN" && -z "$CIRCLE_PULL_REQUESTS" ]]; then
+            export SHOULD_TEST=1
+          fi
+          if [[ "$SHOULD_TEST" != "1" ]]; then
+            circleci step halt
+          fi
       - checkout
       - <<: *exports
       - attach_workspace:
@@ -284,7 +170,7 @@ jobs:
       - run: ./script/enable-gcloud.sh $(pwd) > /dev/null
       - run: echo "export ESCAPED_GKE_CLUSTER=$(echo ${GKE_CLUSTER}-ci-${CIRCLE_BRANCH:-$CIRCLE_TAG} | sed 's/[^a-z0-9-]//g')" >> $BASH_ENV
       - run: ./script/start-gke-env.sh $ESCAPED_GKE_CLUSTER $ZONE $GKE_VERSION $GKE_ADMIN > /dev/null
-      - run: ./script/pull-or-build-image.sh controller-image
+      - run: ./script/pull-or-build-image.sh function-controller
       - run: ./script/pull-or-build-image.sh kafka-controller-image
       - run: ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER} deployment
       - run: ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER} basic
@@ -302,9 +188,6 @@ jobs:
           images=( 
             $CONTROLLER_IMAGE_NAME
             $BUILDER_IMAGE_NAME 
-            $KAFKA_CONTROLLER_IMAGE_NAME 
-            $NATS_CONTROLLER_IMAGE_NAME
-            $KINESIS_CONTROLLER_IMAGE_NAME
           )
           for image in "${images[@]}"; do
             echo "Pulling ${image}:${CONTROLLER_TAG}"
@@ -324,4 +207,4 @@ jobs:
       - <<: *restore_workspace
       - run: make VERSION=${CIRCLE_TAG} binary-cross
       - run: for d in bundles/kubeless_*; do zip -r9 $d.zip $d/; done
-      - run: ./script/create_release.sh ${CIRCLE_TAG}
+      - run: ./script/create_release.sh ${CIRCLE_TAG} "${MANIFESTS}"

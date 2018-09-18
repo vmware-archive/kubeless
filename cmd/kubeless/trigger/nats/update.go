@@ -17,10 +17,13 @@ limitations under the License.
 package nats
 
 import (
+	"fmt"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/kubeless/kubeless/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
+	natsUtils "github.com/kubeless/nats-trigger/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -39,15 +42,15 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		natsClient, err := natsUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
 
-		natsTrigger, err := utils.GetNatsTriggerCustomResource(kubelessClient, triggerName, ns)
+		natsTrigger, err := natsUtils.GetNatsTriggerCustomResource(natsClient, triggerName, ns)
 		if err != nil {
 			logrus.Fatalf("Unable to find NATS trigger %s in namespace %s. Error %s", triggerName, ns, err)
 		}
@@ -74,7 +77,26 @@ var updateCmd = &cobra.Command{
 			natsTrigger.Spec.FunctionSelector.MatchLabels = labelSelector.MatchLabels
 		}
 
-		err = utils.UpdateNatsTriggerCustomResource(kubelessClient, natsTrigger)
+		dryrun, err := cmd.Flags().GetBool("dryrun")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		if dryrun == true {
+			res, err := kubelessUtils.DryRunFmt(output, natsTrigger)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			fmt.Println(res)
+			return
+		}
+
+		err = natsUtils.UpdateNatsTriggerCustomResource(natsClient, natsTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to update NATS trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
 		}
@@ -83,7 +105,9 @@ var updateCmd = &cobra.Command{
 }
 
 func init() {
-	updateCmd.Flags().StringP("namespace", "", "", "Specify namespace for the NATS trigger")
+	updateCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the NATS trigger")
 	updateCmd.Flags().StringP("trigger-topic", "", "", "Specify topic to listen to in NATS")
 	updateCmd.Flags().StringP("function-selector", "", "", "Selector (label query) to select function on (e.g. -function-selector key1=value1,key2=value2)")
+	updateCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
+	updateCmd.Flags().StringP("output", "o", "yaml", "Output format")
 }

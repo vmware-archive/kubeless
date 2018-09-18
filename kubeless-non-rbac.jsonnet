@@ -29,8 +29,18 @@ local controllerEnv = [
    },
 ];
 
-local controllerContainer =
-  container.default("kubeless-controller-manager", "bitnami/kubeless-controller-manager:latest") +
+local functionControllerContainer =
+  container.default("kubeless-function-controller", "kubeless/function-controller:latest") +
+  container.imagePullPolicy("IfNotPresent") +
+  container.env(controllerEnv);
+
+local httpTriggerControllerContainer =
+  container.default("http-trigger-controller", "bitnami/http-trigger-controller:v1.0.0-alpha.9") +
+  container.imagePullPolicy("IfNotPresent") +
+  container.env(controllerEnv);
+
+local cronjobTriggerContainer =
+  container.default("cronjob-trigger-controller", "bitnami/cronjob-trigger-controller:v1.0.0-alpha.9") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(controllerEnv);
 
@@ -40,7 +50,7 @@ local controllerAccount =
   serviceAccount.default(controller_account_name, namespace);
 
 local controllerDeployment =
-  deployment.default("kubeless-controller-manager", controllerContainer, namespace) +
+  deployment.default("kubeless-controller-manager", [functionControllerContainer, httpTriggerControllerContainer, cronjobTriggerContainer], namespace) +
   {metadata+:{labels: kubelessLabel}} +
   {spec+: {selector: {matchLabels: kubelessLabel}}} +
   {spec+: {template+: {spec+: {serviceAccountName: controllerAccount.metadata.name}}}} +
@@ -52,21 +62,18 @@ local crd = [
     kind: "CustomResourceDefinition",
     metadata: objectMeta.name("functions.kubeless.io"),
     spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "functions", singular: "function", kind: "Function"}},
-    description: "Kubernetes Native Serverless Framework",
   },
   {
     apiVersion: "apiextensions.k8s.io/v1beta1",
     kind: "CustomResourceDefinition",
     metadata: objectMeta.name("httptriggers.kubeless.io"),
     spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "httptriggers", singular: "httptrigger", kind: "HTTPTrigger"}},
-    description: "CRD object for HTTP trigger type",
   },
   {
     apiVersion: "apiextensions.k8s.io/v1beta1",
     kind: "CustomResourceDefinition",
     metadata: objectMeta.name("cronjobtriggers.kubeless.io"),
     spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "cronjobtriggers", singular: "cronjobtrigger", kind: "CronJobTrigger"}},
-    description: "CRD object for HTTP trigger type",
   }
 ];
 
@@ -120,6 +127,20 @@ local runtime_images ='[
     "fileNameSuffix": ".js"
   },
   {
+    "ID": "nodejs_distroless",
+    "compiled": false,
+    "versions": [
+      {
+        "name": "node8",
+        "version": "8",
+        "runtimeImage": "henrike42/kubeless/runtimes/nodejs/distroless:0.0.2",
+        "initImage": "node:8"
+      }
+    ],
+    "depName": "package.json",
+    "fileNameSuffix": ".js"
+  },
+  {
     "ID": "ruby",
     "compiled": false,
     "versions": [
@@ -163,13 +184,13 @@ local runtime_images ='[
   },
   {
     "ID": "dotnetcore",
-    "compiled": false,
+    "compiled": true,
     "versions": [
       {
         "name": "dotnetcore2.0",
         "version": "2.0",
-        "runtimeImage": "allantargino/kubeless-dotnetcore@sha256:0ba7f27a37ff7a789de5b485d64b70be5f6767228357d843d4eb3a492c32f1ed",
-        "initImage": "allantargino/aspnetcore-build@sha256:12bb717ed47d24c0bde5d454841d0bdc3b9fd90f1e6ad24d08ac02eba40ccc8b"
+        "runtimeImage": "allantargino/kubeless-dotnetcore@sha256:1699b07d9fc0276ddfecc2f823f272d96fd58bbab82d7e67f2fd4982a95aeadc",
+        "initImage": "allantargino/aspnetcore-build@sha256:0d60f845ff6c9c019362a68b87b3920f3eb2d32f847f2d75e4d190cc0ce1d81c"
       }
     ],
     "depName": "project.csproj",
@@ -188,6 +209,34 @@ local runtime_images ='[
     ],
     "depName": "pom.xml",
     "fileNameSuffix": ".java"
+  },
+  {
+     "ID": "ballerina",
+     "compiled": true,
+     "versions": [
+       {
+          "name": "ballerina0.981.0",
+          "version": "0.981.0",
+          "runtimeImage": "ballerina/kubeless-ballerina@sha256:a025841010cfdf8136396efef31d4155283770d331ded6a9003e6e55f02db2e5",
+          "initImage": "ballerina/kubeless-ballerina-init@sha256:a04ca9d289c62397d0b493876f6a9ff4cc425563a47aa7e037c3b850b8ceb3e8"
+       }
+     ],
+     "depName": "",
+     "fileNameSuffix": ".bal"
+  },
+  {
+    "ID": "jvm",
+    "compiled": true,
+    "versions": [
+      {
+        "name": "jvm1.8",
+        "version": "1.8",
+        "runtimeImage": "caraboides/jvm@sha256:2870c4f48df4feb2ee7478a152b44840d781d4b1380ad3fa44b3c7ff314faded",
+        "initImage": "caraboides/jvm-init@sha256:e57dbf3f56570a196d68bce1c0695102b2dbe3ae2ca6d1c704476a7a11542f1d"
+      }
+    ],
+    "depName": "",
+    "fileNameSuffix": ".jar"
   }
 ]';
 

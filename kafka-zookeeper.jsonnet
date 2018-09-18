@@ -16,12 +16,11 @@ local crd = [
     kind: "CustomResourceDefinition",
     metadata: objectMeta.name("kafkatriggers.kubeless.io"),
     spec: {group: "kubeless.io", version: "v1beta1", scope: "Namespaced", names: {plural: "kafkatriggers", singular: "kafkatrigger", kind: "KafkaTrigger"}},
-    description: "CRD object for Kafka trigger type",
   },
 ];
 
 local controllerContainer =
-  container.default("kafka-trigger-controller", "bitnami/kafka-trigger-controller:latest") +
+  container.default("kafka-trigger-controller", "bitnami/kafka-trigger-controller:v1.0.0-alpha.9") +
   container.imagePullPolicy("IfNotPresent");
 
 local kubelessLabel = {kubeless: "kafka-trigger-controller"};

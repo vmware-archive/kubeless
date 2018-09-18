@@ -16,6 +16,8 @@ kafka       ClusterIP   10.55.253.151   <none>        9092/TCP            7h
 zookeeper   ClusterIP   10.55.248.146   <none>        2181/TCP            7h
 ```
 
+**Note**: If you want to use the command `kubeless topic` you need add a label to your Kafka deployment (`kubeless=kafka`) in order for the CLI to find it. 
+
 And Kubeless already running at `kubeless` namespace:
 
 ```console
@@ -55,7 +57,6 @@ spec:
       serviceAccountName: controller-acct
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
-description: CRD object for Kafka trigger type
 kind: CustomResourceDefinition
 metadata:
   name: kafkatriggers.kubeless.io
@@ -129,3 +130,44 @@ Open another terminal and check for the pubsub function log to see if it receive
 $ kubectl logs -f pubsub-python-5445bdcb64-48bv2
 hello world
 ```
+
+When using SASL you must add `KAFKA_ENABLE_SASL`, `KAFKA_USERNAME` and `KAFKA_PASSWORD` env var to set authentification (might use a secret).:
+
+```yaml
+$ echo '
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    kubeless: kafka-trigger-controller
+  name: kafka-trigger-controller
+  namespace: kubeless
+spec:
+  selector:
+    matchLabels:
+      kubeless: kafka-trigger-controller
+  template:
+    metadata:
+      labels:
+        kubeless: kafka-trigger-controller
+    spec:
+      containers:
+      - image: bitnami/kafka-trigger-controller:latest
+        imagePullPolicy: IfNotPresent
+        name: kafka-trigger-controller
+        env:
+        ...
+        - name: KAFKA_ENABLE_SASL
+          value: true # CHANGE THIS!
+        - name: KAFKA_USERNAME
+          value: kafka-sasl-username # CHANGE THIS!
+        - name: KAFKA_PASSWORD
+          value: kafka-sasl-password # CHANGE THIS!
+...
+```
+
+When using SSL to secure kafka communication, you must set `KAFKA_ENABLE_TLS`, and specify some of these: 
+* `KAFKA_CACERTS` to check server certificate
+* `KAFKA_CERT` and `KAFKA_KEY` to check client certificate
+* `KAFKA_INSECURE` to skip TLS verfication

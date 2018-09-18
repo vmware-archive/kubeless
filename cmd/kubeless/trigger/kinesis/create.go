@@ -17,12 +17,15 @@ limitations under the License.
 package kinesis
 
 import (
+	"fmt"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"net/url"
 
-	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
-	"github.com/kubeless/kubeless/pkg/utils"
+	kinesisApi "github.com/kubeless/kinesis-trigger/pkg/apis/kubeless/v1beta1"
+	kinesisUtils "github.com/kubeless/kinesis-trigger/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -43,7 +46,7 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
 		functionName, err := cmd.Flags().GetString("function-name")
@@ -51,12 +54,12 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		kubelessClient, err := kubelessUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
 
-		_, err = utils.GetFunctionCustomResource(kubelessClient, functionName, ns)
+		_, err = kubelessUtils.GetFunctionCustomResource(kubelessClient, functionName, ns)
 		if err != nil {
 			logrus.Fatalf("Unable to find Function %s in namespace %s. Error %s", functionName, ns, err)
 		}
@@ -90,13 +93,23 @@ var createCmd = &cobra.Command{
 			}
 		}
 
-		cli := utils.GetClientOutOfCluster()
+		dryrun, err := cmd.Flags().GetBool("dryrun")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		cli := kubelessUtils.GetClientOutOfCluster()
 		_, err = cli.Core().Secrets(ns).Get(secretName, metav1.GetOptions{})
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		kinesisTrigger := kubelessApi.KinesisTrigger{}
+		kinesisTrigger := kinesisApi.KinesisTrigger{}
 		kinesisTrigger.TypeMeta = metav1.TypeMeta{
 			Kind:       "KinesisTrigger",
 			APIVersion: "kubeless.io/v1beta1",
@@ -114,7 +127,21 @@ var createCmd = &cobra.Command{
 		kinesisTrigger.Spec.ShardID = shardID
 		kinesisTrigger.Spec.Secret = secretName
 		kinesisTrigger.Spec.Endpoint = endpointURL
-		err = utils.CreateKinesisTriggerCustomResource(kubelessClient, &kinesisTrigger)
+
+		if dryrun == true {
+			res, err := kubelessUtils.DryRunFmt(output, kinesisTrigger)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			fmt.Println(res)
+			return
+		}
+
+		kinesisClient, err := kinesisUtils.GetKubelessClientOutCluster()
+		if err != nil {
+			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
+		}
+		err = kinesisUtils.CreateKinesisTriggerCustomResource(kinesisClient, &kinesisTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to create Kinesis trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
 		}
@@ -124,7 +151,7 @@ var createCmd = &cobra.Command{
 }
 
 func init() {
-	createCmd.Flags().StringP("namespace", "", "", "Specify namespace for the Kinesis trigger")
+	createCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the Kinesis trigger")
 	createCmd.Flags().StringP("stream", "", "", "Name of the AWS Kinesis stream")
 	createCmd.Flags().StringP("aws-region", "", "", "AWS region in which stream is available")
 	createCmd.Flags().StringP("shard-id", "", "", "Shard-ID of the AWS kinesis stream")
@@ -136,4 +163,6 @@ func init() {
 	createCmd.MarkFlagRequired("shard-id")
 	createCmd.MarkFlagRequired("function-name")
 	createCmd.MarkFlagRequired("secret")
+	createCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
+	createCmd.Flags().StringP("output", "o", "yaml", "Output format")
 }

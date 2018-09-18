@@ -17,9 +17,11 @@ limitations under the License.
 package function
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/kubeless/kubeless/pkg/utils"
 	"github.com/sirupsen/logrus"
@@ -84,7 +86,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		envs, err := cmd.Flags().GetStringArray("env")
+		envs, err := cmd.Flags().GetStringSlice("env")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -145,6 +147,16 @@ var updateCmd = &cobra.Command{
 			logrus.Fatalf("Invalid port number %d specified", port)
 		}
 
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		dryrun, err := cmd.Flags().GetBool("dryrun")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		previousFunction, err := utils.GetFunction(funcName, ns)
 		if err != nil {
 			logrus.Fatal(err)
@@ -153,6 +165,27 @@ var updateCmd = &cobra.Command{
 		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, imagePullPolicy, port, headless, envs, labels, secrets, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
+		}
+
+		if dryrun == true {
+			if output == "json" {
+				j, err := json.MarshalIndent(f, "", "    ")
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(j[:]))
+				return
+			} else if output == "yaml" {
+				y, err := yaml.Marshal(f)
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(y[:]))
+				return
+			} else {
+				logrus.Infof("Output format needs to be yaml or json")
+				return
+			}
 		}
 
 		kubelessClient, err := utils.GetKubelessClientOutCluster()
@@ -177,7 +210,7 @@ func init() {
 	updateCmd.Flags().StringP("cpu", "", "", "Request amount of cpu for the function.")
 	updateCmd.Flags().StringSliceP("label", "l", []string{}, "Specify labels of the function")
 	updateCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")
-	updateCmd.Flags().StringArrayP("env", "e", []string{}, "Specify environment variable of the function")
+	updateCmd.Flags().StringSliceP("env", "e", []string{}, "Specify environment variable of the function")
 	updateCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 	updateCmd.Flags().StringP("dependencies", "d", "", "Specify a file containing list of dependencies for the function")
 	updateCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
@@ -185,4 +218,7 @@ func init() {
 	updateCmd.Flags().StringP("timeout", "", "180", "Maximum timeout (in seconds) for the function to complete its execution")
 	updateCmd.Flags().Bool("headless", false, "Deploy http-based function without a single service IP and load balancing support from Kubernetes. See: https://kubernetes.io/docs/concepts/services-networking/service/#headless-services")
 	updateCmd.Flags().Int32("port", 8080, "Deploy http-based function with a custom port")
+	updateCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
+	updateCmd.Flags().StringP("output", "o", "yaml", "Output format")
+
 }

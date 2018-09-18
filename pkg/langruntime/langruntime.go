@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // Langruntimes struct for getting configmap
@@ -36,11 +37,12 @@ type ImageSecret struct {
 // RuntimeInfo describe the runtime specifics (typical file suffix and dependency file name)
 // and the supported versions
 type RuntimeInfo struct {
-	ID             string           `yaml:"ID"`
-	Compiled       bool             `yaml:"compiled"`
-	Versions       []RuntimeVersion `yaml:"versions"`
-	DepName        string           `yaml:"depName"`
-	FileNameSuffix string           `yaml:"fileNameSuffix"`
+	ID                string           `yaml:"ID"`
+	Compiled          bool             `yaml:"compiled"`
+	Versions          []RuntimeVersion `yaml:"versions"`
+	LivenessProbeInfo *v1.Probe        `yaml:"livenessProbeInfo,omitempty"`
+	DepName           string           `yaml:"depName"`
+	FileNameSuffix    string           `yaml:"fileNameSuffix"`
 }
 
 // New initializes a langruntime object
@@ -110,7 +112,34 @@ func (l *Langruntimes) GetRuntimeInfo(runtime string) (RuntimeInfo, error) {
 			return runtimeInf, nil
 		}
 	}
+
 	return RuntimeInfo{}, fmt.Errorf("Unable to find %s as runtime", runtime)
+}
+
+// GetLivenessProbeInfo returs the liveness probe info regarding a runtime
+func (l *Langruntimes) GetLivenessProbeInfo(runtime string, port int) *v1.Probe {
+	livenessProbe := &v1.Probe{
+		InitialDelaySeconds: int32(3),
+		PeriodSeconds:       int32(30),
+		Handler: v1.Handler{
+			HTTPGet: &v1.HTTPGetAction{
+				Path: "/healthz",
+				Port: intstr.FromInt(port),
+			},
+		},
+	}
+
+	runtimeID := regexp.MustCompile("^[a-zA-Z]+").FindString(runtime)
+	for _, runtimeInf := range l.AvailableRuntimes {
+		if runtimeInf.ID == runtimeID {
+			if runtimeInf.LivenessProbeInfo != nil {
+				return runtimeInf.LivenessProbeInfo
+			} else {
+				return livenessProbe
+			}
+		}
+	}
+	return livenessProbe
 }
 
 func (l *Langruntimes) findRuntimeVersion(runtimeWithVersion string) (RuntimeVersion, error) {
@@ -235,11 +264,15 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 			"cd $GOPATH/src/kubeless",
 			"dep ensure > /dev/termination-log 2>&1")
 	case strings.Contains(runtime, "dotnetcore"):
-		command = appendToCommand(command,
-			"dotnet restore "+installVolume.MountPath+" --packages "+installVolume.MountPath+"/packages")
+		logrus.Warn("dotnetcore does not require a dependencies file")
+		return v1.Container{}, nil
 	case strings.Contains(runtime, "java"):
 		command = appendToCommand(command,
 			"mv /kubeless/pom.xml /kubeless/function-pom.xml")
+	case strings.Contains(runtime, "ballerina"):
+		return v1.Container{}, fmt.Errorf("Ballerina does not require a dependencies file")
+	case strings.Contains(runtime, "jvm"):
+		return v1.Container{}, fmt.Errorf("jvm does not require a dependencies file")
 	}
 
 	return v1.Container{
@@ -258,9 +291,10 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runtime string) {
 	switch {
 	case strings.Contains(runtime, "python"):
+		pythonPaths := []string{path.Join(depsPath, "lib/python"+l.getVersionFromRuntime(runtime)+"/site-packages"), depsPath}
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
 			Name:  "PYTHONPATH",
-			Value: path.Join(depsPath, "lib/python"+l.getVersionFromRuntime(runtime)+"/site-packages"),
+			Value: strings.Join(pythonPaths, ":"),
 		})
 	case strings.Contains(runtime, "nodejs"):
 		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
@@ -309,6 +343,13 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 			"cp /kubeless/*.java /kubeless/function/src/main/java/io/kubeless/ && " +
 			"cp /kubeless/function-pom.xml /kubeless/function/pom.xml 2>/dev/null || true && " +
 			"mvn package > /dev/termination-log 2>&1 && mvn install > /dev/termination-log 2>&1"
+	case strings.Contains(runtime, "jvm"):
+		command = "mv /kubeless/* /kubeless/payload.jar && cp /opt/*.jar /kubeless/ > /dev/termination-log 2>&1"
+	case strings.Contains(runtime, "dotnetcore"):
+		command = "/app/compile-function.sh " + installVolume.MountPath
+	case strings.Contains(runtime, "ballerina"):
+		command = fmt.Sprintf("/compile-function.sh %s", funcName)
+
 	default:
 		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
 	}

@@ -23,6 +23,7 @@ load ../script/libtest
   deploy_function get-python-custom-port
   deploy_function get-nodejs
   deploy_function get-nodejs-custom-port
+  deploy_function get-nodejs-stream
   deploy_function get-nodejs-deps
   deploy_function timeout-nodejs
   deploy_function get-nodejs-multi
@@ -50,6 +51,13 @@ load ../script/libtest
   deploy_function get-java
   deploy_function post-java
   deploy_function get-java-deps
+  deploy_function get-jvm-java
+  deploy_function get-nodejs-distroless
+  deploy_function get-nodejs-distroless-deps
+  deploy_function get-ballerina
+  deploy_function get-ballerina-custom-port
+  deploy_function get-ballerina-data
+  deploy_function get-ballerina-conf
 }
 @test "Test function: get-python" {
   verify_function get-python
@@ -81,6 +89,10 @@ load ../script/libtest
 @test "Test function: get-nodejs-custom-port" {
   verify_function get-nodejs-custom-port
   kubeless_function_delete get-nodejs-custom-port
+}
+@test "Test function: get-nodejs-stream" {
+  verify_function get-nodejs-stream
+  kubeless_function_delete get-nodejs-stream
 }
 @test "Test function: get-nodejs-deps" {
   verify_function get-nodejs-deps
@@ -188,6 +200,10 @@ load ../script/libtest
   verify_function get-python-secrets
   kubeless_function_delete get-python-secrets
 }
+@test "Test function: get-jvm-java" {
+  verify_function get-jvm-java
+  kubeless_function_delete get-jvm-java
+}
 @test "Test function: get-java" {
   verify_function get-java
   kubeless_function_delete get-java
@@ -198,6 +214,12 @@ load ../script/libtest
 }
 @test "Test function: get-java-deps" {
   verify_function get-java-deps
+}
+@test "Test function: get-nodejs-distroless" {
+  verify_function get-nodejs-distroless
+}
+@test "Test function: get-nodejs-distroless-deps" {
+  verify_function get-nodejs-distroless-deps
 }
 @test "Test no-errors" {
   if kubectl logs -n kubeless -l kubeless=controller | grep "level=error"; then
@@ -212,5 +234,21 @@ load ../script/libtest
 @test "Test function: get-node-url-zip" {
   verify_function get-node-url-zip
   kubeless_function_delete get-node-url-zip
+}
+@test "Test function: get-ballerina" {
+  verify_function get-ballerina
+  kubeless_function_delete get-ballerina
+}
+@test "Test function: get-ballerina-custom-port" {
+  verify_function get-ballerina-custom-port
+  kubeless_function_delete get-ballerina-custom-port
+}
+@test "Test function: get-ballerina-data" {
+  verify_function get-ballerina-data
+  kubeless_function_delete get-ballerina-data
+}
+@test "Test function: get-ballerina-conf" {
+  verify_function get-ballerina-conf
+  kubeless_function_delete get-ballerina-conf
 }
 # vim: ts=2 sw=2 si et syntax=sh

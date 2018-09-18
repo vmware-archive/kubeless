@@ -5,47 +5,19 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"testing"
 
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	"k8s.io/api/extensions/v1beta1"
-	xv1beta1 "k8s.io/api/extensions/v1beta1"
 	extensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	fakeextensionsapi "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
-	"k8s.io/apimachinery/pkg/apimachinery"
-	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	restFake "k8s.io/client-go/rest/fake"
 	ktesting "k8s.io/client-go/testing"
 )
-
-func fakeRESTClient(f func(req *http.Request) (*http.Response, error)) *restFake.RESTClient {
-	reg := registered.NewOrDie("v1")
-	legacySchema := schema.GroupVersion{
-		Group:   "",
-		Version: "v1",
-	}
-	newSchema := schema.GroupVersion{
-		Group:   "k8s.io",
-		Version: "v1",
-	}
-	reg.RegisterGroup(apimachinery.GroupMeta{
-		GroupVersion: legacySchema,
-	})
-	reg.RegisterGroup(apimachinery.GroupMeta{
-		GroupVersion: newSchema,
-	})
-	return &restFake.RESTClient{
-		APIRegistry:          reg,
-		NegotiatedSerializer: scheme.Codecs,
-		Client:               restFake.CreateHTTPClient(f),
-	}
-}
 
 func objBody(object interface{}) io.ReadCloser {
 	output, err := json.Marshal(object)
@@ -53,29 +25,6 @@ func objBody(object interface{}) io.ReadCloser {
 		panic(err)
 	}
 	return ioutil.NopCloser(bytes.NewReader([]byte(output)))
-}
-
-func TestDeleteIngressResource(t *testing.T) {
-	myNsFoo := metav1.ObjectMeta{
-		Namespace: "myns",
-		Name:      "foo",
-	}
-
-	ing := xv1beta1.Ingress{
-		ObjectMeta: myNsFoo,
-	}
-
-	clientset := fake.NewSimpleClientset(&ing)
-	if err := DeleteIngress(clientset, "foo", "myns"); err != nil {
-		t.Fatalf("Deleting ingress returned err: %v", err)
-	}
-	a := clientset.Actions()
-	if ns := a[0].GetNamespace(); ns != "myns" {
-		t.Errorf("deleted ingress from wrong namespace (%s)", ns)
-	}
-	if name := a[0].(ktesting.DeleteAction).GetName(); name != "foo" {
-		t.Errorf("deleted ingress with wrong name (%s)", name)
-	}
 }
 
 func fakeConfig() *rest.Config {

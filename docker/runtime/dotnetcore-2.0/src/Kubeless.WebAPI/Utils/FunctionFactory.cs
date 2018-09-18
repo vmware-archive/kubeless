@@ -17,25 +17,13 @@ namespace Kubeless.WebAPI.Utils
             if (string.IsNullOrEmpty(moduleName))
                 throw new ArgumentNullException("FUNC_HANDLER");
 
-            var codePathSetting = configuration["Compiler:CodePath"];
-            if (string.IsNullOrEmpty(codePathSetting))
-                throw new ArgumentNullException("Compiler:CodePath");
-            var codePath = string.Concat(codePathSetting, moduleName, ".cs");
-            var code = new StringContent(codePath);
-
-            var requirementsPathSetting = configuration["Compiler:RequirementsPath"];
-            if (string.IsNullOrEmpty(requirementsPathSetting))
-                throw new ArgumentNullException("Compiler:RequirementsPath");
-            var requirementsPath = string.Concat(requirementsPathSetting, "requirements", ".csproj");
-            var requirements = new StringContent(requirementsPath);
-
             var assemblyPathConfiguration = configuration["Compiler:FunctionAssemblyPath"];
             if (string.IsNullOrEmpty(assemblyPathConfiguration))
                 throw new ArgumentNullException("Compiler:FunctionAssemblyPath");
-            var assemblyPath = string.Concat(assemblyPathConfiguration, moduleName, ".dll");
+            var assemblyPath = string.Concat(assemblyPathConfiguration, "project", ".dll");
             var assembly = new BinaryContent(assemblyPath);
 
-            return new FunctionSettings(moduleName, functionHandler, code, requirements, assembly);
+            return new FunctionSettings(moduleName, functionHandler, assembly);
         }
 
         public static IFunction BuildFunction(IConfiguration configuration)

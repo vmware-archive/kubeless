@@ -12,12 +12,12 @@ There are several kubeless manifests being shipped for multiple k8s environments
 * `kubeless-non-rbac-$RELEASE.yaml` is used for non-RBAC Kubernetes cluster.
 * `kubeless-openshift-$RELEASE.yaml` is used to deploy Kubeless to OpenShift (1.5+).
 
-For example, this below is a show case of deploying kubeless to a non-RBAC Kubernetes cluster.
+For example, this below is a show case of deploying kubeless to a Kubernetes cluster (with RBAC available).
 
 ```console
 $ export RELEASE=$(curl -s https://api.github.com/repos/kubeless/kubeless/releases/latest | grep tag_name | cut -d '"' -f 4)
 $ kubectl create ns kubeless
-$ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-non-rbac-$RELEASE.yaml
+$ kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 
 $ kubectl get pods -n kubeless
 NAME                                           READY     STATUS    RESTARTS   AGE
@@ -121,7 +121,7 @@ $ kubectl proxy -p 8080 &
 
 $ curl -L --data '{"Another": "Echo"}' \
   --header "Content-Type:application/json" \
-  localhost:8080/api/v1/namespaces/default/services/get-python:http-function-port/proxy/
+  localhost:8080/api/v1/namespaces/default/services/hello:http-function-port/proxy/
 {"Another": "Echo"}
 ```
 
@@ -132,16 +132,16 @@ Kubeless also supports [ingress](https://kubernetes.io/docs/concepts/services-ne
 You can delete the function and uninstall Kubeless:
 
 ```console
-$ kubeless function delete test
+$ kubeless function delete hello
 
 $ kubeless function ls
 NAME        NAMESPACE   HANDLER     RUNTIME     DEPENDENCIES    STATUS
 
-$ kubectl delete -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-non-rbac-$RELEASE.yaml
+$ kubectl delete -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 ```
 
 ## Examples
 
-See the [examples](https://github.com/kubeless/kubeless/tree/master/examples) directory for a list of various examples. Minio, SLACK, Twitter etc ...
+See the [examples](https://github.com/kubeless/kubeless/tree/master/examples) directory for a list of simple examples in all the languages supporetd. NodeJS, Python, Golang etc ...
 
 Also checkout the [functions repository](https://github.com/kubeless/functions), where we're building a library of ready to use kubeless examples, including an [incubator](https://github.com/kubeless/functions/tree/master/incubator) to encourage contributions from the community - **your PR is welcome** ! :)

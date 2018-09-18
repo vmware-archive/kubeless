@@ -30,13 +30,13 @@ else
 fi
 
 if [ -z "$3" ]; then
-    TARGET="kubeless-controller-manager"
+    TARGET="kubeless-function-controller"
 else
     TARGET=($3)
 fi
 
 if [ -z "$4" ]; then
-    PKG="github.com/kubeless/kubeless/cmd/kubeless-controller-manager"
+    PKG="github.com/kubeless/kubeless/cmd/function-controller"
 else
     PKG=($4)
 fi

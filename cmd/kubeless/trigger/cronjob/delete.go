@@ -20,7 +20,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/kubeless/kubeless/pkg/utils"
+	cronjobUtils "github.com/kubeless/cronjob-trigger/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 )
 
 var deleteCmd = &cobra.Command{
@@ -39,14 +40,14 @@ var deleteCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		kubelessClient, err := cronjobUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
-		err = utils.DeleteCronJobCustomResource(kubelessClient, triggerName, ns)
+		err = cronjobUtils.DeleteCronJobCustomResource(kubelessClient, triggerName, ns)
 		if err != nil {
 			logrus.Fatalf("Failed to delete Cronjob trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
 		}
@@ -55,5 +56,5 @@ var deleteCmd = &cobra.Command{
 }
 
 func init() {
-	deleteCmd.Flags().StringP("namespace", "", "", "Specify namespace of the Cronjob trigger")
+	deleteCmd.Flags().StringP("namespace", "n", "", "Specify namespace of the Cronjob trigger")
 }

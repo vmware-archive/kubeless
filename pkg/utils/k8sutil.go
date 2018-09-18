@@ -56,7 +56,7 @@ const (
 
 // GetClient returns a k8s clientset to the request from inside of cluster
 func GetClient() kubernetes.Interface {
-	config, err := rest.InClusterConfig()
+	config, err := GetInClusterConfig()
 	if err != nil {
 		logrus.Fatalf("Can not get kubernetes config: %v", err)
 	}
@@ -71,8 +71,9 @@ func GetClient() kubernetes.Interface {
 
 // BuildOutOfClusterConfig returns k8s config
 func BuildOutOfClusterConfig() (*rest.Config, error) {
-	kubeconfigPath := os.Getenv("KUBECONFIG")
-	if kubeconfigPath == "" {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	kubeconfigEnv := os.Getenv("KUBECONFIG")
+	if kubeconfigEnv == "" {
 		home := os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
 		if home == "" {
 			for _, h := range []string{"HOME", "USERPROFILE"} {
@@ -81,9 +82,15 @@ func BuildOutOfClusterConfig() (*rest.Config, error) {
 				}
 			}
 		}
-		kubeconfigPath = filepath.Join(home, ".kube", "config")
+		kubeconfigPath := filepath.Join(home, ".kube", "config")
+		loadingRules.ExplicitPath = kubeconfigPath
 	}
-	return clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		loadingRules, &clientcmd.ConfigOverrides{}).ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
 }
 
 // GetClientOutOfCluster returns a k8s clientset to the request from outside of cluster
@@ -116,7 +123,8 @@ func GetAPIExtensionsClientOutOfCluster() clientsetAPIExtensions.Interface {
 
 // GetAPIExtensionsClientInCluster returns a k8s clientset to access APIExtensions from inside of cluster
 func GetAPIExtensionsClientInCluster() clientsetAPIExtensions.Interface {
-	config, err := rest.InClusterConfig()
+	config, err := GetInClusterConfig()
+
 	if err != nil {
 		logrus.Fatalf("Can not get kubernetes config: %v", err)
 	}
@@ -129,10 +137,11 @@ func GetAPIExtensionsClientInCluster() clientsetAPIExtensions.Interface {
 
 // GetFunctionClientInCluster returns function clientset to the request from inside of cluster
 func GetFunctionClientInCluster() (versioned.Interface, error) {
-	config, err := rest.InClusterConfig()
+	config, err := GetInClusterConfig()
 	if err != nil {
 		return nil, err
 	}
+
 	kubelessClient, err := versioned.NewForConfig(config)
 	if err != nil {
 		return nil, err
@@ -231,201 +240,6 @@ func GetFunctionCustomResource(kubelessClient versioned.Interface, funcName, ns 
 	return functionObj, nil
 }
 
-// CreateCronJobCustomResource will create a custom function object
-func CreateCronJobCustomResource(kubelessClient versioned.Interface, cronJob *kubelessApi.CronJobTrigger) error {
-	_, err := kubelessClient.KubelessV1beta1().CronJobTriggers(cronJob.Namespace).Create(cronJob)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// UpdateCronJobCustomResource applies changes to the function custom object
-func UpdateCronJobCustomResource(kubelessClient versioned.Interface, cronJob *kubelessApi.CronJobTrigger) error {
-	_, err := kubelessClient.KubelessV1beta1().CronJobTriggers(cronJob.Namespace).Update(cronJob)
-	return err
-}
-
-// DeleteCronJobCustomResource will delete custom function object
-func DeleteCronJobCustomResource(kubelessClient versioned.Interface, cronJobName, ns string) error {
-	err := kubelessClient.KubelessV1beta1().CronJobTriggers(ns).Delete(cronJobName, &metav1.DeleteOptions{})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GetCronJobCustomResource will get CronJobTrigger custom resource object
-func GetCronJobCustomResource(kubelessClient versioned.Interface, cronJobName, ns string) (*kubelessApi.CronJobTrigger, error) {
-	cronJobCRD, err := kubelessClient.KubelessV1beta1().CronJobTriggers(ns).Get(cronJobName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return cronJobCRD, nil
-}
-
-// CreateKafkaTriggerCustomResource will create a custom function object
-func CreateKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTrigger *kubelessApi.KafkaTrigger) error {
-	_, err := kubelessClient.KubelessV1beta1().KafkaTriggers(kafkaTrigger.Namespace).Create(kafkaTrigger)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// UpdateKafkaTriggerCustomResource applies changes to the function custom object
-func UpdateKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTrigger *kubelessApi.KafkaTrigger) error {
-	_, err := kubelessClient.KubelessV1beta1().KafkaTriggers(kafkaTrigger.Namespace).Update(kafkaTrigger)
-	return err
-}
-
-// DeleteKafkaTriggerCustomResource will delete custom function object
-func DeleteKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTriggerName, ns string) error {
-	err := kubelessClient.KubelessV1beta1().KafkaTriggers(ns).Delete(kafkaTriggerName, &metav1.DeleteOptions{})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GetKafkaTriggerCustomResource will get CronJobTrigger custom resource object
-func GetKafkaTriggerCustomResource(kubelessClient versioned.Interface, kafkaTriggerName, ns string) (*kubelessApi.KafkaTrigger, error) {
-	kafkaCRD, err := kubelessClient.KubelessV1beta1().KafkaTriggers(ns).Get(kafkaTriggerName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return kafkaCRD, nil
-}
-
-// CreateNatsTriggerCustomResource will create a custom function object
-func CreateNatsTriggerCustomResource(kubelessClient versioned.Interface, natsTrigger *kubelessApi.NATSTrigger) error {
-	_, err := kubelessClient.KubelessV1beta1().NATSTriggers(natsTrigger.Namespace).Create(natsTrigger)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// UpdateNatsTriggerCustomResource applies changes to the function custom object
-func UpdateNatsTriggerCustomResource(kubelessClient versioned.Interface, natsTrigger *kubelessApi.NATSTrigger) error {
-	_, err := kubelessClient.KubelessV1beta1().NATSTriggers(natsTrigger.Namespace).Update(natsTrigger)
-	return err
-}
-
-// DeleteNatsTriggerCustomResource will delete custom function object
-func DeleteNatsTriggerCustomResource(kubelessClient versioned.Interface, natsTriggerName, ns string) error {
-	err := kubelessClient.KubelessV1beta1().NATSTriggers(ns).Delete(natsTriggerName, &metav1.DeleteOptions{})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GetNatsTriggerCustomResource will get CronJobTrigger custom resource object
-func GetNatsTriggerCustomResource(kubelessClient versioned.Interface, natsTriggerName, ns string) (*kubelessApi.NATSTrigger, error) {
-	kafkaCRD, err := kubelessClient.KubelessV1beta1().NATSTriggers(ns).Get(natsTriggerName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return kafkaCRD, nil
-}
-
-// CreateHTTPTriggerCustomResource will create a HTTP trigger custom resource object
-func CreateHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTrigger *kubelessApi.HTTPTrigger) error {
-	_, err := kubelessClient.KubelessV1beta1().HTTPTriggers(httpTrigger.Namespace).Create(httpTrigger)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// UpdateHTTPTriggerCustomResource applies changes to the HTTP trigger custom resource object
-func UpdateHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTrigger *kubelessApi.HTTPTrigger) error {
-	_, err := kubelessClient.KubelessV1beta1().HTTPTriggers(httpTrigger.Namespace).Update(httpTrigger)
-	return err
-}
-
-// PatchHTTPTriggerCustomResource applies changes to the function custom object
-func PatchHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTrigger *kubelessApi.HTTPTrigger) error {
-	data, err := json.Marshal(httpTrigger)
-	if err != nil {
-		return err
-	}
-	_, err = kubelessClient.KubelessV1beta1().HTTPTriggers(httpTrigger.Namespace).Patch(httpTrigger.Name, types.MergePatchType, data)
-	return err
-}
-
-// DeleteHTTPTriggerCustomResource will delete  HTTP trigger custom resource object
-func DeleteHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTriggerName, ns string) error {
-	err := kubelessClient.KubelessV1beta1().HTTPTriggers(ns).Delete(httpTriggerName, &metav1.DeleteOptions{})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GetHTTPTriggerCustomResource will get  HTTP trigger custom resource object
-func GetHTTPTriggerCustomResource(kubelessClient versioned.Interface, httpTriggerName, ns string) (*kubelessApi.HTTPTrigger, error) {
-	kafkaCRD, err := kubelessClient.KubelessV1beta1().HTTPTriggers(ns).Get(httpTriggerName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return kafkaCRD, nil
-}
-
-// CreateKinesisTriggerCustomResource will create a Kinesis trigger custom resource object
-func CreateKinesisTriggerCustomResource(kubelessClient versioned.Interface, kinesisTrigger *kubelessApi.KinesisTrigger) error {
-	_, err := kubelessClient.KubelessV1beta1().KinesisTriggers(kinesisTrigger.Namespace).Create(kinesisTrigger)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// UpdateKinesisTriggerCustomResource applies changes to the Kinesis trigger custom resource object
-func UpdateKinesisTriggerCustomResource(kubelessClient versioned.Interface, kinesisTrigger *kubelessApi.KinesisTrigger) error {
-	_, err := kubelessClient.KubelessV1beta1().KinesisTriggers(kinesisTrigger.Namespace).Update(kinesisTrigger)
-	return err
-}
-
-// PatchKinesisTriggerCustomResource applies changes to the function custom object
-func PatchKinesisTriggerCustomResource(kubelessClient versioned.Interface, kinesisTrigger *kubelessApi.KinesisTrigger) error {
-	data, err := json.Marshal(kinesisTrigger)
-	if err != nil {
-		return err
-	}
-	_, err = kubelessClient.KubelessV1beta1().KinesisTriggers(kinesisTrigger.Namespace).Patch(kinesisTrigger.Name, types.MergePatchType, data)
-	return err
-}
-
-// DeleteKinesisTriggerCustomResource will delete  HTTP trigger custom resource object
-func DeleteKinesisTriggerCustomResource(kubelessClient versioned.Interface, kinesisTriggerName, ns string) error {
-	err := kubelessClient.KubelessV1beta1().KinesisTriggers(ns).Delete(kinesisTriggerName, &metav1.DeleteOptions{})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GetKinesisTriggerCustomResource will get  HTTP trigger custom resource object
-func GetKinesisTriggerCustomResource(kubelessClient versioned.Interface, kinesisTriggerName, ns string) (*kubelessApi.KinesisTrigger, error) {
-	kinesisCRD, err := kubelessClient.KubelessV1beta1().KinesisTriggers(ns).Get(kinesisTriggerName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return kinesisCRD, nil
-}
-
 // GetPodsByLabel returns list of pods which match the label
 // We use this to returns pods to which the function is deployed or pods running controllers
 func GetPodsByLabel(c kubernetes.Interface, ns, k, v string) (*v1.PodList, error) {
@@ -465,15 +279,6 @@ func GetLocalHostname(config *rest.Config, funcName string) (string, error) {
 	host := url.Hostname()
 
 	return fmt.Sprintf("%s.%s.nip.io", funcName, host), nil
-}
-
-// DeleteIngress deletes an ingress rule
-func DeleteIngress(client kubernetes.Interface, name, ns string) error {
-	err := client.ExtensionsV1beta1().Ingresses(ns).Delete(name, &metav1.DeleteOptions{})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-	return nil
 }
 
 func doRESTReq(restIface rest.Interface, groupVersion, verb, resource, elem, namespace string, body interface{}, result interface{}) error {

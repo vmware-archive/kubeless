@@ -3,6 +3,7 @@ get-python:
 
 get-python-verify:
 	kubeless function call get-python |egrep hello.world
+	kubeless function top --function get-python --out yaml |egrep total_calls.*[1-100000]
 
 get-python-update:
 	$(eval TMPDIR := $(shell mktemp -d))
@@ -14,7 +15,8 @@ get-python-update-verify:
 	kubeless function call get-python |egrep hello.world.updated
 
 get-python-deps:
-	kubeless function deploy get-python-deps --runtime python2.7 --handler helloget.foo --from-file python/hellowithdeps.py --dependencies python/requirements.txt
+	cd python && zip hellowithdeps.zip hellowithdeps.py  hellowithdepshelper.py && cd ..
+	kubeless function deploy get-python-deps --runtime python2.7 --handler hellowithdeps.foo --from-file python/hellowithdeps.zip --dependencies python/requirements.txt
 
 get-python-deps-verify:
 	kubeless function call get-python-deps |egrep Google
@@ -103,6 +105,12 @@ get-nodejs-custom-port-verify:
 	kubectl get svc get-nodejs-custom-port -o yaml | grep 'targetPort: 8083'
 	kubeless function call get-nodejs-custom-port |egrep hello.world
 
+get-nodejs-stream:
+	kubeless function deploy get-nodejs-stream --runtime nodejs6 --handler hellostream.foo --from-file nodejs/hellostream.js --dependencies nodejs/package.json
+
+get-nodejs-stream-verify:
+	kubeless function call get-nodejs-stream |egrep hello.world
+
 timeout-nodejs:
 	$(eval TMPDIR := $(shell mktemp -d))
 	printf 'module.exports = { foo: function (event, context) { while(true) {} } }\n' > $(TMPDIR)/hello-loop.js
@@ -170,10 +178,12 @@ post-go-verify:
 	echo $$logs | grep -q "cli.kubeless.io"
 
 get-python-metadata:
-	kubeless function deploy get-python-metadata --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --env foo:bar,bar=foo,foo --memory 128Mi --label foo:bar,bar=foo,foobar
+	kubeless function deploy get-python-metadata --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --env foo:bar,bar=foo --memory 128Mi --label foo:bar,bar=foo,foobar
 
 get-python-metadata-verify:
 	kubeless function call get-python-metadata |egrep hello.world
+	kubectl get po -o jsonpath='{.items[0].spec.containers[0].env}' -l function=get-python-metadata | grep "name:foo value:bar"
+	kubectl get po -o jsonpath='{.items[0].spec.containers[0].env}' -l function=get-python-metadata | grep "name:bar value:foo"
 
 get-python-secrets:
 	kubectl create secret generic test-secret --from-literal=key=MY_KEY || true
@@ -265,6 +275,7 @@ get-dotnetcore:
 
 get-dotnetcore-verify:
 	kubeless function call get-dotnetcore |egrep hello.world
+	kubeless function top --function get-dotnetcore --out yaml |egrep "Function does not expose metrics" 
 
 get-dotnetcore-dependency:
 	kubeless function deploy get-dotnetcore-dependency --runtime dotnetcore2.0 --handler module.handler --from-file dotnetcore/dependency-yaml.cs --dependencies dotnetcore/dependency-yaml.csproj
@@ -792,3 +803,48 @@ get-java-deps:
 get-java-deps-verify:
 	kubeless function call get-java-deps --data '{"hello": "world"}'
 	kubectl logs -l function=get-java-deps | grep -q '.*Hello.*world! Current local time is:'
+
+get-jvm-java:
+	kubeless function deploy get-jvm-java --runtime jvm1.8 --from-file jvm/java/test-java-jvm.jar --handler io_ino_Handler.sayHello
+
+get-jvm-java-verify:
+	kubeless function call get-jvm-java | grep "Hello world"
+
+get-nodejs-distroless:
+	kubeless function deploy get-nodejs-distroless --runtime nodejs_distroless8 --handler helloget.foo --from-file nodejs/helloget.js
+
+get-nodejs-distroless-verify:
+	kubeless function call get-nodejs-distroless |egrep hello.world
+
+get-nodejs-distroless-deps:
+	kubeless function deploy get-nodejs-distroless-deps --runtime nodejs_distroless8 --handler helloget.handler --from-file nodejs/hellowithdeps.js --dependencies nodejs/package.json
+
+get-nodejs-distroless-deps-verify:
+	kubeless function call get-nodejs-distroless-deps --data '{"hello": "world"}' | grep -q 'hello.*world.*date.*UTC'
+
+get-ballerina:
+	kubeless function deploy get-ballerina --runtime ballerina0.981.0 --from-file ballerina/helloget.bal --handler helloget.foo
+
+get-ballerina-verify:
+	kubeless function call get-ballerina |egrep Hello.World.Ballerina
+
+get-ballerina-custom-port:
+	kubeless function deploy get-ballerina-custom-port --runtime ballerina0.981.0 --handler helloget.foo --from-file ballerina/helloget.bal --port 8083
+
+get-ballerina-custom-port-verify:
+	kubectl get svc get-ballerina-custom-port -o yaml | grep 'targetPort: 8083'
+	kubeless function call get-ballerina-custom-port |egrep Hello.World.Ballerina
+
+get-ballerina-data:
+	kubeless function deploy get-ballerina-data --runtime ballerina0.981.0 --from-file ballerina/hellowithdata.bal --handler hellowithdata.foo
+
+get-ballerina-data-verify:
+	kubeless function call get-ballerina-data --data '{"hello":"world"}' |egrep hello
+
+get-ballerina-conf:
+	zip -r -j ballerina/bar.zip ballerina/hello_with_conf/
+	kubeless function deploy get-ballerina-conf --runtime ballerina0.981.0 --from-file ballerina/bar.zip --handler hello_with_conf.bar
+	rm ballerina/bar.zip
+
+get-ballerina-conf-verify:
+	kubeless function call get-ballerina-conf | egrep john

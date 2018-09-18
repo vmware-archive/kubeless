@@ -17,10 +17,13 @@ limitations under the License.
 package kafka
 
 import (
+	"fmt"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/kubeless/kubeless/pkg/utils"
+	kafkaUtils "github.com/kubeless/kafka-trigger/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -39,15 +42,15 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		kafkaClient, err := kafkaUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
 
-		kafkaTrigger, err := utils.GetKafkaTriggerCustomResource(kubelessClient, triggerName, ns)
+		kafkaTrigger, err := kafkaUtils.GetKafkaTriggerCustomResource(kafkaClient, triggerName, ns)
 		if err != nil {
 			logrus.Fatalf("Unable to find Kafka trigger %s in namespace %s. Error %s", triggerName, ns, err)
 		}
@@ -66,6 +69,16 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		dryrun, err := cmd.Flags().GetBool("dryrun")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		if functionSelector != "" {
 			labelSelector, err := metav1.ParseToLabelSelector(functionSelector)
 			if err != nil {
@@ -74,7 +87,16 @@ var updateCmd = &cobra.Command{
 			kafkaTrigger.Spec.FunctionSelector.MatchLabels = labelSelector.MatchLabels
 		}
 
-		err = utils.UpdateKafkaTriggerCustomResource(kubelessClient, kafkaTrigger)
+		if dryrun == true {
+			res, err := kubelessUtils.DryRunFmt(output, kafkaTrigger)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			fmt.Println(res)
+			return
+		}
+
+		err = kafkaUtils.UpdateKafkaTriggerCustomResource(kafkaClient, kafkaTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to update Kafka trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
 		}
@@ -83,7 +105,9 @@ var updateCmd = &cobra.Command{
 }
 
 func init() {
-	updateCmd.Flags().StringP("namespace", "", "", "Specify namespace for the function")
+	updateCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 	updateCmd.Flags().StringP("trigger-topic", "", "", "Specify topic to listen to in Kafka broker")
 	updateCmd.Flags().StringP("function-selector", "", "", "Selector (label query) to select function on (e.g. -function-selector key1=value1,key2=value2)")
+	updateCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
+	updateCmd.Flags().StringP("output", "o", "yaml", "Output format")
 }

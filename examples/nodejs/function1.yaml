@@ -2,14 +2,13 @@
 apiVersion: kubeless.io/v1beta1
 kind: Function
 metadata:
-  name: function1
+  name: hello
 spec:
-  handler: hello.foobar
-  runtime: nodejs2.7
+  handler: handler.foobar
+  runtime: nodejs8
   function: |
       module.exports = {
-        foo: function (req, res) {
-          console.log(req.body)
-          res.end('hello world')
+        foobar: function (event, context) {
+          return(event.data)
         }
       }

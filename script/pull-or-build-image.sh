@@ -13,26 +13,11 @@ function push() {
 }
 
 case "${TARGET}" in
-    "controller-image")
+    "function-controller")
       image=${CONTROLLER_IMAGE:?}
       docker pull $image || make $TARGET CONTROLLER_IMAGE=$image
       push $image
       ;;
-    "kafka-controller-image")
-      image=${KAFKA_CONTROLLER_IMAGE:?}
-      docker pull $image || make $TARGET KAFKA_CONTROLLER_IMAGE=$image
-      push $image
-      ;;
-    "nats-controller-image")
-      image=${NATS_CONTROLLER_IMAGE:?}
-      docker pull $image || make $TARGET NATS_CONTROLLER_IMAGE=$image
-      push $image
-      ;;
-    "kinesis-controller-image")
-      image=${KINESIS_CONTROLLER_IMAGE:?}
-      docker pull $image || make $TARGET KINESIS_CONTROLLER_IMAGE=$image
-      push $image
-      ;;      
     "function-image-builder")
       image=${FUNCTION_IMAGE_BUILDER:?}
       docker pull $image || make $TARGET FUNCTION_IMAGE_BUILDER=$image

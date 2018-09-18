@@ -1,8 +1,6 @@
-﻿using Kubeless.Core.Compilers;
-using Kubeless.Core.Handlers;
+﻿using Kubeless.Core.Handlers;
 using Kubeless.Core.Interfaces;
 using Kubeless.Core.Invokers;
-using Kubeless.Core.References;
 using Kubeless.Core.Tests.Utils;
 using Kubeless.Functions;
 using System;
@@ -27,17 +25,17 @@ namespace Kubeless.Core.Tests
             var functionFile = environment.FunctionFile;
             var assemblyFile = environment.AssemblyFile;
 
-            var compiler = new DefaultCompiler(new DefaultParser(), new WithoutDependencyReferencesManager());
+            //var compiler = new DefaultCompiler(new DefaultParser(), new WithoutDependencyReferencesManager());
             var function = FunctionCreator.CreateFunction(functionFile);
 
-            compiler.Compile(function);
+            //compiler.Compile(function);
 
             // Invoke
-            var invoker = new DefaultInvoker();
+            //var invoker = new CompiledFunctionInvoker();
 
-            var args = WebManager.GetHttpRequest();
+            //var args = WebManager.GetHttpRequest();
 
-            object result = invoker.Execute(function, args);
+            //object result = invoker.Execute(function, args);
         }
 
         //[InlineData("dependency-json")] //TODO: Run both tests in parallel
@@ -55,17 +53,17 @@ namespace Kubeless.Core.Tests
             var restorer = new DependencyRestorer(environment);
             restorer.CopyAndRestore();
 
-            var compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
+            //var compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
             var function = FunctionCreator.CreateFunction(functionFile, projectFile);
 
-            compiler.Compile(function);
+            //compiler.Compile(function);
 
             // Invoke
-            var invoker = new DefaultInvoker();
+            //var invoker = new DefaultInvoker();
 
-            var args = WebManager.GetHttpRequest();
+            //var args = WebManager.GetHttpRequest();
 
-            object result = invoker.Execute(function, args);
+            //object result = invoker.Execute(function, args);
         }
 
         #region Timeout
@@ -112,7 +110,7 @@ namespace Kubeless.Core.Tests
         private static object ExecuteCompiledFunction(IFunction function, int timeout = 180 * 1000)
         {
             // Invoke
-            var invoker = new TimeoutInvoker(timeout);
+            var invoker = new CompiledFunctionInvoker(timeout);
 
             var cancellationSource = new CancellationTokenSource();
 
@@ -136,9 +134,9 @@ namespace Kubeless.Core.Tests
             restorer.CopyAndRestore();
 
             // Compile
-            var compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
+            //var compiler = new DefaultCompiler(new DefaultParser(), new WithDependencyReferencesManager());
             var function = FunctionCreator.CreateFunction(functionFile, projectFile);
-            compiler.Compile(function);
+            //compiler.Compile(function);
 
             return function;
         }

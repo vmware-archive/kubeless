@@ -20,7 +20,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/kubeless/kubeless/pkg/utils"
+	kafkaUtils "github.com/kubeless/kafka-trigger/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 )
 
 var deleteCmd = &cobra.Command{
@@ -39,15 +40,14 @@ var deleteCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		kafkaClient, err := kafkaUtils.GetKubelessClientOutCluster()
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
-
-		err = utils.DeleteKafkaTriggerCustomResource(kubelessClient, triggerName, ns)
+		err = kafkaUtils.DeleteKafkaTriggerCustomResource(kafkaClient, triggerName, ns)
 		if err != nil {
 			logrus.Fatalf("Failed to delete Kafka trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
 		}
@@ -56,5 +56,5 @@ var deleteCmd = &cobra.Command{
 }
 
 func init() {
-	deleteCmd.Flags().StringP("namespace", "", "", "Specify namespace of the Kafka trigger")
+	deleteCmd.Flags().StringP("namespace", "n", "", "Specify namespace of the Kafka trigger")
 }

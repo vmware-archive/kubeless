@@ -17,12 +17,15 @@ limitations under the License.
 package cronjob
 
 import (
+	"fmt"
+
 	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
-	"github.com/kubeless/kubeless/pkg/utils"
+	cronjobApi "github.com/kubeless/cronjob-trigger/pkg/apis/kubeless/v1beta1"
+	cronjobUtils "github.com/kubeless/cronjob-trigger/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -51,7 +54,7 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
 		functionName, err := cmd.Flags().GetString("function")
@@ -59,17 +62,32 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		dryrun, err := cmd.Flags().GetBool("dryrun")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		kubelessClient, err := kubelessUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
 
-		_, err = utils.GetFunctionCustomResource(kubelessClient, functionName, ns)
+		cronJobClient, err := cronjobUtils.GetKubelessClientOutCluster()
+		if err != nil {
+			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
+		}
+
+		_, err = kubelessUtils.GetFunctionCustomResource(kubelessClient, functionName, ns)
 		if err != nil {
 			logrus.Fatalf("Unable to find Function %s in namespace %s. Error %s", functionName, ns, err)
 		}
 
-		cronJobTrigger := kubelessApi.CronJobTrigger{}
+		cronJobTrigger := cronjobApi.CronJobTrigger{}
 		cronJobTrigger.TypeMeta = metav1.TypeMeta{
 			Kind:       "CronJobTrigger",
 			APIVersion: "kubeless.io/v1beta1",
@@ -83,7 +101,17 @@ var createCmd = &cobra.Command{
 		}
 		cronJobTrigger.Spec.FunctionName = functionName
 		cronJobTrigger.Spec.Schedule = schedule
-		err = utils.CreateCronJobCustomResource(kubelessClient, &cronJobTrigger)
+
+		if dryrun == true {
+			res, err := kubelessUtils.DryRunFmt(output, cronJobTrigger)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			fmt.Println(res)
+			return
+		}
+
+		err = cronjobUtils.CreateCronJobCustomResource(cronJobClient, &cronJobTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to create cronjob trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
 		}
@@ -92,9 +120,11 @@ var createCmd = &cobra.Command{
 }
 
 func init() {
-	createCmd.Flags().StringP("namespace", "", "", "Specify namespace for the cronjob trigger")
+	createCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the cronjob trigger")
 	createCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
 	createCmd.Flags().StringP("function", "", "", "Name of the function to be associated with trigger")
 	createCmd.MarkFlagRequired("function")
 	createCmd.MarkFlagRequired("schedule")
+	createCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
+	createCmd.Flags().StringP("output", "o", "yaml", "Output format")
 }

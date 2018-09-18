@@ -11,7 +11,7 @@ We do not currently ask for a Contributor License Agreement to be signed.
 Whether you are a user or contributor, official support channels include:
 
 - GitHub [issues](https://github.com/kubeless/kubeless/issues/new)
-- Slack: #kubeless room in the [Bitnami Open Source Slack](http://slack.oss.bitnami.com/)
+- Slack: #kubeless room in the [Kubernetes Slack](http://slack.k8s.io/)
 
 Before opening a new issue or submitting a new pull request, it's helpful to search the project - it's likely that another user has already reported the issue you're facing, or it's a known issue that we're already aware of.
 

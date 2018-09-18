@@ -4,7 +4,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/sirupsen/logrus"
-	yaml "gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
@@ -12,97 +11,59 @@ import (
 // AddFakeConfig initializes configmap for unit tests with fake configuration.
 func AddFakeConfig(clientset *fake.Clientset) {
 
-	var runtimeImages = []RuntimeInfo{{
-		ID:             "python",
-		DepName:        "requirements.txt",
-		FileNameSuffix: ".py",
-		Versions: []RuntimeVersion{
-			{
-				Name:         "python27",
-				Version:      "2.7",
-				InitImage:    "tuna/python-pillow:2.7.11-alpine",
-				RuntimeImage: "kubeless/python@sha256:0f3b64b654df5326198e481cd26e73ecccd905aae60810fc9baea4dcbb61f697",
-
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
+	runtimeImages := `[
+		{
+			"ID": "python",
+			"depName": "requirements.txt",
+			"versions": [
+				{
+					"name": "python27",
+					"version": "2.7",
+					"initImage": "tuna/python-pillow:2.7.11-alpine",
+					"runtimeImage": "kubeless/python@sha256:0f3b64b654df5326198e481cd26e73ecccd905aae60810fc9baea4dcbb61f697",
+					"imagePullSecrets": [{"ImageSecret": "p1"}, {"ImageSecret": "p2"}]
 				},
-			}, {
-				Name:    "python34",
-				Version: "3.4",
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
-				},
-			}, {
-				Name:    "python36",
-				Version: "3.6",
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
-				},
-			},
+			],
+			"fileNameSuffix": ".py"
 		},
-	}, {ID: "nodejs",
-		DepName:        "package.json",
-		FileNameSuffix: ".js",
-		Versions: []RuntimeVersion{
-			{
-				Name:      "nodejs6",
-				Version:   "6",
-				InitImage: "node:6.10",
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
+		{
+			"ID": "nodejs",
+			"depName": "package.json",
+			"livenessProbeInfo": {
+				"exec": {
+					"command": [
+						"curl",
+						"-f",
+						"http://localhost:8080/healthz"
+					]
 				},
-			}, {
-				Name:    "nodejs8",
-				Version: "8",
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
-				},
+				"initialDelaySeconds": 5,
+				"periodseconds": 10
 			},
+			"versions": [
+				{
+					"name": "nodejs6",
+					"version": "6",
+					"initImage": "node:6.10",
+					"imagePullSecrets": [{"ImageSecret": "p1"}, {"ImageSecret": "p2"}]
+				}
+			],
+			"fileNameSuffix": ".js"
 		},
-	}, {ID: "ruby",
-		DepName:        "Gemfile",
-		FileNameSuffix: ".rb",
-		Versions: []RuntimeVersion{
-			{
-				Name:      "ruby24",
-				Version:   "2.4",
-				InitImage: "bitnami/ruby:2.4",
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
+		{
+			"ID": "ruby",
+			"depName": "Gemfile",
+			"versions": [
+				{
+					"name": "ruby24",
+					"version": "2.4",
+					InitImage: "bitnami/ruby:2.4",
+					"imagePullSecrets": [{"ImageSecret": "p1"}, {"ImageSecret": "p2"}]
 				},
-			},
+			],
+			"fileNameSuffix": ".rb"
 		},
-	}, {ID: "dotnetcore",
-		DepName:        "requirements.xml",
-		FileNameSuffix: ".cs",
-		Versions: []RuntimeVersion{
-			{
-				Name:    "dotnetcore2.0",
-				Version: "2.0",
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
-				},
-			},
-		},
-	}, {ID: "php",
-		DepName:        "composer.json",
-		FileNameSuffix: ".php",
-		Versions: []RuntimeVersion{
-			{
-				Name:      "php7.2",
-				Version:   "7.2",
-				InitImage: "composer:1.6",
-				ImagePullSecrets: []ImageSecret{
-					{ImageSecret: "p1"}, {ImageSecret: "p2"},
-				},
-			},
-		},
-	}}
-
-	out, err := yaml.Marshal(runtimeImages)
-	if err != nil {
-		logrus.Fatal("Canot Marshall runtimeimage")
-	}
+	]`
 
 	cm := v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -110,11 +71,11 @@ func AddFakeConfig(clientset *fake.Clientset) {
 			Namespace: "kubeless",
 		},
 		Data: map[string]string{
-			"runtime-images": string(out),
+			"runtime-images": runtimeImages,
 		},
 	}
 
-	_, err = clientset.CoreV1().ConfigMaps("kubeless").Create(&cm)
+	_, err := clientset.CoreV1().ConfigMaps("kubeless").Create(&cm)
 	if err != nil {
 		logrus.Fatal("Unable to create configmap")
 	}

@@ -16,6 +16,7 @@ package spec
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/go-openapi/jsonpointer"
 	"github.com/go-openapi/swag"
@@ -63,6 +64,7 @@ func ParamRef(uri string) *Parameter {
 	return p
 }
 
+// ParamProps describes the specific attributes of an operation parameter
 type ParamProps struct {
 	Description     string  `json:"description,omitempty"`
 	Name            string  `json:"name,omitempty"`
@@ -100,15 +102,16 @@ func (p Parameter) JSONLookup(token string) (interface{}, error) {
 	if token == "$ref" {
 		return &p.Ref, nil
 	}
+
 	r, _, err := jsonpointer.GetForToken(p.CommonValidations, token)
-	if err != nil {
+	if err != nil && !strings.HasPrefix(err.Error(), "object has no field") {
 		return nil, err
 	}
 	if r != nil {
 		return r, nil
 	}
 	r, _, err = jsonpointer.GetForToken(p.SimpleSchema, token)
-	if err != nil {
+	if err != nil && !strings.HasPrefix(err.Error(), "object has no field") {
 		return nil, err
 	}
 	if r != nil {

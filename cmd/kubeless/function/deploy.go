@@ -17,12 +17,16 @@ limitations under the License.
 package function
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/ghodss/yaml"
+	cronjobApi "github.com/kubeless/cronjob-trigger/pkg/apis/kubeless/v1beta1"
+	cronjobUtils "github.com/kubeless/cronjob-trigger/pkg/utils"
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/langruntime"
-	"github.com/kubeless/kubeless/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -34,9 +38,9 @@ var deployCmd = &cobra.Command{
 	Short: "deploy a function to Kubeless",
 	Long:  `deploy a function to Kubeless`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cli := utils.GetClientOutOfCluster()
-		apiExtensionsClientset := utils.GetAPIExtensionsClientOutOfCluster()
-		config, err := utils.GetKubelessConfig(cli, apiExtensionsClientset)
+		cli := kubelessUtils.GetClientOutOfCluster()
+		apiExtensionsClientset := kubelessUtils.GetAPIExtensionsClientOutOfCluster()
+		config, err := kubelessUtils.GetKubelessConfig(cli, apiExtensionsClientset)
 		if err != nil {
 			logrus.Fatalf("Unable to read the configmap: %v", err)
 		}
@@ -65,7 +69,7 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		envs, err := cmd.Flags().GetStringArray("env")
+		envs, err := cmd.Flags().GetStringSlice("env")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -95,7 +99,7 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
 		deps, err := cmd.Flags().GetString("dependencies")
@@ -137,7 +141,18 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		headless, err := cmd.Flags().GetBool("headless")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		dryrun, err := cmd.Flags().GetBool("dryrun")
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -177,18 +192,38 @@ var deployCmd = &cobra.Command{
 		}
 
 		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, imagePullPolicy, port, headless, envs, labels, secrets, defaultFunctionSpec)
-
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		if dryrun == true {
+			if output == "json" {
+				j, err := json.MarshalIndent(f, "", "    ")
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(j[:]))
+				return
+			} else if output == "yaml" {
+				y, err := yaml.Marshal(f)
+				if err != nil {
+					logrus.Fatal(err)
+				}
+				fmt.Println(string(y[:]))
+				return
+			} else {
+				logrus.Infof("Output format needs to be yaml or json")
+				return
+			}
+		}
+
+		kubelessClient, err := kubelessUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
 		logrus.Infof("Deploying function...")
-		err = utils.CreateFunctionCustomResource(kubelessClient, f)
+		err = kubelessUtils.CreateFunctionCustomResource(kubelessClient, f)
 		if err != nil {
 			logrus.Fatalf("Failed to deploy %s. Received:\n%s", funcName, err)
 		}
@@ -196,7 +231,7 @@ var deployCmd = &cobra.Command{
 		logrus.Infof("Check the deployment status executing 'kubeless function ls %s'", funcName)
 
 		if schedule != "" {
-			cronJobTrigger := kubelessApi.CronJobTrigger{}
+			cronJobTrigger := cronjobApi.CronJobTrigger{}
 			cronJobTrigger.TypeMeta = metav1.TypeMeta{
 				Kind:       "CronJobTrigger",
 				APIVersion: "kubeless.io/v1beta1",
@@ -211,7 +246,11 @@ var deployCmd = &cobra.Command{
 			}
 			cronJobTrigger.Spec.FunctionName = funcName
 			cronJobTrigger.Spec.Schedule = schedule
-			err = utils.CreateCronJobCustomResource(kubelessClient, &cronJobTrigger)
+			cronjobClient, err := cronjobUtils.GetKubelessClientOutCluster()
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			err = cronjobUtils.CreateCronJobCustomResource(cronjobClient, &cronJobTrigger)
 			if err != nil {
 				logrus.Fatalf("Failed to deploy cron job trigger %s. Received:\n%s", funcName, err)
 			}
@@ -225,7 +264,7 @@ func init() {
 	deployCmd.Flags().StringP("from-file", "f", "", "Specify code file or a URL to the code file")
 	deployCmd.Flags().StringSliceP("label", "l", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")
-	deployCmd.Flags().StringArrayP("env", "e", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
+	deployCmd.Flags().StringSliceP("env", "e", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "d", "", "Specify a file containing list of dependencies for the function")
 	deployCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
@@ -234,6 +273,8 @@ func init() {
 	deployCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
 	deployCmd.Flags().StringP("image-pull-policy", "", "Always", "Image pull policy")
 	deployCmd.Flags().StringP("timeout", "", "180", "Maximum timeout (in seconds) for the function to complete its execution")
+	deployCmd.Flags().StringP("output", "o", "yaml", "Output format")
 	deployCmd.Flags().Bool("headless", false, "Deploy http-based function without a single service IP and load balancing support from Kubernetes. See: https://kubernetes.io/docs/concepts/services-networking/service/#headless-services")
+	deployCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
 	deployCmd.Flags().Int32("port", 8080, "Deploy http-based function with a custom port")
 }

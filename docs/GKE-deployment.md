@@ -22,7 +22,7 @@ Once you are logged in, you can create the cluster:
 
 ```console
 gcloud container clusters create \
-  --cluster-version=1.8.8-gke.0 \
+  --cluster-version=1.8.10-gke.0 \
   my-cluster \
   --num-nodes 5
 ```

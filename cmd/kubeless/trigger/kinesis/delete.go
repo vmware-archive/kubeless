@@ -20,7 +20,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/kubeless/kubeless/pkg/utils"
+	kinesisUtils "github.com/kubeless/kinesis-trigger/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 )
 
 var deleteCmd = &cobra.Command{
@@ -39,15 +40,15 @@ var deleteCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		kinesisClient, err := kinesisUtils.GetKubelessClientOutCluster()
 		if err != nil {
-			logrus.Fatal(err)
+			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
 
-		err = utils.DeleteKinesisTriggerCustomResource(kubelessClient, triggerName, ns)
+		err = kinesisUtils.DeleteKinesisTriggerCustomResource(kinesisClient, triggerName, ns)
 		if err != nil {
 			logrus.Fatalf("Failed to delete Kinesis trigger object %s in namespace %s. Error: %s", triggerName, ns, err)
 		}
@@ -56,5 +57,5 @@ var deleteCmd = &cobra.Command{
 }
 
 func init() {
-	deleteCmd.Flags().StringP("namespace", "", "", "Specify namespace of the Kinesis trigger")
+	deleteCmd.Flags().StringP("namespace", "n", "", "Specify namespace of the Kinesis trigger")
 }

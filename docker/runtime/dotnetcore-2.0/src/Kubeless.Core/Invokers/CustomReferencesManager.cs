@@ -1,15 +1,13 @@
-﻿using Kubeless.Core.Filters;
+﻿using Kubeless.Core.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 
 namespace Kubeless.Core.Invoker
 {
     public class CustomReferencesManager
     {
-        private static string directory = Environment.GetEnvironmentVariable("DOTNETCORE_HOME");
+        private static readonly string directory = Environment.GetEnvironmentVariable("DOTNETCORE_HOME");
 
         public IEnumerable<string> GetReferences()
         {

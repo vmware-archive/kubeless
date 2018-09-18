@@ -17,11 +17,14 @@ limitations under the License.
 package http
 
 import (
-	"github.com/kubeless/kubeless/pkg/utils"
+	"fmt"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	httpApi "github.com/kubeless/http-trigger/pkg/apis/kubeless/v1beta1"
+	httpUtils "github.com/kubeless/http-trigger/pkg/utils"
+	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -41,7 +44,7 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		if ns == "" {
-			ns = utils.GetDefaultNamespace()
+			ns = kubelessUtils.GetDefaultNamespace()
 		}
 
 		path, err := cmd.Flags().GetString("path")
@@ -54,17 +57,27 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		kubelessClient, err := utils.GetKubelessClientOutCluster()
+		dryrun, err := cmd.Flags().GetBool("dryrun")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		kubelessClient, err := kubelessUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
 		}
 
-		_, err = utils.GetFunctionCustomResource(kubelessClient, functionName, ns)
+		_, err = kubelessUtils.GetFunctionCustomResource(kubelessClient, functionName, ns)
 		if err != nil {
 			logrus.Fatalf("Unable to find Function %s in namespace %s. Error %s", functionName, ns, err)
 		}
 
-		httpTrigger := kubelessApi.HTTPTrigger{}
+		httpTrigger := httpApi.HTTPTrigger{}
 		httpTrigger.TypeMeta = metav1.TypeMeta{
 			Kind:       "HTTPTrigger",
 			APIVersion: "kubeless.io/v1beta1",
@@ -113,11 +126,11 @@ var createCmd = &cobra.Command{
 		if hostName == "" && gateway == "nginx" {
 			// We assume that Nginx will be listening in the port 80
 			// of the cluster plublic IP
-			config, err := utils.BuildOutOfClusterConfig()
+			config, err := kubelessUtils.BuildOutOfClusterConfig()
 			if err != nil {
 				logrus.Fatal(err)
 			}
-			hostName, err = utils.GetLocalHostname(config, functionName)
+			hostName, err = httpUtils.GetLocalHostname(config, functionName)
 			if err != nil {
 				logrus.Fatal(err)
 			}
@@ -133,7 +146,21 @@ var createCmd = &cobra.Command{
 		}
 		httpTrigger.Spec.BasicAuthSecret = basicAuthSecret
 
-		err = utils.CreateHTTPTriggerCustomResource(kubelessClient, &httpTrigger)
+		if dryrun == true {
+			res, err := kubelessUtils.DryRunFmt(output, httpTrigger)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			fmt.Println(res)
+			return
+		}
+
+		httpClient, err := httpUtils.GetKubelessClientOutCluster()
+		if err != nil {
+			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
+		}
+
+		err = httpUtils.CreateHTTPTriggerCustomResource(httpClient, &httpTrigger)
 		if err != nil {
 			logrus.Fatalf("Failed to deploy HTTP trigger %s in namespace %s. Error: %s", triggerName, ns, err)
 		}
@@ -142,7 +169,7 @@ var createCmd = &cobra.Command{
 }
 
 func init() {
-	createCmd.Flags().StringP("namespace", "", "", "Specify namespace for the HTTP trigger")
+	createCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the HTTP trigger")
 	createCmd.Flags().StringP("function-name", "", "", "Name of the function to be associated with trigger")
 	createCmd.Flags().StringP("path", "", "", "Ingress path for the function")
 	createCmd.Flags().StringP("hostname", "", "", "Specify a valid hostname for the function")
@@ -150,5 +177,7 @@ func init() {
 	createCmd.Flags().StringP("gateway", "", "nginx", "Specify a valid gateway for the Ingress. Supported: nginx, traefik, kong")
 	createCmd.Flags().StringP("basic-auth-secret", "", "", "Specify an existing secret name for basic authentication")
 	createCmd.Flags().StringP("tls-secret", "", "", "Specify an existing secret that contains a TLS private key and certificate to secure ingress")
+	createCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
+	createCmd.Flags().StringP("output", "o", "yaml", "Output format")
 	createCmd.MarkFlagRequired("function-name")
 }

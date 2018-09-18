@@ -15,14 +15,4 @@ limitations under the License.
 */
 package v1beta1
 
-type CronJobTriggerExpansion interface{}
-
 type FunctionExpansion interface{}
-
-type HTTPTriggerExpansion interface{}
-
-type KafkaTriggerExpansion interface{}
-
-type KinesisTriggerExpansion interface{}
-
-type NATSTriggerExpansion interface{}

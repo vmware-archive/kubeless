@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -12,7 +11,6 @@ import (
 
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
@@ -158,6 +156,22 @@ func TestEnsureFuncMapWithoutDeps(t *testing.T) {
 	}
 }
 
+func TestAvoidConfigMapOverwrite(t *testing.T) {
+	f1Name := "f1"
+	clientset, or, ns, lr := prepareDeploymentTest(f1Name)
+	clientset.CoreV1().ConfigMaps(ns).Create(&v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      f1Name,
+			Namespace: ns,
+		},
+	})
+	f1 := getDefaultFunc(f1Name, ns)
+	err := EnsureFuncConfigMap(clientset, f1, or, lr)
+	if err == nil && strings.Contains(err.Error(), "conflicting object") {
+		t.Errorf("It should fail because a conflict")
+	}
+}
+
 func TestEnsureService(t *testing.T) {
 	fakeSvc := v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -278,6 +292,29 @@ func TestUpdateFuncSvc(t *testing.T) {
 	}
 	if reflect.DeepEqual(svc.Spec.Selector, newLabels) {
 		t.Error("It should not update the selector")
+	}
+}
+
+func TestAvoidServiceOverwrite(t *testing.T) {
+	f1Name := "f1"
+	ns := "default"
+	or := []metav1.OwnerReference{
+		{
+			Kind:       "Function",
+			APIVersion: "kubeless.io/v1beta1",
+		},
+	}
+	clientset := fake.NewSimpleClientset()
+	clientset.CoreV1().Services(ns).Create(&v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      f1Name,
+			Namespace: ns,
+		},
+	})
+	f1 := getDefaultFunc(f1Name, ns)
+	err := EnsureFuncService(clientset, f1, or)
+	if err == nil && strings.Contains(err.Error(), "conflicting object") {
+		t.Errorf("It should fail because a conflict")
 	}
 }
 
@@ -438,7 +475,7 @@ func TestEnsureDeployment(t *testing.T) {
 	expectedObjectMeta := metav1.ObjectMeta{
 		Name:            f1Name,
 		Namespace:       ns,
-		Labels:          funcLabels,
+		Labels:          addDefaultLabel(funcLabels),
 		OwnerReferences: or,
 		Annotations:     funcAnno,
 	}
@@ -498,7 +535,7 @@ func TestEnsureDeployment(t *testing.T) {
 			},
 			{
 				Name:  "PYTHONPATH",
-				Value: "/kubeless/lib/python2.7/site-packages",
+				Value: "/kubeless/lib/python2.7/site-packages:/kubeless",
 			},
 		},
 		VolumeMounts: []v1.VolumeMount{
@@ -622,6 +659,22 @@ func TestEnsureUpdateDeployment(t *testing.T) {
 	// ignores PATCH actions: https://github.com/kubernetes/client-go/issues/364
 }
 
+func TestAvoidDeploymentOverwrite(t *testing.T) {
+	f1Name := "f1"
+	clientset, or, ns, lr := prepareDeploymentTest(f1Name)
+	clientset.ExtensionsV1beta1().Deployments(ns).Create(&v1beta1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      f1Name,
+			Namespace: ns,
+		},
+	})
+	f1 := getDefaultFunc(f1Name, ns)
+	err := EnsureFuncDeployment(clientset, f1, or, lr, "", "unzip", []v1.LocalObjectReference{})
+	if err == nil && strings.Contains(err.Error(), "conflicting object") {
+		t.Errorf("It should fail because a conflict")
+	}
+}
+
 func TestDeploymentWithUnsupportedRuntime(t *testing.T) {
 	funcName := "func"
 	clientset, or, ns, lr := prepareDeploymentTest(funcName)
@@ -709,82 +762,6 @@ func TestDeploymentWithVolumes(t *testing.T) {
 	}
 }
 
-func TestEnsureCronJob(t *testing.T) {
-	or := []metav1.OwnerReference{
-		{
-			Kind:       "Function",
-			APIVersion: "kubeless.io/v1beta1",
-		},
-	}
-	ns := "default"
-	f1Name := "func1"
-	f1 := &kubelessApi.Function{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      f1Name,
-			Namespace: ns,
-		},
-		Spec: kubelessApi.FunctionSpec{
-			Timeout: "120",
-		},
-	}
-	expectedMeta := metav1.ObjectMeta{
-		Name:            "trigger-" + f1Name,
-		Namespace:       ns,
-		OwnerReferences: or,
-	}
-
-	clientset := fake.NewSimpleClientset()
-
-	pullSecrets := []v1.LocalObjectReference{
-		{Name: "creds"},
-	}
-	err := EnsureCronJob(clientset, f1, "* * * * *", "unzip", or, pullSecrets)
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	cronJob, err := clientset.BatchV1beta1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", f1.Name), metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	if !reflect.DeepEqual(expectedMeta, cronJob.ObjectMeta) {
-		t.Errorf("Unexpected metadata metadata. Expecting\n%+v \nReceived:\n%+v", expectedMeta, cronJob.ObjectMeta)
-	}
-	if *cronJob.Spec.SuccessfulJobsHistoryLimit != int32(3) {
-		t.Errorf("Unexpected SuccessfulJobsHistoryLimit: %d", *cronJob.Spec.SuccessfulJobsHistoryLimit)
-	}
-	if *cronJob.Spec.FailedJobsHistoryLimit != int32(1) {
-		t.Errorf("Unexpected FailedJobsHistoryLimit: %d", *cronJob.Spec.FailedJobsHistoryLimit)
-	}
-	if *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds != int64(120) {
-		t.Errorf("Unexpected ActiveDeadlineSeconds: %d", *cronJob.Spec.JobTemplate.Spec.ActiveDeadlineSeconds)
-	}
-	expectedCommand := []string{"curl", "-Lv", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", f1Name, ns)}
-	runtimeContainer := cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0]
-	if runtimeContainer.Image != "unzip" {
-		t.Errorf("Unexpected image %s", runtimeContainer.Image)
-	}
-	args := runtimeContainer.Args
-	// skip event headers data (i.e  -H "event-id: cronjob-controller-2018-03-05T05:55:41.990784027Z" etc)
-	foundCommand := []string{args[0], args[1], args[len(args)-1]}
-	if !reflect.DeepEqual(foundCommand, expectedCommand) {
-		t.Errorf("Unexpected command %s expexted %s", foundCommand, expectedCommand)
-	}
-
-	// It should update the existing cronJob if it is already created
-	newSchedule := "*/10 * * * *"
-	err = EnsureCronJob(clientset, f1, newSchedule, "unzip", or, pullSecrets)
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	updatedCronJob, err := clientset.BatchV1beta1().CronJobs(ns).Get(fmt.Sprintf("trigger-%s", f1.Name), metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	if updatedCronJob.Spec.Schedule != newSchedule {
-		t.Errorf("Unexpected schedule %s expecting %s", updatedCronJob.Spec.Schedule, newSchedule)
-	}
-}
-
 func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
 	for _, e := range envs {
 		if e == env {
@@ -792,235 +769,6 @@ func doesNotContain(envs []v1.EnvVar, env v1.EnvVar) bool {
 		}
 	}
 	return true
-}
-
-func TestCreateIngressResource(t *testing.T) {
-	fakeSvc := v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "myns",
-			Name:      "foo",
-		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
-				{TargetPort: intstr.FromInt(8080)},
-			},
-		},
-	}
-	clientset := fake.NewSimpleClientset(&fakeSvc)
-	f1 := &kubelessApi.Function{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "myns",
-			UID:       "1234",
-		},
-		Spec: kubelessApi.FunctionSpec{},
-	}
-	httpTrigger := &kubelessApi.HTTPTrigger{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "myns",
-			UID:       "1234",
-		},
-		Spec: kubelessApi.HTTPTriggerSpec{
-			FunctionName: f1.Name,
-		},
-	}
-	or := []metav1.OwnerReference{
-		{
-			Kind:       "HTTPTrigger",
-			APIVersion: "kubeless.io/v1beta1",
-		},
-	}
-	if err := CreateIngress(clientset, httpTrigger, or); err != nil {
-		t.Fatalf("Creating ingress returned err: %v", err)
-	}
-	ing, err := clientset.ExtensionsV1beta1().Ingresses("myns").Get("foo", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Unexpected err: %v", err)
-	}
-	if !reflect.DeepEqual(ing.OwnerReferences, or) {
-		t.Errorf("Unexpected OwnerRef %v", httpTrigger.OwnerReferences)
-	}
-	if err := CreateIngress(clientset, httpTrigger, or); err != nil {
-		if !k8sErrors.IsAlreadyExists(err) {
-			t.Fatalf("Expect object is already exists, got %v", err)
-		}
-	}
-}
-
-func TestCreateIngressResourceWithNginxGateway(t *testing.T) {
-	fakeSvc := v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "myns",
-			Name:      "foo",
-		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
-				{TargetPort: intstr.FromInt(8080)},
-			},
-		},
-	}
-	clientset := fake.NewSimpleClientset(&fakeSvc)
-	f1 := &kubelessApi.Function{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "myns",
-			UID:       "1234",
-		},
-		Spec: kubelessApi.FunctionSpec{},
-	}
-	httpTrigger := &kubelessApi.HTTPTrigger{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "myns",
-			UID:       "1234",
-		},
-		Spec: kubelessApi.HTTPTriggerSpec{
-			HostName:        "foo",
-			TLSAcme:         true,
-			FunctionName:    f1.Name,
-			BasicAuthSecret: "foo-secret",
-			Gateway:         "nginx",
-		},
-	}
-	if err := CreateIngress(clientset, httpTrigger, []metav1.OwnerReference{}); err != nil {
-		t.Fatalf("Creating ingress returned err: %v", err)
-	}
-
-	ingress, err := clientset.ExtensionsV1beta1().Ingresses("myns").Get("foo", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Getting Ingress returned err: %v", err)
-	}
-
-	annotations := ingress.ObjectMeta.Annotations
-	if annotations == nil || len(annotations) == 0 ||
-		annotations["kubernetes.io/ingress.class"] != "nginx" ||
-		annotations["nginx.ingress.kubernetes.io/auth-secret"] != "foo-secret" ||
-		annotations["nginx.ingress.kubernetes.io/auth-type"] != "basic" ||
-		annotations["kubernetes.io/tls-acme"] != "true" ||
-		annotations["nginx.ingress.kubernetes.io/ssl-redirect"] != "true" {
-		t.Fatal("Missing or wrong annotations!")
-	}
-
-	tls := ingress.Spec.TLS
-	if tls == nil || len(tls) != 1 ||
-		tls[0].SecretName == "" ||
-		tls[0].Hosts == nil || len(tls[0].Hosts) != 1 || tls[0].Hosts[0] == "" {
-		t.Fatal("Missing or incomplete TLS spec!")
-	}
-}
-
-func TestCreateIngressResourceWithTLSAcme(t *testing.T) {
-	fakeSvc := v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "myns",
-			Name:      "foo",
-		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
-				{TargetPort: intstr.FromInt(8080)},
-			},
-		},
-	}
-	clientset := fake.NewSimpleClientset(&fakeSvc)
-	f1 := &kubelessApi.Function{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "myns",
-			UID:       "1234",
-		},
-		Spec: kubelessApi.FunctionSpec{},
-	}
-	httpTrigger := &kubelessApi.HTTPTrigger{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "myns",
-			UID:       "1234",
-		},
-		Spec: kubelessApi.HTTPTriggerSpec{
-			HostName:     "foo",
-			TLSAcme:      true,
-			FunctionName: f1.Name,
-		},
-	}
-	if err := CreateIngress(clientset, httpTrigger, []metav1.OwnerReference{}); err != nil {
-		t.Fatalf("Creating ingress returned err: %v", err)
-	}
-
-	ingress, err := clientset.ExtensionsV1beta1().Ingresses("myns").Get("foo", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Getting Ingress returned err: %v", err)
-	}
-
-	annotations := ingress.ObjectMeta.Annotations
-	if annotations == nil || len(annotations) == 0 ||
-		annotations["kubernetes.io/tls-acme"] != "true" ||
-		annotations["nginx.ingress.kubernetes.io/ssl-redirect"] != "true" {
-		t.Fatal("Missing or wrong annotations!")
-	}
-
-	tls := ingress.Spec.TLS
-	if tls == nil || len(tls) != 1 ||
-		tls[0].SecretName == "" ||
-		tls[0].Hosts == nil || len(tls[0].Hosts) != 1 || tls[0].Hosts[0] == "" {
-		t.Fatal("Missing or incomplete TLS spec!")
-	}
-}
-
-func TestUpdateIngressResource(t *testing.T) {
-	fakeSvc := v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "myns",
-			Name:      "foo",
-		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
-				{TargetPort: intstr.FromInt(8080)},
-			},
-		},
-	}
-	fakeIngress := v1beta1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "myns",
-			Name:      "foo",
-			Labels: map[string]string{
-				"test": "foo",
-			},
-		},
-	}
-	clientset := fake.NewSimpleClientset(&fakeSvc, &fakeIngress)
-	f1 := &kubelessApi.Function{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "myns",
-			UID:       "1234",
-		},
-		Spec: kubelessApi.FunctionSpec{},
-	}
-	httpTrigger := &kubelessApi.HTTPTrigger{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "myns",
-			UID:       "1234",
-		},
-		Spec: kubelessApi.HTTPTriggerSpec{
-			FunctionName: f1.Name,
-			HostName:     "test.domain",
-		},
-	}
-	if err := CreateIngress(clientset, httpTrigger, []metav1.OwnerReference{}); err != nil {
-		t.Fatalf("Creating ingress returned err: %v", err)
-	}
-	newIngress, err := clientset.ExtensionsV1beta1().Ingresses("myns").Get("foo", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Unexpected errors: %v", err)
-	}
-	if newIngress.ObjectMeta.Labels["test"] != "foo" {
-		t.Errorf("Unexpected labels: %v", newIngress.ObjectMeta.Labels)
-	}
-	if newIngress.Spec.Rules[0].Host != "test.domain" {
-		t.Errorf("Unexpected hostname: %s", newIngress.Spec.Rules[0].Host)
-	}
 }
 
 func TestGetProvisionContainer(t *testing.T) {

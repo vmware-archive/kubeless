@@ -1,0 +1,122 @@
+# Gopkg.toml example
+#
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#   name = "github.com/x/y"
+#   version = "2.4.0"
+#
+# [prune]
+#   non-go = false
+#   go-tests = true
+#   unused-packages = true
+
+
+[[constraint]] 
+  name = "github.com/aws/aws-sdk-go"
+  version = "v1.13.50"
+
+[[constraint]]
+  name = "github.com/coreos/prometheus-operator"
+  revision = "197eb012d973f5aaf4d0446fd8f638f1b9067128"
+
+[[constraint]]
+  name = "github.com/ghodss/yaml"
+  version = "1.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/golang/glog"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/gosuri/uitable"
+
+[[constraint]]
+  name = "github.com/imdario/mergo"
+  version = "0.3.5"
+
+[[constraint]]
+  name = "github.com/ksonnet/ksonnet-lib"
+  version = "0.1.10"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/kubeless/cronjob-trigger"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/kubeless/http-trigger"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/kubeless/kafka-trigger"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/kubeless/kinesis-trigger"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/kubeless/nats-trigger"
+
+[[constraint]]
+  name = "github.com/nats-io/go-nats"
+  version = "1.5.0"
+
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  version = "0.8.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/prometheus/common"
+
+[[constraint]]
+  name = "github.com/robfig/cron"
+  version = "1.1.0"
+
+[[constraint]]
+  name = "github.com/sirupsen/logrus"
+  revision = "768a92a02685ee7535069fc1581341b41bab9b72"
+
+[[constraint]]
+  name = "github.com/spf13/cobra"
+  version = "0.0.3"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/net"
+
+[[constraint]]
+  version = "kubernetes-1.10.0"
+  name = "k8s.io/api"
+
+[[constraint]]
+  version = "kubernetes-1.10.0"
+  name = "k8s.io/apiextensions-apiserver"
+
+[[constraint]]
+  version = "kubernetes-1.10.0"
+  name = "k8s.io/apimachinery"
+
+[[constraint]]
+  name = "k8s.io/client-go"
+  version = "v7.0.0"
+
+[prune]
+  go-tests = true
+  unused-packages = true

@@ -1,5 +1,5 @@
 ---
-apiVersion: k8s.io/v1
+apiVersion: kubeless.io/v1beta1
 kind: Function
 metadata:
   name: function
@@ -7,8 +7,8 @@ spec:
   handler: test.run
   runtime: ruby2.4
   function: |
-    # Obtains the latest Kubeless release published 
-    def run(request)
+    # Obtains the latest Kubeless release published
+    def run(event, context)
       require "net/https"
       require "uri"
       require "json"
@@ -23,9 +23,11 @@ spec:
       # Parse response
       output = JSON.parse(response.body)
 
-      # Create a Hash for output 
+      # Create a Hash for output
       output_hash = { version: output.first['name'] }
 
       # Print the stuff (JSON)
       puts JSON.pretty_generate(output_hash)
+
+      return output_hash[:version]
     end
