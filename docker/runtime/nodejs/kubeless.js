@@ -47,7 +47,7 @@ const context = {
     'memory-limit': process.env.FUNC_MEMORY_LIMIT
 };
 
-const script = new vm.Script(fs.readFileSync(modPath) + '\nrequire(\'kubeless\')(module.exports);\n', {
+const script = new vm.Script('\nrequire(\'kubeless\')(require(\''+ modPath +'\'));\n', {
     filename: modPath,
     displayErrors: true,
 });
