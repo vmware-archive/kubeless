@@ -239,6 +239,7 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 	case strings.Contains(runtime, "nodejs"):
 		registry := "https://registry.npmjs.org"
 		scope := ""
+		configAddl := ""
 		// Force HOME to a folder with permissions to avoid issues in OpenShift #694
 		env = append(env, v1.EnvVar{Name: "HOME", Value: "/tmp"})
 		for _, v := range env {
@@ -248,9 +249,17 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 			if v.Name == "NPM_SCOPE" {
 				scope = v.Value + ":"
 			}
+			if v.Name == "NPM_CONFIG_ADDL" {
+				configAddl = v.Value
+			}
 		}
 		command = appendToCommand(command,
-			"npm config set "+scope+"registry "+registry,
+		        "npm config set "+scope+"registry "+registry)
+		if configAddl != "" {
+		        command = appendToCommand(command,
+                        	"npm config set "+configAddl)
+		}
+		command = appendToCommand(command,
 			"npm install --production --prefix="+installVolume.MountPath)
 	case strings.Contains(runtime, "ruby"):
 		command = appendToCommand(command,
