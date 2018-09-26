@@ -336,7 +336,11 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 	switch {
 	case strings.Contains(runtime, "go"):
 		command = fmt.Sprintf(
+			// Replace FUNCTION placeholder
 			"sed 's/<<FUNCTION>>/%s/g' $GOPATH/src/controller/kubeless.tpl.go > $GOPATH/src/controller/kubeless.go && "+
+				// Remove vendored version of kubeless if exists
+				"rm -rf $GOPATH/src/kubeless/vendor/github.com/kubeless/kubeless && "+
+				// Build command
 				"go build -o %s/server $GOPATH/src/controller/kubeless.go > /dev/termination-log 2>&1", funcName, installVolume.MountPath)
 	case strings.Contains(runtime, "java"):
 		command = "cp -r /usr/src/myapp/* /kubeless/ && " +
