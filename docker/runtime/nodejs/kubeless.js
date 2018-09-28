@@ -124,7 +124,7 @@ function modFinalize(result, res, end) {
 
 function handleError(err, res, label, end) {
     errorsCounter.labels(label).inc();
-    res.status(500).send('Internal Server Error');
+    res.status(err.status || 500).send(err.message || 'Internal Server Error');
     console.error(`Function failed to execute: ${err.stack}`);
     end();
 }
