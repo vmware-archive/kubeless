@@ -2,8 +2,11 @@
 
 CLUSTER=${1:?}
 ZONE=${2:?}
-VERSION=${3:?}
+BRANCH=${3:?}
 ADMIN=${4:?}
+
+# Resolve latest version from a branch
+VERSION=$(gcloud container get-server-config --zone $ZONE --format='yaml(validMasterVersions)' 2> /dev/null | grep $BRANCH | awk '{print $2}' | head -n 1)
 
 function clean() {
     local resource=${1:?}
