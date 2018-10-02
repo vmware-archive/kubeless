@@ -4,6 +4,6 @@
     "dependencies": {
         "end-of-stream": "^1.4.1",
         "from2": "^2.3.0",
-        "lodash": "3.10.1"
+        "lodash": "^3.10.1"
     }
 }
