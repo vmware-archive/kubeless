@@ -4,7 +4,7 @@ By default Kubeless has support for the following runtimes:
 
  - Python: For the branches 2.7, 3.4 and 3.6
  - NodeJS: For the branches 6 and 8, as well as NodeJS [distroless](https://github.com/GoogleContainerTools/distroless) for the branch 8
- - Ruby: For the branch 2.4
+ - Ruby: For the branches 2.3, 2.4 and 2.5
  - PHP: For the branch 7.2
  - Golang: For the branch 1.10
  - .NET: For the branch 2.0
@@ -15,7 +15,7 @@ You can see the list of supported runtimes executing:
 ```console
 $ kubeless get-server-config
 INFO[0000] Current Server Config:
-INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.4, php7.2, go1.10, dotnetcore2.0, java1.8, ballerina0.981.0
+INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.3, ruby2.4, ruby2.5, php7.2, go1.10, dotnetcore2.0, java1.8, ballerina0.981.0
 ```
 
 Each runtime is encapsulated in a container image. The reference to these images are injected in the Kubeless configuration. You can find the source code of all runtimes in [`docker/runtime`](https://github.com/kubeless/kubeless/tree/master/docker/runtime).
