@@ -81,6 +81,7 @@ jobs:
     steps:
       - checkout
       - <<: *exports
+      - run: go get -u golang.org/x/lint/golint
       - run: make bootstrap
       - run: make VERSION=${CONTROLLER_TAG} binary
       - run: make test
