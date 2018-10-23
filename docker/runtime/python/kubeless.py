@@ -40,7 +40,17 @@ def funcWrap(q, event, c):
     except Exception as inst:
         q.put(inst)
 
-@app.route('/', method=['GET', 'POST', 'PATCH', 'DELETE'])
+@app.get('/healthz')
+def healthz():
+    return 'OK'
+
+@app.get('/metrics')
+def metrics():
+    bottle.response.content_type = prom.CONTENT_TYPE_LATEST
+    return prom.generate_latest(prom.REGISTRY)
+
+
+@app.route('/<:re:.*>', method=['GET', 'POST', 'PATCH', 'DELETE'])
 def handler():
     req = bottle.request
     content_type = req.get_header('content-type')
@@ -76,14 +86,6 @@ def handler():
                     raise res
                 return res
 
-@app.get('/healthz')
-def healthz():
-    return 'OK'
-
-@app.get('/metrics')
-def metrics():
-    bottle.response.content_type = prom.CONTENT_TYPE_LATEST
-    return prom.generate_latest(prom.REGISTRY)
 
 if __name__ == '__main__':
     import logging
