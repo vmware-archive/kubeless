@@ -72,6 +72,16 @@ func handle(ctx context.Context, w http.ResponseWriter, r *http.Request) ([]byte
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+
+	// add CORS support
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers",
+	"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	// Stop here if it's a Preflighted OPTIONS request
+	if r.Method == "OPTIONS" {
+		return
+	}
 	proxyUtils.Handler(w, r, handle)
 }
 
