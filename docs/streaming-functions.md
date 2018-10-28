@@ -4,7 +4,7 @@ Kubeless lets you trigger any Kubeless function in response to ingested records 
 
 ## AWS Kinesis
 
-To trigger Kubeless functions in response to ingested records into the AWS kinesis stream you need to deploy Kubeless AWS Kinesis trigger controlle. Please use this manifest to deploy Kubeless AWS Kinesis trigger controller.
+To trigger Kubeless functions in response to ingested records into the AWS kinesis stream you need to deploy Kubeless AWS Kinesis trigger controller. Please use this manifest to deploy Kubeless AWS Kinesis trigger controller.
 
 ```console
 kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kinesis-$RELEASE.yaml

@@ -34,7 +34,7 @@ Apart from the basic parameters, it is possible to add the specification of a `D
 
 ## Deploying large functions
 
-As any Kubernetes object, function objects have a maximum size of 1MB (due to the maximum size of an etcd entry). Because of that, it's not possible to specify in the `function` field of the YAML content that surpasses that size. To workaround this issue it's possible to specify an URL in the `function` field. This file will be downloaded at build time (extracted if necessary) and the checksum will be checked. Doing this we avoid any limitation regarding the file size. It's also possible to include the function dependencies in this file and skip the dependency installation step. Note that since the file will be downloaded in a pod the URL should be accessible from within the cluster:
+As any Kubernetes object, function objects have a maximum size of 1.5MiB (due to the [maximum size](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/limit.md#request-size-limit) of an etcd entry). Because of that, it's not possible to specify in the `function` field of the YAML content that surpasses that size. To workaround this issue it's possible to specify an URL in the `function` field. This file will be downloaded at build time (extracted if necessary) and the checksum will be checked. Doing this we avoid any limitation regarding the file size. It's also possible to include the function dependencies in this file and skip the dependency installation step. Note that since the file will be downloaded in a pod the URL should be accessible from within the cluster:
 
 ```yaml
   checksum: sha256:d1f84e9f0a8ce27e7d9ce6f457126a8f92e957e5109312e7996373f658015547

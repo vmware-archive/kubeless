@@ -60,7 +60,7 @@ Apart from the requirements above, the runtime should satisfy:
    - Errors per HTTP method
    - Histogram with the execution time per HTTP method
 
-In any case, it is not necessary that the native runtime fulfill the above. Those features can be obtained adding a Go proxy that already implente those features and redirect the request to the new runtime. For adding it is only necessary to add the proxy binary to the image and run it as the `CMD`. See the [ruby example](https://github.com/kubeless/kubeless/blob/master/docker/runtime/ruby/).
+In any case, it is not necessary that the native runtime fulfill the above. Those features can be obtained adding a Go proxy that already implements those features and redirect the request to the new runtime. For adding it is only necessary to add the proxy binary to the image and run it as the `CMD`. See the [ruby example](https://github.com/kubeless/kubeless/blob/master/docker/runtime/ruby/).
 
 ## 3. Update the kubeless-config configmap
 
@@ -125,7 +125,7 @@ func UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runtime string) {
 
 This function is called if there are requirements to be injected in your runtime or if it is a custom runtime.
 
-## 6. Add examples
+## 7. Add examples
 
 In order to demonstrate the usage of the new runtime it will be necessary to add at least three different examples:
 
@@ -135,7 +135,7 @@ In order to demonstrate the usage of the new runtime it will be necessary to add
 
  The examples should be added to the folder `examples/<language_id>/` and should be added as well to the Makefile present in `examples/Makefile`. Note that the target should be `get-<language_id>`, `post-<language_id>` and `get-<language_id>-deps` for three examples above.
 
-## 7. Add tests
+## 8. Add tests
 
 For each new runtime, there should be integration tests that deploys the three examples above and check that the function is successfully deployed and that the output of the function is the expected one. For doing so add the counterpart `get-<language_id>-verify`, `post-<language_id>-verify` and `get-<language_id>-deps-verify` in the `examples/Makefile` and enable the execution of these tests in the script `test/integration-tests.bats`:
 

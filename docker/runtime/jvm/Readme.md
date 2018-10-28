@@ -13,5 +13,5 @@ Pass this jar file to kubeless and define the handler method. The package path m
 `kubeless function deploy test --runtime jvm1.8 --from-file build/libs/jvm-test-0.1-all.jar --handler io_ino_Handler.sayHello`
 
 Known issues
-The jar must not be larger than 1MB, since the file is stored in etcd. This can be solved by passing a URL to the JAR file:
+The jar must not be larger than 1.5MiB, since the file is stored in etcd. This can be solved by passing a URL to the JAR file:
 `kubeless function deploy test --runtime jvm1.8 --from-file https://example.com/build/libs/jvm-test-0.1-all.jar --handler io_ino_Handler.sayHello`
