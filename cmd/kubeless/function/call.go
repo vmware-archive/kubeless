@@ -97,7 +97,7 @@ var callCmd = &cobra.Command{
 			logrus.Fatalf("Unable to generate ID %v", err)
 		}
 		req.SetHeader("event-id", eventID)
-		req.SetHeader("event-time", timestamp.String())
+		req.SetHeader("event-time", timestamp.Format(time.RFC3339))
 		req.SetHeader("event-namespace", "cli.kubeless.io")
 		res, err := req.Do().Raw()
 		if err != nil {
