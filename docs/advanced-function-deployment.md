@@ -8,6 +8,9 @@ kind: Function
 metadata:
   name: get-python
   namespace: default
+  label:
+    created-by: kubeless
+    function: get-python
 spec:
   runtime: python2.7
   timeout: "180"

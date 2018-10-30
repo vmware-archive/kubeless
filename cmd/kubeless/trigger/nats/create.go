@@ -114,7 +114,7 @@ var createCmd = &cobra.Command{
 func init() {
 	createCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the NATS trigger")
 	createCmd.Flags().StringP("trigger-topic", "", "", "Specify topic to listen to in NATS")
-	createCmd.Flags().StringP("function-selector", "", "", "Selector (label query) to select function on (e.g. -function-selector key1=value1,key2=value2)")
+	createCmd.Flags().StringP("function-selector", "", "", "Selector (label query) to select function on (e.g. --function-selector key1=value1,key2=value2)")
 	createCmd.MarkFlagRequired("trigger-topic")
 	createCmd.MarkFlagRequired("function-selector")
 	createCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")

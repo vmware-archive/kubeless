@@ -641,6 +641,8 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 				Value: dpm.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String(),
 			},
 		)
+	} else {
+		return fmt.Errorf("Expected non-empty handler and non-empty function content")
 	}
 
 	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
