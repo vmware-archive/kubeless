@@ -38,7 +38,7 @@ binary-cross:
 
 all-yaml: kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml kafka-zookeeper.yaml
 
-kubeless.yaml: kubeless.jsonnet
+kubeless.yaml: kubeless.jsonnet kubeless-non-rbac.jsonnet
 
 kubeless-non-rbac.yaml: kubeless-non-rbac.jsonnet
 
