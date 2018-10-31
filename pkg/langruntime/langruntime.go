@@ -369,8 +369,8 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 	}
 
 	env := []v1.EnvVar{
-		v1.EnvVar{Name: "KUBELESS_INSTALL_VOLUME", Value: installVolume.MountPath},
-		v1.EnvVar{Name: "KUBELESS_FUNC_NAME", Value: funcName},
+		{Name: "KUBELESS_INSTALL_VOLUME", Value: installVolume.MountPath},
+		{Name: "KUBELESS_FUNC_NAME", Value: funcName},
 	}
 	return v1.Container{
 		Name:            "compile",
