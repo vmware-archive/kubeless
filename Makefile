@@ -102,7 +102,7 @@ bootstrap: bats ksonnet-lib
 	go get -u github.com/mitchellh/gox
 
 	@if ! which kubecfg >/dev/null; then \
-	sudo wget -q -O /usr/local/bin/kubecfg https://github.com/ksonnet/kubecfg/releases/download/v0.6.0/kubecfg-$$(go env GOOS)-$$(go env GOARCH); \
+	sudo wget -q -O /usr/local/bin/kubecfg https://github.com/ksonnet/kubecfg/releases/download/v0.9.0/kubecfg-$$(go env GOOS)-$$(go env GOARCH); \
 	sudo chmod +x /usr/local/bin/kubecfg; \
 	fi
 
