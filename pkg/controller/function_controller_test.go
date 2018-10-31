@@ -187,9 +187,11 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 		FileNameSuffix: ".rb",
 		Versions: []langruntime.RuntimeVersion{
 			{
-				Name:             "ruby24",
-				Version:          "2.4",
-				InitImage:        "bitnami/ruby:2.4",
+				Name:    "ruby24",
+				Version: "2.4",
+				Images: []langruntime.Image{
+					{Phase: "runtime", Image: "bitnami/ruby:2.4"},
+				},
 				ImagePullSecrets: []langruntime.ImageSecret{},
 			},
 		},
