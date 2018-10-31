@@ -77,7 +77,7 @@ jobs:
   build:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.9
+      - image: circleci/golang:1.9 
     steps:
       - checkout
       - <<: *exports
@@ -96,7 +96,7 @@ jobs:
           done
       - persist_to_workspace:
           root: /home/circleci/.go_workspace
-          paths:
+          paths: 
             - bin
             - src/github.com/kubeless/kubeless/*yaml
       - store_artifacts:
@@ -139,19 +139,19 @@ jobs:
       - <<: *restore_workspace
       - run: ./script/pull-or-build-image.sh function-controller
       - run: ./script/pull-or-build-image.sh function-image-builder
-      - run: 'echo '{"host": "unix:///var/run/docker.sock", "storage-driver": "overlay2", "insecure-registries" : ["0.0.0.0/0"]}' > /tmp/daemon.json'
+      - run: "echo '{\"host\": \"unix:///var/run/docker.sock\", \"storage-driver\": \"overlay2\", \"insecure-registries\" : [\"0.0.0.0/0\"]}' > /tmp/daemon.json"
       - run: sudo mv /tmp/daemon.json /etc/docker/daemon.json
       - run: sudo service docker restart
       - run: docker info
       - run: docker run -d -p 5000:5000 --restart=always --name registry -v /data/docker-registry:/var/lib/registry registry:2
-      - run: 'sed -i.bak 's/enable-build-step: "false"/enable-build-step: "true"/g' kubeless.yaml'
-      - run: 'sed -i.bak 's/function-registry-tls-verify: "true"/function-registry-tls-verify: "false"/g' kubeless.yaml'
+      - run: "sed -i.bak 's/enable-build-step: \"false\"/enable-build-step: \"true\"/g' kubeless.yaml"
+      - run: "sed -i.bak 's/function-registry-tls-verify: \"true\"/function-registry-tls-verify: \"false\"/g' kubeless.yaml"
       - run: ./script/integration-tests minikube deployment
       - run: ./script/integration-tests minikube prebuilt_functions
   GKE:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.9
+      - image: circleci/golang:1.9 
     steps:
       - run: |
           # In case of GKE we will only want to build if it is
@@ -180,11 +180,11 @@ jobs:
   push_latest_images:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.9
+      - image: circleci/golang:1.9 
     steps:
       - <<: *exports
       - setup_remote_docker
-      - run: docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+      - run: docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"   
       - run: |
           images=( 
             $CONTROLLER_IMAGE_NAME
@@ -199,7 +199,7 @@ jobs:
   release:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.9
+      - image: circleci/golang:1.9 
     steps:
       - <<: *exports
       - checkout
