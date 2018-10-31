@@ -1,0 +1,38 @@
+# Copyright 2019 VMware, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+FROM perl:5.26-threaded
+MAINTAINER Sankar Tanguturi stanguturi@vmware.com
+
+RUN apt-get update && \
+apt-get upgrade -y && \
+BUILD_PACKAGES="curl make gcc" && \
+apt-get -y install $BUILD_PACKAGES --no-install-recommends && \
+curl -L http://cpanmin.us | perl - Dancer2 && \
+apt-get remove --purge -y curl make gcc && \
+apt-get autoremove -y && \
+apt-get clean && \
+apt-get autoclean && \
+echo -n > /var/lib/apt/extended_states && \
+rm -rf /var/lib/apt/lists/* && \
+rm -rf /usr/share/man/?? && \
+rm -rf /usr/share/man/??_* && \
+rm -rf ~/.cpanm/*
+
+WORKDIR /
+ADD kubeless.pl .
+
+USER 1000
+
+CMD ["perl", "/kubeless.pl"]

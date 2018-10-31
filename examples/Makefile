@@ -55,13 +55,33 @@ get-python-url-deps:
 	kubeless function deploy get-python-url-deps --runtime python2.7 --handler helloget.foo --from-file https://raw.githubusercontent.com/kubeless/kubeless/v1.0.0-alpha.1/examples/python/hellowithdeps.py --dependencies https://raw.githubusercontent.com/kubeless/kubeless/v1.0.0-alpha.1/examples/python/requirements.txt
 
 get-python-url-deps-verify:
-	kubeless function call get-python-url-deps |egrep Google	
+	kubeless function call get-python-url-deps |egrep Google
 
 get-node-url-zip:
 	kubeless function deploy get-node-url-zip --runtime nodejs6 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/master/examples/nodejs/helloFunctions.zip?raw=true
 
 get-node-url-zip-verify:
 	kubeless function call get-node-url-zip |egrep hello.world
+
+get-perl-526:
+	kubeless function deploy get-perl-526 --runtime perl5.26 --handler helloget.hello --from-file perl/helloget.pm
+
+get-perl-526-verify:
+	kubeless function call get-perl-526 | egrep hello.world
+
+get-perl-custom-port:
+	kubeless function deploy get-perl-custom-port --runtime perl5.26 --handler helloget.hello --from-file perl/helloget.py --port 8085
+
+get-perl-custom-port-verify:
+	kubectl get svc get-perl-custom-port -o yaml | grep 'targetPort: 8085'
+	kubeless function call get-perl-custom-port | egrep hello.world
+
+timeout-perl:
+	kubeless function deploy timeout-perl --runtime perl5.26 --handler hello_sleep.hello_sleep --from-file perl/helloleep.pm
+
+timeout-perl-verify:
+	$(eval MSG := $(shell kubeless function call timeout-perl 2>&1 || true))
+	echo $(MSG) | egrep "Error: Task killed since it exceeded"
 
 scheduled-get-python:
 	kubeless function deploy scheduled-get-python --schedule "* * * * *" --runtime python2.7 --handler helloget.foo --from-file python/helloget.py
