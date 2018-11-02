@@ -38,7 +38,10 @@ func AddFakeConfig(clientset *fake.Clientset) {
                },
                {
                   "image": "bar",
-                  "phase": "runtime"
+									"phase": "runtime",
+									"env": {
+										"PYTHONPATH": "/kubeless/lib/python2.7/site-packages:/kubeless"
+									}
                }
             ],
             "name": "python27",
