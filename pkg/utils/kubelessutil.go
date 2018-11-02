@@ -822,6 +822,7 @@ func GetKubelessConfig(cli kubernetes.Interface, cliAPIExtensions clientsetAPIEx
 	return config, nil
 }
 
+// DryRunFmt stringify the given interface in a specific format
 func DryRunFmt(format string, trigger interface{}) (string, error) {
 	switch format {
 	case "json":
