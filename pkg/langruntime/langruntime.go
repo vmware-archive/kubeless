@@ -14,6 +14,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+const (
+	// PhaseInstallation - Installation phase name
+	PhaseInstallation = "installation"
+	// PhaseCompilation - Compilation phase name
+	PhaseCompilation = "compilation"
+	// PhaseRuntime - Runtime phase name
+	PhaseRuntime = "runtime"
+)
+
 // Langruntimes struct for getting configmap
 type Langruntimes struct {
 	kubelessConfig    *v1.ConfigMap
@@ -96,7 +105,7 @@ func (l *Langruntimes) getAvailableRuntimesPerTrigger(imageType string) []string
 	var runtimeList []string
 	for i := range l.AvailableRuntimes {
 		for j := range l.AvailableRuntimes[i].Versions {
-			if l.findImage("runtime", l.AvailableRuntimes[i].Versions[j]) != nil {
+			if l.findImage(PhaseRuntime, l.AvailableRuntimes[i].Versions[j]) != nil {
 				runtimeList = append(runtimeList, l.AvailableRuntimes[i].ID+l.AvailableRuntimes[i].Versions[j].Version)
 			}
 		}
@@ -185,7 +194,7 @@ func (l *Langruntimes) GetFunctionImage(runtime string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		runtimeImage := l.findImage("runtime", versionInf)
+		runtimeImage := l.findImage(PhaseRuntime, versionInf)
 		if runtimeImage == nil {
 			err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for HTTP based functions. Available runtimes are: %s", runtime, strings.Join(l.getAvailableRuntimesPerTrigger("HTTP")[:], ", "))
 		} else {
@@ -249,9 +258,9 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 		return v1.Container{}, err
 	}
 
-	imageInf := l.findImage("installation", versionInf)
+	imageInf := l.findImage(PhaseInstallation, versionInf)
 	if imageInf == nil {
-		// The runtime doesn't have a install hook
+		// The runtime doesn't have an installation hook
 		return v1.Container{}, nil
 	}
 
@@ -290,17 +299,16 @@ func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, volPath, runtim
 		// Not found an image for the given runtime
 		return
 	}
-
-	imageInf := l.findImage("runtime", versionInf)
-	if imageInf == nil {
-		// Not found an image for the given runtime
-		return
-	}
-
 	dpm.Spec.Template.Spec.Containers[0].Env = append(
 		dpm.Spec.Template.Spec.Containers[0].Env,
 		v1.EnvVar{Name: "KUBELESS_INSTALL_VOLUME", Value: volPath},
 	)
+
+	imageInf := l.findImage(PhaseRuntime, versionInf)
+	if imageInf == nil {
+		// Not found an image for the given runtime
+		return
+	}
 	dpm.Spec.Template.Spec.Containers[0].Env = append(
 		dpm.Spec.Template.Spec.Containers[0].Env,
 		parseEnv(imageInf.Env)...,
@@ -314,7 +322,7 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 		return nil, err
 	}
 
-	imageInf := l.findImage("compilation", versionInf)
+	imageInf := l.findImage(PhaseCompilation, versionInf)
 	if imageInf == nil {
 		// The runtime doesn't have a compilation hook
 		return nil, nil
