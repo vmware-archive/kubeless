@@ -470,9 +470,9 @@ For the Ballerina runtime we start a [Ballerina HTTP server](../docker/runtime/b
 
 The Kubeless configuration defines a set of default container images per supported runtime variant.
 
-These default container images can be configured via Kubernetes environment variables on the Kubeless controller's deployment container. Or modifying the `kubeless-config` ConfigMap that is deployed along with the Kubeless controller. For more information about how to modify the Kubeless configuration check [this guide](/docs/function-controller-configuration).
+These default container images can be configured via Kubernetes environment variables on the Kubeless controller's deployment container. Or modifying the `kubeless-config` ConfigMap that is deployed along with the Kubeless controller. For more information about how to modify the Kubeless configuration check [this guide](/docs/function-controller-configuration.md).
 
-Apart than changing the configuration, it is possible to use a custom runtime specifying the image that the function will use. If you are interested in developing a new runtime from scratch (i.e. for a new language) you should follow [this guide](/docs/implementing-new-runtime). In the linked guide you can find the requirements that a new runtime should fulfill and how you can submit new runtimes to the Kubeless project.
+Apart than changing the configuration, it is possible to use a custom runtime specifying the image that the function will use. If you are interested in developing a new runtime from scratch (i.e. for a new language) you should follow [this guide](/docs/implementing-new-runtime.md). In the linked guide you can find the requirements that a new runtime should fulfill and how you can submit new runtimes to the Kubeless project.
 
 In any case, if you want to use one of the existing runtimes but you want to modify it to support a specific feature you can easily do that. The first thing is to modify the files in [`docker/runtime`](https://github.com/kubeless/kubeless/tree/master/docker/runtime) folder. For example, if we want to add the `lodash` `npm` module globally in the NodeJS runtime we can modify its [Dockerfile](https://github.com/kubeless/kubeless/tree/master/docker/runtime/nodejs/Dockerfile.8):
 
