@@ -534,6 +534,10 @@ func TestEnsureDeployment(t *testing.T) {
 				Value: strconv.Itoa(int(f1Port)),
 			},
 			{
+				Name:  "KUBELESS_INSTALL_VOLUME",
+				Value: "/kubeless",
+			},
+			{
 				Name:  "PYTHONPATH",
 				Value: "/kubeless/lib/python2.7/site-packages:/kubeless",
 			},
