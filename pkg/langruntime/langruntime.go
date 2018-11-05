@@ -297,7 +297,12 @@ func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, volPath, runtim
 		return
 	}
 
-	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
+	dpm.Spec.Template.Spec.Containers[0].Env = append(
+		dpm.Spec.Template.Spec.Containers[0].Env,
+		v1.EnvVar{Name: "KUBELESS_INSTALL_VOLUME", Value: volPath},
+	)
+	dpm.Spec.Template.Spec.Containers[0].Env = append(
+		dpm.Spec.Template.Spec.Containers[0].Env,
 		parseEnv(imageInf.Env)...,
 	)
 }
