@@ -107,7 +107,7 @@ var updateCmd = &cobra.Command{
 func init() {
 	updateCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 	updateCmd.Flags().StringP("trigger-topic", "", "", "Specify topic to listen to in Kafka broker")
-	updateCmd.Flags().StringP("function-selector", "", "", "Selector (label query) to select function on (e.g. -function-selector key1=value1,key2=value2)")
+	updateCmd.Flags().StringP("function-selector", "", "", "Selector (label query) to select function on (e.g. --function-selector key1=value1,key2=value2)")
 	updateCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
 	updateCmd.Flags().StringP("output", "o", "yaml", "Output format")
 }

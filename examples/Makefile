@@ -173,7 +173,7 @@ post-go-verify:
 	# Verify event context
 	logs=`kubectl logs -l function=post-go`; \
 	echo $$logs | grep -q "it.*alive" && \
-	echo $$logs | grep -q "UTC" && \
+	echo $$logs | grep -q "Z" && \
 	echo $$logs | grep -q "application/json" && \
 	echo $$logs | grep -q "cli.kubeless.io"
 
@@ -305,7 +305,7 @@ post-python-verify:
 	# Verify event context
 	logs=`kubectl logs -l function=post-python`; \
 	echo $$logs | grep -q "it.*alive" && \
-	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-time.*Z" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
 	echo $$logs | grep -q "event-namespace.*cli.kubeless.io" && \
 	echo $$logs | grep -q "event-id.*"
@@ -325,7 +325,7 @@ post-nodejs-verify:
 	# Verify event context
 	logs=`kubectl logs -l function=post-nodejs`; \
 	echo $$logs | grep -q "it.*alive" && \
-	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-time.*Z" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
 	echo $$logs | grep -q "event-namespace.*cli.kubeless.io" && \
 	echo $$logs | grep -q "event-id.*"
@@ -338,7 +338,7 @@ post-ruby-verify:
 	# Verify event context
 	logs=`kubectl logs -l function=post-ruby`; \
 	echo $$logs | grep -q "it.*alive" && \
-	echo $$logs | grep -q "event-time.*UTC" && \
+	echo $$logs | grep -q "event-time.*Z" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
 	echo $$logs | grep -q "event-namespace.*cli.kubeless.io" && \
 	echo $$logs | grep -q "event-id.*"

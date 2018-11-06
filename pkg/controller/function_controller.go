@@ -230,7 +230,7 @@ func (c *FunctionController) processItem(key string) error {
 			c.logger.Errorf("Failed to remove function controller as finalizer to Function Obj: %s object due to: %v: ", key, err)
 			return err
 		}
-		c.logger.Infof("Function object %s has been successfully processed and marked for deleteion", key)
+		c.logger.Infof("Function object %s has been successfully processed and marked for deletion", key)
 		return nil
 	}
 

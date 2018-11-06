@@ -23,9 +23,7 @@ BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/pkg/version.Version=${
 # Get rid of existing binary
 echo "Removing Old Kubeless binaries"
 rm -f ${GOPATH%%:*}/bin/kubeless
-rm -f ${GOPATH%%:*}/bin/kafka-trigger-controller
-rm -f ${GOPATH%%:*}/bin/kubeless-controller-manager
-rm -f ${GOPATH%%:*}/bin/nats-trigger-controller
+rm -f ${GOPATH%%:*}/bin/function-controller
 
 echo "Build Kubeless Components binaries"
 # Build binary
