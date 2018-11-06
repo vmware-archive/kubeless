@@ -71,7 +71,7 @@ spec:
             res.end('hello world updated!!!')
       }
     }
-  function-content-type: text
+  functionContentType: text
   handler: hello.foo
   runtime: nodejs8
   service:

@@ -37,7 +37,7 @@ type Function struct {
 type FunctionSpec struct {
 	Handler                 string                          `json:"handler"`               // Function handler: "file.function"
 	Function                string                          `json:"function"`              // Function file content or URL of the function
-	FunctionContentType     string                          `json:"function-content-type"` // Function file content type (plain text, base64 or zip)
+	FunctionContentType     string                          `json:"functionContentType"` // Function file content type (plain text, base64 or zip)
 	Checksum                string                          `json:"checksum"`              // Checksum of the file
 	Runtime                 string                          `json:"runtime"`               // Function runtime to use
 	Timeout                 string                          `json:"timeout"`               // Maximum timeout for the function to complete its execution

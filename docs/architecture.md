@@ -115,7 +115,7 @@ spec:
   function: |
     def foo(event, context):
         return "hello world"
-  function-content-type: text
+  functionContentType: text
   handler: helloget.foo
   horizontalPodAutoscaler:
     metadata:
