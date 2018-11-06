@@ -14,18 +14,34 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+const (
+	// PhaseInstallation - Installation phase name
+	PhaseInstallation = "installation"
+	// PhaseCompilation - Compilation phase name
+	PhaseCompilation = "compilation"
+	// PhaseRuntime - Runtime phase name
+	PhaseRuntime = "runtime"
+)
+
 // Langruntimes struct for getting configmap
 type Langruntimes struct {
 	kubelessConfig    *v1.ConfigMap
 	AvailableRuntimes []RuntimeInfo
 }
 
+// Image represents the information about a runtime phase
+type Image struct {
+	Phase   string            `yaml:"phase"`
+	Image   string            `yaml:"image"`
+	Command string            `yaml:"command,omitempty"`
+	Env     map[string]string `yaml:"env,omitempty"`
+}
+
 // RuntimeVersion is a struct with all the info about the images and secrets
 type RuntimeVersion struct {
 	Name             string        `yaml:"name"`
 	Version          string        `yaml:"version"`
-	RuntimeImage     string        `yaml:"runtimeImage"`
-	InitImage        string        `yaml:"initImage"`
+	Images           []Image       `yaml:"runtimeImage"`
 	ImagePullSecrets []ImageSecret `yaml:"imagePullSecrets,omitempty"`
 }
 
@@ -38,7 +54,6 @@ type ImageSecret struct {
 // and the supported versions
 type RuntimeInfo struct {
 	ID                string           `yaml:"ID"`
-	Compiled          bool             `yaml:"compiled"`
 	Versions          []RuntimeVersion `yaml:"versions"`
 	LivenessProbeInfo *v1.Probe        `yaml:"livenessProbeInfo,omitempty"`
 	DepName           string           `yaml:"depName"`
@@ -90,7 +105,7 @@ func (l *Langruntimes) getAvailableRuntimesPerTrigger(imageType string) []string
 	var runtimeList []string
 	for i := range l.AvailableRuntimes {
 		for j := range l.AvailableRuntimes[i].Versions {
-			if l.AvailableRuntimes[i].Versions[j].RuntimeImage != "" {
+			if l.findImage(PhaseRuntime, l.AvailableRuntimes[i].Versions[j]) != nil {
 				runtimeList = append(runtimeList, l.AvailableRuntimes[i].ID+l.AvailableRuntimes[i].Versions[j].Version)
 			}
 		}
@@ -134,9 +149,8 @@ func (l *Langruntimes) GetLivenessProbeInfo(runtime string, port int) *v1.Probe 
 		if runtimeInf.ID == runtimeID {
 			if runtimeInf.LivenessProbeInfo != nil {
 				return runtimeInf.LivenessProbeInfo
-			} else {
-				return livenessProbe
 			}
+			return livenessProbe
 		}
 	}
 	return livenessProbe
@@ -156,6 +170,16 @@ func (l *Langruntimes) findRuntimeVersion(runtimeWithVersion string) (RuntimeVer
 	return RuntimeVersion{}, fmt.Errorf("The given runtime and version %s is not valid", runtimeWithVersion)
 }
 
+// Returns the image information of a phase or null if the phase is not found
+func (l *Langruntimes) findImage(phase string, runtime RuntimeVersion) *Image {
+	for _, imageInf := range runtime.Images {
+		if imageInf.Phase == phase {
+			return &imageInf
+		}
+	}
+	return nil
+}
+
 // GetFunctionImage returns the image ID depending on the runtime, its version and function type
 func (l *Langruntimes) GetFunctionImage(runtime string) (string, error) {
 	runtimeInf, err := l.GetRuntimeInfo(runtime)
@@ -170,10 +194,11 @@ func (l *Langruntimes) GetFunctionImage(runtime string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if versionInf.RuntimeImage == "" {
+		runtimeImage := l.findImage(PhaseRuntime, versionInf)
+		if runtimeImage == nil {
 			err = fmt.Errorf("The given runtime and version '%s' does not have a valid image for HTTP based functions. Available runtimes are: %s", runtime, strings.Join(l.getAvailableRuntimesPerTrigger("HTTP")[:], ", "))
 		} else {
-			imageName = versionInf.RuntimeImage
+			imageName = runtimeImage.Image
 		}
 	}
 	return imageName, nil
@@ -213,6 +238,14 @@ func appendToCommand(orig string, command ...string) string {
 	return strings.Join(command, " && ")
 }
 
+func parseEnv(env map[string]string) []v1.EnvVar {
+	res := []v1.EnvVar{}
+	for key, value := range env {
+		res = append(res, v1.EnvVar{Name: key, Value: value})
+	}
+	return res
+}
+
 // GetBuildContainer returns a Container definition based on a runtime
 func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.EnvVar, installVolume v1.VolumeMount) (v1.Container, error) {
 	runtimeInf, err := l.GetRuntimeInfo(runtime)
@@ -225,59 +258,31 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 		return v1.Container{}, err
 	}
 
+	imageInf := l.findImage(PhaseInstallation, versionInf)
+	if imageInf == nil {
+		// The runtime doesn't have an installation hook
+		return v1.Container{}, nil
+	}
+
 	var command string
 	// Validate deps checksum
 	shaFile := "/tmp/deps.sha256"
 	command = appendToCommand(command,
 		fmt.Sprintf("echo '%s  %s' > %s", depsChecksum, depsFile, shaFile),
-		fmt.Sprintf("sha256sum -c %s", shaFile))
+		fmt.Sprintf("sha256sum -c %s", shaFile),
+		imageInf.Command,
+	)
 
-	switch {
-	case strings.Contains(runtime, "python"):
-		command = appendToCommand(command,
-			"pip install --prefix="+installVolume.MountPath+" -r "+depsFile)
-	case strings.Contains(runtime, "nodejs"):
-		registry := "https://registry.npmjs.org"
-		scope := ""
-		// Force HOME to a folder with permissions to avoid issues in OpenShift #694
-		env = append(env, v1.EnvVar{Name: "HOME", Value: "/tmp"})
-		for _, v := range env {
-			if v.Name == "NPM_REGISTRY" {
-				registry = v.Value
-			}
-			if v.Name == "NPM_SCOPE" {
-				scope = v.Value + ":"
-			}
-		}
-		command = appendToCommand(command,
-			"npm config set "+scope+"registry "+registry,
-			"npm install --production --prefix="+installVolume.MountPath)
-	case strings.Contains(runtime, "ruby"):
-		command = appendToCommand(command,
-			"bundle install --gemfile="+depsFile+" --path="+installVolume.MountPath)
-
-	case strings.Contains(runtime, "php"):
-		command = appendToCommand(command,
-			"composer install -d "+installVolume.MountPath)
-	case strings.Contains(runtime, "go"):
-		command = appendToCommand(command,
-			"cd $GOPATH/src/kubeless",
-			"dep ensure > /dev/termination-log 2>&1")
-	case strings.Contains(runtime, "dotnetcore"):
-		logrus.Warn("dotnetcore does not require a dependencies file")
-		return v1.Container{}, nil
-	case strings.Contains(runtime, "java"):
-		command = appendToCommand(command,
-			"mv /kubeless/pom.xml /kubeless/function-pom.xml")
-	case strings.Contains(runtime, "ballerina"):
-		return v1.Container{}, fmt.Errorf("Ballerina does not require a dependencies file")
-	case strings.Contains(runtime, "jvm"):
-		return v1.Container{}, fmt.Errorf("jvm does not require a dependencies file")
-	}
+	env = append(
+		env,
+		v1.EnvVar{Name: "KUBELESS_INSTALL_VOLUME", Value: installVolume.MountPath},
+		v1.EnvVar{Name: "KUBELESS_DEPS_FILE", Value: depsFile},
+	)
+	env = append(env, parseEnv(imageInf.Env)...)
 
 	return v1.Container{
 		Name:            "install",
-		Image:           versionInf.InitImage,
+		Image:           imageInf.Image,
 		Command:         []string{"sh", "-c"},
 		Args:            []string{command},
 		VolumeMounts:    []v1.VolumeMount{installVolume},
@@ -288,80 +293,52 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 }
 
 // UpdateDeployment object in case of custom runtime
-func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, depsPath, runtime string) {
-	switch {
-	case strings.Contains(runtime, "python"):
-		pythonPaths := []string{path.Join(depsPath, "lib/python"+l.getVersionFromRuntime(runtime)+"/site-packages"), depsPath}
-		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-			Name:  "PYTHONPATH",
-			Value: strings.Join(pythonPaths, ":"),
-		})
-	case strings.Contains(runtime, "nodejs"):
-		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-			Name:  "NODE_PATH",
-			Value: path.Join(depsPath, "node_modules"),
-		})
-	case strings.Contains(runtime, "ruby"):
-		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-			Name:  "GEM_HOME",
-			Value: path.Join(depsPath, "ruby/2.4.0"),
-		})
-	case strings.Contains(runtime, "dotnetcore"):
-		dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-			Name:  "DOTNETCORE_HOME",
-			Value: path.Join(depsPath, "packages"),
-		})
+func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, volPath, runtime string) {
+	versionInf, err := l.findRuntimeVersion(runtime)
+	if err != nil {
+		// Not found an image for the given runtime
+		return
 	}
-}
+	dpm.Spec.Template.Spec.Containers[0].Env = append(
+		dpm.Spec.Template.Spec.Containers[0].Env,
+		v1.EnvVar{Name: "KUBELESS_INSTALL_VOLUME", Value: volPath},
+	)
 
-// RequiresCompilation returns if the given runtime requires compilation
-func (l *Langruntimes) RequiresCompilation(runtime string) bool {
-	required := false
-	for _, runtimeInf := range l.AvailableRuntimes {
-		if strings.Contains(runtime, runtimeInf.ID) {
-			required = runtimeInf.Compiled
-			break
-		}
+	imageInf := l.findImage(PhaseRuntime, versionInf)
+	if imageInf == nil {
+		// Not found an image for the given runtime
+		return
 	}
-	return required
+	dpm.Spec.Template.Spec.Containers[0].Env = append(
+		dpm.Spec.Template.Spec.Containers[0].Env,
+		parseEnv(imageInf.Env)...,
+	)
 }
 
 // GetCompilationContainer returns a Container definition based on a runtime
-func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, installVolume v1.VolumeMount) (v1.Container, error) {
+func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, installVolume v1.VolumeMount) (*v1.Container, error) {
 	versionInf, err := l.findRuntimeVersion(runtime)
 	if err != nil {
-		return v1.Container{}, err
+		return nil, err
 	}
-	var command string
-	switch {
-	case strings.Contains(runtime, "go"):
-		command = fmt.Sprintf(
-			// Replace FUNCTION placeholder
-			"sed 's/<<FUNCTION>>/%s/g' $GOPATH/src/controller/kubeless.tpl.go > $GOPATH/src/controller/kubeless.go && "+
-				// Remove vendored version of kubeless if exists
-				"rm -rf $GOPATH/src/kubeless/vendor/github.com/kubeless/kubeless && "+
-				// Build command
-				"go build -o %s/server $GOPATH/src/controller/kubeless.go > /dev/termination-log 2>&1", funcName, installVolume.MountPath)
-	case strings.Contains(runtime, "java"):
-		command = "cp -r /usr/src/myapp/* /kubeless/ && " +
-			"cp /kubeless/*.java /kubeless/function/src/main/java/io/kubeless/ && " +
-			"cp /kubeless/function-pom.xml /kubeless/function/pom.xml 2>/dev/null || true && " +
-			"mvn package > /dev/termination-log 2>&1 && mvn install > /dev/termination-log 2>&1"
-	case strings.Contains(runtime, "jvm"):
-		command = "mv /kubeless/* /kubeless/payload.jar && cp /opt/*.jar /kubeless/ > /dev/termination-log 2>&1"
-	case strings.Contains(runtime, "dotnetcore"):
-		command = "/app/compile-function.sh " + installVolume.MountPath
-	case strings.Contains(runtime, "ballerina"):
-		command = fmt.Sprintf("/compile-function.sh %s", funcName)
 
-	default:
-		return v1.Container{}, fmt.Errorf("Not found a valid compilation step for %s", runtime)
+	imageInf := l.findImage(PhaseCompilation, versionInf)
+	if imageInf == nil {
+		// The runtime doesn't have a compilation hook
+		return nil, nil
 	}
-	return v1.Container{
+
+	env := append(
+		parseEnv(imageInf.Env),
+		v1.EnvVar{Name: "KUBELESS_INSTALL_VOLUME", Value: installVolume.MountPath},
+		v1.EnvVar{Name: "KUBELESS_FUNC_NAME", Value: funcName},
+	)
+	return &v1.Container{
 		Name:            "compile",
-		Image:           versionInf.InitImage,
+		Image:           imageInf.Image,
 		Command:         []string{"sh", "-c"},
-		Args:            []string{command},
+		Args:            []string{imageInf.Command},
+		Env:             env,
 		VolumeMounts:    []v1.VolumeMount{installVolume},
 		ImagePullPolicy: v1.PullIfNotPresent,
 		WorkingDir:      installVolume.MountPath,

@@ -25,7 +25,7 @@ exports: &exports
     echo "export CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export FUNCTION_IMAGE_BUILDER=${BUILDER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export KUBECFG_JPATH=/home/circleci/src/github.com/kubeless/kubeless/ksonnet-lib" >> $BASH_ENV
-    echo "export PATH=$(pwd)/bats/libexec:$PATH" >> $BASH_ENV
+    echo "export PATH=$(pwd)/bats/libexec:$GOPATH/bin:$PATH" >> $BASH_ENV
 restore_workspace: &restore_workspace
   run: |
     make bootstrap

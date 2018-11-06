@@ -38,12 +38,6 @@ func TestGetFunctionFileNames(t *testing.T) {
 
 	expectedValues := []string{"requirements.txt", "test.py"}
 	check(clientset, lr, "python2.7", "test", expectedValues, t)
-
-	expectedValues = []string{"package.json", "test.js"}
-	check(clientset, lr, "nodejs6", "test", expectedValues, t)
-
-	expectedValues = []string{"Gemfile", "test.rb"}
-	check(clientset, lr, "ruby2.4", "test", expectedValues, t)
 }
 
 func TestGetFunctionImage(t *testing.T) {
@@ -57,28 +51,28 @@ func TestGetFunctionImage(t *testing.T) {
 	}
 
 	// Throws an error if the runtime version doesn't exist
-	_, err = lr.GetFunctionImage("nodejs3")
-	expectedErrMsg := regexp.MustCompile("The given runtime and version nodejs3 is not valid")
+	_, err = lr.GetFunctionImage("python10")
+	expectedErrMsg := regexp.MustCompile("The given runtime and version python10 is not valid")
 	if expectedErrMsg.FindString(err.Error()) == "" {
-		t.Fatalf("Retrieving data for 'nodejs3' should return an error. Received: %s", err)
+		t.Fatalf("Retrieving data for 'python10' should return an error. Received: %s", err)
 	}
 
 	expectedImageName := "ruby-test-image"
-	os.Setenv("RUBY2.4_RUNTIME", expectedImageName)
-	imageR, errR := lr.GetFunctionImage("ruby2.4")
+	os.Setenv("PYTHON2.7_RUNTIME", expectedImageName)
+	imageR, errR := lr.GetFunctionImage("python2.7")
 	if errR != nil {
-		t.Fatalf("Retrieving the image returned err: %v", errR)
+		t.Errorf("Retrieving the image returned err: %v", errR)
 	}
 	if imageR != expectedImageName {
-		t.Fatalf("Expecting " + imageR + " to be set to " + expectedImageName)
+		t.Errorf("Expecting " + imageR + " to be set to " + expectedImageName)
 	}
-	os.Unsetenv("RUBY2.4_RUNTIME")
+	os.Unsetenv("PYTHON2.7_RUNTIME")
 }
 
 func TestGetLivenessProbe(t *testing.T) {
 	lr := SetupLangRuntime(clientset)
 	lr.ReadConfigMap()
-	livenessProbe := lr.GetLivenessProbeInfo("nodejs", 8080)
+	livenessProbe := lr.GetLivenessProbeInfo("python", 8080)
 
 	expectedLivenessProbe := &v1.Probe{
 		InitialDelaySeconds: int32(5),
@@ -100,7 +94,7 @@ func TestGetRuntimes(t *testing.T) {
 	lr.ReadConfigMap()
 
 	runtimes := strings.Join(lr.GetRuntimes(), ", ")
-	expectedRuntimes := "python2.7, nodejs6, ruby2.4"
+	expectedRuntimes := "python2.7"
 	if runtimes != expectedRuntimes {
 		t.Errorf("Expected %s but got %s", expectedRuntimes, runtimes)
 	}
@@ -117,70 +111,25 @@ func TestGetBuildContainer(t *testing.T) {
 	}
 
 	// It should return the proper build image for python
-	env := []v1.EnvVar{}
 	vol1 := v1.VolumeMount{Name: "v1", MountPath: "/v1"}
-	c, err := lr.GetBuildContainer("python2.7", "abc123", env, vol1)
+	c, err := lr.GetBuildContainer("python2.7", "abc123", []v1.EnvVar{}, vol1)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
 	expectedContainer := v1.Container{
 		Name:            "install",
-		Image:           "tuna/python-pillow:2.7.11-alpine",
+		Image:           "python:2.7",
 		Command:         []string{"sh", "-c"},
-		Args:            []string{"echo 'abc123  /v1/requirements.txt' > /tmp/deps.sha256 && sha256sum -c /tmp/deps.sha256 && pip install --prefix=/v1 -r /v1/requirements.txt"},
+		Args:            []string{"echo 'abc123  /v1/requirements.txt' > /tmp/deps.sha256 && sha256sum -c /tmp/deps.sha256 && foo"},
 		VolumeMounts:    []v1.VolumeMount{vol1},
 		WorkingDir:      "/v1",
 		ImagePullPolicy: v1.PullIfNotPresent,
-		Env:             env,
+		Env: []v1.EnvVar{
+			{Name: "KUBELESS_INSTALL_VOLUME", Value: "/v1"},
+			{Name: "KUBELESS_DEPS_FILE", Value: "/v1/requirements.txt"},
+		},
 	}
 	if !reflect.DeepEqual(expectedContainer, c) {
 		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedContainer, c)
 	}
-
-	// It should return the proper build image for nodejs
-	nodeEnv := []v1.EnvVar{
-		{Name: "NPM_REGISTRY", Value: "http://reg.com"},
-		{Name: "NPM_SCOPE", Value: "myorg"},
-	}
-	c, err = lr.GetBuildContainer("nodejs6", "abc123", nodeEnv, vol1)
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	if c.Image != "node:6.10" {
-		t.Errorf("Unexpected image %s", c.Image)
-	}
-	if !strings.Contains(c.Args[0], "npm config set myorg:registry http://reg.com && npm install") {
-		t.Errorf("Unexpected command %s", c.Args[0])
-	}
-	home := v1.EnvVar{Name: "HOME"}
-	for _, v := range c.Env {
-		if v.Name == "HOME" {
-			home = v
-		}
-	}
-	if home.Value != "/tmp" {
-		t.Error("It should set /tmp as home")
-	}
-
-	// It should return the proper build image for ruby
-	c, err = lr.GetBuildContainer("ruby2.4", "abc123", env, vol1)
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
-	if c.Image != "bitnami/ruby:2.4" {
-		t.Errorf("Unexpected image %s", c.Image)
-	}
-	if !strings.Contains(c.Args[0], "bundle install --gemfile=/v1/Gemfile --path=/v1") {
-		t.Errorf("Unexpected command %s", c.Args[0])
-	}
-
-	secrets, err := lr.GetImageSecrets("ruby2.4")
-	if err != nil {
-		t.Errorf("Unable to fetch secrets: %v", err)
-	}
-
-	if secrets[0].Name != "p1" && secrets[1].Name != "p2" {
-		t.Errorf("Expected first secret to be 'p1' but found %v and second secret to be 'p2' and found %v", secrets[0], secrets[1])
-	}
-
 }

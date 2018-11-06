@@ -498,7 +498,7 @@ func TestEnsureDeployment(t *testing.T) {
 	}
 	expectedContainer := v1.Container{
 		Name:  f1Name,
-		Image: "kubeless/python@sha256:0f3b64b654df5326198e481cd26e73ecccd905aae60810fc9baea4dcbb61f697",
+		Image: "bar",
 		Ports: []v1.ContainerPort{
 			{
 				ContainerPort: int32(f1Port),
@@ -534,6 +534,10 @@ func TestEnsureDeployment(t *testing.T) {
 				Value: strconv.Itoa(int(f1Port)),
 			},
 			{
+				Name:  "KUBELESS_INSTALL_VOLUME",
+				Value: "/kubeless",
+			},
+			{
 				Name:  "PYTHONPATH",
 				Value: "/kubeless/lib/python2.7/site-packages:/kubeless",
 			},
@@ -545,12 +549,11 @@ func TestEnsureDeployment(t *testing.T) {
 			},
 		},
 		LivenessProbe: &v1.Probe{
-			InitialDelaySeconds: int32(3),
-			PeriodSeconds:       int32(30),
+			InitialDelaySeconds: int32(5),
+			PeriodSeconds:       int32(10),
 			Handler: v1.Handler{
-				HTTPGet: &v1.HTTPGetAction{
-					Path: "/healthz",
-					Port: intstr.FromInt(int(f1Port)),
+				Exec: &v1.ExecAction{
+					Command: []string{"curl", "-f", "http://localhost:8080/healthz"},
 				},
 			},
 		},

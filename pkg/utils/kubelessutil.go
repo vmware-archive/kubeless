@@ -403,15 +403,15 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 	}
 
 	// add compilation init container if needed
-	if lr.RequiresCompilation(funcObj.Spec.Runtime) {
-		_, funcName, err := splitHandler(funcObj.Spec.Handler)
-		compContainer, err := lr.GetCompilationContainer(funcObj.Spec.Runtime, funcName, runtimeVolumeMount)
-		if err != nil {
-			return err
-		}
+	_, funcName, _ := splitHandler(funcObj.Spec.Handler)
+	compContainer, err := lr.GetCompilationContainer(funcObj.Spec.Runtime, funcName, runtimeVolumeMount)
+	if err != nil {
+		return err
+	}
+	if compContainer != nil {
 		result.InitContainers = append(
 			result.InitContainers,
-			compContainer,
+			*compContainer,
 		)
 	}
 	return nil
@@ -822,6 +822,7 @@ func GetKubelessConfig(cli kubernetes.Interface, cliAPIExtensions clientsetAPIEx
 	return config, nil
 }
 
+// DryRunFmt stringify the given interface in a specific format
 func DryRunFmt(format string, trigger interface{}) (string, error) {
 	switch format {
 	case "json":
