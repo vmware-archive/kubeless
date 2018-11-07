@@ -30,9 +30,7 @@ _Note: These steps are suitable for being automated in the Travis release job_
 
 Once the new version is available, there are several projects/files that require to be updated in order to point to the latest version:
  
- - Kubeless root README: Update the installation instructions to point to the latest release.
  - Kubeless docs site: To point to the latest version in the docs of http://kubeless.io rebuild the last build on https://travis-ci.org/kubeless/kubeless-website.
  - Kubeless chart: Update the references for the different images or any other required change in the `chart` folder of this repository.
  - Serverless plugin: Update the `KUBELESS_VERSION` environment variable in the `.travis` file to point to the latest version.
  - [Optional] Brew recipes: An automated PR will be generated in the `homebrew-core` repository with the new version and commit ID. Unless the recipe should contain breaking changes the update will be handled by the homebrew team. If it is not the case the [recipe](https://github.com/Homebrew/homebrew-core/blob/master/Formula/kubeless.rb) manually.
- - KubeApps: Update the reference of the controller image and checkout the kubeless submodule to point to the tagged commit. After that ping a KubeApps maintainer to merge the changes and update the manifests in the KubeApps repository. You can find an example of update [here](https://github.com/kubeapps/manifest/pull/34).

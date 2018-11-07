@@ -1,16 +1,10 @@
 # Kubeless Runtime Variants
 
-By default Kubeless has support for the following runtimes:
+By default Kubeless has support for runtimes in different states: stable and incubator. You can find the different runtimes available in this repository: 
 
- - Python: For the branches 2.7, 3.4 and 3.6
- - NodeJS: For the branches 6 and 8, as well as NodeJS [distroless](https://github.com/GoogleContainerTools/distroless) for the branch 8
- - Ruby: For the branches 2.3, 2.4 and 2.5
- - PHP: For the branch 7.2
- - Golang: For the branch 1.10
- - .NET: For the branch 2.0
- - Ballerina: For the branch 0.981.0
+[https://github.com/kubeless/runtimes](https://github.com/kubeless/runtimes).
 
-You can see the list of supported runtimes executing:
+You can also see the list of supported runtimes that your Kubeless installation can use executing:
 
 ```console
 $ kubeless get-server-config
@@ -18,7 +12,7 @@ INFO[0000] Current Server Config:
 INFO[0000] Supported Runtimes are: python2.7, python3.4, python3.6, nodejs6, nodejs8, ruby2.3, ruby2.4, ruby2.5, php7.2, go1.10, dotnetcore2.0, java1.8, ballerina0.981.0
 ```
 
-Each runtime is encapsulated in a container image. The reference to these images are injected in the Kubeless configuration. You can find the source code of all runtimes in [`docker/runtime`](https://github.com/kubeless/kubeless/tree/master/docker/runtime).
+Each runtime is encapsulated in a container image. The reference to these images are injected in the Kubeless configuration.
 
 ### NodeJS
 
@@ -47,6 +41,8 @@ $ kubeless function deploy myFunction --runtime nodejs6 \
                                 --handler test.foobar \
                                 --from-file test.js
 ```
+
+It's also possible to add another piece of configuration for your NPM file if the variable `NPM_CONFIG_EXTRA` is set. In case it's used, the build process will execute `npm config set $NPM_CONFIG_EXTRA` before installing dependencies.
 
 Depending on the size of the payload sent to the NodeJS function it is possible to find the error `413 PayloadTooLargeError`. It is possible to increase this limit setting the environment variable `REQ_MB_LIMIT`. This will define the maximum size in MB that the function will accept:
 
@@ -139,6 +135,21 @@ $ kubeless function deploy myFunction --runtime nodejs_distroless8 \
                                 --from-file test.js
 ```
 
+#### CloudEvents 0.1 Variant
+
+[CloudEvents](https://cloudevents.io) is a CNCF effort to standardize the way events are represented in the Cloud. There is a variant of the Node.js 8 runtime that is ready to receive events that follow that specification (v0.1).
+
+This variant expects the header `application/cloudevents+json` in order to be parsed as a JSON cloud event or the different headers that are defined in the [specification](https://github.com/cloudevents/spec/blob/master/spec.md) adapting them to the Kubeless function format.
+
+The same example Node.js function from above can then be deployed:
+
+```console
+$ kubeless function deploy myFunction --runtime nodejsCE8 \
+                                --dependencies package.json \
+                                --handler test.foobar \
+                                --from-file test.js
+```
+
 ### Python
 
 #### Example
@@ -196,7 +207,7 @@ Go functions require to import the package `github.com/kubeless/kubeless/pkg/fun
 
 #### Server implementation
 
-The Go HTTP server doesn't include any framework since the native packages includes enough functionality to fit our needs. Since there is not a standard package that manages server logs that functionality is implemented in the same server. It is also required to implement the `ResponseWriter` interface in order to retrieve the Status Code of the response.
+The Go HTTP server doesn't include any framework since the native packages includes enough functionality to fit our needs. Since there is not a standard package that manages server logs that functionality is implemented in the same server. It is also required to implement the `ResponseWriter` interface in order to retrieve the Status Code of the response. Apart from that we enable [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS) to accept any request.
 
 #### Debugging compilation
 
