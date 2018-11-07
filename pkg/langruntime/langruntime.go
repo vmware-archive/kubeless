@@ -121,7 +121,7 @@ func (l *Langruntimes) getVersionFromRuntime(runtime string) string {
 
 // GetRuntimeInfo returns all the info regarding a runtime
 func (l *Langruntimes) GetRuntimeInfo(runtime string) (RuntimeInfo, error) {
-	runtimeID := regexp.MustCompile("^[a-zA-Z]+").FindString(runtime)
+	runtimeID := regexp.MustCompile("^[a-zA-Z_-]+").FindString(runtime)
 	for _, runtimeInf := range l.AvailableRuntimes {
 		if runtimeInf.ID == runtimeID {
 			return runtimeInf, nil
