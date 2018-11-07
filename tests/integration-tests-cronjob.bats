@@ -25,7 +25,6 @@ load ../script/libtest
     verify_cronjob_trigger get-python '*/60 * * * *' '"GET / HTTP/1.1" 200 11 "" "curl/7.56.1"'
     delete_cronjob_trigger get-python
     verify_clean_object cronjobtrigger get-python
-    verify_clean_object cronjob get-python
 }
 
 @test "Test no-errors" {
