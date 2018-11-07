@@ -60,6 +60,7 @@ Your webpacked functions will be `require()`-d in so your bundle should work out
 You will need to customize your webpack config to suit your own project, but below is an sample config of how to achieve this in Webpack 4.x:
 
 _webpack.config.js_
+
 ```js
 const path = require("path");
 const nodeExternals = require("webpack-node-externals");
