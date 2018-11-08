@@ -35,13 +35,13 @@ type Function struct {
 
 // FunctionSpec contains func specification
 type FunctionSpec struct {
-	Handler                 string                          `json:"handler"`               // Function handler: "file.function"
-	Function                string                          `json:"function"`              // Function file content or URL of the function
+	Handler                 string                          `json:"handler"`             // Function handler: "file.function"
+	Function                string                          `json:"function"`            // Function file content or URL of the function
 	FunctionContentType     string                          `json:"functionContentType"` // Function file content type (plain text, base64 or zip)
-	Checksum                string                          `json:"checksum"`              // Checksum of the file
-	Runtime                 string                          `json:"runtime"`               // Function runtime to use
-	Timeout                 string                          `json:"timeout"`               // Maximum timeout for the function to complete its execution
-	Deps                    string                          `json:"deps"`                  // Function dependencies
+	Checksum                string                          `json:"checksum"`            // Checksum of the file
+	Runtime                 string                          `json:"runtime"`             // Function runtime to use
+	Timeout                 string                          `json:"timeout"`             // Maximum timeout for the function to complete its execution
+	Deps                    string                          `json:"deps"`                // Function dependencies
 	Deployment              v1beta1.Deployment              `json:"deployment" protobuf:"bytes,3,opt,name=template"`
 	ServiceSpec             v1.ServiceSpec                  `json:"service"`
 	HorizontalPodAutoscaler v2beta1.HorizontalPodAutoscaler `json:"horizontalPodAutoscaler" protobuf:"bytes,3,opt,name=horizontalPodAutoscaler"`
