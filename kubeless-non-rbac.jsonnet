@@ -41,7 +41,7 @@ local httpTriggerControllerContainer =
   container.env(controllerEnv);
 
 local cronjobTriggerContainer =
-  container.default("cronjob-trigger-controller", "bitnami/cronjob-trigger-controller:v1.0.0-alpha.9") +
+  container.default("cronjob-trigger-controller", "bitnami/cronjob-trigger-controller:v1.0.0") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(controllerEnv);
 
