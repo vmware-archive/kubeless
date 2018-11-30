@@ -346,6 +346,11 @@ Once you have Java function with dependencies and pom.xml file expressing the de
 ```cmd
 	kubeless function deploy get-java-deps --runtime java1.8 --handler Hello.sayHello --from-file java/HelloWithDeps.java --dependencies java/pom.xml
 ```
+> Note: Maven command line arguments can be set using environment flag `--env`. For instance proxy details can be set as
+
+```cmd
+    kubeless function deploy get-java --runtime java1.8 --handler Foo.foo --from-file Foo.java --env MAVEN_OPTS='-DproxySet=true -DproxyHost=<proxy_host> -DproxyPort=<proxy_port>'
+```
 
 ### .NET Core (C#)
 
