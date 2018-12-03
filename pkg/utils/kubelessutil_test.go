@@ -833,10 +833,11 @@ func TestGetProvisionContainer(t *testing.T) {
 
 	// If the content type is url it should use curl
 	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.py", "sha256:abc1234", "", "test.foo", "url", "python2.7", "unzip", rvol, dvol, lr)
+
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	if !strings.HasPrefix(c.Args[0], "curl https://raw.githubusercontent.com/test/test/test/test.py -L --silent --output /tmp/func.fromurl") {
+	if !strings.HasPrefix(c.Args[0], "curl 'https://raw.githubusercontent.com/test/test/test/test.py' -L --silent --output /tmp/func.fromurl") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 
@@ -845,7 +846,16 @@ func TestGetProvisionContainer(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	if !strings.HasPrefix(c.Args[0], "curl https://raw.githubusercontent.com/test/test/test/test.py -L --silent --output /tmp/func.fromurl") {
+	if !strings.HasPrefix(c.Args[0], "curl 'https://raw.githubusercontent.com/test/test/test/test.py' -L --silent --output /tmp/func.fromurl") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
+
+	//
+	c, err = getProvisionContainer("https://oneconcern-datamon-dev.s3.amazonaws.com/test-444750529.zip?AWSAccessKeyId=AKIAIN4A2XUSE6IDCG5Q&Expires=1543699493&Signature=qli5MEt6OKUqY982tLBxICUpiEU=", "sha256:abc1234", "", "test.foo", "url+zip", "python2.7", "unzip", rvol, dvol, lr)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if !strings.HasPrefix(c.Args[0], "curl 'https://oneconcern-datamon-dev.s3.amazonaws.com/test-444750529.zip?AWSAccessKeyId=AKIAIN4A2XUSE6IDCG5Q&Expires=1543699493&Signature=qli5MEt6OKUqY982tLBxICUpiEU=' -L --silent --output /tmp/func.fromurl") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 }

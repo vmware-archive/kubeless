@@ -79,7 +79,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 		originFile = decodedFile
 	} else if strings.Contains(contentType, "url") {
 		fromURLFile := "/tmp/func.fromurl"
-		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("curl %s -L --silent --output %s", function, fromURLFile))
+		prepareCommand = appendToCommand(prepareCommand, fmt.Sprintf("curl" + " '%s' " + "-L --silent --output %s", function, fromURLFile))
 		originFile = fromURLFile
 	} else if strings.Contains(contentType, "text") || contentType == "" {
 		// Assumming that function is plain text
