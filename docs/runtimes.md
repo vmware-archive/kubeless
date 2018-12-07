@@ -169,6 +169,10 @@ Python functions should define the desired method. You can specify dependencies 
 
 For python we use [Bottle](https://bottlepy.org) and we also add routes for health check and monitoring metrics.
 
+#### Advanced: Custom TLS/SSL Certificates
+
+Python supports terminating SSL connections at the function runtime. To enable this advanced feature, set the `CERT_FILE_PATH` and `KEY_FILE_PATH` environment variables to cert and key file paths. Note that operators are responsible for mounting these files at these specified paths. Examples options include using a Mutating Admission Controller to modify pod specs at creation time, or modifying the yaml returned by `kubectl get functions <function-name>` to include volume mounts. Regardless, this is an advanced feature, with minimal support by the Kubeless maintainers.
+
 ### Ruby
 
 #### Example
