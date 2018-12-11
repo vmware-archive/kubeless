@@ -23,10 +23,10 @@ KUBELESS_ENVS := \
 default: binary
 
 all:
-	CGO_ENABLED=1 ./script/make.sh
+	CGO_ENABLED=0 ./script/make.sh
 
 binary:
-	CGO_ENABLED=1 ./script/binary
+	CGO_ENABLED=0 ./script/binary
 
 binary-cross:
 	./script/binary-cli
