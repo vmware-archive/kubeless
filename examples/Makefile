@@ -163,7 +163,7 @@ get-go-deps:
 
 get-go-deps-verify:
 	kubeless function call get-go-deps --data '{"hello": "world"}'
-	kubectl logs -l function=get-go-deps | grep -q 'level=info msg=.*hello.*world'
+	kubectl logs --tail=1000 -l function=get-go-deps | grep -q 'level=info msg=.*hello.*world'
 
 post-go:
 	kubeless function deploy post-go --runtime go1.10 --handler hellowithdata.Handler --from-file golang/hellowithdata.go
@@ -171,7 +171,7 @@ post-go:
 post-go-verify:
 	kubeless function call post-go --data '{"it-s": "alive"}'| egrep "it.*alive"
 	# Verify event context
-	logs=`kubectl logs -l function=post-go`; \
+	logs=`kubectl logs --tail=1000 -l function=post-go`; \
 	echo $$logs | grep -q "it.*alive" && \
 	echo $$logs | grep -q "Z" && \
 	echo $$logs | grep -q "application/json" && \
@@ -232,7 +232,7 @@ get-php-deps:
 
 get-php-deps-verify:
 	kubeless function call get-php-deps &> /dev/null
-	kubectl logs -l function=get-php-deps | egrep "Hello"
+	kubectl logs --tail=1000 -l function=get-php-deps | egrep "Hello"
 
 get-php-deps-update:
 	$(eval TMPDIR := $(shell mktemp -d))
@@ -303,7 +303,7 @@ post-python:
 post-python-verify:
 	kubeless function call post-python --data '{"it-s": "alive"}'|egrep "it.*alive"
 	# Verify event context
-	logs=`kubectl logs -l function=post-python`; \
+	logs=`kubectl logs --tail=1000 -l function=post-python`; \
 	echo $$logs | grep -q "it.*alive" && \
 	echo $$logs | grep -q "event-time.*Z" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
@@ -323,7 +323,7 @@ post-nodejs:
 post-nodejs-verify:
 	kubeless function call post-nodejs --data '{"it-s": "alive"}'|egrep "it.*alive"
 	# Verify event context
-	logs=`kubectl logs -l function=post-nodejs`; \
+	logs=`kubectl logs --tail=1000 -l function=post-nodejs`; \
 	echo $$logs | grep -q "it.*alive" && \
 	echo $$logs | grep -q "event-time.*Z" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
@@ -336,7 +336,7 @@ post-ruby:
 post-ruby-verify:
 	kubeless function call post-ruby --data '{"it-s": "alive"}'|egrep "it.*alive"
 	# Verify event context
-	logs=`kubectl logs -l function=post-ruby`; \
+	logs=`kubectl logs --tail=1000 -l function=post-ruby`; \
 	echo $$logs | grep -q "it.*alive" && \
 	echo $$logs | grep -q "event-time.*Z" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
@@ -376,7 +376,7 @@ pubsub-python-verify:
 	done; \
 	$$found
 	# Verify event context
-	logs=`kubectl logs -l function=pubsub-python`; \
+	logs=`kubectl logs --tail=1000 -l function=pubsub-python`; \
 	echo $$logs | grep -q "event-time.*UTC" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
 	echo $$logs | grep -q "event-namespace.*kafkatriggers.kubeless.io" && \
@@ -406,7 +406,7 @@ python-nats-verify:
 	done; \
 	$$found
 	# Verify event context
-	logs=`kubectl logs -l function=python-nats`; \
+	logs=`kubectl logs --tail=1000 -l function=python-nats`; \
 	echo $$logs | grep -q "event-time.*UTC" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
 	echo $$logs | grep -q "event-namespace.*natstriggers.kubeless.io" && \
@@ -440,7 +440,7 @@ python-kinesis-verify:
 	done; \
 	$$found
 	# Verify event context
-	logs=`kubectl logs -l function=python-kinesis`; \
+	logs=`kubectl logs --tail=1000 -l function=python-kinesis`; \
 	echo $$logs | grep -q "event-time.*UTC" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
 	echo $$logs | grep -q "event-namespace.*kinesistriggers.kubeless.io" && \
@@ -474,7 +474,7 @@ python-kinesis-multi-record-verify:
 	done; \
 	$$found
 	# Verify event context
-	logs=`kubectl logs -l function=python-kinesis-multi-record`; \
+	logs=`kubectl logs --tail=1000 -l function=python-kinesis-multi-record`; \
 	echo $$logs | grep -q "event-time.*UTC" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
 	echo $$logs | grep -q "event-namespace.*kinesistriggers.kubeless.io" && \
@@ -518,7 +518,7 @@ nats-python-func1-topic-test-verify:
 	done; \
 	$$found
 	# Verify event context
-	logs=`kubectl logs -l function=nats-python-func1-topic-test`; \
+	logs=`kubectl logs --tail=1000 -l function=nats-python-func1-topic-test`; \
 	echo $$logs | grep -q "event-time.*UTC" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
 	echo $$logs | grep -q "event-namespace.*natstriggers.kubeless.io" && \
@@ -544,7 +544,7 @@ nats-python-func2-topic-test-verify:
 	done; \
 	$$found
 	# Verify event context
-	logs=`kubectl logs -l function=nats-python-func2-topic-test`; \
+	logs=`kubectl logs --tail=1000 -l function=nats-python-func2-topic-test`; \
 	echo $$logs | grep -q "event-time.*UTC" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
 	echo $$logs | grep -q "event-namespace.*natstriggers.kubeless.io" && \
@@ -570,7 +570,7 @@ nats-python-func-multi-topic-verify:
 	done; \
 	$$found
 	# Verify event context
-	logs=`kubectl logs -l function=nats-python-func-multi-topic`; \
+	logs=`kubectl logs --tail=1000 -l function=nats-python-func-multi-topic`; \
 	echo $$logs | grep -q "event-time.*UTC" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
 	echo $$logs | grep -q "event-namespace.*natstriggers.kubeless.io" && \
@@ -592,7 +592,7 @@ nats-python-func-multi-topic-verify:
 	done; \
 	$$found
 	# Verify event context
-	logs=`kubectl logs -l function=nats-python-func-multi-topic`; \
+	logs=`kubectl logs --tail=1000 -l function=nats-python-func-multi-topic`; \
 	echo $$logs | grep -q "event-time.*UTC" && \
 	echo $$logs | grep -q "event-type.*application/json" && \
 	echo $$logs | grep -q "event-namespace.*natstriggers.kubeless.io" && \
@@ -802,7 +802,7 @@ get-java-deps:
 
 get-java-deps-verify:
 	kubeless function call get-java-deps --data '{"hello": "world"}'
-	kubectl logs -l function=get-java-deps | grep -q '.*Hello.*world! Current local time is:'
+	kubectl logs --tail=1000 -l function=get-java-deps | grep -q '.*Hello.*world! Current local time is:'
 
 get-jvm-java:
 	kubeless function deploy get-jvm-java --runtime jvm1.8 --from-file jvm/java/test-java-jvm.jar --handler io_ino_Handler.sayHello
