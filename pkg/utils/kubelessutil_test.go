@@ -172,6 +172,72 @@ func TestAvoidConfigMapOverwrite(t *testing.T) {
 	}
 }
 
+func TestEnsureFileNames(t *testing.T) {
+	tests := []struct {
+		name           string
+		contentType    string
+		fileNameSuffix string
+	}{
+		{name: "text", contentType: "text", fileNameSuffix: ".py"},
+		{name: "empty", contentType: "", fileNameSuffix: ".py"},
+		{name: "base64", contentType: "base64", fileNameSuffix: ".py"},
+		{name: "url", contentType: "url", fileNameSuffix: ".py"},
+		{name: "text+zip", contentType: "text+zip", fileNameSuffix: ""},
+		{name: "base64+zip", contentType: "base64+zip", fileNameSuffix: ""},
+		{name: "url+zip", contentType: "url+zip", fileNameSuffix: ""},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			clientset := fake.NewSimpleClientset()
+			or := []metav1.OwnerReference{
+				{
+					Kind:       "Function",
+					APIVersion: "kubeless.io/v1beta1",
+				},
+			}
+			ns := "default"
+			f1Name := "f1"
+			f1Runtime := "python"
+			f1 := &kubelessApi.Function{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      f1Name,
+					Namespace: ns,
+				},
+				Spec: kubelessApi.FunctionSpec{
+					Function:            "function",
+					Handler:             "foo.bar",
+					FunctionContentType: test.contentType,
+					Runtime:             f1Runtime,
+				},
+			}
+
+			langruntime.AddFakeConfig(clientset)
+			lr := langruntime.SetupLangRuntime(clientset)
+			lr.ReadConfigMap()
+
+			err := EnsureFuncConfigMap(clientset, f1, or, lr)
+			if err != nil {
+				t.Errorf("Unexpected error: %s", err)
+			}
+
+			cm, err := clientset.CoreV1().ConfigMaps(ns).Get(f1Name, metav1.GetOptions{})
+			if err != nil {
+				t.Errorf("Unexpected error: %s", err)
+			}
+
+			expectedData := map[string]string{
+				"requirements.txt":          "",
+				"handler":                   "foo.bar",
+				"foo" + test.fileNameSuffix: "function",
+			}
+			if !reflect.DeepEqual(cm.Data, expectedData) {
+				t.Errorf("Unexpected ConfigMap:\n %+v\nExpecting:\n %+v", cm.Data, expectedData)
+			}
+		})
+	}
+}
+
 func TestEnsureService(t *testing.T) {
 	fakeSvc := v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
