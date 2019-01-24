@@ -177,7 +177,7 @@ func TestEnsureFileNames(t *testing.T) {
 		name           string
 		contentType    string
 		fileNameSuffix string
-	} {
+	}{
 		{name: "text", contentType: "text", fileNameSuffix: ".py"},
 		{name: "empty", contentType: "", fileNameSuffix: ".py"},
 		{name: "base64", contentType: "base64", fileNameSuffix: ".py"},
@@ -188,7 +188,7 @@ func TestEnsureFileNames(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(test.name, func (t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			clientset := fake.NewSimpleClientset()
 			or := []metav1.OwnerReference{
 				{
