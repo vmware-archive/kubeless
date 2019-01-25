@@ -54,23 +54,23 @@
   version = "0.1.10"
 
 [[constraint]]
-  branch = "master"
+  branch = "latestKubeless"
   name = "github.com/kubeless/cronjob-trigger"
 
 [[constraint]]
-  branch = "master"
+  branch = "latestKubeless"
   name = "github.com/kubeless/http-trigger"
 
 [[constraint]]
-  branch = "master"
+  branch = "latestKubeless"
   name = "github.com/kubeless/kafka-trigger"
 
 [[constraint]]
-  branch = "master"
+  branch = "latestKubeless"
   name = "github.com/kubeless/kinesis-trigger"
 
 [[constraint]]
-  branch = "master"
+  branch = "latestKubeless"
   name = "github.com/kubeless/nats-trigger"
 
 [[constraint]]
@@ -116,6 +116,10 @@
 [[constraint]]
   name = "k8s.io/client-go"
   version = "v7.0.0"
+
+[[override]]
+name = "github.com/Azure/go-autorest"
+revision = "v8.0.0"
 
 [prune]
   go-tests = true
