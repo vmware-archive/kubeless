@@ -41,12 +41,15 @@ var deployCmd = &cobra.Command{
 		cli := kubelessUtils.GetClientOutOfCluster()
 		apiExtensionsClientset := kubelessUtils.GetAPIExtensionsClientOutOfCluster()
 		config, err := kubelessUtils.GetKubelessConfig(cli, apiExtensionsClientset)
+		checkRuntime := true
+		var lr *langruntime.Langruntimes
 		if err != nil {
-			logrus.Fatalf("Unable to read the configmap: %v", err)
+			logrus.Warnf("%v. Runtime check is disabled.", err)
+			checkRuntime = false
+		} else {
+			lr := langruntime.New(config)
+			lr.ReadConfigMap()
 		}
-
-		var lr = langruntime.New(config)
-		lr.ReadConfigMap()
 
 		if len(args) != 1 {
 			logrus.Fatal("Need exactly one argument - function name")
@@ -79,9 +82,11 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		if runtime != "" && !lr.IsValidRuntime(runtime) {
-			logrus.Fatalf("Invalid runtime: %s. Supported runtimes are: %s",
-				runtime, strings.Join(lr.GetRuntimes(), ", "))
+		if checkRuntime {
+			if runtime != "" && !lr.IsValidRuntime(runtime) {
+				logrus.Fatalf("Invalid runtime: %s. Supported runtimes are: %s",
+					runtime, strings.Join(lr.GetRuntimes(), ", "))
+			}
 		}
 
 		handler, err := cmd.Flags().GetString("handler")
