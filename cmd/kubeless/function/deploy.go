@@ -47,7 +47,7 @@ var deployCmd = &cobra.Command{
 			logrus.Warnf("%v. Runtime check is disabled.", err)
 			checkRuntime = false
 		} else {
-			lr := langruntime.New(config)
+			lr = langruntime.New(config)
 			lr.ReadConfigMap()
 		}
 
