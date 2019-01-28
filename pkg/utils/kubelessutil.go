@@ -539,7 +539,7 @@ func svcTargetPort(funcObj *kubelessApi.Function) int32 {
 	if len(funcObj.Spec.ServiceSpec.Ports) == 0 {
 		return int32(8080)
 	}
-	return funcObj.Spec.ServiceSpec.Ports[0].TargetPort.IntValue()
+	return int32(funcObj.Spec.ServiceSpec.Ports[0].TargetPort.IntValue())
 }
 
 func mergeMap(dst, src map[string]string) map[string]string {
