@@ -225,7 +225,7 @@ func init() {
 	updateCmd.Flags().StringP("timeout", "", "180", "Maximum timeout (in seconds) for the function to complete its execution")
 	updateCmd.Flags().Bool("headless", false, "Deploy http-based function without a single service IP and load balancing support from Kubernetes. See: https://kubernetes.io/docs/concepts/services-networking/service/#headless-services")
 	updateCmd.Flags().Int32("port", 8080, "Deploy http-based function with a custom port")
-	updateCmd.Flags().Int32("servicePort", 8080, "Deploy http-based function with a custom service port")
+	updateCmd.Flags().Int32("servicePort", 0, "Deploy http-based function with a custom service port")
 	updateCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
 	updateCmd.Flags().StringP("output", "o", "yaml", "Output format")
 
