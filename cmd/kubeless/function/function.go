@@ -205,7 +205,7 @@ func parseContent(file, contentType string) (string, string, error) {
 	return content, checksum, nil
 }
 
-func getFunctionDescription(funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, imagePullPolicy string, port int32, headless bool, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
+func getFunctionDescription(funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, imagePullPolicy string, port int32, servicePort int32, headless bool, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
 
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
@@ -328,7 +328,10 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, runtimeI
 	if port != 0 {
 		svcSpec.Ports[0].Port = port
 		svcSpec.Ports[0].TargetPort = intstr.FromInt(int(port))
-	}
+	} 
+	if servicePort != 0 {
+		svcSpec.Ports[0].Port = servicePort
+	} 
 	function.Spec.ServiceSpec = svcSpec
 
 	for _, secret := range secrets {

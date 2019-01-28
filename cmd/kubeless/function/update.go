@@ -146,6 +146,13 @@ var updateCmd = &cobra.Command{
 		if port <= 0 || port > 65535 {
 			logrus.Fatalf("Invalid port number %d specified", port)
 		}
+		servicePort, err := cmd.Flags().GetInt32("servicePort")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		if servicePort <= 0 || servicePort > 65535 {
+			logrus.Fatalf("Invalid servicePort number %d specified", servicePort)
+		}
 
 		output, err := cmd.Flags().GetString("output")
 		if err != nil {
@@ -162,7 +169,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, imagePullPolicy, port, headless, envs, labels, secrets, previousFunction)
+		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, imagePullPolicy, port, servicePort, headless, envs, labels, secrets, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -218,6 +225,7 @@ func init() {
 	updateCmd.Flags().StringP("timeout", "", "180", "Maximum timeout (in seconds) for the function to complete its execution")
 	updateCmd.Flags().Bool("headless", false, "Deploy http-based function without a single service IP and load balancing support from Kubernetes. See: https://kubernetes.io/docs/concepts/services-networking/service/#headless-services")
 	updateCmd.Flags().Int32("port", 8080, "Deploy http-based function with a custom port")
+	updateCmd.Flags().Int32("servicePort", 8080, "Deploy http-based function with a custom service port")
 	updateCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
 	updateCmd.Flags().StringP("output", "o", "yaml", "Output format")
 
