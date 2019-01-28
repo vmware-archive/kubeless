@@ -363,8 +363,8 @@ func TestGetFunctionDescription(t *testing.T) {
 	result6, err := getFunctionDescription("test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "", "Always", 9091, 9092, true, []string{}, []string{}, []string{}, kubelessApi.Function{})
 	expectedPort := v1.ServicePort{
 		Name:       "http-function-port",
-		Port:       9091,
-		TargetPort: intstr.FromInt(9092),
+		Port:       9092,
+		TargetPort: intstr.FromInt(9091),
 		NodePort:   0,
 		Protocol:   v1.ProtocolTCP,
 	}
