@@ -535,6 +535,13 @@ func svcPort(funcObj *kubelessApi.Function) int32 {
 	return funcObj.Spec.ServiceSpec.Ports[0].Port
 }
 
+func svcTargetPort(funcObj *kubelessApi.Function) int32 {
+	if len(funcObj.Spec.ServiceSpec.Ports) == 0 {
+		return int32(8080)
+	}
+	return funcObj.Spec.ServiceSpec.Ports[0].TargetPort
+}
+
 func mergeMap(dst, src map[string]string) map[string]string {
 	if len(dst) == 0 {
 		dst = make(map[string]string)
@@ -558,7 +565,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		// "targets")
 		"prometheus.io/scrape": "true",
 		"prometheus.io/path":   "/metrics",
-		"prometheus.io/port":   strconv.Itoa(int(svcPort(funcObj))),
+		"prometheus.io/port":   strconv.Itoa(int(svcTargetPort(funcObj))),
 	}
 	maxUnavailable := intstr.FromInt(0)
 
@@ -654,13 +661,13 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 
 	dpm.Spec.Template.Spec.Containers[0].Name = funcObj.ObjectMeta.Name
 	dpm.Spec.Template.Spec.Containers[0].Ports = append(dpm.Spec.Template.Spec.Containers[0].Ports, v1.ContainerPort{
-		ContainerPort: svcPort(funcObj),
+		ContainerPort: svcTargetPort(funcObj),
 	})
 
 	// update deployment for loading dependencies
 	lr.UpdateDeployment(dpm, runtimeVolumeMount.MountPath, funcObj.Spec.Runtime)
 
-	livenessProbeInfo := lr.GetLivenessProbeInfo(funcObj.Spec.Runtime, int(svcPort(funcObj)))
+	livenessProbeInfo := lr.GetLivenessProbeInfo(funcObj.Spec.Runtime, int(svcTargetPort(funcObj)))
 
 	if dpm.Spec.Template.Spec.Containers[0].LivenessProbe == nil {
 		dpm.Spec.Template.Spec.Containers[0].LivenessProbe = livenessProbeInfo
