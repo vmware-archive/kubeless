@@ -33,7 +33,7 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -328,10 +328,10 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, runtimeI
 	if port != 0 {
 		svcSpec.Ports[0].Port = port
 		svcSpec.Ports[0].TargetPort = intstr.FromInt(int(port))
-	} 
+	}
 	if servicePort != 0 {
 		svcSpec.Ports[0].Port = servicePort
-	} 
+	}
 	function.Spec.ServiceSpec = svcSpec
 
 	for _, secret := range secrets {

@@ -164,7 +164,7 @@ var deployCmd = &cobra.Command{
 		if port <= 0 || port > 65535 {
 			logrus.Fatalf("Invalid port number %d specified", port)
 		}
-		
+
 		servicePort, err := cmd.Flags().GetInt32("servicePort")
 		if err != nil {
 			logrus.Fatal(err)
