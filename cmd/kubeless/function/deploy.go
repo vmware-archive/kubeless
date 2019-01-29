@@ -285,5 +285,5 @@ func init() {
 	deployCmd.Flags().Bool("headless", false, "Deploy http-based function without a single service IP and load balancing support from Kubernetes. See: https://kubernetes.io/docs/concepts/services-networking/service/#headless-services")
 	deployCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
 	deployCmd.Flags().Int32("port", 8080, "Deploy http-based function with a custom port")
-	deployCmd.Flags().Int32("servicePort", 0, "Deploy http-based function with a custom service port")
+	deployCmd.Flags().Int32("servicePort", 0, "Deploy http-based function with a custom service port. If not provided the value of 'port' will be used")
 }
