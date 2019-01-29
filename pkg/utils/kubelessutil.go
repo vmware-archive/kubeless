@@ -528,13 +528,6 @@ func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function,
 	return err
 }
 
-func svcPort(funcObj *kubelessApi.Function) int32 {
-	if len(funcObj.Spec.ServiceSpec.Ports) == 0 {
-		return int32(8080)
-	}
-	return funcObj.Spec.ServiceSpec.Ports[0].Port
-}
-
 func svcTargetPort(funcObj *kubelessApi.Function) int32 {
 	if len(funcObj.Spec.ServiceSpec.Ports) == 0 {
 		return int32(8080)
@@ -655,7 +648,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	dpm.Spec.Template.Spec.Containers[0].Env = append(dpm.Spec.Template.Spec.Containers[0].Env,
 		v1.EnvVar{
 			Name:  "FUNC_PORT",
-			Value: strconv.Itoa(int(svcPort(funcObj))),
+			Value: strconv.Itoa(int(svcTargetPort(funcObj))),
 		},
 	)
 
