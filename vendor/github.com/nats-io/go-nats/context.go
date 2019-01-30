@@ -18,7 +18,6 @@ package nats
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 )
 
@@ -31,6 +30,11 @@ func (nc *Conn) RequestWithContext(ctx context.Context, subj string, data []byte
 	if nc == nil {
 		return nil, ErrInvalidConnection
 	}
+	// Check whether the context is done already before making
+	// the request.
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 
 	nc.mu.Lock()
 	// If user wants the old style.
@@ -41,9 +45,7 @@ func (nc *Conn) RequestWithContext(ctx context.Context, subj string, data []byte
 
 	// Do setup for the new style.
 	if nc.respMap == nil {
-		// _INBOX wildcard
-		nc.respSub = fmt.Sprintf("%s.*", NewInbox())
-		nc.respMap = make(map[string]chan *Msg)
+		nc.initNewResp()
 	}
 	// Create literal Inbox and map to a chan msg.
 	mch := make(chan *Msg, RequestChanLen)
@@ -116,6 +118,9 @@ func (s *Subscription) NextMsgWithContext(ctx context.Context) (*Msg, error) {
 	if s == nil {
 		return nil, ErrBadSubscription
 	}
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 
 	s.mu.Lock()
 	err := s.validateNextMsgState()
@@ -124,7 +129,6 @@ func (s *Subscription) NextMsgWithContext(ctx context.Context) (*Msg, error) {
 		return nil, err
 	}
 
-	// snapshot
 	mch := s.mch
 	s.mu.Unlock()
 

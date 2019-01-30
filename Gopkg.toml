@@ -54,23 +54,23 @@
   version = "0.1.10"
 
 [[constraint]]
-  branch = "latestKubeless"
+  branch = "master"
   name = "github.com/kubeless/cronjob-trigger"
 
 [[constraint]]
-  branch = "latestKubeless"
+  branch = "master"
   name = "github.com/kubeless/http-trigger"
 
 [[constraint]]
-  branch = "latestKubeless"
+  branch = "master"
   name = "github.com/kubeless/kafka-trigger"
 
 [[constraint]]
-  branch = "latestKubeless"
+  branch = "master"
   name = "github.com/kubeless/kinesis-trigger"
 
 [[constraint]]
-  branch = "latestKubeless"
+  branch = "master"
   name = "github.com/kubeless/nats-trigger"
 
 [[constraint]]

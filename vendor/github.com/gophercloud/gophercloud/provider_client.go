@@ -72,6 +72,10 @@ type ProviderClient struct {
 	// authentication functions for different Identity service versions.
 	ReauthFunc func() error
 
+	// IsThrowaway determines whether if this client is a throw-away client. It's a copy of user's provider client
+	// with the token and reauth func zeroed. Such client can be used to perform reauthorization.
+	IsThrowaway bool
+
 	mut *sync.RWMutex
 
 	reauthmut *reauthlock
@@ -79,19 +83,23 @@ type ProviderClient struct {
 
 type reauthlock struct {
 	sync.RWMutex
-	reauthing bool
+	reauthing    bool
+	reauthingErr error
+	done         *sync.Cond
 }
 
 // AuthenticatedHeaders returns a map of HTTP headers that are common for all
-// authenticated service requests.
+// authenticated service requests. Blocks if Reauthenticate is in progress.
 func (client *ProviderClient) AuthenticatedHeaders() (m map[string]string) {
+	if client.IsThrowaway {
+		return
+	}
 	if client.reauthmut != nil {
-		client.reauthmut.RLock()
-		if client.reauthmut.reauthing {
-			client.reauthmut.RUnlock()
-			return
+		client.reauthmut.Lock()
+		for client.reauthmut.reauthing {
+			client.reauthmut.done.Wait()
 		}
-		client.reauthmut.RUnlock()
+		client.reauthmut.Unlock()
 	}
 	t := client.Token()
 	if t == "" {
@@ -140,11 +148,25 @@ func (client *ProviderClient) Reauthenticate(previousToken string) (err error) {
 	if client.mut == nil {
 		return client.ReauthFunc()
 	}
+
+	client.reauthmut.Lock()
+	if client.reauthmut.reauthing {
+		for !client.reauthmut.reauthing {
+			client.reauthmut.done.Wait()
+		}
+		err = client.reauthmut.reauthingErr
+		client.reauthmut.Unlock()
+		return err
+	}
+	client.reauthmut.Unlock()
+
 	client.mut.Lock()
 	defer client.mut.Unlock()
 
 	client.reauthmut.Lock()
 	client.reauthmut.reauthing = true
+	client.reauthmut.done = sync.NewCond(client.reauthmut)
+	client.reauthmut.reauthingErr = nil
 	client.reauthmut.Unlock()
 
 	if previousToken == "" || client.TokenID == previousToken {
@@ -153,6 +175,8 @@ func (client *ProviderClient) Reauthenticate(previousToken string) (err error) {
 
 	client.reauthmut.Lock()
 	client.reauthmut.reauthing = false
+	client.reauthmut.reauthingErr = err
+	client.reauthmut.done.Broadcast()
 	client.reauthmut.Unlock()
 	return
 }

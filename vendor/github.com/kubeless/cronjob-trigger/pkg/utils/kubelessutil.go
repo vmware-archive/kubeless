@@ -26,6 +26,7 @@ import (
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	"k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -57,6 +58,7 @@ func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, s
 	headersString = headersString + " -H \"event-time: " + timestamp.String() + "\""
 	headersString = headersString + " -H \"event-type: application/json\""
 	headersString = headersString + " -H \"event-namespace: cronjobtrigger.kubeless.io\""
+
 	job := &batchv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            jobName,
@@ -79,6 +81,16 @@ func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, s
 									Image: reqImage,
 									Name:  "trigger",
 									Args:  []string{"curl", "-Lv", headersString, fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.ObjectMeta.Name, funcObj.ObjectMeta.Namespace)},
+									Resources: v1.ResourceRequirements{
+										Limits: v1.ResourceList{
+											v1.ResourceMemory: resource.MustParse("4Mi"),
+											v1.ResourceCPU:    resource.MustParse("1m"),
+										},
+										Requests: v1.ResourceList{
+											v1.ResourceMemory: resource.MustParse("4Mi"),
+											v1.ResourceCPU:    resource.MustParse("1m"),
+										},
+									},
 								},
 							},
 							RestartPolicy: v1.RestartPolicyNever,
