@@ -18,3 +18,5 @@ In order to get Kubeless up and running on top of AKS of course you'll need an A
 ## 3. Installing "Kubeless-Controller"
 
 Assuming that the Kubernetes cluster is up and running on top of ACS, its time to install Kubeless. To accomplish, please, follow the steps described on Kubeless [Quick-Start Guide](/docs/quick-start).
+
+> NOTE: For [Azure AD enabled AKS clusters](https://docs.microsoft.com/en-us/azure/aks/aad-integration), support for the `kubeless` CLI to authenticate against Azure AD is only available in versions greater than `v1.0.1`.
