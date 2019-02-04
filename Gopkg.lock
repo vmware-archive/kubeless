@@ -22,22 +22,6 @@
   revision = "v8.0.0"
 
 [[projects]]
-  digest = "1:d1665c44bd5db19aaee18d1b6233c99b0b9a986e8bccb24ef54747547a48027f"
-  name = "github.com/PuerkitoBio/purell"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "0bcb03f4b4d0a9428594752bd2a3b9aa0a9d4bd4"
-  version = "v1.1.0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:c739832d67eb1e9cc478a19cc1a1ccd78df0397bf8a32978b759152e205f644b"
-  name = "github.com/PuerkitoBio/urlesc"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "de5bf2ad457846296e2031421a34e2568e304e35"
-
-[[projects]]
   digest = "1:fe41bfc82b7c7340796e4f885762dccc4988d5ec2c104d03842caa01e6be09c2"
   name = "github.com/aws/aws-sdk-go"
   packages = [
@@ -87,14 +71,6 @@
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
 
 [[projects]]
-  digest = "1:705c40022f5c03bf96ffeb6477858d88565064485a513abcd0f11a0911546cb6"
-  name = "github.com/blang/semver"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
-  version = "v3.5.1"
-
-[[projects]]
   digest = "1:13265cd636131a3b08ede14ad37398ad62009144d7abc65254fea477dd679850"
   name = "github.com/coreos/prometheus-operator"
   packages = ["pkg/client/monitoring/v1alpha1"]
@@ -124,38 +100,6 @@
   pruneopts = "UT"
   revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
   version = "v1.0.0"
-
-[[projects]]
-  digest = "1:953a2628e4c5c72856b53f5470ed5e071c55eccf943d798d42908102af2a610f"
-  name = "github.com/go-openapi/jsonpointer"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "ef5f0afec364d3b9396b7b77b43dbe26bf1f8004"
-  version = "v0.18.0"
-
-[[projects]]
-  digest = "1:81210e0af657a0fb3638932ec68e645236bceefa4c839823db0c4d918f080895"
-  name = "github.com/go-openapi/jsonreference"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "8483a886a90412cd6858df4ea3483dce9c8e35a3"
-  version = "v0.18.0"
-
-[[projects]]
-  digest = "1:08656ef9c5a45ddccb7f206ca2d67e12e9fcda4122a83dc0544b5c967267cefa"
-  name = "github.com/go-openapi/spec"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "5b6cdde3200976e3ecceb2868706ee39b6aff3e4"
-  version = "v0.18.0"
-
-[[projects]]
-  digest = "1:0005186c6608dd542239ac8e4f4f1e2e7c24d493e999113c46b93332f0362fc0"
-  name = "github.com/go-openapi/swag"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "1d29f06aebd59ccdf11ae04aa0334ded96e2d909"
-  version = "v0.18.0"
 
 [[projects]]
   digest = "1:b402bb9a24d108a9405a6f34675091b036c8b056aac843bf6ef2389a65c5cf48"
@@ -189,17 +133,6 @@
   pruneopts = "UT"
   revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
   version = "v1.2.0"
-
-[[projects]]
-  digest = "1:8abffb617dc010886ca0649dd225d3afe12301e0147509841e5eaaa875a46385"
-  name = "github.com/google/go-jsonnet"
-  packages = [
-    "ast",
-    "parser",
-  ]
-  pruneopts = "UT"
-  revision = "493c45a403d25435774370ddfa6363906a65c23c"
-  version = "v0.12.1"
 
 [[projects]]
   branch = "master"
@@ -300,22 +233,6 @@
   version = "v1.1.5"
 
 [[projects]]
-  digest = "1:26096952c000895a6b908d301f07d68b9a39a9ba57bd447f99edf3db9f47c4a9"
-  name = "github.com/ksonnet/ksonnet-lib"
-  packages = [
-    "ksonnet-gen/astext",
-    "ksonnet-gen/jsonnet",
-    "ksonnet-gen/ksonnet",
-    "ksonnet-gen/kubespec",
-    "ksonnet-gen/kubeversion",
-    "ksonnet-gen/nodemaker",
-    "ksonnet-gen/printer",
-  ]
-  pruneopts = "UT"
-  revision = "d03da231d6c8bd74437b74a1e9e8b966f13dffa2"
-  version = "v0.1.12"
-
-[[projects]]
   branch = "master"
   digest = "1:1110ab20a68fe3cb7c02a597ef4dddf11d50b39fc4f4c8cf1291e9f0c8828a2a"
   name = "github.com/kubeless/cronjob-trigger"
@@ -391,18 +308,6 @@
   revision = "372a5fa547dc0d89855c8c30e7a45a1c86b9bc94"
 
 [[projects]]
-  branch = "master"
-  digest = "1:84a5a2b67486d5d67060ac393aa255d05d24ed5ee41daecd5635ec22657b6492"
-  name = "github.com/mailru/easyjson"
-  packages = [
-    "buffer",
-    "jlexer",
-    "jwriter",
-  ]
-  pruneopts = "UT"
-  revision = "60711f1a8329503b04e1c88535f419d0bb440bff"
-
-[[projects]]
   digest = "1:0356f3312c9bd1cbeda81505b7fd437501d8e778ab66998ef69f00d7f9b3a0d7"
   name = "github.com/mattn/go-runewidth"
   packages = ["."]
@@ -469,14 +374,6 @@
   pruneopts = "UT"
   revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
   version = "v0.8.1"
-
-[[projects]]
-  digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
-  name = "github.com/pmezard/go-difflib"
-  packages = ["difflib"]
-  pruneopts = "UT"
-  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
-  version = "v1.0.0"
 
 [[projects]]
   digest = "1:d14a5f4bfecf017cb780bdde1b6483e5deb87e12c332544d2c430eda58734bcb"
@@ -554,17 +451,6 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:5da8ce674952566deae4dbc23d07c85caafc6cfa815b0b3e03e41979cedb8750"
-  name = "github.com/stretchr/testify"
-  packages = [
-    "assert",
-    "require",
-  ]
-  pruneopts = "UT"
-  revision = "ffdc059bfe9ce6a4e144ba849dbedead332c6053"
-  version = "v1.3.0"
-
-[[projects]]
   branch = "master"
   digest = "1:b998364b33ce263d8ca02293f140d4bcce95e400988c08fc85adb975b0748f03"
   name = "golang.org/x/crypto"
@@ -618,7 +504,7 @@
   revision = "aca44879d5644da7c5b8ec6a1115e9b6ea6c40d9"
 
 [[projects]]
-  digest = "1:0c56024909189aee3364b7f21a95a27459f718aa7c199a5c111c36cfffd9eaef"
+  digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
   name = "golang.org/x/text"
   packages = [
     "collate",
@@ -635,7 +521,6 @@
     "unicode/cldr",
     "unicode/norm",
     "unicode/rangetable",
-    "width",
   ]
   pruneopts = "UT"
   revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
@@ -895,23 +780,11 @@
     "github.com/aws/aws-sdk-go/aws/credentials",
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/kinesis",
-    "github.com/blang/semver",
     "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1",
     "github.com/ghodss/yaml",
-    "github.com/go-openapi/spec",
-    "github.com/go-openapi/swag",
     "github.com/golang/glog",
-    "github.com/google/go-jsonnet/ast",
-    "github.com/google/go-jsonnet/parser",
     "github.com/gosuri/uitable",
     "github.com/imdario/mergo",
-    "github.com/ksonnet/ksonnet-lib/ksonnet-gen/astext",
-    "github.com/ksonnet/ksonnet-lib/ksonnet-gen/jsonnet",
-    "github.com/ksonnet/ksonnet-lib/ksonnet-gen/ksonnet",
-    "github.com/ksonnet/ksonnet-lib/ksonnet-gen/kubespec",
-    "github.com/ksonnet/ksonnet-lib/ksonnet-gen/kubeversion",
-    "github.com/ksonnet/ksonnet-lib/ksonnet-gen/nodemaker",
-    "github.com/ksonnet/ksonnet-lib/ksonnet-gen/printer",
     "github.com/kubeless/cronjob-trigger/pkg/apis/kubeless/v1beta1",
     "github.com/kubeless/cronjob-trigger/pkg/client/clientset/versioned",
     "github.com/kubeless/cronjob-trigger/pkg/utils",
@@ -928,15 +801,12 @@
     "github.com/kubeless/nats-trigger/pkg/client/clientset/versioned",
     "github.com/kubeless/nats-trigger/pkg/utils",
     "github.com/nats-io/go-nats",
-    "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/prometheus/common/expfmt",
     "github.com/robfig/cron",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
-    "github.com/stretchr/testify/assert",
-    "github.com/stretchr/testify/require",
     "golang.org/x/net/context",
     "golang.org/x/net/websocket",
     "k8s.io/api/autoscaling/v2beta1",
