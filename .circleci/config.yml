@@ -6,7 +6,7 @@ build_allways: &build_allways
     tags:
       only: /.*/
 defaults: &defaults
-  working_directory: /home/circleci/kubeless
+  working_directory: /home/circleci/src/github.com/kubeless/kubeless
   environment:
     GOPATH: /home/circleci/.go_workspace
     CONTROLLER_IMAGE_NAME: kubeless/function-controller
@@ -100,6 +100,9 @@ jobs:
           root: /home/circleci/.go_workspace
           paths: 
             - bin
+      - persist_to_workspace:
+          root: /home/circleci/
+          paths: 
             - src/github.com/kubeless/kubeless/*yaml
       - store_artifacts:
           path: /home/circleci/.go_workspace/bin/kubeless
