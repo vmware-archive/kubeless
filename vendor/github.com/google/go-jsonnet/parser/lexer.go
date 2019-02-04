@@ -27,27 +27,6 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Fodder
-//
-// Fodder is stuff that is usually thrown away by lexers/preprocessors but is
-// kept so that the source can be round tripped with full fidelity.
-type fodderKind int
-
-const (
-	fodderWhitespace fodderKind = iota
-	fodderCommentC
-	fodderCommentCpp
-	fodderCommentHash
-)
-
-type fodderElement struct {
-	kind fodderKind
-	data string
-}
-
-type fodder []fodderElement
-
-// ---------------------------------------------------------------------------
 // Token
 
 type tokenKind int
@@ -154,9 +133,9 @@ func (tk tokenKind) String() string {
 }
 
 type token struct {
-	kind   tokenKind // The type of the token
-	fodder fodder    // Any fodder the occurs before this token
-	data   string    // Content of the token if it is not a keyword
+	kind   tokenKind  // The type of the token
+	fodder ast.Fodder // Any fodder that occurs before this token
+	data   string     // Content of the token if it is not a keyword
 
 	// Extra info for when kind == tokenStringBlock
 	stringBlockIndent     string // The sequence of whitespace that indented the block.
@@ -209,6 +188,47 @@ func isSymbol(r rune) bool {
 	return false
 }
 
+func isHorizontalWhitespace(r rune) bool {
+	return r == ' ' || r == '\t' || r == '\r'
+}
+
+func isWhitespace(r rune) bool {
+	return r == '\n' || isHorizontalWhitespace(r)
+}
+
+// stripWhitespace strips whitespace from both ends of a string, but only up to
+// margin on the left hand side.  E.g., stripWhitespace("  foo ", 1) == " foo".
+func stripWhitespace(s string, margin int) string {
+	runes := []rune(s)
+	if len(s) == 0 {
+		return s // Avoid underflow below.
+	}
+	i := 0
+	for i < len(runes) && isHorizontalWhitespace(runes[i]) && i < margin {
+		i++
+	}
+	j := len(runes)
+	for j > i && isHorizontalWhitespace(runes[j-1]) {
+		j--
+	}
+	return string(runes[i:j])
+}
+
+// Split a string by \n and also strip left (up to margin) & right whitespace from each line. */
+func lineSplit(s string, margin int) []string {
+	var ret []string
+	var buf bytes.Buffer
+	for _, r := range s {
+		if r == '\n' {
+			ret = append(ret, stripWhitespace(buf.String(), margin))
+			buf.Reset()
+		} else {
+			buf.WriteRune(r)
+		}
+	}
+	return append(ret, stripWhitespace(buf.String(), margin))
+}
+
 // Check that b has at least the same whitespace prefix as a and returns the
 // amount of this whitespace, otherwise returns 0.  If a has no whitespace
 // prefix than return 0.
@@ -254,9 +274,12 @@ type lexer struct {
 	tokens Tokens // The tokens that we've generated so far
 
 	// Information about the token we are working on right now
-	fodder        fodder
+	fodder        ast.Fodder
 	tokenStart    int
 	tokenStartLoc ast.Location
+
+	// Was the last rune the first rune on a line (ignoring initial whitespace).
+	freshLine bool
 }
 
 const lexEOF = -1
@@ -269,6 +292,7 @@ func makeLexer(fn string, input string) *lexer {
 		pos:           position{byteNo: 0, lineNo: 1, lineStart: 0},
 		prev:          position{byteNo: lexEOF, lineNo: 0, lineStart: 0},
 		tokenStartLoc: ast.Location{Line: 1, Column: 1},
+		freshLine:     true,
 	}
 }
 
@@ -284,6 +308,11 @@ func (l *lexer) next() rune {
 	if r == '\n' {
 		l.pos.lineStart = l.pos.byteNo
 		l.pos.lineNo++
+		l.freshLine = true
+	} else if l.freshLine {
+		if !isWhitespace(r) {
+			l.freshLine = false
+		}
 	}
 	return r
 }
@@ -302,6 +331,7 @@ func (l *lexer) peek() rune {
 }
 
 // backup steps back one rune. Can only be called once per call of next.
+// It also does not recover the previous value of freshLine.
 func (l *lexer) backup() {
 	if l.prev.byteNo == lexEOF {
 		panic("backup called with no valid previous rune")
@@ -342,7 +372,7 @@ func (l *lexer) emitFullToken(kind tokenKind, data, stringBlockIndent, stringBlo
 		stringBlockTermIndent: stringBlockTermIndent,
 		loc: ast.MakeLocationRange(l.fileName, l.source, l.tokenStartLoc, l.location()),
 	})
-	l.fodder = fodder{}
+	l.fodder = ast.Fodder{}
 }
 
 func (l *lexer) emitToken(kind tokenKind) {
@@ -350,28 +380,75 @@ func (l *lexer) emitToken(kind tokenKind) {
 	l.resetTokenStart()
 }
 
-func (l *lexer) addWhitespaceFodder() {
-	fodderData := l.input[l.tokenStart:l.pos.byteNo]
-	if len(l.fodder) == 0 || l.fodder[len(l.fodder)-1].kind != fodderWhitespace {
-		l.fodder = append(l.fodder, fodderElement{kind: fodderWhitespace, data: fodderData})
-	} else {
-		l.fodder[len(l.fodder)-1].data += fodderData
-	}
-	l.resetTokenStart()
-}
-
-func (l *lexer) addCommentFodder(kind fodderKind) {
-	fodderData := l.input[l.tokenStart:l.pos.byteNo]
-	l.fodder = append(l.fodder, fodderElement{kind: kind, data: fodderData})
-	l.resetTokenStart()
-}
-
-func (l *lexer) addFodder(kind fodderKind, data string) {
-	l.fodder = append(l.fodder, fodderElement{kind: kind, data: data})
+func (l *lexer) addFodder(kind ast.FodderKind, blanks int, indent int, comment []string) {
+	elem := ast.MakeFodderElement(kind, blanks, indent, comment)
+	l.fodder = append(l.fodder, elem)
 }
 
 func (l *lexer) makeStaticErrorPoint(msg string, loc ast.Location) StaticError {
 	return StaticError{Msg: msg, Loc: ast.MakeLocationRange(l.fileName, l.source, loc, loc)}
+}
+
+// lexWhitespace consumes all whitespace and returns the number of \n and number of
+// spaces after last \n.  It also converts \t to spaces.
+// The parameter 'r' is the rune that begins the whitespace.
+func (l *lexer) lexWhitespace() (int, int) {
+	r := l.next()
+	indent := 0
+	newLines := 0
+	for ; isWhitespace(r); r = l.next() {
+		switch r {
+		case '\r':
+			// Ignore.
+			break
+
+		case '\n':
+			indent = 0
+			newLines++
+			break
+
+		case ' ':
+			indent++
+			break
+
+		// This only works for \t at the beginning of lines, but we strip it everywhere else
+		// anyway.  The only case where this will cause a problem is spaces followed by \t
+		// at the beginning of a line.  However that is rare, ill-advised, and if re-indentation
+		// is enabled it will be fixed later.
+		case '\t':
+			indent += 8
+			break
+		}
+	}
+	l.backup()
+	return newLines, indent
+}
+
+// lexUntilNewLine consumes all text until the end of the line and returns the
+// number of newlines after that as well as the next indent.
+func (l *lexer) lexUntilNewline() (string, int, int) {
+	// Compute 'text'.
+	var buf bytes.Buffer
+	lastNonSpace := 0
+	for r := l.next(); r != lexEOF && r != '\n'; r = l.next() {
+		buf.WriteRune(r)
+		if !isHorizontalWhitespace(r) {
+			lastNonSpace = buf.Len()
+		}
+	}
+	l.backup()
+	// Trim whitespace off the end.
+	buf.Truncate(lastNonSpace)
+	text := buf.String()
+
+	// Consume the '\n' and following indent.
+	var newLines int
+	newLines, indent := l.lexWhitespace()
+	blanks := 0
+	if newLines > 0 {
+		blanks = newLines - 1
+	}
+	return text, blanks, indent
 }
 
 // lexNumber will consume a number and emit a token.  It is assumed
@@ -548,34 +625,70 @@ func (l *lexer) lexSymbol() error {
 	r := l.next()
 
 	// Single line C++ style comment
-	if r == '/' && l.peek() == '/' {
-		l.next()
-		l.resetTokenStart() // Throw out the leading //
-		for r = l.next(); r != lexEOF && r != '\n'; r = l.next() {
+	if r == '#' || (r == '/' && l.peek() == '/') {
+		comment, blanks, indent := l.lexUntilNewline()
+		var k ast.FodderKind
+		if l.freshLine {
+			k = ast.FodderParagraph
+		} else {
+			k = ast.FodderLineEnd
 		}
-		// Leave the '\n' in the lexer to be fodder for the next round
-		l.backup()
-		l.addCommentFodder(fodderCommentCpp)
+		l.addFodder(k, blanks, indent, []string{string(r) + comment})
 		return nil
 	}
 
+	// C style comment (could be interstitial or paragraph comment)
 	if r == '/' && l.peek() == '*' {
+		margin := l.pos.byteNo - l.pos.lineStart
 		commentStartLoc := l.tokenStartLoc
-		l.next()            // consume the '*'
-		l.resetTokenStart() // Throw out the leading /*
-		for r = l.next(); ; r = l.next() {
+
+		r := l.next() // consume the initial '*'
+		for r = l.next(); r != '*' || l.peek() != '/'; r = l.next() {
 			if r == lexEOF {
-				return l.makeStaticErrorPoint("Multi-line comment has no terminating */",
+				return l.makeStaticErrorPoint(
+					"Multi-line comment has no terminating */",
 					commentStartLoc)
 			}
-			if r == '*' && l.peek() == '/' {
-				commentData := l.input[l.tokenStart : l.pos.byteNo-1] // Don't include trailing */
-				l.addFodder(fodderCommentC, commentData)
-				l.next()            // Skip past '/'
-				l.resetTokenStart() // Start next token at this point
-				return nil
-			}
 		}
+
+		l.next() // Consume trailing '/'
+		// Includes the "/*" and "*/".
+		comment := l.input[l.tokenStart:l.pos.byteNo]
+
+		newLinesAfter, indentAfter := l.lexWhitespace()
+		if !strings.ContainsRune(comment, '\n') {
+			l.addFodder(ast.FodderInterstitial, 0, 0, []string{comment})
+			if newLinesAfter > 0 {
+				l.addFodder(ast.FodderLineEnd, newLinesAfter-1, indentAfter, []string{})
+			}
+		} else {
+			lines := lineSplit(comment, margin)
+			if lines[0][0] != '/' {
+				panic(fmt.Sprintf("Invalid parsing of C style comment %v", lines))
+			}
+			// Little hack to support FodderParagraphs with * down the LHS:
+			// Add a space to lines that start with a '*'
+			allStar := true
+			for _, l := range lines {
+				if len(l) == 0 || l[0] != '*' {
+					allStar = false
+				}
+			}
+			if allStar {
+				for _, l := range lines {
+					if l[0] == '*' {
+						l = " " + l
+					}
+				}
+			}
+			if newLinesAfter == 0 {
+				// Ensure a line end after the paragraph.
+				newLinesAfter = 1
+				indentAfter = 0
+			}
+			l.addFodder(ast.FodderParagraph, newLinesAfter-1, indentAfter, lines)
+		}
+		return nil
 	}
 
 	if r == '|' && strings.HasPrefix(l.input[l.pos.byteNo:], "||") {
@@ -669,7 +782,7 @@ func (l *lexer) lexSymbol() error {
 	// no need to treat this substring as general UTF-8.
 	for r = rune(l.input[l.pos.byteNo-1]); l.pos.byteNo > l.tokenStart+1; l.pos.byteNo-- {
 		switch r {
-		case '+', '-', '~', '!':
+		case '+', '-', '~', '!', '$':
 			continue
 		}
 		break
@@ -688,12 +801,22 @@ func Lex(fn string, input string) (Tokens, error) {
 	l := makeLexer(fn, input)
 
 	var err error
-
-	for r := l.next(); r != lexEOF; r = l.next() {
+	for true {
+		newLines, indent := l.lexWhitespace()
+		// If it's the end of the file, discard final whitespace.
+		if l.peek() == lexEOF {
+			l.next()
+			l.resetTokenStart()
+			break
+		}
+		if newLines > 0 {
+			// Otherwise store whitespace in fodder.
+			blanks := newLines - 1
+			l.addFodder(ast.FodderLineEnd, blanks, indent, []string{})
+		}
+		l.resetTokenStart() // Don't include whitespace in actual token.
+		r := l.next()
 		switch r {
-		case ' ', '\t', '\r', '\n':
-			l.addWhitespaceFodder()
-			continue
 		case '{':
 			l.emitToken(tokenBraceL)
 		case '}':
@@ -791,19 +914,11 @@ func Lex(fn string, input string) (Tokens, error) {
 				}
 			}
 
-		case '#':
-			l.resetTokenStart() // Throw out the leading #
-			for r = l.next(); r != lexEOF && r != '\n'; r = l.next() {
-			}
-			// Leave the '\n' in the lexer to be fodder for the next round
-			l.backup()
-			l.addCommentFodder(fodderCommentHash)
-
 		default:
 			if isIdentifierFirst(r) {
 				l.backup()
 				l.lexIdentifier()
-			} else if isSymbol(r) {
+			} else if isSymbol(r) || r == '#' {
 				l.backup()
 				err = l.lexSymbol()
 				if err != nil {

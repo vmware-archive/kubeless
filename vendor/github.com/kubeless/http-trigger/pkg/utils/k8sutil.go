@@ -42,6 +42,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 
 	"github.com/kubeless/http-trigger/pkg/client/clientset/versioned"
+	"github.com/kubeless/kubeless/pkg/utils"
 )
 
 const (
@@ -50,7 +51,7 @@ const (
 
 // GetClient returns a k8s clientset to the request from inside of cluster
 func GetClient() kubernetes.Interface {
-	config, err := rest.InClusterConfig()
+	config, err := utils.GetInClusterConfig()
 	if err != nil {
 		logrus.Fatalf("Can not get kubernetes config: %v", err)
 	}
@@ -65,7 +66,7 @@ func GetClient() kubernetes.Interface {
 
 // GetTriggerClientInCluster returns function clientset to the request from inside of cluster
 func GetTriggerClientInCluster() (versioned.Interface, error) {
-	config, err := rest.InClusterConfig()
+	config, err := utils.GetInClusterConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +111,7 @@ func GetKubelessClientOutCluster() (versioned.Interface, error) {
 
 // GetFunctionClientInCluster returns function clientset to the request from inside of cluster
 func GetFunctionClientInCluster() (versioned.Interface, error) {
-	config, err := rest.InClusterConfig()
+	config, err := utils.GetInClusterConfig()
 	if err != nil {
 		return nil, err
 	}

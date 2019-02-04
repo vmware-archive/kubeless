@@ -66,7 +66,7 @@ func directChildren(node ast.Node) []ast.Node {
 	case *ast.Slice:
 		return []ast.Node{node.Target, node.BeginIndex, node.EndIndex, node.Step}
 	case *ast.Local:
-		return []ast.Node{node.Body}
+		return nil
 	case *ast.LiteralBoolean:
 		return nil
 	case *ast.LiteralNull:
@@ -249,7 +249,12 @@ func specialChildren(node ast.Node) []ast.Node {
 	case *ast.Slice:
 		return nil
 	case *ast.Local:
-		return nil
+		children := make([]ast.Node, 1, len(node.Binds)+1)
+		children[0] = node.Body
+		for _, bind := range node.Binds {
+			children = append(children, bind.Body)
+		}
+		return children
 	case *ast.LiteralBoolean:
 		return nil
 	case *ast.LiteralNull:
@@ -263,7 +268,7 @@ func specialChildren(node ast.Node) []ast.Node {
 	case *ast.ArrayComp:
 		return []ast.Node{node.Body}
 	case *ast.ObjectComp:
-
+		return inObjectFieldsChildren(node.Fields)
 	case *ast.Self:
 		return nil
 	case *ast.SuperIndex:
@@ -273,6 +278,8 @@ func specialChildren(node ast.Node) []ast.Node {
 	case *ast.Unary:
 		return nil
 	case *ast.Var:
+		return nil
+	case *ast.Parens:
 		return nil
 	}
 	panic(fmt.Sprintf("specialChildren: Unknown node %#v", node))

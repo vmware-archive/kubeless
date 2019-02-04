@@ -117,6 +117,10 @@
   name = "k8s.io/client-go"
   version = "v7.0.0"
 
+[[override]]
+name = "github.com/Azure/go-autorest"
+revision = "v8.0.0"
+
 [prune]
   go-tests = true
   unused-packages = true
