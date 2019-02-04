@@ -6,7 +6,7 @@ build_allways: &build_allways
     tags:
       only: /.*/
 defaults: &defaults
-  working_directory: /home/circleci/.go_workspace/src/github.com/kubeless/kubeless
+  working_directory: /home/circleci/kubeless
   environment:
     GOPATH: /home/circleci/.go_workspace
     CONTROLLER_IMAGE_NAME: kubeless/function-controller
@@ -15,7 +15,6 @@ defaults: &defaults
     TEST_DEBUG: "1"
     GKE_VERSION: 1.9
     MINIKUBE_VERSION: v0.25.2
-    GO111MODULE: "ON"
     MANIFESTS: kubeless kubeless-non-rbac kubeless-openshift
 exports: &exports
   # It is not possible to resolve env vars in the environment section:
