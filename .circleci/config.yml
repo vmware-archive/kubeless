@@ -77,7 +77,7 @@ jobs:
   build:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.9 
+      - image: circleci/golang:1.11 
     steps:
       - checkout
       - <<: *exports
@@ -120,7 +120,7 @@ jobs:
   build-cross-binaries:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.9
+      - image: circleci/golang:1.11
     steps:
       - <<: *exports
       - checkout
@@ -153,7 +153,7 @@ jobs:
   GKE:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.9 
+      - image: circleci/golang:1.11 
     steps:
       - run: |
           # In case of GKE we will only want to build if it is
@@ -182,7 +182,7 @@ jobs:
   push_latest_images:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.9 
+      - image: circleci/golang:1.11 
     steps:
       - <<: *exports
       - setup_remote_docker
@@ -201,7 +201,7 @@ jobs:
   release:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.9 
+      - image: circleci/golang:1.11 
     steps:
       - <<: *exports
       - checkout
