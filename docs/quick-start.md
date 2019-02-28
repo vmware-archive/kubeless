@@ -78,6 +78,7 @@ You create it with:
 
 ```console
 $ kubeless function deploy hello --runtime python2.7 \
+                                -n kubeless
                                 --from-file test.py \
                                 --handler test.hello
 INFO[0000] Deploying function...
@@ -97,11 +98,11 @@ You can find the rest of options available when deploying a function executing `
 You will see the function custom resource created:
 
 ```console
-$ kubectl get functions
+$ kubectl get functions -n kubeless
 NAME         AGE
 hello        1h
 
-$ kubeless function ls
+$ kubeless function ls -n kubeless
 NAME           	NAMESPACE	HANDLER       RUNTIME  	DEPENDENCIES	STATUS
 hello         	default  	helloget.foo  python2.7	            	1/1 READY
 ```
@@ -109,7 +110,7 @@ hello         	default  	helloget.foo  python2.7	            	1/1 READY
 You can then call the function with:
 
 ```console
-$ kubeless function call hello --data 'Hello world!'
+$ kubeless function -n kubeless call hello --data 'Hello world!'
 Hello world!
 ```
 
@@ -117,11 +118,11 @@ Or you can curl directly with `kubectl proxy`using an [apiserver proxy URL](http
 For example:
 
 ```console
-$ kubectl proxy -p 8080 &
+$ kubectl -n kubeless proxy -p 8080 &
 
 $ curl -L --data '{"Another": "Echo"}' \
   --header "Content-Type:application/json" \
-  localhost:8080/api/v1/namespaces/default/services/hello:http-function-port/proxy/
+  localhost:8080/api/v1/namespaces/kubeless/services/hello:http-function-port/proxy/
 {"Another": "Echo"}
 ```
 
@@ -132,12 +133,12 @@ Kubeless also supports [ingress](https://kubernetes.io/docs/concepts/services-ne
 You can delete the function and uninstall Kubeless:
 
 ```console
-$ kubeless function delete hello
+$ kubeless function -n kubeless delete hello
 
-$ kubeless function ls
+$ kubeless function -n kubeless ls
 NAME        NAMESPACE   HANDLER     RUNTIME     DEPENDENCIES    STATUS
 
-$ kubectl delete -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
+$ kubectl -n kubeless delete -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
 ```
 
 ## Examples
