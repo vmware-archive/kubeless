@@ -142,6 +142,6 @@ $ kubectl delete -f https://github.com/kubeless/kubeless/releases/download/$RELE
 
 ## Examples
 
-See the [examples](https://github.com/kubeless/kubeless/tree/master/examples) directory for a list of simple examples in all the languages supporetd. NodeJS, Python, Golang etc ...
+See the [examples](https://github.com/kubeless/kubeless/tree/master/examples) directory for a list of simple examples in all the languages supported. NodeJS, Python, Golang etc ...
 
 Also checkout the [functions repository](https://github.com/kubeless/functions), where we're building a library of ready to use kubeless examples, including an [incubator](https://github.com/kubeless/functions/tree/master/incubator) to encourage contributions from the community - **your PR is welcome** ! :)
