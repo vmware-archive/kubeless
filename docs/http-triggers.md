@@ -83,6 +83,7 @@ Usage:
 
 Flags:
       --basic-auth-secret string   Specify an existing secret name for basic authentication
+      --cors-enable                If true then cors will be enabled on Http Trigger
       --enableTLSAcme              If true, routing rule will be configured for use with kube-lego
       --function-name string       Name of the function to be associated with trigger
       --gateway string             Specify a valid gateway for the Ingress. Supported: nginx, traefik, kong (default "nginx")
@@ -128,6 +129,37 @@ $ curl --data '{"Another": "Echo"}' \
 {"Another": "Echo"}
 ```
 
+To enable CORS on a HTTPTrigger there are following ways.
+
+- Use cors-enable flag in "kubeless trigger http create"
+- Specify cors-enable in HTTPTrigger yaml file as below. i.e.
+```
+apiVersion: kubeless.io/v1beta1
+kind: HTTPTrigger
+metadata:
+ name: cors-trigger
+spec:
+ function-name: get-python
+ host-name: example.com
+ path: echo
+ gateway: nginx
+ cors-enable: true
+```
+- Specify annotations in HTTPTrigger yaml file, which will get copied to annotations
+of ingress resource. Using this you can be more granular in specifying CORS settings.
+```
+apiVersion: kubeless.io/v1beta1
+kind: HTTPTrigger
+metadata:
+ name: cors-trigger
+ annotations:
+  nginx.ingress.kubernetes.io/enable-cors: "true"
+  nginx.ingress.kubernetes.io/cors-allow-methods: "GET"
+spec:
+ function-name: get-python
+ host-name: example.com
+ path: echo
+``` 
 ## Enable TLS
 
 Once you have one of the supported Ingress Controller it is possible to enable TLS using a certificate:

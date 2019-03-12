@@ -105,12 +105,6 @@ var createCmd = &cobra.Command{
 		}
 		httpTrigger.Spec.CorsEnable = corsEnabled
 
-		corsDomain, err := cmd.Flags().GetString("cors-domain")
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		httpTrigger.Spec.CorsDomain = corsDomain
-
 		tlsSecret, err := cmd.Flags().GetString("tls-secret")
 		if err != nil {
 			logrus.Fatal(err)
