@@ -36,7 +36,7 @@ local functionControllerContainer =
   container.env(controllerEnv);
 
 local httpTriggerControllerContainer =
-  container.default("http-trigger-controller", "bitnami/http-trigger-controller:v1.0.0-alpha.9") +
+  container.default("http-trigger-controller", "bitnami/http-trigger-controller:v1.0.0") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(controllerEnv);
 
