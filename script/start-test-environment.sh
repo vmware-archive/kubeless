@@ -15,7 +15,7 @@ if ! minikube status | grep -q "minikube: $"; then
   exit 1
 fi
 
-minikube start --extra-config=apiserver.Authorization.Mode=RBAC --insecure-registry 0.0.0.0/0
+minikube start --extra-config=apiserver.authorization-mode=RBAC --insecure-registry 0.0.0.0/0
 eval $(minikube docker-env)
 
 CONTEXT=$(kubectl config current-context)

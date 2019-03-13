@@ -83,6 +83,7 @@ Usage:
 
 Flags:
       --basic-auth-secret string   Specify an existing secret name for basic authentication
+      --cors-enable                If true then cors will be enabled on Http Trigger
       --enableTLSAcme              If true, routing rule will be configured for use with kube-lego
       --function-name string       Name of the function to be associated with trigger
       --gateway string             Specify a valid gateway for the Ingress. Supported: nginx, traefik, kong (default "nginx")
@@ -227,6 +228,32 @@ hello world
 ### Enable Basic Authentication with Kong
 
 It is not yet supported to create an HTTP trigger with basic authentication using Kong as backend but the steps to do it manually are pretty simple. It is possible to do so using Kong plugins. In the [next section](#enable-kong-security-plugins) we explain how to enable any of the available Kong plugins and in particular we explain how to enable the basic-auth plugin.
+
+## Enable CORS
+
+It's possible to enable CORS requests at the HTTPTrigger level. To do so use the --cors-enable flag when deploying
+the HTTPTrigger or add the field cors-enable: true to the YAML manifest.
+
+## Add arbitrary annotations
+
+It is also possible to add any annotation to the resulting Ingress object if you add those to the HTTPTrigger. For example:
+
+```
+apiVersion: kubeless.io/v1beta1
+kind: HTTPTrigger
+metadata:
+ name: cors-trigger
+ annotations:
+  nginx.ingress.kubernetes.io/enable-cors: "true"
+  nginx.ingress.kubernetes.io/cors-allow-methods: "GET"
+spec:
+ function-name: get-python
+ host-name: example.com
+ path: echo
+```
+
+The above will create an Ingress object with the annotations nginx.ingress.kubernetes.io/enable-cors: "true"
+and nginx.ingress.kubernetes.io/cors-allow-methods: "GET".
 
 ## Enable Kong Security plugins
 

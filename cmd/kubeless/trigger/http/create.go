@@ -18,13 +18,12 @@ package http
 
 import (
 	"fmt"
-
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-
 	httpApi "github.com/kubeless/http-trigger/pkg/apis/kubeless/v1beta1"
 	httpUtils "github.com/kubeless/http-trigger/pkg/utils"
 	kubelessUtils "github.com/kubeless/kubeless/pkg/utils"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -38,7 +37,6 @@ var createCmd = &cobra.Command{
 			logrus.Fatal("Need exactly one argument - http trigger name")
 		}
 		triggerName := args[0]
-
 		ns, err := cmd.Flags().GetString("namespace")
 		if err != nil {
 			logrus.Fatal(err)
@@ -100,6 +98,12 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		httpTrigger.Spec.TLSAcme = enableTLSAcme
+
+		corsEnabled, err := cmd.Flags().GetBool("cors-enable")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		httpTrigger.Spec.CorsEnable = corsEnabled
 
 		tlsSecret, err := cmd.Flags().GetString("tls-secret")
 		if err != nil {
@@ -179,5 +183,6 @@ func init() {
 	createCmd.Flags().StringP("tls-secret", "", "", "Specify an existing secret that contains a TLS private key and certificate to secure ingress")
 	createCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
 	createCmd.Flags().StringP("output", "o", "yaml", "Output format")
+	createCmd.Flags().BoolP("cors-enable", "", false, "If true then cors will be enabled on Http Trigger")
 	createCmd.MarkFlagRequired("function-name")
 }
