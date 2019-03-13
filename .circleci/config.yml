@@ -84,8 +84,6 @@ jobs:
       # go build creates files under /usr/local/go where the running user doesn't have permissions to write
       - run: sudo chown -R circleci:circleci /usr/local/go/
       - run: go get -u golang.org/x/lint/golint
-      # go build creates files under /usr/local/go where the running user doesn't have permissions to write
-      - run: sudo chown -R circleci:circleci /usr/local/go/
       - run: make bootstrap
       - run: make VERSION=${CONTROLLER_TAG} binary
       - run: make test
