@@ -184,6 +184,5 @@ func init() {
 	createCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
 	createCmd.Flags().StringP("output", "o", "yaml", "Output format")
 	createCmd.Flags().BoolP("cors-enable","",false,"If true then cors will be enabled on Http Trigger")
-	createCmd.Flags().StringP("cors-domain","","*","Specify CORS origin domain, by default its value is * if cors is enabled")
 	createCmd.MarkFlagRequired("function-name")
 }
