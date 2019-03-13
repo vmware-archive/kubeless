@@ -160,6 +160,7 @@ spec:
  host-name: example.com
  path: echo
 ``` 
+
 ## Enable TLS
 
 Once you have one of the supported Ingress Controller it is possible to enable TLS using a certificate:
