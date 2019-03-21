@@ -16,7 +16,7 @@ limitations under the License.
 
 // Kubeless controller binary.
 //
-// See github.com/kubeless/kubeless/pkg/controller
+// See github.com/kubeless/kubeless/tree/master/pkg/controller
 package main
 
 import (
