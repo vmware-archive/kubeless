@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-//AutoscaleCmd contains first-class command for autoscale
+// AutoscaleCmd contains first-class command for autoscale
 var AutoscaleCmd = &cobra.Command{
 	Use:   "autoscale SUBCOMMAND",
 	Short: "manage autoscale to function on Kubeless",
