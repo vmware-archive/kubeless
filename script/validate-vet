@@ -22,8 +22,8 @@ unset IFS
 
 failed=0
 for f in "${files[@]}"; do
-	# we use "git show" here to validate that what's committed passes go vet
-	if ! go vet "$f"; then
+	# we use "git show" here to validate that what's committed passes go tool vet
+	if ! go tool vet "$f"; then
 		failed=1
 	fi
 done
