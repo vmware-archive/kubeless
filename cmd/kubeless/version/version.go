@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//VersionCmd contains first-class command for version
+// VersionCmd contains first-class command for version
 var VersionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version of Kubeless",

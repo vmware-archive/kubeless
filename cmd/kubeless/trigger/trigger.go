@@ -25,7 +25,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//TriggerCmd contains first-class command for trigger
+// TriggerCmd contains first-class command for trigger
 var TriggerCmd = &cobra.Command{
 	Use:   "trigger SUBCOMMAND",
 	Short: "trigger specific operations",
