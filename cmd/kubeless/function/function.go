@@ -40,7 +40,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-//FunctionCmd contains first-class command for function
+// FunctionCmd contains first-class command for function
 var FunctionCmd = &cobra.Command{
 	Use:   "function SUBCOMMAND",
 	Short: "function specific operations",

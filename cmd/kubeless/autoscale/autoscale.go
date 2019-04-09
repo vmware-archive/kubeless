@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-//AutoscaleCmd contains first-class command for autoscale
+// AutoscaleCmd contains first-class command for autoscale
 var AutoscaleCmd = &cobra.Command{
 	Use:   "autoscale SUBCOMMAND",
 	Short: "manage autoscale to function on Kubeless",
@@ -57,7 +57,7 @@ func getHorizontalAutoscaleDefinition(name, ns, metric string, min, max int32, v
 			{
 				Type: v2beta1.ResourceMetricSourceType,
 				Resource: &v2beta1.ResourceMetricSource{
-					Name: v1.ResourceCPU,
+					Name:                     v1.ResourceCPU,
 					TargetAverageUtilization: &i32,
 				},
 			},

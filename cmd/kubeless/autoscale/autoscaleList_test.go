@@ -47,7 +47,7 @@ func TestAutoscaleList(t *testing.T) {
 				{
 					Type: av2alpha1.ResourceMetricSourceType,
 					Resource: &av2alpha1.ResourceMetricSource{
-						Name: v1.ResourceCPU,
+						Name:                     v1.ResourceCPU,
 						TargetAverageUtilization: &targetAverageUtilization,
 					},
 				},

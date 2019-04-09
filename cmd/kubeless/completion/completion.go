@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//CompletionCmd contains first-class command for completion
+// CompletionCmd contains first-class command for completion
 var CompletionCmd = &cobra.Command{
 	Use:   "completion [shell]",
 	Short: "Output shell completion code for the specified shell.",
