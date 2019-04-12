@@ -18,29 +18,31 @@ package utils
 
 import (
 	"fmt"
-	"golang.org/x/net/context"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
 	timeout       = os.Getenv("FUNC_TIMEOUT")
 	funcPort      = os.Getenv("FUNC_PORT")
 	intTimeout    int
-	funcHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+	funcHistogram = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "function_duration_seconds",
 		Help: "Duration of user function in seconds",
 	}, []string{"method"})
-	funcCalls = prometheus.NewCounterVec(prometheus.CounterOpts{
+	funcCalls = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "function_calls_total",
 		Help: "Number of calls to user function",
 	}, []string{"method"})
-	funcErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
+	funcErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "function_failures_total",
 		Help: "Number of exceptions in user function",
 	}, []string{"method"})
@@ -58,7 +60,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	prometheus.MustRegister(funcHistogram, funcCalls, funcErrors)
 }
 
 // Logging Functions, required to expose statusCode property
