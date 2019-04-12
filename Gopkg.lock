@@ -22,6 +22,22 @@
   revision = "v8.0.0"
 
 [[projects]]
+  digest = "1:fa6d2866c3f2426871e3a3adb4ab1b9885801558559b15a8a05698f0a82c1c7d"
+  name = "github.com/DataDog/zstd"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "69c5189b6513b1503c9c5332fb2e96362e51d547"
+  version = "v1.3.8"
+
+[[projects]]
+  digest = "1:8bf13b4dbecd2e3e2bf4d8fac3b37ffc61dc19653f2e38c7b0e575c7182c6d8b"
+  name = "github.com/Shopify/sarama"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5d2af84cf5e2dd36f2daecaaafa13c4e286f20fd"
+  version = "v1.22.0"
+
+[[projects]]
   digest = "1:fe41bfc82b7c7340796e4f885762dccc4988d5ec2c104d03842caa01e6be09c2"
   name = "github.com/aws/aws-sdk-go"
   packages = [
@@ -71,6 +87,14 @@
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
 
 [[projects]]
+  digest = "1:526d64d0a3ac6c24875724a9355895be56a21f89a5d3ab5ba88d91244269a7d8"
+  name = "github.com/bsm/sarama-cluster"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "c618e605e15c0d7535f6c96ff8efbb0dba4fd66c"
+  version = "v2.1.15"
+
+[[projects]]
   digest = "1:13265cd636131a3b08ede14ad37398ad62009144d7abc65254fea477dd679850"
   name = "github.com/coreos/prometheus-operator"
   packages = ["pkg/client/monitoring/v1alpha1"]
@@ -92,6 +116,30 @@
   pruneopts = "UT"
   revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
   version = "v3.2.0"
+
+[[projects]]
+  digest = "1:1f0c7ab489b407a7f8f9ad16c25a504d28ab461517a971d341388a56156c1bd7"
+  name = "github.com/eapache/go-resiliency"
+  packages = ["breaker"]
+  pruneopts = "UT"
+  revision = "ea41b0fad31007accc7f806884dcdf3da98b79ce"
+  version = "v1.1.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:79f16588b5576b1b3cd90e48d2374cc9a1a8776862d28d8fd0f23b0e15534967"
+  name = "github.com/eapache/go-xerial-snappy"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "776d5712da21bc4762676d614db1d8a64f4238b0"
+
+[[projects]]
+  digest = "1:444b82bfe35c83bbcaf84e310fb81a1f9ece03edfed586483c869e2c046aef69"
+  name = "github.com/eapache/queue"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "44cc805cf13205b55f69e14bcb69867d1ae92f98"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:2cd7915ab26ede7d95b8749e6b1f933f1c6d5398030684e6505940a10f31cfda"
@@ -133,6 +181,14 @@
   pruneopts = "UT"
   revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
   version = "v1.2.0"
+
+[[projects]]
+  digest = "1:e4f5819333ac698d294fe04dbf640f84719658d5c7ce195b10060cc37292ce79"
+  name = "github.com/golang/snappy"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "2a8bb927dd31d8daada140a5d09578521ce5c36a"
+  version = "v0.0.1"
 
 [[projects]]
   branch = "master"
@@ -293,6 +349,50 @@
   revision = "a548c3d1cbd9d686f32ccc95b48df072ed60e220"
 
 [[projects]]
+  digest = "1:bf66cbf8fc354f0ed7e9c008224dacb959032d38bb849b5f8274a3e721645430"
+  name = "github.com/kubeless/kubeless"
+  packages = [
+    "cmd/kubeless/autoscale",
+    "cmd/kubeless/completion",
+    "cmd/kubeless/function",
+    "cmd/kubeless/getserverconfig",
+    "cmd/kubeless/topic",
+    "cmd/kubeless/trigger",
+    "cmd/kubeless/trigger/cronjob",
+    "cmd/kubeless/trigger/http",
+    "cmd/kubeless/trigger/kafka",
+    "cmd/kubeless/trigger/kinesis",
+    "cmd/kubeless/trigger/nats",
+    "cmd/kubeless/version",
+    "pkg/apis/kubeless",
+    "pkg/apis/kubeless/v1beta1",
+    "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/fake",
+    "pkg/client/clientset/versioned/scheme",
+    "pkg/client/clientset/versioned/typed/kubeless/v1beta1",
+    "pkg/client/clientset/versioned/typed/kubeless/v1beta1/fake",
+    "pkg/client/informers/externalversions",
+    "pkg/client/informers/externalversions/internalinterfaces",
+    "pkg/client/informers/externalversions/kubeless",
+    "pkg/client/informers/externalversions/kubeless/v1beta1",
+    "pkg/client/listers/kubeless/v1beta1",
+    "pkg/controller",
+    "pkg/event-consumers/kafka",
+    "pkg/event-consumers/kinesis",
+    "pkg/event-consumers/nats",
+    "pkg/function-image-builder/layer-builder",
+    "pkg/function-proxy/utils",
+    "pkg/functions",
+    "pkg/langruntime",
+    "pkg/registry",
+    "pkg/utils",
+    "pkg/version",
+  ]
+  pruneopts = "UT"
+  revision = "e040d650551f22f7d4710ef2c0c24ef48d81d261"
+  version = "v1.0.0-alpha.7"
+
+[[projects]]
   branch = "master"
   digest = "1:cb21fe4c43373e5069191a4683f07b166896e0f196a7495e802c7df8268213ba"
   name = "github.com/kubeless/nats-trigger"
@@ -368,6 +468,17 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:d886a3c32c8c1a770d07e36340f061d3afc948d065ffc3c9a19b01b34d4f0b65"
+  name = "github.com/pierrec/lz4"
+  packages = [
+    ".",
+    "internal/xxh32",
+  ]
+  pruneopts = "UT"
+  revision = "315a67e90e415bcdaff33057da191569bf4d8479"
+  version = "v2.1.1"
+
+[[projects]]
   digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
   name = "github.com/pkg/errors"
   packages = ["."]
@@ -376,15 +487,17 @@
   version = "v0.8.1"
 
 [[projects]]
-  digest = "1:d14a5f4bfecf017cb780bdde1b6483e5deb87e12c332544d2c430eda58734bcb"
+  digest = "1:ef03fb1dae4d010196652653f00a8002e94c19bcabdc8ca5100a804ffef63a47"
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
+    "prometheus/internal",
+    "prometheus/promauto",
     "prometheus/promhttp",
   ]
   pruneopts = "UT"
-  revision = "c5b7fccd204277076155f10851dad72b76a49317"
-  version = "v0.8.0"
+  revision = "505eaef017263e299324067d40ca2c48f6a2cf50"
+  version = "v0.9.2"
 
 [[projects]]
   branch = "master"
@@ -418,6 +531,14 @@
   ]
   pruneopts = "UT"
   revision = "316cf8ccfec56d206735d46333ca162eb374da8b"
+
+[[projects]]
+  branch = "master"
+  digest = "1:d38f81081a389f1466ec98192cf9115a82158854d6f01e1c23e2e7554b97db71"
+  name = "github.com/rcrowley/go-metrics"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "3113b8401b8a98917cde58f8bbd42a1b1c03b1fd"
 
 [[projects]]
   digest = "1:ed615c5430ecabbb0fb7629a182da65ecee6523900ac1ac932520860878ffcad"
@@ -464,7 +585,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:46855468e49fba4ac93ca296da052e97079146e4d248a13bd2410d84bd99f28a"
+  digest = "1:dd2c9f88eb51bf6ef2750a4ecc28adda0c5e78f2574350cc60b04d9d6f553ebd"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -473,6 +594,8 @@
     "http2",
     "http2/hpack",
     "idna",
+    "internal/socks",
+    "proxy",
     "websocket",
   ]
   pruneopts = "UT"
@@ -797,11 +920,43 @@
     "github.com/kubeless/kinesis-trigger/pkg/apis/kubeless/v1beta1",
     "github.com/kubeless/kinesis-trigger/pkg/client/clientset/versioned",
     "github.com/kubeless/kinesis-trigger/pkg/utils",
+    "github.com/kubeless/kubeless/cmd/kubeless/autoscale",
+    "github.com/kubeless/kubeless/cmd/kubeless/completion",
+    "github.com/kubeless/kubeless/cmd/kubeless/function",
+    "github.com/kubeless/kubeless/cmd/kubeless/getserverconfig",
+    "github.com/kubeless/kubeless/cmd/kubeless/topic",
+    "github.com/kubeless/kubeless/cmd/kubeless/trigger",
+    "github.com/kubeless/kubeless/cmd/kubeless/trigger/cronjob",
+    "github.com/kubeless/kubeless/cmd/kubeless/trigger/http",
+    "github.com/kubeless/kubeless/cmd/kubeless/trigger/kafka",
+    "github.com/kubeless/kubeless/cmd/kubeless/trigger/kinesis",
+    "github.com/kubeless/kubeless/cmd/kubeless/trigger/nats",
+    "github.com/kubeless/kubeless/cmd/kubeless/version",
+    "github.com/kubeless/kubeless/pkg/apis/kubeless",
+    "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1",
+    "github.com/kubeless/kubeless/pkg/client/clientset/versioned",
+    "github.com/kubeless/kubeless/pkg/client/clientset/versioned/fake",
+    "github.com/kubeless/kubeless/pkg/client/clientset/versioned/scheme",
+    "github.com/kubeless/kubeless/pkg/client/clientset/versioned/typed/kubeless/v1beta1",
+    "github.com/kubeless/kubeless/pkg/client/clientset/versioned/typed/kubeless/v1beta1/fake",
+    "github.com/kubeless/kubeless/pkg/client/informers/externalversions/internalinterfaces",
+    "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless",
+    "github.com/kubeless/kubeless/pkg/client/informers/externalversions/kubeless/v1beta1",
+    "github.com/kubeless/kubeless/pkg/client/listers/kubeless/v1beta1",
+    "github.com/kubeless/kubeless/pkg/controller",
+    "github.com/kubeless/kubeless/pkg/function-image-builder/layer-builder",
+    "github.com/kubeless/kubeless/pkg/function-proxy/utils",
+    "github.com/kubeless/kubeless/pkg/functions",
+    "github.com/kubeless/kubeless/pkg/langruntime",
+    "github.com/kubeless/kubeless/pkg/registry",
+    "github.com/kubeless/kubeless/pkg/utils",
+    "github.com/kubeless/kubeless/pkg/version",
     "github.com/kubeless/nats-trigger/pkg/apis/kubeless/v1beta1",
     "github.com/kubeless/nats-trigger/pkg/client/clientset/versioned",
     "github.com/kubeless/nats-trigger/pkg/utils",
     "github.com/nats-io/go-nats",
     "github.com/prometheus/client_golang/prometheus",
+    "github.com/prometheus/client_golang/prometheus/promauto",
     "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/prometheus/common/expfmt",
     "github.com/robfig/cron",
