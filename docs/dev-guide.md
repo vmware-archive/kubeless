@@ -73,7 +73,7 @@ To make the binaries for your platform, run:
 ```bash
 cd $KUBELESS_WORKING_DIR/kubeless
 make binary
-make controller-image
+make function-controller
 ```
 
 This will instruct "make" to run the scripts to build the kubeless client and the kubeless controller image.
