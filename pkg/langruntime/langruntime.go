@@ -316,7 +316,7 @@ func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, volPath, runtim
 }
 
 // GetCompilationContainer returns a Container definition based on a runtime
-func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, installVolume v1.VolumeMount) (*v1.Container, error) {
+func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, env []v1.EnvVar, installVolume v1.VolumeMount) (*v1.Container, error) {
 	versionInf, err := l.findRuntimeVersion(runtime)
 	if err != nil {
 		return nil, err
@@ -328,11 +328,12 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, install
 		return nil, nil
 	}
 
-	env := append(
-		parseEnv(imageInf.Env),
+	env = append(
+		env,
 		v1.EnvVar{Name: "KUBELESS_INSTALL_VOLUME", Value: installVolume.MountPath},
 		v1.EnvVar{Name: "KUBELESS_FUNC_NAME", Value: funcName},
 	)
+	env = append(env, parseEnv(imageInf.Env)...)
 	return &v1.Container{
 		Name:            "compile",
 		Image:           imageInf.Image,

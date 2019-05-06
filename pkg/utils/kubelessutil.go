@@ -379,13 +379,13 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 
 	// ensure that the runtime is supported for installing dependencies
 	_, err := lr.GetRuntimeInfo(funcObj.Spec.Runtime)
+	envVars := []v1.EnvVar{}
+	if len(result.Containers) > 0 {
+		envVars = result.Containers[0].Env
+	}
 	if funcObj.Spec.Deps != "" && err != nil {
 		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
 	} else if funcObj.Spec.Deps != "" {
-		envVars := []v1.EnvVar{}
-		if len(result.Containers) > 0 {
-			envVars = result.Containers[0].Env
-		}
 		depsChecksum, err := getChecksum(funcObj.Spec.Deps)
 		if err != nil {
 			return fmt.Errorf("Unable to obtain dependencies checksum: %v", err)
@@ -404,7 +404,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 
 	// add compilation init container if needed
 	_, funcName, _ := splitHandler(funcObj.Spec.Handler)
-	compContainer, err := lr.GetCompilationContainer(funcObj.Spec.Runtime, funcName, runtimeVolumeMount)
+	compContainer, err := lr.GetCompilationContainer(funcObj.Spec.Runtime, funcName, envVars, runtimeVolumeMount)
 	if err != nil {
 		return err
 	}
