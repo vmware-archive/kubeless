@@ -87,7 +87,7 @@ local kubelessConfig  = configMap.default("kubeless-config", namespace) +
     configMap.data({"runtime-images": std.toString(runtimesSrc)})+
     configMap.data({"enable-build-step": "false"})+
     configMap.data({"function-registry-tls-verify": "true"})+
-    configMap.data({"provision-image": "kubeless/unzip@sha256:4ea1594c62d79458da6e228065c262d5d2fbc21d45e82231381ed8b8b2481906"})+
+    configMap.data({"provision-image": "kubeless/unzip@sha256:4863100364496255de9bf8722a220dad7143ab277ac72435876eb8c93936e9d7"})+
     configMap.data({"provision-image-secret": ""})+
     configMap.data({"builder-image": "kubeless/function-image-builder:latest"})+
     configMap.data({"builder-image-secret": ""});
