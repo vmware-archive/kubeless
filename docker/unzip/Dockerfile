@@ -1,3 +1,2 @@
-FROM alpine:3.6
-RUN apk add --update unzip curl && \
-    rm -rf /var/cache/apk/*
+FROM bitnami/minideb
+RUN install_packages unzip curl
