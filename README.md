@@ -41,7 +41,7 @@ Kubeless uses k8s primitives, there is no additional API server or API router/ga
 
 ## Compatibility Matrix with Kubernetes
 
-Kubeless fully supports Kubernetes versions greater than 1.9 at the moment (tested until 1.15). For other versions some of the features in Kubeless may not be available. Our CI run tests against two different platforms: GKE (1.12) and Minikube (1.15). Other platforms are supported but fully compatibiliy cannot be assured.
+Kubeless fully supports Kubernetes versions greater than 1.9 (tested until 1.15). For other versions some of the features in Kubeless may not be available. Our CI run tests against two different platforms: GKE (1.12) and Minikube (1.15). Other platforms are supported but fully compatibiliy cannot be assured.
 
 ## _Roadmap_
 
