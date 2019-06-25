@@ -67,14 +67,6 @@ deployment)
 basic)
     bats tests/integration-tests.bats
     ;;
-kafka)
-    bats tests/integration-tests-kafka.bats
-    ;;
-nats)
-    bats tests/integration-tests-nats.bats
-    ;;
-kinesis)
-    bats tests/integration-tests-kinesis.bats
     ;;    
 http)
     bats tests/integration-tests-http.bats
@@ -89,8 +81,7 @@ prebuilt_functions)
     bats tests/deployment-tests.bats && \
     bats tests/integration-tests.bats && \
     bats tests/integration-tests-http.bats && \
-    bats tests/integration-tests-cronjob.bats && \
-    bats tests/integration-tests-kafka.bats
+    bats tests/integration-tests-cronjob.bats
     ;;
 esac
 exit_code=$?

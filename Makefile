@@ -22,9 +22,6 @@ KUBELESS_ENVS := \
 
 default: binary
 
-all:
-	CGO_ENABLED=0 ./script/make.sh
-
 binary:
 	CGO_ENABLED=0 ./script/binary
 
@@ -43,12 +40,6 @@ kubeless.yaml: kubeless.jsonnet kubeless-non-rbac.jsonnet
 kubeless-non-rbac.yaml: kubeless-non-rbac.jsonnet
 
 kubeless-openshift.yaml: kubeless-openshift.jsonnet
-
-kafka-zookeeper.yaml: kafka-zookeeper.jsonnet
-
-nats.yaml: nats.jsonnet
-
-kinesis.yaml: kinesis.jsonnet
 
 docker/function-controller: controller-build
 	cp $(BUNDLES)/kubeless_$(OS)-$(ARCH)/kubeless-function-controller $@
@@ -83,9 +74,6 @@ validation:
 integration-tests:
 	./script/integration-tests minikube deployment
 	./script/integration-tests minikube basic
-
-minikube-rbac-test:
-	./script/integration-test-rbac minikube
 
 fmt:
 	$(GOFMT) -s -w $(GO_FILES)
