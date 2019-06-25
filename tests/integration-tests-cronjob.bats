@@ -20,13 +20,13 @@ load ../script/libtest
     deploy_function get-python
     verify_function get-python
     create_cronjob_trigger get-python '* * * * *'
-    verify_cronjob_trigger get-python '* * * * *' '"GET / HTTP/1.1" 200 11 "" "curl/7.56.1"'
+    verify_cronjob_trigger get-python '* * * * *' '"GET / HTTP/1.1" 200'
     update_cronjob_trigger get-python '*/60 * * * *'
-    verify_cronjob_trigger get-python '*/60 * * * *' '"GET / HTTP/1.1" 200 11 "" "curl/7.56.1"'
+    verify_cronjob_trigger get-python '*/60 * * * *' '"GET / HTTP/1.1" 200'
     delete_cronjob_trigger get-python
     verify_clean_object cronjobtrigger get-python
 }
-
+ 
 @test "Test no-errors" {
   if kubectl logs -n kubeless -l kubeless=controller | grep "level=error"; then
     echo "Found errors in the controller logs"
