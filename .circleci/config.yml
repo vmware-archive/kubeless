@@ -14,8 +14,9 @@ defaults: &defaults
     CGO_ENABLED: "0"
     TEST_DEBUG: "1"
     GKE_VERSION: 1.12
-    MINIKUBE_VERSION: v0.25.2
+    MINIKUBE_VERSION: v1.2.0
     MANIFESTS: kubeless kubeless-non-rbac kubeless-openshift
+    GO111MODULE: "on"
 exports: &exports
   # It is not possible to resolve env vars in the environment section:
   # https://discuss.circleci.com/t/using-environment-variables-in-config-yml-not-working/14237
@@ -77,7 +78,7 @@ jobs:
   build:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.11 
+      - image: circleci/golang:1.12
     steps:
       - checkout
       - <<: *exports
@@ -107,7 +108,8 @@ jobs:
           path: build-manifests
   minikube:
     <<: *defaults
-    machine: true
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - checkout
       - attach_workspace:
@@ -120,7 +122,7 @@ jobs:
   build-cross-binaries:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.12
     steps:
       - <<: *exports
       - checkout
@@ -132,7 +134,8 @@ jobs:
           path: bundles
   minikube_build_functions:
     <<: *defaults
-    machine: true
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - checkout
       - <<: *exports
@@ -153,7 +156,7 @@ jobs:
   GKE:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.11 
+      - image: circleci/golang:1.12
     steps:
       - run: |
           # In case of GKE we will only want to build if it is
@@ -182,7 +185,7 @@ jobs:
   push_latest_images:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.11 
+      - image: circleci/golang:1.12
     steps:
       - <<: *exports
       - setup_remote_docker
@@ -201,7 +204,7 @@ jobs:
   release:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.11 
+      - image: circleci/golang:1.12
     steps:
       - <<: *exports
       - checkout
