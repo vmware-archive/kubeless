@@ -33,7 +33,7 @@ binary-cross:
 	$(KUBECFG) show -U https://raw.githubusercontent.com/kubeless/runtimes/master -o yaml $< > $@.tmp
 	mv $@.tmp $@
 
-all-yaml: kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml kafka-zookeeper.yaml
+all-yaml: kubeless.yaml kubeless-non-rbac.yaml kubeless-openshift.yaml
 
 kubeless.yaml: kubeless.jsonnet kubeless-non-rbac.jsonnet
 
