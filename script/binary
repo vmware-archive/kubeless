@@ -18,7 +18,7 @@ set -e
 
 
 GIT_COMMIT=$(git describe --tags --dirty)
-BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/pkg/version.Version=${GIT_COMMIT}")
+BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/pkg/version.Version=${GIT_COMMIT}" -mod=vendor)
 
 # Get rid of existing binary
 echo "Removing Old Kubeless binaries"
