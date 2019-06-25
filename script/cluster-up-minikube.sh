@@ -57,7 +57,7 @@ MINIKUBE_BIN=$(which minikube)
 
 # Start minikube
 sudo -E ${MINIKUBE_BIN} start --vm-driver=none \
-    --extra-config=apiserver.Authorization.Mode=RBAC \
+    --extra-config=kubelet.cgroup-driver=cgroupfs \
     --memory 4096
 
 # Wait til settles

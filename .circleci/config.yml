@@ -14,7 +14,7 @@ defaults: &defaults
     CGO_ENABLED: "0"
     TEST_DEBUG: "1"
     GKE_VERSION: 1.9
-    MINIKUBE_VERSION: v0.25.2
+    MINIKUBE_VERSION: v1.2.0
     MANIFESTS: kubeless kubeless-non-rbac kubeless-openshift
     GO111MODULE: "on"
 exports: &exports
@@ -108,7 +108,8 @@ jobs:
           path: build-manifests
   minikube:
     <<: *defaults
-    machine: true
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - checkout
       - attach_workspace:
@@ -133,7 +134,8 @@ jobs:
           path: bundles
   minikube_build_functions:
     <<: *defaults
-    machine: true
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - checkout
       - <<: *exports
