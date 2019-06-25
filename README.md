@@ -21,8 +21,8 @@ Click on this next picture to see a screencast demonstrating our [serverless](ht
 
 ## Tools
 
-* A [UI](https://github.com/kubeless/kubeless-ui) available. It can run locally or in-cluster.
-* A [serverless framework plugin](https://github.com/serverless/serverless-kubeless) is available.
+- A [UI](https://github.com/kubeless/kubeless-ui) available. It can run locally or in-cluster.
+- A [serverless framework plugin](https://github.com/serverless/serverless-kubeless) is available.
 
 ## Quick start
 
@@ -41,25 +41,16 @@ Kubeless uses k8s primitives, there is no additional API server or API router/ga
 
 ## Compatibility Matrix with Kubernetes
 
-Kubeless fully supports two major versions of Kubernetes (1.8 and 1.9) at the moment. For other versions some of the features in Kubeless may not be available. Our CI run tests against two different platforms: GKE (1.8) and Minikube (1.9). Other platforms are supported but fully compatibiliy cannot be assured. This is the summary of the features and versions supported:
-
-| Platform | Kubernetes Version | HTTP functions | Scheduled functions | PubSub (Kafka) functions | PubSub (NATS) functions | Autoscaling (CPU) |
-| ------------- | ----- | - | - | - | - | - |
-| GKE           | 1.7.X | ✓ | X | ✓ | ✓ | X |
-| GKE           | 1.8.X | ✓ | ✓ | ✓ | ✓ | ✓ |
-| GKE (CI)      | 1.9.X | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Minikube      | 1.7.X | ✓ | X | ✓ | ✓ | ✓ |
-| Minikube      | 1.8.X | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Minikube (CI) | 1.9.X | ✓ | ✓ | ✓ | ✓ | ✓ |
+Kubeless fully supports Kubernetes versions greater than 1.9 at the moment (tested until 1.15). For other versions some of the features in Kubeless may not be available. Our CI run tests against two different platforms: GKE (1.12) and Minikube (1.15). Other platforms are supported but fully compatibiliy cannot be assured.
 
 ## _Roadmap_
 
 We would love to get your help, feel free to lend a hand. We are currently looking to implement the following high level features:
 
-* Add other runtimes, currently Python, NodeJS, Ruby, PHP, .NET and Ballerina are supported. We are also providing a way to use custom runtime. Please check [this doc](./docs/runtimes.md) for more details.
-* Investigate other messaging bus (e.g SQS, rabbitMQ)
-* Optimize for functions startup time
-* Add distributed tracing (maybe using istio)
+- Add other runtimes, currently Python, NodeJS, Ruby, PHP, .NET and Ballerina are supported. We are also providing a way to use custom runtime. Please check [this doc](./docs/runtimes.md) for more details.
+- Investigate other messaging bus (e.g SQS, rabbitMQ)
+- Optimize for functions startup time
+- Add distributed tracing (maybe using istio)
 
 ## Community
 
