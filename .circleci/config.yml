@@ -107,7 +107,8 @@ jobs:
           path: build-manifests
   minikube:
     <<: *defaults
-    machine: true
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - checkout
       - attach_workspace:
@@ -132,7 +133,8 @@ jobs:
           path: bundles
   minikube_build_functions:
     <<: *defaults
-    machine: true
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - checkout
       - <<: *exports
