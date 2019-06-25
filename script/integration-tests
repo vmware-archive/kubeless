@@ -67,7 +67,6 @@ deployment)
 basic)
     bats tests/integration-tests.bats
     ;;
-    ;;    
 http)
     bats tests/integration-tests-http.bats
     ;;
