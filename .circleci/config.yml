@@ -177,11 +177,9 @@ jobs:
       - run: echo "export ESCAPED_GKE_CLUSTER=$(echo ${GKE_CLUSTER}-ci-${CIRCLE_BRANCH:-$CIRCLE_TAG} | sed 's/[^a-z0-9-]//g')" >> $BASH_ENV
       - run: ./script/start-gke-env.sh $ESCAPED_GKE_CLUSTER $ZONE $GKE_VERSION $GKE_ADMIN > /dev/null
       - run: ./script/pull-or-build-image.sh function-controller
-      - run: ./script/pull-or-build-image.sh kafka-controller-image
       - run: ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER} deployment
       - run: ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER} basic
       - run: ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER} cronjob
-      - run: ./script/integration-tests gke_${GKE_PROJECT}_${ZONE}_${ESCAPED_GKE_CLUSTER} kafka
   push_latest_images:
     <<: *defaults
     docker:
