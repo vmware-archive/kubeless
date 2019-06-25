@@ -13,7 +13,7 @@ defaults: &defaults
     BUILDER_IMAGE_NAME: kubeless/function-image-builder
     CGO_ENABLED: "0"
     TEST_DEBUG: "1"
-    GKE_VERSION: 1.9
+    GKE_VERSION: 1.12
     MINIKUBE_VERSION: v1.2.0
     MANIFESTS: kubeless kubeless-non-rbac kubeless-openshift
     GO111MODULE: "on"
