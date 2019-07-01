@@ -171,3 +171,38 @@ When using SSL to secure kafka communication, you must set `KAFKA_ENABLE_TLS`, a
 * `KAFKA_CACERTS` to check server certificate
 * `KAFKA_CERT` and `KAFKA_KEY` to check client certificate
 * `KAFKA_INSECURE` to skip TLS verfication
+```yaml
+$ echo '
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    kubeless: kafka-trigger-controller
+  name: kafka-trigger-controller
+  namespace: kubeless
+spec:
+  selector:
+    matchLabels:
+      kubeless: kafka-trigger-controller
+  template:
+    metadata:
+      labels:
+        kubeless: kafka-trigger-controller
+    spec:
+      containers:
+      - image: bitnami/kafka-trigger-controller:latest
+        imagePullPolicy: IfNotPresent
+        name: kafka-trigger-controller
+        env:
+        ...
+        - name: KAFKA_ENABLE_TLS
+          value: "true" # CHANGE THIS!
+        - name: KAFKA_CACERTS
+          value: "/path/to/ca.crt" # CHANGE THIS! (MAKE SURE PATH ARE VOLUME MOUNTED SAY FROM SECRETS)
+        - name: KAFKA_CERT
+          value: "/path/to/cert.pem" # CHANGE THIS! (MAKE SURE PATH ARE VOLUME MOUNTED SAY FROM SECRETS)
+        - name: KAFKA_KEY
+          value: "/path/to/key.pem" # CHANGE THIS! (MAKE SURE PATH ARE VOLUME MOUNTED SAY FROM SECRETS)
+...
+```
