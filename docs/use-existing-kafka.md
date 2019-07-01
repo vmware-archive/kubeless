@@ -171,8 +171,12 @@ When using SSL to secure kafka communication, you must set `KAFKA_ENABLE_TLS`, a
 * `KAFKA_CACERTS` to check server certificate
 * `KAFKA_CERT` and `KAFKA_KEY` to check client certificate
 * `KAFKA_INSECURE` to skip TLS verfication
+
+Example for Kafka controller deployments using TLS
+
+`Prerequisite` : Create secrets to hold certificates and keys.
+
 ```yaml
-$ echo '
 ---
 apiVersion: apps/v1beta1
 kind: Deployment
@@ -190,19 +194,26 @@ spec:
       labels:
         kubeless: kafka-trigger-controller
     spec:
+      volumes:
+      - name: kafka-volume
+        secret:
+          secretName: certs-and-keys-secret # REPLACE WITH SECRET HOLDING CERTS AND KEYS
       containers:
       - image: bitnami/kafka-trigger-controller:latest
         imagePullPolicy: IfNotPresent
         name: kafka-trigger-controller
+        volumeMounts:
+        - name: kafka-volume
+          mountPath: /path/to/certsandkeys
         env:
         ...
         - name: KAFKA_ENABLE_TLS
-          value: "true" # CHANGE THIS!
+          value: "true" # ENABLE TLS
         - name: KAFKA_CACERTS
-          value: "/path/to/ca.crt" # CHANGE THIS! (MAKE SURE PATH ARE VOLUME MOUNTED SAY FROM SECRETS)
+          value: "/path/to/certsandkeys/ca.crt" # CHANGE THIS! (NOTE : PATH HERE MATCHING THE MOUNT PATH ABOVE)
         - name: KAFKA_CERT
-          value: "/path/to/cert.pem" # CHANGE THIS! (MAKE SURE PATH ARE VOLUME MOUNTED SAY FROM SECRETS)
+          value: "/path/to/certsandkeys/cert.pem" # CHANGE THIS! (NOTE : PATH HERE MATCHING THE MOUNT PATH ABOVE)
         - name: KAFKA_KEY
-          value: "/path/to/key.pem" # CHANGE THIS! (MAKE SURE PATH ARE VOLUME MOUNTED SAY FROM SECRETS)
+          value: "/path/to/certsandkeys/key.pem" # CHANGE THIS! (NOTE : PATH HERE MATCHING THE MOUNT PATH ABOVE)
 ...
 ```
