@@ -21,7 +21,7 @@ Click on this next picture to see a screencast demonstrating our [serverless](ht
 
 ## Tools
 
-- A [UI](https://github.com/kubeless/kubeless-ui) available. It can run locally or in-cluster.
+- A [UI](https://github.com/kubeless/kubeless-ui) is available. It can run locally or in-cluster.
 - A [serverless framework plugin](https://github.com/serverless/serverless-kubeless) is available.
 
 ## Quick start
