@@ -438,14 +438,8 @@ kubeless function deploy fibonacci --from-file fibonacci.cs --handler module.han
 
 ##### `nuget.config`
 
-If you happen to be using custom nuget repositories through a `nuget.config` file, you'll need to include the file along with the code inside a `.zip` file with roughly this structure:
-```
-custom-deps.zip
-|\_ nuget.config
-\__ custom-deps.cs
-```
+If you happen to be using custom nuget repositories through a `nuget.config` file, you'll need to include the file along with the code inside a `.zip` file and then you can deploy the function with the `nuget.config` using the command:
 
-And then you can deploy it using the command:
 ```bash
 kubeless function deploy custom-deps --from-file custom-deps.zip --handler module.handler --dependencies custom-deps.csproj --runtime dotnetcore2.0
 ```
