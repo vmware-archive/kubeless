@@ -9,6 +9,7 @@ import (
 
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
+    "k8s.io/apimachinery/pkg/api/resource"
 )
 
 var clientset = fake.NewSimpleClientset()
@@ -105,14 +106,15 @@ func TestGetBuildContainer(t *testing.T) {
 	lr.ReadConfigMap()
 
 	// It should throw an error if there is not an image available
-	_, err := lr.GetBuildContainer("notExists", "", []v1.EnvVar{}, v1.VolumeMount{})
+	_, err := lr.GetBuildContainer("notExists", "", []v1.EnvVar{}, v1.VolumeMount{}, v1.ResourceRequirements{})
 	if err == nil {
 		t.Error("Expected to throw an error")
 	}
 
 	// It should return the proper build image for python
 	vol1 := v1.VolumeMount{Name: "v1", MountPath: "/v1"}
-	c, err := lr.GetBuildContainer("python2.7", "abc123", []v1.EnvVar{}, vol1)
+	resources := v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceLimitsCPU: resource.MustParse("100m")}}
+	c, err := lr.GetBuildContainer("python2.7", "abc123", []v1.EnvVar{}, vol1, resources)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -128,6 +130,7 @@ func TestGetBuildContainer(t *testing.T) {
 			{Name: "KUBELESS_INSTALL_VOLUME", Value: "/v1"},
 			{Name: "KUBELESS_DEPS_FILE", Value: "/v1/requirements.txt"},
 		},
+		Resources:       v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceLimitsCPU: resource.MustParse("100m")}},
 	}
 	if !reflect.DeepEqual(expectedContainer, c) {
 		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedContainer, c)
