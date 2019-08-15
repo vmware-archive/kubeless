@@ -247,7 +247,7 @@ func parseEnv(env map[string]string) []v1.EnvVar {
 }
 
 // GetBuildContainer returns a Container definition based on a runtime
-func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.EnvVar, installVolume v1.VolumeMount) (v1.Container, error) {
+func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.EnvVar, installVolume v1.VolumeMount, resources v1.ResourceRequirements) (v1.Container, error) {
 	runtimeInf, err := l.GetRuntimeInfo(runtime)
 	if err != nil {
 		return v1.Container{}, err
@@ -289,6 +289,7 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 		ImagePullPolicy: v1.PullIfNotPresent,
 		WorkingDir:      installVolume.MountPath,
 		Env:             env,
+		Resources:       resources,
 	}, nil
 }
 
@@ -316,7 +317,7 @@ func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, volPath, runtim
 }
 
 // GetCompilationContainer returns a Container definition based on a runtime
-func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, env []v1.EnvVar, installVolume v1.VolumeMount) (*v1.Container, error) {
+func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, env []v1.EnvVar, installVolume v1.VolumeMount, resources v1.ResourceRequirements) (*v1.Container, error) {
 	versionInf, err := l.findRuntimeVersion(runtime)
 	if err != nil {
 		return nil, err
@@ -343,5 +344,6 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, env []v
 		VolumeMounts:    []v1.VolumeMount{installVolume},
 		ImagePullPolicy: v1.PullIfNotPresent,
 		WorkingDir:      installVolume.MountPath,
+		Resources:       resources,
 	}, nil
 }

@@ -67,7 +67,7 @@ func appendToCommand(orig string, command ...string) string {
 	return strings.Join(command, " && ")
 }
 
-func getProvisionContainer(function, checksum, fileName, handler, contentType, runtime, prepareImage string, runtimeVolume, depsVolume v1.VolumeMount, lr *langruntime.Langruntimes) (v1.Container, error) {
+func getProvisionContainer(function, checksum, fileName, handler, contentType, runtime, prepareImage string, runtimeVolume, depsVolume v1.VolumeMount, resources v1.ResourceRequirements, lr *langruntime.Langruntimes) (v1.Container, error) {
 	prepareCommand := ""
 	originFile := path.Join(depsVolume.MountPath, fileName)
 
@@ -139,6 +139,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 		Args:            []string{prepareCommand},
 		VolumeMounts:    []v1.VolumeMount{runtimeVolume, depsVolume},
 		ImagePullPolicy: v1.PullIfNotPresent,
+		Resources: resources,
 	}, nil
 }
 
@@ -319,6 +320,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 	if len(imagePullSecrets) > 0 {
 		result.ImagePullSecrets = imagePullSecrets
 	}
+	//if funcObj.Spec.InitContainers[0] != "" && funcObj.Spec.InitContainers[0].Resources
 	result.Volumes = append(podSpec.Volumes,
 		v1.Volume{
 			Name: runtimeVolumeMount.Name,
@@ -338,6 +340,12 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 		},
 	)
 	// prepare init-containers if some function is specified
+
+	resources := v1.ResourceRequirements{}
+	if len(funcObj.Spec.Deployment.Spec.Template.Spec.InitContainers)>0 {
+	   resources = funcObj.Spec.Deployment.Spec.Template.Spec.InitContainers[0].Resources
+	}
+
 	if funcObj.Spec.Function != "" {
 		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime, lr)
 		if err != nil {
@@ -360,6 +368,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 			provisionImage,
 			runtimeVolumeMount,
 			srcVolumeMount,
+			resources,
 			lr,
 		)
 		if err != nil {
@@ -390,7 +399,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 		if err != nil {
 			return fmt.Errorf("Unable to obtain dependencies checksum: %v", err)
 		}
-		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, depsChecksum, envVars, runtimeVolumeMount)
+		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, depsChecksum, envVars, runtimeVolumeMount, resources)
 		if err != nil {
 			return err
 		}
@@ -404,7 +413,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 
 	// add compilation init container if needed
 	_, funcName, _ := splitHandler(funcObj.Spec.Handler)
-	compContainer, err := lr.GetCompilationContainer(funcObj.Spec.Runtime, funcName, envVars, runtimeVolumeMount)
+	compContainer, err := lr.GetCompilationContainer(funcObj.Spec.Runtime, funcName, envVars, runtimeVolumeMount, resources)
 	if err != nil {
 		return err
 	}
