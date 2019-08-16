@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/kubernetes/fake"
-    "k8s.io/apimachinery/pkg/api/resource"
 )
 
 var clientset = fake.NewSimpleClientset()
@@ -130,7 +130,7 @@ func TestGetBuildContainer(t *testing.T) {
 			{Name: "KUBELESS_INSTALL_VOLUME", Value: "/v1"},
 			{Name: "KUBELESS_DEPS_FILE", Value: "/v1/requirements.txt"},
 		},
-		Resources:       v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceLimitsCPU: resource.MustParse("100m")}},
+		Resources: v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceLimitsCPU: resource.MustParse("100m")}},
 	}
 	if !reflect.DeepEqual(expectedContainer, c) {
 		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedContainer, c)

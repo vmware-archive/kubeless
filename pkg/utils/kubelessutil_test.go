@@ -11,9 +11,9 @@ import (
 
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-    "k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -521,14 +521,14 @@ func TestEnsureDeployment(t *testing.T) {
 	f1 := getDefaultFunc(f1Name, ns)
 
 	f1.Spec.Deployment.Spec.Template.Spec.InitContainers = []v1.Container{
-        {
-            Resources: v1.ResourceRequirements{
-                Limits: v1.ResourceList{
-                    v1.ResourceLimitsCPU: resource.MustParse("100m"),
-                },
-            },
-        },
-    }
+		{
+			Resources: v1.ResourceRequirements{
+				Limits: v1.ResourceList{
+					v1.ResourceLimitsCPU: resource.MustParse("100m"),
+				},
+			},
+		},
+	}
 
 	f1Port := f1.Spec.ServiceSpec.Ports[0].Port
 	f1.ObjectMeta.Labels = funcLabels

@@ -139,7 +139,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 		Args:            []string{prepareCommand},
 		VolumeMounts:    []v1.VolumeMount{runtimeVolume, depsVolume},
 		ImagePullPolicy: v1.PullIfNotPresent,
-		Resources: resources,
+		Resources:       resources,
 	}, nil
 }
 
@@ -342,8 +342,8 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 	// prepare init-containers if some function is specified
 
 	resources := v1.ResourceRequirements{}
-	if len(funcObj.Spec.Deployment.Spec.Template.Spec.InitContainers)>0 {
-	   resources = funcObj.Spec.Deployment.Spec.Template.Spec.InitContainers[0].Resources
+	if len(funcObj.Spec.Deployment.Spec.Template.Spec.InitContainers) > 0 {
+		resources = funcObj.Spec.Deployment.Spec.Template.Spec.InitContainers[0].Resources
 	}
 
 	if funcObj.Spec.Function != "" {
