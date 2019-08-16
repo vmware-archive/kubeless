@@ -66,7 +66,6 @@ test:
 	$(GO) test $(GO_FLAGS) $(GO_PACKAGES)
 
 validation:
-	./script/validate-vet
 	./script/validate-lint
 	./script/validate-gofmt
 	./script/validate-git-marks
