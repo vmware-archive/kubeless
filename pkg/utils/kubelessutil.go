@@ -320,7 +320,6 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 	if len(imagePullSecrets) > 0 {
 		result.ImagePullSecrets = imagePullSecrets
 	}
-	//if funcObj.Spec.InitContainers[0] != "" && funcObj.Spec.InitContainers[0].Resources
 	result.Volumes = append(podSpec.Volumes,
 		v1.Volume{
 			Name: runtimeVolumeMount.Name,
