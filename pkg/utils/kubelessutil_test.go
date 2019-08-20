@@ -11,6 +11,7 @@ import (
 
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
@@ -518,6 +519,17 @@ func TestEnsureDeployment(t *testing.T) {
 		"bar": "foo",
 	}
 	f1 := getDefaultFunc(f1Name, ns)
+
+	f1.Spec.Deployment.Spec.Template.Spec.InitContainers = []v1.Container{
+		{
+			Resources: v1.ResourceRequirements{
+				Limits: v1.ResourceList{
+					v1.ResourceLimitsCPU: resource.MustParse("100m"),
+				},
+			},
+		},
+	}
+
 	f1Port := f1.Spec.ServiceSpec.Ports[0].Port
 	f1.ObjectMeta.Labels = funcLabels
 	f1.Spec.Deployment.ObjectMeta = metav1.ObjectMeta{
@@ -640,6 +652,10 @@ func TestEnsureDeployment(t *testing.T) {
 	if dpm.Spec.Template.Spec.InitContainers[0].Image != "unzip" {
 		t.Errorf("Unexpected init image %s", dpm.Spec.Template.Spec.InitContainers[0].Image)
 	}
+	if dpm.Spec.Template.Spec.InitContainers[0].Resources.Limits == nil {
+		t.Errorf("Resources must be set for init container")
+	}
+
 }
 
 func TestEnsureDeploymentWithoutFuncNorHandler(t *testing.T) {
@@ -848,7 +864,9 @@ func TestGetProvisionContainer(t *testing.T) {
 
 	rvol := v1.VolumeMount{Name: "runtime", MountPath: "/runtime"}
 	dvol := v1.VolumeMount{Name: "deps", MountPath: "/deps"}
-	c, err := getProvisionContainer("test", "sha256:abc1234", "test.func", "test.foo", "text", "python2.7", "unzip", rvol, dvol, lr)
+	resources := v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceLimitsCPU: resource.MustParse("100m")}}
+
+	c, err := getProvisionContainer("test", "sha256:abc1234", "test.func", "test.foo", "text", "python2.7", "unzip", rvol, dvol, resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -859,13 +877,14 @@ func TestGetProvisionContainer(t *testing.T) {
 		Args:            []string{"echo 'abc1234  /deps/test.func' > /tmp/func.sha256 && sha256sum -c /tmp/func.sha256 && cp /deps/test.func /runtime/test.py && cp /deps/requirements.txt /runtime"},
 		VolumeMounts:    []v1.VolumeMount{rvol, dvol},
 		ImagePullPolicy: v1.PullIfNotPresent,
+		Resources:       v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceLimitsCPU: resource.MustParse("100m")}},
 	}
 	if !reflect.DeepEqual(expectedContainer, c) {
 		t.Errorf("Unexpected result:\n %+v", c)
 	}
 
 	// If the content type is encoded it should decode it
-	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.func", "test.foo", "base64", "python2.7", "unzip", rvol, dvol, lr)
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.func", "test.foo", "base64", "python2.7", "unzip", rvol, dvol, resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -883,7 +902,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// It should skip the dependencies installation if the runtime is not supported
-	c, err = getProvisionContainer("function", "sha256:abc1234", "test.func", "test.foo", "text", "cobol", "unzip", rvol, dvol, lr)
+	c, err = getProvisionContainer("function", "sha256:abc1234", "test.func", "test.foo", "text", "cobol", "unzip", rvol, dvol, resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -892,13 +911,13 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// It should extract the file in case it is a Zip
-	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64+zip", "python2.7", "unzip", rvol, dvol, lr)
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64+zip", "python2.7", "unzip", rvol, dvol, resources, lr)
 	if !strings.Contains(c.Args[0], "unzip -o /tmp/func.decoded -d /runtime") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 
 	// If the content type is url it should use curl
-	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.py", "sha256:abc1234", "", "test.foo", "url", "python2.7", "unzip", rvol, dvol, lr)
+	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.py", "sha256:abc1234", "", "test.foo", "url", "python2.7", "unzip", rvol, dvol, resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -907,7 +926,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// If the content type is url it should use curl
-	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.py", "sha256:abc1234", "", "test.foo", "url+zip", "python2.7", "unzip", rvol, dvol, lr)
+	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.py", "sha256:abc1234", "", "test.foo", "url+zip", "python2.7", "unzip", rvol, dvol, resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
