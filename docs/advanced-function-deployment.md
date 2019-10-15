@@ -61,6 +61,14 @@ spec:
     spec:
       template:
         spec:
+          initContainers:
+          - resources:
+              limits:
+                cpu: 200m
+                memory: 200Mi
+              requests:
+                cpu: 200m
+                memory: 200Mi
           containers:
           - env:
             - name: FOO
@@ -83,6 +91,8 @@ spec:
 ```
 
 Would create a function with the environment variable `FOO`, using CPU and memory limits and mounting the secret `my-secret` as a volume. Note that you can also specify a default template for a Deployment spec in the [controller configuration](/docs/function-controller-configuration).
+The resource configuration in `initContainers` will be applied to all of the initial containers in the target deployment (like `provision`, `compile` etc.)   
+
 
 ## Custom Service
 

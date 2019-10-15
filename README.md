@@ -9,19 +9,9 @@ Kubeless stands out as we use a [Custom Resource Definition](https://kubernetes.
 
 Kubeless is purely open-source and non-affiliated to any commercial organization. Chime in at anytime, we would love the help and feedback !
 
-## Screencasts
-
-Click on the picture below to see a screencast demonstrating event based function triggers with kubeless.
-
-[![screencast](https://img.youtube.com/vi/AxZuQIJUX4s/0.jpg)](https://www.youtube.com/watch?v=AxZuQIJUX4s)
-
-Click on this next picture to see a screencast demonstrating our [serverless](https://serverless.com/framework/docs/providers/kubeless/) plugin:
-
-[![serverless](https://img.youtube.com/vi/ROA7Ig7tD5s/0.jpg)](https://www.youtube.com/watch?v=ROA7Ig7tD5s)
-
 ## Tools
 
-- A [UI](https://github.com/kubeless/kubeless-ui) available. It can run locally or in-cluster.
+- A [UI](https://github.com/kubeless/kubeless-ui) is available. It can run locally or in-cluster.
 - A [serverless framework plugin](https://github.com/serverless/serverless-kubeless) is available.
 
 ## Quick start
