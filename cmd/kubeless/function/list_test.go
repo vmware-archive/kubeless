@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -58,8 +58,8 @@ func TestList(t *testing.T) {
 					Function: "ffunction",
 					Runtime:  "fruntime",
 					Deps:     "fdeps",
-					Deployment: v1beta1.Deployment{
-						Spec: v1beta1.DeploymentSpec{
+					Deployment: appsv1.Deployment{
+						Spec: appsv1.DeploymentSpec{
 							Template: v1.PodTemplateSpec{
 								Spec: v1.PodSpec{
 									Containers: []v1.Container{{}},
@@ -82,8 +82,8 @@ func TestList(t *testing.T) {
 					Function: "bfunction",
 					Runtime:  "nodejs6",
 					Deps:     "{\"dependencies\": {\"test\": \"^1.0.0\"}}",
-					Deployment: v1beta1.Deployment{
-						Spec: v1beta1.DeploymentSpec{
+					Deployment: appsv1.Deployment{
+						Spec: appsv1.DeploymentSpec{
 							Template: v1.PodTemplateSpec{
 								Spec: v1.PodSpec{
 									Containers: []v1.Container{
@@ -124,8 +124,8 @@ func TestList(t *testing.T) {
 					Function: "ffunction",
 					Runtime:  "fruntime",
 					Deps:     "fdeps",
-					Deployment: v1beta1.Deployment{
-						Spec: v1beta1.DeploymentSpec{
+					Deployment: appsv1.Deployment{
+						Spec: appsv1.DeploymentSpec{
 							Template: v1.PodTemplateSpec{
 								Spec: v1.PodSpec{
 									Containers: []v1.Container{{}},
@@ -140,22 +140,22 @@ func TestList(t *testing.T) {
 
 	client := fFake.NewSimpleClientset(listObj.Items[0], listObj.Items[1], listObj.Items[2])
 
-	deploymentFoo := v1beta1.Deployment{
+	deploymentFoo := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "myns",
 		},
-		Status: v1beta1.DeploymentStatus{
+		Status: appsv1.DeploymentStatus{
 			Replicas:      int32(1),
 			ReadyReplicas: int32(1),
 		},
 	}
-	deploymentBar := v1beta1.Deployment{
+	deploymentBar := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "myns",
 		},
-		Status: v1beta1.DeploymentStatus{
+		Status: appsv1.DeploymentStatus{
 			Replicas:      int32(2),
 			ReadyReplicas: int32(0),
 		},

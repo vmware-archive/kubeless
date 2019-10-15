@@ -8,10 +8,9 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/langruntime"
 	"github.com/sirupsen/logrus"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta1"
-	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
-	xv1beta1 "k8s.io/api/extensions/v1beta1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
@@ -36,7 +35,7 @@ func TestDeleteK8sResources(t *testing.T) {
 		Name:      "foo",
 	}
 
-	deploy := xv1beta1.Deployment{
+	deploy := appsv1.Deployment{
 		ObjectMeta: myNsFoo,
 	}
 
@@ -135,11 +134,11 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 			Deps:     "deps",
 			Handler:  "foo.bar",
 			Runtime:  "ruby2.4",
-			Deployment: v1beta1.Deployment{
+			Deployment: appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: funcAnno,
 				},
-				Spec: v1beta1.DeploymentSpec{
+				Spec: appsv1.DeploymentSpec{
 					Replicas: &replicas,
 					Template: v1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
@@ -209,7 +208,7 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 		},
 		Data: map[string]string{"deployment": deploymentConfigData, "runtime-images": string(out)},
 	}
-	deploymentObjFromConfigMap := v1beta1.Deployment{}
+	deploymentObjFromConfigMap := appsv1.Deployment{}
 	_ = yaml.Unmarshal([]byte(deploymentConfigData), &deploymentObjFromConfigMap)
 	_, err = clientset.CoreV1().ConfigMaps(namespace).Create(kubelessConfigMap)
 	if err != nil {
@@ -233,7 +232,7 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 	if err := controller.ensureK8sResources(&funcObj); err != nil {
 		t.Fatalf("Creating/Updating resources returned err: %v", err)
 	}
-	dpm, _ := clientset.ExtensionsV1beta1().Deployments(namespace).Get(funcName, metav1.GetOptions{})
+	dpm, _ := clientset.AppsV1().Deployments(namespace).Get(funcName, metav1.GetOptions{})
 	expectedAnnotations := map[string]string{
 		"bar":                "foo",
 		"foo-from-deploy-cm": "bar-from-deploy-cm",
@@ -248,9 +247,9 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 		t.Fatalf("Expecting replicas as 10 but received : %d", *dpm.Spec.Replicas)
 	}
 	expectedPodAnnotations := map[string]string{
-		"bar":                "foo",
-		"foo-from-deploy-cm": "bar-from-deploy-cm",
-		"xyz":                "valuefromfunc",
+		"bar":                         "foo",
+		"foo-from-deploy-cm":          "bar-from-deploy-cm",
+		"xyz":                         "valuefromfunc",
 		"podannotation-from-func-crd": "value-from-container",
 	}
 	for i := range expectedPodAnnotations {
@@ -284,11 +283,11 @@ func TestEnsureK8sResourcesWithLivenessProbeFromConfigMap(t *testing.T) {
 			Deps:     "deps",
 			Handler:  "foo.bar",
 			Runtime:  "ruby2.4",
-			Deployment: v1beta1.Deployment{
+			Deployment: appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: funcAnno,
 				},
-				Spec: v1beta1.DeploymentSpec{
+				Spec: appsv1.DeploymentSpec{
 					Replicas: &replicas,
 					Template: v1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
@@ -368,7 +367,7 @@ func TestEnsureK8sResourcesWithLivenessProbeFromConfigMap(t *testing.T) {
 	if err := controller.ensureK8sResources(&funcObj); err != nil {
 		t.Fatalf("Creating/Updating resources returned err: %v", err)
 	}
-	dpm, _ := clientset.ExtensionsV1beta1().Deployments(namespace).Get(funcName, metav1.GetOptions{})
+	dpm, _ := clientset.AppsV1().Deployments(namespace).Get(funcName, metav1.GetOptions{})
 	expectedLivenessProbe := &v1.Probe{
 		InitialDelaySeconds: int32(5),
 		PeriodSeconds:       int32(10),

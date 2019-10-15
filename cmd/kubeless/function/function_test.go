@@ -28,9 +28,9 @@ import (
 	"testing"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta1"
-	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -129,8 +129,8 @@ func TestGetFunctionDescription(t *testing.T) {
 			FunctionContentType: "text",
 			Deps:                "dependencies",
 			Timeout:             "10",
-			Deployment: v1beta1.Deployment{
-				Spec: v1beta1.DeploymentSpec{
+			Deployment: appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
 					Template: v1.PodTemplateSpec{
 						Spec: v1.PodSpec{
 							Containers: []v1.Container{
@@ -237,8 +237,8 @@ func TestGetFunctionDescription(t *testing.T) {
 			Checksum:            "sha256:1958eb96d7d3cadedd0f327f09322eb7db296afb282ed91aa66cb4ab0dcc3c9f",
 			Deps:                "dependencies2",
 			Timeout:             "20",
-			Deployment: v1beta1.Deployment{
-				Spec: v1beta1.DeploymentSpec{
+			Deployment: appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
 					Template: v1.PodTemplateSpec{
 						Spec: v1.PodSpec{
 							Containers: []v1.Container{
@@ -401,8 +401,8 @@ func TestGetFunctionDescription(t *testing.T) {
 			FunctionContentType: "url",
 			Deps:                "dependencies",
 			Timeout:             "10",
-			Deployment: v1beta1.Deployment{
-				Spec: v1beta1.DeploymentSpec{
+			Deployment: appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
 					Template: v1.PodTemplateSpec{
 						Spec: v1.PodSpec{
 							Containers: []v1.Container{
