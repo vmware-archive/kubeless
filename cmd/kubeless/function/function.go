@@ -33,7 +33,7 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -359,7 +359,7 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, runtimeI
 }
 
 func getDeploymentStatus(cli kubernetes.Interface, funcName, ns string) (string, error) {
-	dpm, err := cli.ExtensionsV1beta1().Deployments(ns).Get(funcName, metav1.GetOptions{})
+	dpm, err := cli.AppsV1().Deployments(ns).Get(funcName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}

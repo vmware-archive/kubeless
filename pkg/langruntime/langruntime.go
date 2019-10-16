@@ -9,8 +9,8 @@ import (
 
 	yaml "github.com/ghodss/yaml"
 	"github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -294,7 +294,7 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 }
 
 // UpdateDeployment object in case of custom runtime
-func (l *Langruntimes) UpdateDeployment(dpm *v1beta1.Deployment, volPath, runtime string) {
+func (l *Langruntimes) UpdateDeployment(dpm *appsv1.Deployment, volPath, runtime string) {
 	versionInf, err := l.findRuntimeVersion(runtime)
 	if err != nil {
 		// Not found an image for the given runtime

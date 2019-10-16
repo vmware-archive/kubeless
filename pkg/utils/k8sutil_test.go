@@ -7,8 +7,8 @@ import (
 	"io/ioutil"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
-	"k8s.io/api/extensions/v1beta1"
 	extensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	fakeextensionsapi "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -100,7 +100,7 @@ func TestDeleteAutoscaleResource(t *testing.T) {
 }
 
 func TestInitializeEmptyMapsInDeployment(t *testing.T) {
-	deployment := v1beta1.Deployment{}
+	deployment := appsv1.Deployment{}
 	deployment.Spec.Selector = &metav1.LabelSelector{}
 	initializeEmptyMapsInDeployment(&deployment)
 	if deployment.ObjectMeta.Annotations == nil {
@@ -126,7 +126,7 @@ func TestInitializeEmptyMapsInDeployment(t *testing.T) {
 func TestMergeDeployments(t *testing.T) {
 	var replicas int32
 	replicas = 10
-	destinationDeployment := v1beta1.Deployment{
+	destinationDeployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
 				"foo1-deploy": "bar",
@@ -134,13 +134,13 @@ func TestMergeDeployments(t *testing.T) {
 		},
 	}
 
-	sourceDeployment := v1beta1.Deployment{
+	sourceDeployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
 				"foo2-deploy": "bar",
 			},
 		},
-		Spec: v1beta1.DeploymentSpec{
+		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 		},
 	}

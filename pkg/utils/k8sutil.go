@@ -28,9 +28,9 @@ import (
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	"github.com/sirupsen/logrus"
 
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta1"
-	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	v1 "k8s.io/api/core/v1"
 	clientsetAPIExtensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -347,7 +347,7 @@ func DeleteServiceMonitor(smclient monitoringv1alpha1.MonitoringV1alpha1Client, 
 
 // InitializeEmptyMapsInDeployment initializes all nil maps in a Deployment object
 // This is done to counteract with side-effects of github.com/imdario/mergo which panics when provided with a nil map in a struct
-func initializeEmptyMapsInDeployment(deployment *v1beta1.Deployment) {
+func initializeEmptyMapsInDeployment(deployment *appsv1.Deployment) {
 	if deployment.ObjectMeta.Annotations == nil {
 		deployment.Annotations = make(map[string]string)
 	}
@@ -369,7 +369,7 @@ func initializeEmptyMapsInDeployment(deployment *v1beta1.Deployment) {
 }
 
 // MergeDeployments merges two deployment objects
-func MergeDeployments(destinationDeployment *v1beta1.Deployment, sourceDeployment *v1beta1.Deployment) error {
+func MergeDeployments(destinationDeployment *appsv1.Deployment, sourceDeployment *appsv1.Deployment) error {
 	// Initializing nil maps in deployment objects else github.com/imdario/mergo panics
 	initializeEmptyMapsInDeployment(destinationDeployment)
 	initializeEmptyMapsInDeployment(sourceDeployment)

@@ -25,8 +25,8 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
@@ -280,8 +280,8 @@ func TestTop(t *testing.T) {
 					Function: function1Name,
 					Runtime:  "pyruntime",
 					Deps:     "pydeps",
-					Deployment: v1beta1.Deployment{
-						Spec: v1beta1.DeploymentSpec{
+					Deployment: appsv1.Deployment{
+						Spec: appsv1.DeploymentSpec{
 							Template: v1.PodTemplateSpec{
 								Spec: v1.PodSpec{
 									Containers: []v1.Container{{}},
@@ -301,8 +301,8 @@ func TestTop(t *testing.T) {
 					Function: function2Name,
 					Runtime:  "goruntime",
 					Deps:     "godeps",
-					Deployment: v1beta1.Deployment{
-						Spec: v1beta1.DeploymentSpec{
+					Deployment: appsv1.Deployment{
+						Spec: appsv1.DeploymentSpec{
 							Template: v1.PodTemplateSpec{
 								Spec: v1.PodSpec{
 									Containers: []v1.Container{{}},
@@ -317,22 +317,22 @@ func TestTop(t *testing.T) {
 
 	client := fFake.NewSimpleClientset(listObj.Items[0], listObj.Items[1])
 
-	deploymentPy := v1beta1.Deployment{
+	deploymentPy := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      function1Name,
 			Namespace: namespace,
 		},
-		Status: v1beta1.DeploymentStatus{
+		Status: appsv1.DeploymentStatus{
 			Replicas:      int32(1),
 			ReadyReplicas: int32(1),
 		},
 	}
-	deploymentGo := v1beta1.Deployment{
+	deploymentGo := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      function2Name,
 			Namespace: namespace,
 		},
-		Status: v1beta1.DeploymentStatus{
+		Status: appsv1.DeploymentStatus{
 			Replicas:      int32(1),
 			ReadyReplicas: int32(1),
 		},
