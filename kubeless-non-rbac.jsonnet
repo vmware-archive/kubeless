@@ -52,6 +52,7 @@ local controllerAccount =
 
 local controllerDeployment =
   deployment.default("kubeless-controller-manager", [functionControllerContainer, httpTriggerControllerContainer, cronjobTriggerContainer], namespace) +
+  {apiVersion: "apps/v1"} +
   {metadata+:{labels: kubelessLabel}} +
   {spec+: {selector: {matchLabels: kubelessLabel}}} +
   {spec+: {template+: {spec+: {serviceAccountName: controllerAccount.metadata.name}}}} +
