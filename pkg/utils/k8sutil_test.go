@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	v2beta1 "k8s.io/api/autoscaling/v2beta1"
 	extensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	fakeextensionsapi "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
@@ -126,6 +127,24 @@ func TestInitializeEmptyMapsInDeployment(t *testing.T) {
 func TestMergeDeployments(t *testing.T) {
 	var replicas int32
 	replicas = 10
+	volumeMount := corev1.VolumeMount{
+		Name:      "foo",
+		MountPath: "/bar",
+	}
+	container := corev1.Container{
+		VolumeMounts: []corev1.VolumeMount{
+			volumeMount,
+		},
+	}
+	podSpec := corev1.PodSpec{
+		Containers: []corev1.Container{
+			container,
+		},
+	}
+	template := corev1.PodTemplateSpec{
+		Spec: podSpec,
+	}
+
 	destinationDeployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
@@ -142,6 +161,7 @@ func TestMergeDeployments(t *testing.T) {
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
+			Template: template,
 		},
 	}
 
@@ -150,6 +170,8 @@ func TestMergeDeployments(t *testing.T) {
 		"foo1-deploy": "bar",
 		"foo2-deploy": "bar",
 	}
+	expectedVolumneMounts := len(destinationDeployment.Spec.Template.Spec.Containers[0].VolumeMounts)
+	mergedVolumneMounts := len(sourceDeployment.Spec.Template.Spec.Containers[0].VolumeMounts)
 	for i := range expectedAnnotations {
 		if destinationDeployment.ObjectMeta.Annotations[i] != expectedAnnotations[i] {
 			t.Fatalf("Expecting annotation %s but received %s", destinationDeployment.ObjectMeta.Annotations[i], expectedAnnotations[i])
@@ -157,6 +179,9 @@ func TestMergeDeployments(t *testing.T) {
 	}
 	if *destinationDeployment.Spec.Replicas != replicas {
 		t.Fatalf("Expecting replicas as 10 but received %v", *destinationDeployment.Spec.Replicas)
+	}
+	if mergedVolumneMounts != expectedVolumneMounts {
+		t.Fatalf("Expecting %v volumeMounts but received %v", expectedVolumneMounts, mergedVolumneMounts)
 	}
 
 }

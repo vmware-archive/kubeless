@@ -373,7 +373,15 @@ func MergeDeployments(destinationDeployment *appsv1.Deployment, sourceDeployment
 	// Initializing nil maps in deployment objects else github.com/imdario/mergo panics
 	initializeEmptyMapsInDeployment(destinationDeployment)
 	initializeEmptyMapsInDeployment(sourceDeployment)
-	return mergo.Merge(destinationDeployment, sourceDeployment)
+	err := mergo.Merge(destinationDeployment, sourceDeployment)
+	if err == nil && len(sourceDeployment.Spec.Template.Spec.Containers) > 0 && len(sourceDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) > 0 {
+		// cannot use sourceDeployment.Spec.Template.Spec.Containers[0].VolumeMounts (type []"k8s.io/api/core/v1".VolumeMount) as type "k8s.io/api/core/v1".VolumeMount in append
+		// so iterate over and append
+		for _, volumeMount := range sourceDeployment.Spec.Template.Spec.Containers[0].VolumeMounts {
+			destinationDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(destinationDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, volumeMount)
+		}
+	}
+	return err
 }
 
 // FunctionObjAddFinalizer add specified finalizer string to function object
