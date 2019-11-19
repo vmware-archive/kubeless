@@ -921,7 +921,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	if !strings.HasPrefix(c.Args[0], "curl https://raw.githubusercontent.com/test/test/test/test.py -L --silent --output /tmp/func.fromurl") {
+	if !strings.HasPrefix(c.Args[0], "curl 'https://raw.githubusercontent.com/test/test/test/test.py' -L --silent --output /tmp/func.fromurl") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 
@@ -930,7 +930,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	if !strings.HasPrefix(c.Args[0], "curl https://raw.githubusercontent.com/test/test/test/test.py -L --silent --output /tmp/func.fromurl") {
+	if !strings.HasPrefix(c.Args[0], "curl 'https://raw.githubusercontent.com/test/test/test/test.py' -L --silent --output /tmp/func.fromurl") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 }
