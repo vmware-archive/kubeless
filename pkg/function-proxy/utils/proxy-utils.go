@@ -139,9 +139,6 @@ func Handler(w http.ResponseWriter, r *http.Request, h Handle) {
 	}
 }
 
-// ListenAndServe starts an HTTP server in FUNC_PORT using custom logging
-func ListenAndServe() {
-	if err := http.ListenAndServe(fmt.Sprintf(":%s", funcPort), logReq(http.DefaultServeMux)); err != nil {
-		panic(err)
-	}
+func NewServer(mux *http.ServeMux) *http.Server {
+	return &http.Server{Addr: fmt.Sprintf(":%s", funcPort), Handler: logReq(mux)}
 }
