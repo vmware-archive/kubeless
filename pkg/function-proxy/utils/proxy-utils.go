@@ -156,6 +156,8 @@ func NewServer(mux *http.ServeMux) *http.Server {
 	return &http.Server{Addr: fmt.Sprintf(":%s", funcPort), Handler: logReq(mux)}
 }
 
+// GracefulShutdown accepts a server reference and triggers a graceful shutdown
+// for it when either SIGINT or SIGTERM is received.
 func GracefulShutdown(server *http.Server) {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
