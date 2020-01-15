@@ -139,6 +139,8 @@ func Handler(w http.ResponseWriter, r *http.Request, h Handle) {
 	}
 }
 
+// NewServer returns an HTTP server ready to listen on the configured port
+// and with logReq mixed in for logging.
 func NewServer(mux *http.ServeMux) *http.Server {
 	return &http.Server{Addr: fmt.Sprintf(":%s", funcPort), Handler: logReq(mux)}
 }
