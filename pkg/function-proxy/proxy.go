@@ -23,9 +23,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/kubeless/kubeless/pkg/function-proxy/utils"
 
@@ -83,22 +80,6 @@ func startNativeDaemon() {
 	}
 }
 
-func gracefulShutdown(server *http.Server) {
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
-	timeout := 10 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	log.Printf("Shuting down with timeout: %s\n", timeout)
-	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Error: %v\n", err)
-	} else {
-		log.Println("Server stopped")
-	}
-}
-
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handler)
@@ -113,5 +94,5 @@ func main() {
 		}
 	}()
 
-	gracefulShutdown(server)
+	utils.GracefulShutdown(server)
 }
