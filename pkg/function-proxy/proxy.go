@@ -81,6 +81,8 @@ func startNativeDaemon() {
 }
 
 func main() {
+	go startNativeDaemon()
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handler)
 	mux.HandleFunc("/healthz", health)
