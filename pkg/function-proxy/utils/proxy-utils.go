@@ -22,17 +22,21 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
-	timeout       = os.Getenv("FUNC_TIMEOUT")
-	funcPort      = os.Getenv("FUNC_PORT")
-	intTimeout    int
-	funcHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+	timeout            = os.Getenv("FUNC_TIMEOUT")
+	funcPort           = os.Getenv("FUNC_PORT")
+	shutdownTimeout    = os.Getenv("SHUTDOWN_TIMEOUT")
+	intTimeout         int
+	intShutdownTimeout int
+	funcHistogram      = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "function_duration_seconds",
 		Help: "Duration of user function in seconds",
 	}, []string{"method"})
@@ -53,8 +57,15 @@ func init() {
 	if funcPort == "" {
 		funcPort = "8080"
 	}
+	if shutdownTimeout == "" {
+		shutdownTimeout = "10"
+	}
 	var err error
 	intTimeout, err = strconv.Atoi(timeout)
+	if err != nil {
+		panic(err)
+	}
+	intShutdownTimeout, err = strconv.Atoi(shutdownTimeout)
 	if err != nil {
 		panic(err)
 	}
@@ -139,9 +150,26 @@ func Handler(w http.ResponseWriter, r *http.Request, h Handle) {
 	}
 }
 
-// ListenAndServe starts an HTTP server in FUNC_PORT using custom logging
-func ListenAndServe() {
-	if err := http.ListenAndServe(fmt.Sprintf(":%s", funcPort), logReq(http.DefaultServeMux)); err != nil {
-		panic(err)
+// NewServer returns an HTTP server ready to listen on the configured port
+// and with logReq mixed in for logging.
+func NewServer(mux *http.ServeMux) *http.Server {
+	return &http.Server{Addr: fmt.Sprintf(":%s", funcPort), Handler: logReq(mux)}
+}
+
+// GracefulShutdown accepts a server reference and triggers a graceful shutdown
+// for it when either SIGINT or SIGTERM is received.
+func GracefulShutdown(server *http.Server) {
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+	timeoutDuration := time.Duration(intShutdownTimeout) * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutDuration)
+	defer cancel()
+
+	log.Printf("Shuting down with timeout: %s\n", timeoutDuration)
+	if err := server.Shutdown(ctx); err != nil {
+		log.Printf("Error: %v\n", err)
+	} else {
+		log.Println("Server stopped")
 	}
 }

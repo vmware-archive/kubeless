@@ -82,8 +82,19 @@ func startNativeDaemon() {
 
 func main() {
 	go startNativeDaemon()
-	http.HandleFunc("/", handler)
-	http.HandleFunc("/healthz", health)
-	http.Handle("/metrics", promhttp.Handler())
-	utils.ListenAndServe()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", handler)
+	mux.HandleFunc("/healthz", health)
+	mux.Handle("/metrics", promhttp.Handler())
+
+	server := utils.NewServer(mux)
+
+	go func() {
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+			panic(err)
+		}
+	}()
+
+	utils.GracefulShutdown(server)
 }
