@@ -377,24 +377,24 @@ func MergeDeployments(destinationDeployment *appsv1.Deployment, sourceDeployment
 
 	// Merge containers
 	if err == nil && len(sourceDeployment.Spec.Template.Spec.Containers) > 0 {
-		srcContainers := sourceDeployment.Spec.Template.Spec.Containers;
-		dstContainers := destinationDeployment.Spec.Template.Spec.Containers;
+		srcContainers := sourceDeployment.Spec.Template.Spec.Containers
+		dstContainers := destinationDeployment.Spec.Template.Spec.Containers
 
 		// Merge each container individually
 		for i, srcContainer := range srcContainers {
 			if i >= len(dstContainers) {
-				destinationDeployment.Spec.Template.Spec.Containers[i] = srcContainer;
-				continue;
+				destinationDeployment.Spec.Template.Spec.Containers[i] = srcContainer
+				continue
 			}
 
-			dstContainer := dstContainers[i];
+			dstContainer := dstContainers[i]
 
 			// Use mergo.WithAppendSlice to append extra volumeMount/env/port definitions
 			err = mergo.Merge(&dstContainer, srcContainer, mergo.WithAppendSlice)
 			if err != nil {
-				break;
+				break
 			}
-			destinationDeployment.Spec.Template.Spec.Containers[i] = dstContainer;
+			destinationDeployment.Spec.Template.Spec.Containers[i] = dstContainer
 		}
 
 	}

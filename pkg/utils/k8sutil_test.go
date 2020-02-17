@@ -12,8 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	fakeextensionsapi "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	resource "k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -139,14 +139,14 @@ func TestMergeDeployments(t *testing.T) {
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
-						corev1.Container{
+						{
 							VolumeMounts: []corev1.VolumeMount{
-								corev1.VolumeMount{
+								{
 									Name:      "foo",
 									MountPath: "/bar",
 								},
 							},
-							Resources: corev1.ResourceRequirements {},
+							Resources: corev1.ResourceRequirements{},
 						},
 					},
 				},
@@ -167,16 +167,16 @@ func TestMergeDeployments(t *testing.T) {
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
-						corev1.Container{
+						{
 							VolumeMounts: []corev1.VolumeMount{
-								corev1.VolumeMount{
+								{
 									Name:      "baz",
 									MountPath: "/qux",
 								},
 							},
-							Resources: corev1.ResourceRequirements {
-								Requests: corev1.ResourceList {
-									corev1.ResourceName(corev1.ResourceCPU): resource.MustParse("100m"),
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceName(corev1.ResourceCPU):    resource.MustParse("100m"),
 									corev1.ResourceName(corev1.ResourceMemory): resource.MustParse("100Mi"),
 								},
 							},
@@ -201,20 +201,20 @@ func TestMergeDeployments(t *testing.T) {
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
-						corev1.Container{
+						{
 							VolumeMounts: []corev1.VolumeMount{
-								corev1.VolumeMount{
+								{
 									Name:      "foo",
 									MountPath: "/bar",
 								},
-								corev1.VolumeMount{
+								{
 									Name:      "baz",
 									MountPath: "/qux",
 								},
 							},
-							Resources: corev1.ResourceRequirements {
-								Requests: corev1.ResourceList {
-									corev1.ResourceName(corev1.ResourceCPU): resource.MustParse("100m"),
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceName(corev1.ResourceCPU):    resource.MustParse("100m"),
 									corev1.ResourceName(corev1.ResourceMemory): resource.MustParse("100Mi"),
 								},
 							},
