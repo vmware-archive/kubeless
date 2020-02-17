@@ -374,12 +374,29 @@ func MergeDeployments(destinationDeployment *appsv1.Deployment, sourceDeployment
 	initializeEmptyMapsInDeployment(destinationDeployment)
 	initializeEmptyMapsInDeployment(sourceDeployment)
 	err := mergo.Merge(destinationDeployment, sourceDeployment)
-	if err == nil && len(sourceDeployment.Spec.Template.Spec.Containers) > 0 && len(sourceDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) > 0 {
-		// cannot use sourceDeployment.Spec.Template.Spec.Containers[0].VolumeMounts (type []"k8s.io/api/core/v1".VolumeMount) as type "k8s.io/api/core/v1".VolumeMount in append
-		// so iterate over and append
-		for _, volumeMount := range sourceDeployment.Spec.Template.Spec.Containers[0].VolumeMounts {
-			destinationDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(destinationDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, volumeMount)
+
+	// Merge containers
+	if err == nil && len(sourceDeployment.Spec.Template.Spec.Containers) > 0 {
+		srcContainers := sourceDeployment.Spec.Template.Spec.Containers
+		dstContainers := destinationDeployment.Spec.Template.Spec.Containers
+
+		// Merge each container individually
+		for i, srcContainer := range srcContainers {
+			if i >= len(dstContainers) {
+				destinationDeployment.Spec.Template.Spec.Containers[i] = srcContainer
+				continue
+			}
+
+			dstContainer := dstContainers[i]
+
+			// Use mergo.WithAppendSlice to append extra volumeMount/env/port definitions
+			err = mergo.Merge(&dstContainer, srcContainer, mergo.WithAppendSlice)
+			if err != nil {
+				break
+			}
+			destinationDeployment.Spec.Template.Spec.Containers[i] = dstContainer
 		}
+
 	}
 	return err
 }

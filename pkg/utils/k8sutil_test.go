@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	fakeextensionsapi "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
+	resource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/fake"
@@ -125,34 +126,36 @@ func TestInitializeEmptyMapsInDeployment(t *testing.T) {
 }
 
 func TestMergeDeployments(t *testing.T) {
-	var replicas int32
-	replicas = 10
-	volumeMount := corev1.VolumeMount{
-		Name:      "foo",
-		MountPath: "/bar",
-	}
-	container := corev1.Container{
-		VolumeMounts: []corev1.VolumeMount{
-			volumeMount,
-		},
-	}
-	podSpec := corev1.PodSpec{
-		Containers: []corev1.Container{
-			container,
-		},
-	}
-	template := corev1.PodTemplateSpec{
-		Spec: podSpec,
-	}
-
+	var dstReplicas int32
+	dstReplicas = 10
 	destinationDeployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
 				"foo1-deploy": "bar",
 			},
 		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &dstReplicas,
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "foo",
+									MountPath: "/bar",
+								},
+							},
+							Resources: corev1.ResourceRequirements{},
+						},
+					},
+				},
+			},
+		},
 	}
 
+	var srcReplicas int32
+	srcReplicas = 8
 	sourceDeployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
@@ -160,30 +163,113 @@ func TestMergeDeployments(t *testing.T) {
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: &replicas,
-			Template: template,
+			Replicas: &srcReplicas,
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "baz",
+									MountPath: "/qux",
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceName(corev1.ResourceCPU):    resource.MustParse("100m"),
+									corev1.ResourceName(corev1.ResourceMemory): resource.MustParse("100Mi"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	var expectedReplicas int32
+	expectedReplicas = 10
+	expectedDeployment := appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"foo1-deploy": "bar",
+				"foo2-deploy": "bar",
+			},
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &expectedReplicas,
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "foo",
+									MountPath: "/bar",
+								},
+								{
+									Name:      "baz",
+									MountPath: "/qux",
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceName(corev1.ResourceCPU):    resource.MustParse("100m"),
+									corev1.ResourceName(corev1.ResourceMemory): resource.MustParse("100Mi"),
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 
 	MergeDeployments(&destinationDeployment, &sourceDeployment)
-	expectedAnnotations := map[string]string{
-		"foo1-deploy": "bar",
-		"foo2-deploy": "bar",
-	}
-	expectedVolumneMounts := len(destinationDeployment.Spec.Template.Spec.Containers[0].VolumeMounts)
-	mergedVolumneMounts := len(sourceDeployment.Spec.Template.Spec.Containers[0].VolumeMounts)
-	for i := range expectedAnnotations {
-		if destinationDeployment.ObjectMeta.Annotations[i] != expectedAnnotations[i] {
-			t.Fatalf("Expecting annotation %s but received %s", destinationDeployment.ObjectMeta.Annotations[i], expectedAnnotations[i])
-		}
-	}
-	if *destinationDeployment.Spec.Replicas != replicas {
-		t.Fatalf("Expecting replicas as 10 but received %v", *destinationDeployment.Spec.Replicas)
-	}
-	if mergedVolumneMounts != expectedVolumneMounts {
-		t.Fatalf("Expecting %v volumeMounts but received %v", expectedVolumneMounts, mergedVolumneMounts)
+
+	mergedContainerCount := len(destinationDeployment.Spec.Template.Spec.Containers)
+	if mergedContainerCount != 1 {
+		t.Fatalf("Expecting 1 container but received %v", mergedContainerCount)
 	}
 
+	expectedAnnotations := expectedDeployment.ObjectMeta.Annotations
+	mergedAnnotations := destinationDeployment.ObjectMeta.Annotations
+	for i := range expectedAnnotations {
+		if mergedAnnotations[i] != expectedAnnotations[i] {
+			t.Fatalf("Expecting annotation %s but received %s", expectedAnnotations[i], mergedAnnotations[i])
+		}
+	}
+
+	mergedReplicas := *destinationDeployment.Spec.Replicas
+	if mergedReplicas != expectedReplicas {
+		t.Fatalf("Expecting 8 replicas but received %v", *destinationDeployment.Spec.Replicas)
+	}
+
+	expectedVolumeMountCount := 2
+	mergedVolumeMountCount := len(destinationDeployment.Spec.Template.Spec.Containers[0].VolumeMounts)
+	if mergedVolumeMountCount != expectedVolumeMountCount {
+		t.Fatalf("Expecting %v volumeMounts but received %v", expectedVolumeMountCount, mergedVolumeMountCount)
+	}
+
+	expectedCPURequest := expectedDeployment.Spec.Template.Spec.Containers[0].Resources.Requests[corev1.ResourceName(corev1.ResourceCPU)]
+	mergedCPURequest := destinationDeployment.Spec.Template.Spec.Containers[0].Resources.Requests[corev1.ResourceName(corev1.ResourceCPU)]
+	if mergedCPURequest != expectedCPURequest {
+		t.Fatalf(
+			"Expecting %s cpu resource request but received %s",
+			expectedCPURequest.String(),
+			mergedCPURequest.String(),
+		)
+	}
+
+	expectedMemoryRequest := expectedDeployment.Spec.Template.Spec.Containers[0].Resources.Requests[corev1.ResourceName(corev1.ResourceMemory)]
+	mergedMemoryRequest := destinationDeployment.Spec.Template.Spec.Containers[0].Resources.Requests[corev1.ResourceName(corev1.ResourceMemory)]
+	if mergedMemoryRequest != expectedMemoryRequest {
+		t.Fatalf(
+			"Expecting %s memory resource request but received %s",
+			expectedMemoryRequest.String(),
+			mergedMemoryRequest.String(),
+		)
+	}
 }
 
 func TestGetAnnotationsFromCRD(t *testing.T) {
