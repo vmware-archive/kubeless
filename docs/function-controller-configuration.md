@@ -23,7 +23,14 @@ data:
         "template": {
           "annotations": {
             "annotations-to-pod": "value"
-          }
+          },
+          "containers": [{
+            "resources": {
+              "requests": {
+                "cpu": "100m"
+              }
+            }
+          }]
         }
       }
     }

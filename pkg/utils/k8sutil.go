@@ -383,6 +383,7 @@ func MergeDeployments(destinationDeployment *appsv1.Deployment, sourceDeployment
 		// Merge each container individually
 		for i, srcContainer := range srcContainers {
 			if i >= len(dstContainers) {
+				destinationDeployment.Spec.Template.Spec.Containers[i] = srcContainer;
 				continue;
 			}
 
