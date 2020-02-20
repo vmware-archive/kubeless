@@ -649,7 +649,8 @@ func TestEnsureDeployment(t *testing.T) {
 					PodAffinityTerm: v1.PodAffinityTerm{
 						LabelSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{
-								"function": f1Name,
+								"created-by": "kubeless",
+								"function":   f1Name,
 							},
 						},
 						TopologyKey: "kubernetes.io/hostname",
@@ -867,6 +868,30 @@ func TestDeploymentWithVolumes(t *testing.T) {
 	}
 	if dpm.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name != "test" {
 		t.Error("Should maintain volumen test")
+	}
+}
+
+func TestEnsureDeploymentWithAffinityOverridden(t *testing.T) {
+	funcName := "func"
+	clientset, or, ns, lr := prepareDeploymentTest(funcName)
+	// If the Image has been already provided it should not resolve it
+	f3 := getDefaultFunc(funcName, ns)
+	f3.Spec.Deployment.Spec.Template.Spec.Affinity = &v1.Affinity{}
+	err := EnsureFuncDeployment(clientset, f3, or, lr, "", "unzip", []v1.LocalObjectReference{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	dpm, err := clientset.AppsV1().Deployments(ns).Get(funcName, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	expectedAffinity := &v1.Affinity{NodeAffinity: nil, PodAffinity: nil, PodAntiAffinity: nil}
+	if *dpm.Spec.Template.Spec.Affinity != *expectedAffinity {
+		t.Errorf(
+			"Unexpected Affinity Definition:\nExpecting: %+v\nReceived: %+v",
+			expectedAffinity,
+			dpm.Spec.Template.Spec.Affinity,
+		)
 	}
 }
 

@@ -35,6 +35,10 @@ The fields that a Function specification can contain are:
 
 Apart from the basic parameters, it is possible to add the specification of a `Deployment`, a `Service` or an `Horizontal Pod Autoscaler` that Kubeless will use to generate them.
 
+## Pod Anti Affinity
+
+By default, a kubless generated `Deployment` will include a soft pod anti-affinity rule that will signal to kubernetes that it should try to deploy pods to different nodes. This behaviour can be overridden using a deployment template.
+
 ## Deploying large functions
 
 As any Kubernetes object, function objects have a maximum size of 1.5MiB (due to the [maximum size](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/limit.md#request-size-limit) of an etcd entry). Because of that, it's not possible to specify in the `function` field of the YAML content that surpasses that size. To workaround this issue it's possible to specify an URL in the `function` field. This file will be downloaded at build time (extracted if necessary) and the checksum will be checked. Doing this we avoid any limitation regarding the file size. It's also possible to include the function dependencies in this file and skip the dependency installation step. Note that since the file will be downloaded in a pod the URL should be accessible from within the cluster:
@@ -91,7 +95,7 @@ spec:
 ```
 
 Would create a function with the environment variable `FOO`, using CPU and memory limits and mounting the secret `my-secret` as a volume. Note that you can also specify a default template for a Deployment spec in the [controller configuration](/docs/function-controller-configuration).
-The resource configuration in `initContainers` will be applied to all of the initial containers in the target deployment (like `provision`, `compile` etc.)   
+The resource configuration in `initContainers` will be applied to all of the initial containers in the target deployment (like `provision`, `compile` etc.)
 
 
 ## Custom Service
