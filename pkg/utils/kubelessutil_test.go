@@ -636,8 +636,31 @@ func TestEnsureDeployment(t *testing.T) {
 			},
 		},
 	}
+
 	if !reflect.DeepEqual(dpm.Spec.Template.Spec.Containers[0], expectedContainer) {
 		t.Errorf("Unexpected container definition. Received:\n %+v\nExpecting:\n %+v", dpm.Spec.Template.Spec.Containers[0], expectedContainer)
+	}
+
+	expectedAffinity := &v1.Affinity{
+		PodAntiAffinity: &v1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []v1.WeightedPodAffinityTerm{
+				v1.WeightedPodAffinityTerm{
+					Weight: 100,
+					PodAffinityTerm: v1.PodAffinityTerm{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"function": f1Name,
+							},
+						},
+						TopologyKey: "kubernetes.io/hostname",
+					},
+				},
+			},
+		},
+	}
+
+	if !reflect.DeepEqual(dpm.Spec.Template.Spec.Affinity, expectedAffinity) {
+		t.Errorf("Unexpected pod affinity definition. Received:\n %+v\nExpecting:\n %+v", dpm.Spec.Template.Spec.Affinity, expectedAffinity)
 	}
 
 	secrets := dpm.Spec.Template.Spec.ImagePullSecrets
