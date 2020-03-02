@@ -367,6 +367,9 @@ func (c *FunctionController) ensureK8sResources(funcObj *kubelessApi.Function) e
 			}
 		}
 		err = utils.CreateAutoscale(c.clientset, funcObj.Spec.HorizontalPodAutoscaler)
+		if err != nil && k8sErrors.IsAlreadyExists(err) {
+			err = utils.UpdateAutoscale(c.clientset, funcObj.Spec.HorizontalPodAutoscaler)
+		}
 		if err != nil {
 			return err
 		}

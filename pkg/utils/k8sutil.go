@@ -319,10 +319,12 @@ func doRESTReq(restIface rest.Interface, groupVersion, verb, resource, elem, nam
 // CreateAutoscale creates HPA object for function
 func CreateAutoscale(client kubernetes.Interface, hpa v2beta1.HorizontalPodAutoscaler) error {
 	_, err := client.AutoscalingV2beta1().HorizontalPodAutoscalers(hpa.ObjectMeta.Namespace).Create(&hpa)
-	if err != nil {
-		return err
-	}
+	return err
+}
 
+// UpdateAutoscale updates an existing HPA object for a function
+func UpdateAutoscale(client kubernetes.Interface, hpa v2beta1.HorizontalPodAutoscaler) error {
+	_, err := client.AutoscalingV2beta1().HorizontalPodAutoscalers(hpa.ObjectMeta.Namespace).Update(&hpa)
 	return err
 }
 
