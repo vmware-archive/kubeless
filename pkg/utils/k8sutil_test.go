@@ -78,6 +78,45 @@ func TestCreateAutoscaleResource(t *testing.T) {
 	}
 }
 
+func TestUpdateAutoscaleResource(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	name := "foo"
+	ns := "myns"
+
+	// Create a pre-existing HPA
+	hpaDef := v2beta1.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+	}
+	if err := CreateAutoscale(clientset, hpaDef); err != nil {
+		t.Fatalf("Creating autoscale returned err: %v", err)
+	}
+
+	// Perform an update
+	hpaDef = v2beta1.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+			Labels: map[string]string{
+				"baz": "qux",
+			},
+		},
+	}
+	if err := UpdateAutoscale(clientset, hpaDef); err != nil {
+		t.Fatalf("Updating autoscale returned err: %v", err)
+	}
+
+	hpa, err := clientset.AutoscalingV2beta1().HorizontalPodAutoscalers(ns).Get(name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Updating autoscale returned err: %v", err)
+	}
+	if hpa.ObjectMeta.Name != "foo" {
+		t.Fatalf("Updating wrong scale target name")
+	}
+}
+
 func TestDeleteAutoscaleResource(t *testing.T) {
 	myNsFoo := metav1.ObjectMeta{
 		Namespace: "myns",
