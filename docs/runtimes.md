@@ -38,7 +38,7 @@ $ kubeless function deploy myFunction --runtime nodejs6 \
                                 --env NPM_REGISTRY=http://my-registry.com \
                                 --env NPM_SCOPE=@myorg \
                                 --dependencies package.json \
-                                --handler test.foobar \
+                                --handler test.foo \
                                 --from-file test.js
 ```
 
@@ -49,7 +49,7 @@ Depending on the size of the payload sent to the NodeJS function it is possible 
 ```console
 $ kubeless function deploy myFunction --runtime nodejs6 \
                                 --env REQ_MB_LIMIT=50 \
-                                --handler test.foobar \
+                                --handler test.foo \
                                 --from-file test.js
 ```
 
@@ -132,7 +132,7 @@ $ kubeless function deploy myFunction --runtime nodejs_distroless8 \
                                 --env NPM_REGISTRY=http://my-registry.com \
                                 --env NPM_SCOPE=@myorg \
                                 --dependencies package.json \
-                                --handler test.foobar \
+                                --handler test.foo \
                                 --from-file test.js
 ```
 
@@ -147,7 +147,7 @@ The same example Node.js function from above can then be deployed:
 ```console
 $ kubeless function deploy myFunction --runtime nodejsCE8 \
                                 --dependencies package.json \
-                                --handler test.foobar \
+                                --handler test.foo \
                                 --from-file test.js
 ```
 
