@@ -23,12 +23,6 @@ Check out the instructions for quickly set up Kubeless [here](http://kubeless.io
 Consult the [developer's guide](docs/dev-guide.md) for a complete set of instruction
 to build kubeless.
 
-## Comparison
-
-There are other solutions, like [fission](http://fission.io) and [funktion](https://github.com/fabric8io/funktion). There is also an incubating project at the ASF: [OpenWhisk](https://github.com/openwhisk/openwhisk). We believe however, that Kubeless is the most Kubernetes native of all.
-
-Kubeless uses k8s primitives, there is no additional API server or API router/gateway. Kubernetes users will quickly understand how it works and be able to leverage their existing logging and monitoring setup as well as their troubleshooting skills.
-
 ## Compatibility Matrix with Kubernetes
 
 Kubeless fully supports Kubernetes versions greater than 1.9 (tested until 1.15). For other versions some of the features in Kubeless may not be available. Our CI run tests against two different platforms: GKE (1.12) and Minikube (1.15). Other platforms are supported but fully compatibiliy cannot be assured.
