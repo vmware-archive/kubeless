@@ -21,7 +21,7 @@ require (
 	github.com/imdario/mergo v0.3.7
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.5 // indirect
-	github.com/kubeless/cronjob-trigger v1.0.0
+	github.com/kubeless/cronjob-trigger v1.0.2
 	github.com/kubeless/http-trigger v1.0.0
 	github.com/kubeless/kafka-trigger v1.0.1
 	github.com/kubeless/kinesis-trigger v0.0.0-20180817123215-a548c3d1cbd9

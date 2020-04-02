@@ -17,6 +17,7 @@ limitations under the License.
 package cronjob
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/robfig/cron"
@@ -72,6 +73,16 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		payload, err := cmd.Flags().GetString("payload")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		payloadFromFile, err := cmd.Flags().GetString("payload-from-file")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		kubelessClient, err := kubelessUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
@@ -87,6 +98,8 @@ var createCmd = &cobra.Command{
 			logrus.Fatalf("Unable to find Function %s in namespace %s. Error %s", functionName, ns, err)
 		}
 
+		parsedPayload := parsePayload(payload, payloadFromFile)
+
 		cronJobTrigger := cronjobApi.CronJobTrigger{}
 		cronJobTrigger.TypeMeta = metav1.TypeMeta{
 			Kind:       "CronJobTrigger",
@@ -101,6 +114,7 @@ var createCmd = &cobra.Command{
 		}
 		cronJobTrigger.Spec.FunctionName = functionName
 		cronJobTrigger.Spec.Schedule = schedule
+		cronJobTrigger.Spec.Payload = parsedPayload
 
 		if dryrun == true {
 			res, err := kubelessUtils.DryRunFmt(output, cronJobTrigger)
@@ -127,4 +141,32 @@ func init() {
 	createCmd.MarkFlagRequired("schedule")
 	createCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
 	createCmd.Flags().StringP("output", "o", "yaml", "Output format")
+	createCmd.Flags().StringP("payload", "p", "", "Specify a stringified JSON data to pass to function upon execution")
+	createCmd.Flags().StringP("payload-from-file", "f", "", "Specify a payload file to use. It can be a JSON or YAML file")
+}
+
+func parsePayload(raw string, file string) interface{} {
+	type Parser func(c string) interface{}
+
+	isRawPayload := len(raw) > 0
+
+	parser := map[bool]Parser{true: parsePayloadRaw, false: parsePayloadFile}[isRawPayload]
+	content := map[bool]string{true: raw, false: file}[isRawPayload]
+
+	return parser(content)
+}
+
+func parsePayloadRaw(raw string) interface{} {
+	var payload map[string]interface{}
+
+	err := json.Unmarshal([]byte(raw), &payload)
+	if err != nil {
+		return fmt.Errorf("Found an error during JSON parsing on your payload: %s", err)
+	}
+
+	return payload
+}
+
+func parsePayloadFile(file string) interface{} {
+	return file
 }

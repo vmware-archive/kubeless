@@ -32,8 +32,9 @@ type CronJobTrigger struct {
 
 // CronJobTriggerSpec defines specification for CronJobTrigger
 type CronJobTriggerSpec struct {
-	Schedule     string `json:"schedule"`      // Scheduled time (for Schedule type)
-	FunctionName string `json:"function-name"` // Name of the associated function
+	Schedule     string      `json:"schedule"`      // Scheduled time (for Schedule type)
+	FunctionName string      `json:"function-name"` // Name of the associated function
+	Payload      interface{} `json:"payload"`       // Payload to send as the request data to the given function
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

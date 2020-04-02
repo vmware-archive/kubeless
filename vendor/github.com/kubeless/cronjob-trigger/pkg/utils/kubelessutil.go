@@ -17,14 +17,15 @@ limitations under the License.
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
-	"time"
 
+	cronjobTriggerApi "github.com/kubeless/cronjob-trigger/pkg/apis/kubeless/v1beta1"
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,7 +33,7 @@ import (
 )
 
 // EnsureCronJob creates/updates a function cron job
-func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, schedule, reqImage string, or []metav1.OwnerReference, reqImagePullSecret []v1.LocalObjectReference) error {
+func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, cronjobTriggerObj *cronjobTriggerApi.CronJobTrigger, reqImage string, or []metav1.OwnerReference, reqImagePullSecret []v1.LocalObjectReference) error {
 	var maxSucccessfulHist, maxFailedHist int32
 	maxSucccessfulHist = 3
 	maxFailedHist = 1
@@ -46,18 +47,34 @@ func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, s
 	} else {
 		timeout, _ = strconv.Atoi(defaultTimeout)
 	}
+
+	schedule := cronjobTriggerObj.Spec.Schedule
+	rawPayload, err := json.Marshal(cronjobTriggerObj.Spec.Payload)
+	payload := string(rawPayload)
+	payloadContentType := "application/json"
+
+	if err != nil {
+		return fmt.Errorf("Found an error during JSON parsing on your payload: %s", err)
+	}
+
 	activeDeadlineSeconds := int64(timeout)
 	jobName := fmt.Sprintf("trigger-%s", funcObj.ObjectMeta.Name)
-	var headersString = ""
-	timestamp := time.Now().UTC()
-	eventID, err := GetRandString(11)
-	if err != nil {
-		return fmt.Errorf("Failed to create a event-ID %v", err)
+	functionEndpoint := fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.ObjectMeta.Name, funcObj.ObjectMeta.Namespace)
+
+	headersTemplate := "-H %s -H %s -H %s -H %s -H %s"
+	eventId := "\"Event-Id: $(POD_UID)\""
+	eventTime := "\"Event-Time: $(date --rfc-3339=seconds --utc)\""
+	eventNamespace := "\"Event-Namespace: cronjobtrigger.kubeless.io\""
+	eventType := fmt.Sprintf("\"Event-Type: %s\"", payloadContentType)
+	contentType := fmt.Sprintf("\"Content-Type: %s\"", payloadContentType)
+	headers := fmt.Sprintf(headersTemplate, eventId, eventTime, eventNamespace, eventType, contentType)
+
+	commandTemplate := "curl -Lv %s %s"
+	command := fmt.Sprintf(commandTemplate, headers, functionEndpoint)
+
+	if payload != "null" {
+		command += fmt.Sprintf(" -d '%s'", payload)
 	}
-	headersString = headersString + " -H \"event-id: " + eventID + "\""
-	headersString = headersString + " -H \"event-time: " + timestamp.String() + "\""
-	headersString = headersString + " -H \"event-type: application/json\""
-	headersString = headersString + " -H \"event-namespace: cronjobtrigger.kubeless.io\""
 
 	job := &batchv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -80,15 +97,31 @@ func EnsureCronJob(client kubernetes.Interface, funcObj *kubelessApi.Function, s
 								{
 									Image: reqImage,
 									Name:  "trigger",
-									Args:  []string{"curl", "-Lv", headersString, fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", funcObj.ObjectMeta.Name, funcObj.ObjectMeta.Namespace)},
+									Env: []v1.EnvVar{
+										{
+											Name: "POD_UID",
+											ValueFrom: &v1.EnvVarSource{
+												FieldRef: &v1.ObjectFieldSelector{
+													FieldPath: "metadata.uid",
+												},
+											},
+										},
+									},
+									Command: []string{
+										"/bin/sh",
+										"-c",
+									},
+									Args: []string{
+										command,
+									},
 									Resources: v1.ResourceRequirements{
 										Limits: v1.ResourceList{
-											v1.ResourceMemory: resource.MustParse("4Mi"),
-											v1.ResourceCPU:    resource.MustParse("1m"),
+											v1.ResourceMemory: resource.MustParse("64Mi"),
+											v1.ResourceCPU:    resource.MustParse("100m"),
 										},
 										Requests: v1.ResourceList{
-											v1.ResourceMemory: resource.MustParse("4Mi"),
-											v1.ResourceCPU:    resource.MustParse("1m"),
+											v1.ResourceMemory: resource.MustParse("16Mi"),
+											v1.ResourceCPU:    resource.MustParse("10m"),
 										},
 									},
 								},
