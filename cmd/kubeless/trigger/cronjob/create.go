@@ -19,6 +19,11 @@ package cronjob
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"strings"
+	"net/http"
+	"net/url"
+	"path/filepath"
 
 	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
@@ -142,21 +147,83 @@ func init() {
 	createCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
 	createCmd.Flags().StringP("output", "o", "yaml", "Output format")
 	createCmd.Flags().StringP("payload", "p", "", "Specify a stringified JSON data to pass to function upon execution")
-	createCmd.Flags().StringP("payload-from-file", "f", "", "Specify a payload file to use. It can be a JSON or YAML file")
+	createCmd.Flags().StringP("payload-from-file", "f", "", "Specify a payload file to use. It must be a JSON file")
 }
 
 func parsePayload(raw string, file string) interface{} {
-	type Parser func(c string) interface{}
+	content, err := getPayloadRawContent(raw, file)
+	if err != nil {
+		return fmt.Errorf("Found an error while parsing your payload: %s", err)
+	}
 
-	isRawPayload := len(raw) > 0
-
-	parser := map[bool]Parser{true: parsePayloadRaw, false: parsePayloadFile}[isRawPayload]
-	content := map[bool]string{true: raw, false: file}[isRawPayload]
-
-	return parser(content)
+	return parsePayloadContent(content)
 }
 
-func parsePayloadRaw(raw string) interface{} {
+func getPayloadRawContent(content string, file string) (string, error) {
+	if len(content) == 0 {
+		origin := getOrigin(file)
+		content, err := getPayloadFileContent(file, origin)
+		if err != nil {
+			return "", err
+		}
+
+		ext := filepath.Ext(file)
+		if ext != ".json" {
+			return "", fmt.Errorf("Sorry, we can't parse %s files yet", ext)
+		}
+
+		return content, nil
+	}
+
+	return content, nil
+}
+
+func getOrigin(file string) string {
+	var origin string
+
+	isUrl := strings.HasPrefix(file, "https://") || strings.HasPrefix(file, "http://")
+
+	if isUrl {
+		origin = "url"
+	} else {
+		origin = "file"
+	}
+
+	return origin
+}
+
+func getPayloadFileContent(file string, origin string) (string, error) {
+	var content string
+
+	if origin == "url" {
+		payloadURL, err := url.Parse(file)
+		if err != nil {
+			return "", err
+		}
+		resp, err := http.Get(payloadURL.String())
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+
+		payloadBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", err
+		}
+		content = string(payloadBytes)
+	} else {
+		payloadBytes, err := ioutil.ReadFile(file)
+		if err != nil {
+			return "", err
+		}
+
+		content = string(payloadBytes)
+	}
+
+	return content, nil
+}
+
+func parsePayloadContent(raw string) interface{} {
 	var payload map[string]interface{}
 
 	err := json.Unmarshal([]byte(raw), &payload)
@@ -165,8 +232,4 @@ func parsePayloadRaw(raw string) interface{} {
 	}
 
 	return payload
-}
-
-func parsePayloadFile(file string) interface{} {
-	return file
 }
