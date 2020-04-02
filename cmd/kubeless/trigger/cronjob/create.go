@@ -181,9 +181,9 @@ func getPayloadRawContent(content string, file string) (string, error) {
 func getOrigin(file string) string {
 	var origin string
 
-	isUrl := strings.HasPrefix(file, "https://") || strings.HasPrefix(file, "http://")
+	isURL := strings.HasPrefix(file, "https://") || strings.HasPrefix(file, "http://")
 
-	if isUrl {
+	if isURL {
 		origin = "url"
 	} else {
 		origin = "file"
