@@ -26,14 +26,14 @@ import (
 	httptriggerapi "github.com/kubeless/http-trigger/pkg/apis/kubeless/v1beta1"
 	kubelessApi "github.com/kubeless/http-trigger/pkg/apis/kubeless/v1beta1"
 
-	"github.com/sirupsen/logrus"
 	"k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/types"
 
 	// Auth plugins
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -265,7 +265,7 @@ func CreateIngress(client kubernetes.Interface, httpTriggerObj *kubelessApi.HTTP
 	// to the path expected by the service
 	ingressAnnotations["nginx.ingress.kubernetes.io/rewrite-target"] = "/"
 	if len(httpTriggerObj.ObjectMeta.Annotations) > 0 {
-		for k, v := range httpTriggerObj.ObjectMeta.Annotations {
+		for k,v := range httpTriggerObj.ObjectMeta.Annotations {
 			ingressAnnotations[k] = v
 		}
 	}
