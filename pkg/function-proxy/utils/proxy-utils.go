@@ -26,9 +26,9 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
@@ -37,26 +37,27 @@ var (
 	shutdownTimeout    = os.Getenv("SHUTDOWN_TIMEOUT")
 	intTimeout         int
 	intShutdownTimeout int
-	FuncHistogram      = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	funcHistogram      = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "function_duration_seconds",
 		Help: "Duration of user function in seconds",
 	}, []string{"method"})
-	FuncCalls = promauto.NewCounterVec(prometheus.CounterOpts{
+	funcCalls = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "function_calls_total",
 		Help: "Number of calls to user function",
 	}, []string{"method"})
-	FuncErrors = promauto.NewCounterVec(prometheus.CounterOpts{
+	funcErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "function_failures_total",
 		Help: "Number of exceptions in user function",
 	}, []string{"method"})
 )
 
+// Prometheus Handler, invoked in the runtime
 func PromHTTPHandler() http.Handler{
 	return promhttp.Handler()
 }
 
 func init() {
-	
+	fmt.Println("scream")
 	if timeout == "" {
 		timeout = "180"
 	}
@@ -75,6 +76,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	prometheus.MustRegister(funcHistogram, funcCalls, funcErrors)
 }
 
 // Logging Functions, required to expose statusCode property
@@ -128,10 +130,10 @@ func Handler(w http.ResponseWriter, r *http.Request, h Handle) {
 		err error
 	}, 1)
 	go func() {
-		FuncCalls.With(prometheus.Labels{"method": r.Method}).Inc()
+		funcCalls.With(prometheus.Labels{"method": r.Method}).Inc()
 		start := time.Now()
 		res, err := h(ctx, w, r)
-		FuncHistogram.With(prometheus.Labels{"method": r.Method}).Observe(time.Since(start).Seconds())
+		funcHistogram.With(prometheus.Labels{"method": r.Method}).Observe(time.Since(start).Seconds())
 		pack := struct {
 			res string
 			err error
@@ -141,7 +143,7 @@ func Handler(w http.ResponseWriter, r *http.Request, h Handle) {
 	select {
 	case respPack := <-funcChannel:
 		if respPack.err != nil {
-			FuncErrors.With(prometheus.Labels{"method": r.Method}).Inc()
+			funcErrors.With(prometheus.Labels{"method": r.Method}).Inc()
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(fmt.Sprintf("Error: %v", respPack.err)))
 		} else {
@@ -149,7 +151,7 @@ func Handler(w http.ResponseWriter, r *http.Request, h Handle) {
 		}
 	// Send Timeout response
 	case <-ctx.Done():
-		FuncErrors.With(prometheus.Labels{"method": r.Method}).Inc()
+		funcErrors.With(prometheus.Labels{"method": r.Method}).Inc()
 		w.WriteHeader(http.StatusRequestTimeout)
 		w.Write([]byte("Timeout exceeded"))
 	}
