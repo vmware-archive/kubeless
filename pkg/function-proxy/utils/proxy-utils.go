@@ -27,8 +27,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -51,8 +51,8 @@ var (
 	}, []string{"method"})
 )
 
-// PromHTTPHandler to expose the metrics, invoked in the runtime
-func PromHTTPHandler() http.Handler{
+// PromHTTPHandler to expose the metrics, invoked in the golang runtime
+func PromHTTPHandler() http.Handler {
 	return promhttp.Handler()
 }
 

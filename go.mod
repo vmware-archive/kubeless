@@ -39,8 +39,10 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3 // indirect
-	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297
+	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
+	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
 	golang.org/x/oauth2 v0.0.0-20190130055435-99b60b757ec1 // indirect
+	golang.org/x/tools v0.0.0-20200402223321-bcf690261a44 // indirect
 	k8s.io/api v0.0.0-20180308224125-73d903622b73
 	k8s.io/apiextensions-apiserver v0.0.0-20180327033742-750feebe2038
 	k8s.io/apimachinery v0.0.0-20180228050457-302974c03f7e
