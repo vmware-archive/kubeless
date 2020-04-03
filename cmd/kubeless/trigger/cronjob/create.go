@@ -17,13 +17,7 @@ limitations under the License.
 package cronjob
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"path/filepath"
-	"strings"
 
 	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
@@ -88,6 +82,11 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		if len(payload) > 0 && len(payloadFromFile) > 0 {
+			err := "You can't provide both raw payload and a payload file"
+			logrus.Fatal(err)
+		}
+
 		kubelessClient, err := kubelessUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
@@ -103,7 +102,10 @@ var createCmd = &cobra.Command{
 			logrus.Fatalf("Unable to find Function %s in namespace %s. Error %s", functionName, ns, err)
 		}
 
-		parsedPayload := parsePayload(payload, payloadFromFile)
+		parsedPayload, err := parsePayload(payload, payloadFromFile)
+		if err != nil {
+			logrus.Fatal("Unable to parse the payload of Function %s in namespace %s. Error %s", functionName, ns, err)
+		}
 
 		cronJobTrigger := cronjobApi.CronJobTrigger{}
 		cronJobTrigger.TypeMeta = metav1.TypeMeta{
@@ -148,88 +150,4 @@ func init() {
 	createCmd.Flags().StringP("output", "o", "yaml", "Output format")
 	createCmd.Flags().StringP("payload", "p", "", "Specify a stringified JSON data to pass to function upon execution")
 	createCmd.Flags().StringP("payload-from-file", "f", "", "Specify a payload file to use. It must be a JSON file")
-}
-
-func parsePayload(raw string, file string) interface{} {
-	content, err := getPayloadRawContent(raw, file)
-	if err != nil {
-		return fmt.Errorf("Found an error while parsing your payload: %s", err)
-	}
-
-	return parsePayloadContent(content)
-}
-
-func getPayloadRawContent(content string, file string) (string, error) {
-	if len(content) == 0 {
-		origin := getOrigin(file)
-		content, err := getPayloadFileContent(file, origin)
-		if err != nil {
-			return "", err
-		}
-
-		ext := filepath.Ext(file)
-		if ext != ".json" {
-			return "", fmt.Errorf("Sorry, we can't parse %s files yet", ext)
-		}
-
-		return content, nil
-	}
-
-	return content, nil
-}
-
-func getOrigin(file string) string {
-	var origin string
-
-	isURL := strings.HasPrefix(file, "https://") || strings.HasPrefix(file, "http://")
-
-	if isURL {
-		origin = "url"
-	} else {
-		origin = "file"
-	}
-
-	return origin
-}
-
-func getPayloadFileContent(file string, origin string) (string, error) {
-	var content string
-
-	if origin == "url" {
-		payloadURL, err := url.Parse(file)
-		if err != nil {
-			return "", err
-		}
-		resp, err := http.Get(payloadURL.String())
-		if err != nil {
-			return "", err
-		}
-		defer resp.Body.Close()
-
-		payloadBytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return "", err
-		}
-		content = string(payloadBytes)
-	} else {
-		payloadBytes, err := ioutil.ReadFile(file)
-		if err != nil {
-			return "", err
-		}
-
-		content = string(payloadBytes)
-	}
-
-	return content, nil
-}
-
-func parsePayloadContent(raw string) interface{} {
-	var payload map[string]interface{}
-
-	err := json.Unmarshal([]byte(raw), &payload)
-	if err != nil {
-		return fmt.Errorf("Found an error during JSON parsing on your payload: %s", err)
-	}
-
-	return payload
 }

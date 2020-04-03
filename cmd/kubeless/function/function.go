@@ -17,20 +17,11 @@ limitations under the License.
 package function
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"os"
-	"path"
 	"strings"
-	"unicode/utf8"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
+	kubelessutil "github.com/kubeless/kubeless/pkg/utils"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
@@ -109,102 +100,6 @@ func parseResource(in string) (resource.Quantity, error) {
 	return quantity, nil
 }
 
-func getFileSha256(file string) (string, error) {
-	h := sha256.New()
-	ff, err := os.Open(file)
-	if err != nil {
-		return "", err
-	}
-	defer ff.Close()
-	_, err = io.Copy(h, ff)
-	if err != nil {
-		return "", err
-	}
-	checksum := hex.EncodeToString(h.Sum(nil))
-	return "sha256:" + checksum, err
-}
-
-func getSha256(bytes []byte) (string, error) {
-	h := sha256.New()
-	_, err := h.Write(bytes)
-	if err != nil {
-		return "", err
-	}
-	checksum := hex.EncodeToString(h.Sum(nil))
-	return "sha256:" + checksum, nil
-}
-
-func getContentType(filename string) (string, error) {
-	var contentType string
-
-	if strings.Index(filename, "http://") == 0 || strings.Index(filename, "https://") == 0 {
-		contentType = "url"
-		if path.Ext(strings.Split(filename, "?")[0]) == ".zip" {
-			contentType += "+zip"
-		}
-	} else {
-		fbytes, err := ioutil.ReadFile(filename)
-		if err != nil {
-			return "", err
-		}
-		isText := utf8.ValidString(string(fbytes))
-		if isText {
-			contentType = "text"
-		} else {
-			contentType = "base64"
-			if path.Ext(filename) == ".zip" {
-				contentType += "+zip"
-			}
-		}
-	}
-	return contentType, nil
-}
-
-func parseContent(file, contentType string) (string, string, error) {
-	var checksum, content string
-
-	if strings.Contains(contentType, "url") {
-
-		functionURL, err := url.Parse(file)
-		if err != nil {
-			return "", "", err
-		}
-		resp, err := http.Get(functionURL.String())
-		if err != nil {
-			return "", "", err
-		}
-		defer resp.Body.Close()
-
-		functionBytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return "", "", err
-		}
-		content = string(functionBytes)
-		checksum, err = getSha256(functionBytes)
-		if err != nil {
-			return "", "", err
-		}
-
-	} else {
-
-		functionBytes, err := ioutil.ReadFile(file)
-		if err != nil {
-			return "", "", err
-		}
-		if contentType == "text" {
-			content = string(functionBytes)
-		} else {
-			content = base64.StdEncoding.EncodeToString(functionBytes)
-		}
-		checksum, err = getFileSha256(file)
-		if err != nil {
-			return "", "", err
-		}
-	}
-
-	return content, checksum, nil
-}
-
 func getFunctionDescription(funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, imagePullPolicy string, port int32, servicePort int32, headless bool, envs, labels []string, secrets []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
 
 	function := defaultFunction
@@ -217,11 +112,11 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, runtimeI
 	}
 
 	if file != "" {
-		contentType, err := getContentType(file)
+		contentType, err := kubelessutil.GetContentType(file)
 		if err != nil {
 			return nil, err
 		}
-		functionContent, checksum, err := parseContent(file, contentType)
+		functionContent, checksum, err := kubelessutil.ParseContent(file, contentType)
 		if err != nil {
 			return nil, err
 		}

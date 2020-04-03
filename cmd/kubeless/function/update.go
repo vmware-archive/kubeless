@@ -126,11 +126,11 @@ var updateCmd = &cobra.Command{
 		}
 		funcDeps := ""
 		if deps != "" {
-			contentType, err := getContentType(deps)
+			contentType, err := utils.GetContentType(deps)
 			if err != nil {
 				logrus.Fatal(err)
 			}
-			funcDeps, _, err = parseContent(deps, contentType)
+			funcDeps, _, err = utils.ParseContent(deps, contentType)
 			if err != nil {
 				logrus.Fatal(err)
 			}
