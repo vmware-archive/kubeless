@@ -51,13 +51,12 @@ var (
 	}, []string{"method"})
 )
 
-// Prometheus Handler, invoked in the runtime
+// PromHTTPHandler to expose the metrics, invoked in the runtime
 func PromHTTPHandler() http.Handler{
 	return promhttp.Handler()
 }
 
 func init() {
-	fmt.Println("scream")
 	if timeout == "" {
 		timeout = "180"
 	}
