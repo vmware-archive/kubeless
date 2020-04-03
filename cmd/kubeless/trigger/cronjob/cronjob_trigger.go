@@ -17,12 +17,12 @@ limitations under the License.
 package cronjob
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"encoding/json"
 
-	"github.com/spf13/cobra"
 	kubelessutil "github.com/kubeless/kubeless/pkg/utils"
+	"github.com/spf13/cobra"
 )
 
 // CronjobTriggerCmd command for CronJob trigger commands

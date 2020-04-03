@@ -21,8 +21,8 @@ import (
 	"strings"
 
 	kubelessApi "github.com/kubeless/kubeless/pkg/apis/kubeless/v1beta1"
-	kubelessutil "github.com/kubeless/kubeless/pkg/utils"
 	"github.com/kubeless/kubeless/pkg/client/clientset/versioned"
+	kubelessutil "github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

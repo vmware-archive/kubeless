@@ -18,18 +18,18 @@ package utils
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
 	"io"
 	"io/ioutil"
+	"net/http"
+	"net/url"
+	"os"
 	"path"
 	"strconv"
 	"strings"
-	"net/url"
-	"net/http"
-	"encoding/base64"
 	"unicode/utf8"
 
 	monitoringv1alpha1 "github.com/coreos/prometheus-operator/pkg/client/monitoring/v1alpha1"
