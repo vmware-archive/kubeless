@@ -879,7 +879,7 @@ func DryRunFmt(format string, trigger interface{}) (string, error) {
 	}
 }
 
-// Gets the content type of a given filename
+// GetContentType Gets the content type of a given filename
 func GetContentType(filename string) (string, error) {
 	var contentType string
 
@@ -906,7 +906,7 @@ func GetContentType(filename string) (string, error) {
 	return contentType, nil
 }
 
-// Parse the content of a file as string
+// ParseContent Parses the content of a file as string
 func ParseContent(file, contentType string) (string, string, error) {
 	var checksum, content string
 
