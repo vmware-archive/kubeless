@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -49,6 +50,11 @@ var (
 		Help: "Number of exceptions in user function",
 	}, []string{"method"})
 )
+
+// PromHTTPHandler to expose the metrics, invoked in the golang runtime
+func PromHTTPHandler() http.Handler {
+	return promhttp.Handler()
+}
 
 func init() {
 	if timeout == "" {
