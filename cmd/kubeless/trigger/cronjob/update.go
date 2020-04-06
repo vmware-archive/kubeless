@@ -104,7 +104,7 @@ var updateCmd = &cobra.Command{
 
 		parsedPayload, err := parsePayload(payload, payloadFromFile)
 		if err != nil {
-			logrus.Fatal("Unable to parse the payload of Function %s in namespace %s. Error %s", functionName, ns, err)
+			logrus.Fatalf("Unable to parse the payload of Function %s in namespace %s. Error %s", functionName, ns, err)
 		}
 
 		cronJobTrigger, err := cronjobUtils.GetCronJobCustomResource(cronJobClient, triggerName, ns)
