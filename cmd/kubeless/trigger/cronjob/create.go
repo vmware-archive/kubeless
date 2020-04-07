@@ -72,6 +72,21 @@ var createCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		payload, err := cmd.Flags().GetString("payload")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		payloadFromFile, err := cmd.Flags().GetString("payload-from-file")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		if len(payload) > 0 && len(payloadFromFile) > 0 {
+			err := "You can't provide both raw payload and a payload file"
+			logrus.Fatal(err)
+		}
+
 		kubelessClient, err := kubelessUtils.GetKubelessClientOutCluster()
 		if err != nil {
 			logrus.Fatalf("Can not create out-of-cluster client: %v", err)
@@ -85,6 +100,11 @@ var createCmd = &cobra.Command{
 		_, err = kubelessUtils.GetFunctionCustomResource(kubelessClient, functionName, ns)
 		if err != nil {
 			logrus.Fatalf("Unable to find Function %s in namespace %s. Error %s", functionName, ns, err)
+		}
+
+		parsedPayload, err := parsePayload(payload, payloadFromFile)
+		if err != nil {
+			logrus.Fatalf("Unable to parse the payload of Function %s in namespace %s. Error %s", functionName, ns, err)
 		}
 
 		cronJobTrigger := cronjobApi.CronJobTrigger{}
@@ -101,6 +121,7 @@ var createCmd = &cobra.Command{
 		}
 		cronJobTrigger.Spec.FunctionName = functionName
 		cronJobTrigger.Spec.Schedule = schedule
+		cronJobTrigger.Spec.Payload = parsedPayload
 
 		if dryrun == true {
 			res, err := kubelessUtils.DryRunFmt(output, cronJobTrigger)
@@ -127,4 +148,6 @@ func init() {
 	createCmd.MarkFlagRequired("schedule")
 	createCmd.Flags().Bool("dryrun", false, "Output JSON manifest of the function without creating it")
 	createCmd.Flags().StringP("output", "o", "yaml", "Output format")
+	createCmd.Flags().StringP("payload", "p", "", "Specify a stringified JSON data to pass to function upon execution")
+	createCmd.Flags().StringP("payload-from-file", "f", "", "Specify a payload file to use. It must be a JSON file")
 }

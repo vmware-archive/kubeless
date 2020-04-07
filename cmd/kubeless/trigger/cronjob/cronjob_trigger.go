@@ -17,6 +17,11 @@ limitations under the License.
 package cronjob
 
 import (
+	"encoding/json"
+	"fmt"
+	"path/filepath"
+
+	kubelessutil "github.com/kubeless/kubeless/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -35,4 +40,47 @@ func init() {
 	CronjobTriggerCmd.AddCommand(deleteCmd)
 	CronjobTriggerCmd.AddCommand(listCmd)
 	CronjobTriggerCmd.AddCommand(updateCmd)
+}
+
+func parsePayload(content string, file string) (interface{}, error) {
+	if len(file) > 0 {
+		content, err := getPayloadRawContent(file)
+		if err != nil {
+			return nil, err
+		}
+
+		return parsePayloadContent(content), nil
+	}
+
+	return parsePayloadContent(content), nil
+}
+
+func getPayloadRawContent(file string) (string, error) {
+	contentType, err := kubelessutil.GetContentType(file)
+	if err != nil {
+		return "", err
+	}
+
+	content, _, err := kubelessutil.ParseContent(file, contentType)
+	if err != nil {
+		return "", err
+	}
+
+	ext := filepath.Ext(file)
+	if ext != ".json" {
+		return "", fmt.Errorf("Sorry, we can't parse %s files yet", ext)
+	}
+
+	return content, nil
+}
+
+func parsePayloadContent(raw string) interface{} {
+	var payload map[string]interface{}
+
+	err := json.Unmarshal([]byte(raw), &payload)
+	if err != nil {
+		return fmt.Errorf("Found an error during JSON parsing on your payload: %s", err)
+	}
+
+	return payload
 }
