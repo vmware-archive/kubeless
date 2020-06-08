@@ -1,6 +1,6 @@
 # Kubeless Runtime Variants
 
-By default Kubeless has support for runtimes in different states: stable and incubator. You can find the different runtimes available in this repository: 
+By default Kubeless has support for runtimes in different states: stable and incubator. You can find the different runtimes available in this repository:
 
 [https://github.com/kubeless/runtimes](https://github.com/kubeless/runtimes).
 
@@ -55,7 +55,7 @@ $ kubeless function deploy myFunction --runtime nodejs6 \
 
 **For Webpack Users**
 
-Your webpacked functions will be `require()`-d in so your bundle should work out of the box. However, if your bundle size is approaching 1mb you should take advantage of Kubeless' ability to install dependencies for you instead of bundling them all into your payload. 
+Your webpacked functions will be `require()`-d in so your bundle should work out of the box. However, if your bundle size is approaching 1mb you should take advantage of Kubeless' ability to install dependencies for you instead of bundling them all into your payload.
 
 You will need to customize your webpack config to suit your own project, but below is an sample config of how to achieve this in Webpack 4.x:
 
@@ -123,7 +123,7 @@ For the Node.js runtime we start an [Express](http://expressjs.com) server and w
 
 There is the [distroless](https://github.com/GoogleContainerTools/distroless) variant of the Node.js 8 runtime.
 The distroless Node.js runtime contains only the kubeless function and its runtime dependencies.
-In particular, this variant does not contain package manager, shells or any other programs which are part of a standard Linux distribution. 
+In particular, this variant does not contain package manager, shells or any other programs which are part of a standard Linux distribution.
 
 The same example Node.js function from above can then be deployed:
 
@@ -204,7 +204,44 @@ func Handler(event functions.Event, context functions.Context) (string, error) {
 
 #### Description
 
-Go functions require to import the package `github.com/kubeless/kubeless/pkg/functions` that is used to define the input parameters. The desired method should be exported in the package. You can specify dependencies using a `Gopkg.toml` file, dependencies are installed using [`dep`](https://github.com/golang/dep).
+Go functions require to import the package `github.com/kubeless/kubeless/pkg/functions` that is used to define the input parameters. The desired method should be exported in the package. You can specify dependencies using [go modules](https://blog.golang.org/using-go-modules).
+
+#### Go with Dependency Example
+
+This is an example of a function using the `github.com/sirupsen/logrus` dependency.
+
+```go
+// hellowithdeps.go
+
+package kubeless
+
+import (
+	"github.com/kubeless/kubeless/pkg/functions"
+	"github.com/sirupsen/logrus"
+)
+
+// Hello sample function with dependencies
+func Hello(event functions.Event, context functions.Context) (string, error) {
+	logrus.Info(event.Data)
+	return "Hello world!", nil
+}
+```
+
+```go
+//go.mod
+
+module function
+
+go 1.14
+
+require (
+	github.com/sirupsen/logrus v1.6.0
+)
+```
+
+```bash
+kubeless function deploy get-go-deps --runtime go1.14 --handler hellowithdeps.Hello --from-file hellowithdeps.go --dependencies go.mod
+```
 
 #### Server implementation
 
@@ -261,7 +298,7 @@ func Foo(event functions.Event, context functions.Context) (string, error) {
 }
 ```
 
-If the function above has a timeout smaller than 5 seconds it will exit and the code after the `select{}` won't be executed. 
+If the function above has a timeout smaller than 5 seconds it will exit and the code after the `select{}` won't be executed.
 
 ### Java
 
@@ -462,13 +499,13 @@ public function foo(kubeless:Event event, kubeless:Context context) returns (str
 
 #### Description
 
-The Ballerina functions should import the package `kubeless/kubeless`. This [package](https://central.ballerina.io/kubeless/kubeless) contains two types `Event` and `Context`. 
- 
+The Ballerina functions should import the package `kubeless/kubeless`. This [package](https://central.ballerina.io/kubeless/kubeless) contains two types `Event` and `Context`.
+
 ```console
-$ kubeless function deploy foo 
-    --runtime ballerina0.981.0 
-    --from-file foo.bal 
-    --handler foo.foo 
+$ kubeless function deploy foo
+    --runtime ballerina0.981.0
+    --from-file foo.bal
+    --handler foo.foo
 ```
 
 When using the Ballerina runtime, it is possible to provide a configuration via `kubeless.toml` file. The values in kubeless.toml file are available for the function. The function(.bal file) and conf file should be in the same directory.
@@ -482,8 +519,8 @@ foo
 $ zip -r -j foo.zip foo/
 
 $ kubeless function deploy foo
-      --runtime ballerina0.981.0 
-      --from-file foo.zip 
+      --runtime ballerina0.981.0
+      --from-file foo.zip
       --handler hellowithconf.foo
 ```
 
