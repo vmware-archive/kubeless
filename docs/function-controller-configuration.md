@@ -4,7 +4,7 @@
 
 Configurations for functions can be done in `ConfigMap`: `kubeless-config` which is a part of `Kubeless` deployment manifests.
 
-Deployments for function can be configured in `data` inside the `ConfigMap`, using key `deployment`, which takes a string in the form of `yaml/json` and is driven by the structure of [v1beta2.Deployment](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.9/#deployment-v1beta2-apps):
+Deployments for function can be configured in `data` inside the `ConfigMap`, using key `deployment`, which takes a string in the form of `yaml/json` and is driven by the structure of [v1.Deployment](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#deployment-v1-apps):
 
 E.g. In the below configuration, new **annotations** are added globally to all function deployments and podTemplates and **replicas** for each function pod will be `2`.
 
