@@ -136,13 +136,13 @@ get-nodejs-multi-verify:
 	kubeless function call get-nodejs-multi |egrep hello.world
 
 get-go:
-	kubeless function deploy get-go --runtime go1.10 --handler handler.Foo --from-file golang/helloget.go
+	kubeless function deploy get-go --runtime go1.14 --handler handler.Foo --from-file golang/helloget.go
 
 get-go-verify:
 	kubeless function call get-go |egrep Hello.world
 
 get-go-custom-port:
-	kubeless function deploy get-go-custom-port --runtime go1.10 --handler helloget.Foo --from-file golang/helloget.go --port 8083
+	kubeless function deploy get-go-custom-port --runtime go1.14 --handler helloget.Foo --from-file golang/helloget.go --port 8083
 
 get-go-custom-port-verify:
 	kubectl get svc get-go-custom-port -o yaml | grep 'targetPort: 8083'
@@ -151,7 +151,7 @@ get-go-custom-port-verify:
 timeout-go:
 	$(eval TMPDIR := $(shell mktemp -d))
 	printf 'package kubeless\nimport "github.com/kubeless/kubeless/pkg/functions"\nfunc Foo(event functions.Event, context functions.Context) (string, error) {\nfor{\n}\nreturn "", nil\n}' > $(TMPDIR)/hello-loop.js
-	kubeless function deploy timeout-go --runtime go1.10 --handler helloget.Foo  --from-file $(TMPDIR)/hello-loop.js --timeout 4
+	kubeless function deploy timeout-go --runtime go1.14 --handler helloget.Foo  --from-file $(TMPDIR)/hello-loop.js --timeout 4
 	rm -rf $(TMPDIR)
 
 timeout-go-verify:
@@ -159,14 +159,14 @@ timeout-go-verify:
 	echo $(MSG) | egrep Request.timeout.exceeded
 
 get-go-deps:
-	kubeless function deploy get-go-deps --runtime go1.10 --handler helloget.Hello --from-file golang/hellowithdeps.go --dependencies golang/Gopkg.toml
+	kubeless function deploy get-go-deps --runtime go1.14 --handler helloget.Hello --from-file golang/hellowithdeps.go --dependencies golang/Gopkg.toml
 
 get-go-deps-verify:
 	kubeless function call get-go-deps --data '{"hello": "world"}'
 	kubectl logs --tail=1000 -l function=get-go-deps | grep -q 'level=info msg=.*hello.*world'
 
 post-go:
-	kubeless function deploy post-go --runtime go1.10 --handler hellowithdata.Handler --from-file golang/hellowithdata.go
+	kubeless function deploy post-go --runtime go1.14 --handler hellowithdata.Handler --from-file golang/hellowithdata.go
 
 post-go-verify:
 	kubeless function call post-go --data '{"it-s": "alive"}'| egrep "it.*alive"
@@ -761,7 +761,7 @@ pubsub-ruby-verify:
 
 pubsub-go:
 	kubeless topic create s3-go || true
-	kubeless function deploy pubsub-go --runtime go1.10 --handler pubsub-go.Handler --from-file golang/hellowithdata.go
+	kubeless function deploy pubsub-go --runtime go1.14 --handler pubsub-go.Handler --from-file golang/hellowithdata.go
 	kubeless trigger kafka create pubsub-go --function-selector created-by=kubeless,function=pubsub-go --trigger-topic s3-go
 
 pubsub-go-verify:
