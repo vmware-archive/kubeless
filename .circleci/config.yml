@@ -6,9 +6,7 @@ build_allways: &build_allways
     tags:
       only: /.*/
 defaults: &defaults
-  working_directory: /home/circleci/.go_workspace/src/github.com/kubeless/kubeless
   environment:
-    GOPATH: /home/circleci/.go_workspace
     CONTROLLER_IMAGE_NAME: kubeless/function-controller
     BUILDER_IMAGE_NAME: kubeless/function-image-builder
     CGO_ENABLED: "0"
@@ -85,6 +83,7 @@ jobs:
       # go build creates files under /usr/local/go where the running user doesn't have permissions to write
       - run: sudo chown -R circleci:circleci /usr/local/go/
       - run: go get -u golang.org/x/lint/golint
+      - run: go mod download
       - run: make bootstrap
       - run: make VERSION=${CONTROLLER_TAG} binary
       - run: make test
@@ -98,14 +97,9 @@ jobs:
             cp ${f}.yaml build-manifests/
           done
       - persist_to_workspace:
-          root: /home/circleci/.go_workspace
-          paths: 
-            - bin
-            - src/github.com/kubeless/kubeless/*yaml
+          paths: ./*yaml
       - store_artifacts:
-          path: /home/circleci/.go_workspace/bin/kubeless
-      - store_artifacts:
-          path: build-manifests
+          path: ./build-manifests/
   minikube:
     <<: *defaults
     machine:

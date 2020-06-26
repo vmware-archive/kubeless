@@ -29,7 +29,7 @@ echo "Build Kubeless Components binaries"
 # Build binary
 go install \
     "${BUILD_FLAGS[@]}" \
-    github.com/kubeless/kubeless/cmd/...
+    ./cmd/...
 
 if [ $? -eq 0 ]; then
   echo "Build Kubeless Components successful. Program saved at ${GOPATH%%:*}/bin"
