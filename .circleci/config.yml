@@ -97,7 +97,9 @@ jobs:
             cp ${f}.yaml build-manifests/
           done
       - persist_to_workspace:
-          paths: ./*yaml
+          root: $CIRCLE_WORKING_DIRECTORY
+          paths:
+            - ./*yaml
       - store_artifacts:
           path: ./build-manifests/
   minikube:
