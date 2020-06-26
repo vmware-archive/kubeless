@@ -97,7 +97,7 @@ jobs:
             cp ${f}.yaml build-manifests/
           done
       - persist_to_workspace:
-          root: $CIRCLE_WORKING_DIRECTORY
+          root: ./
           paths:
             - ./*yaml
       - store_artifacts:
