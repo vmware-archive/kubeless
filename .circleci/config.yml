@@ -101,6 +101,8 @@ jobs:
           paths:
             - ./*yaml
       - store_artifacts:
+          path: ${GOPATH}/bin/kubeless
+      - store_artifacts:
           path: ./build-manifests/
   minikube:
     <<: *defaults
