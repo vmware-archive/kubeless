@@ -31,7 +31,7 @@ Kubeless fully supports Kubernetes versions greater than 1.9 (tested until 1.15)
 
 We would love to get your help, feel free to lend a hand. We are currently looking to implement the following high level features:
 
-- Add other runtimes, currently Python, NodeJS, Ruby, PHP, .NET and Ballerina are supported. We are also providing a way to use custom runtime. Please check [this doc](./docs/runtimes.md) for more details.
+- Add other runtimes, currently Golang, Python, NodeJS, Ruby, PHP, .NET and Ballerina are supported. We are also providing a way to use custom runtime. Please check [this doc](./docs/runtimes.md) for more details.
 - Investigate other messaging bus (e.g SQS, rabbitMQ)
 - Optimize for functions startup time
 - Add distributed tracing (maybe using istio)
