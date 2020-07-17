@@ -21,16 +21,18 @@ data:
       "spec": {
         "replicas": 2,
         "template": {
-          "annotations": {
-            "annotations-to-pod": "value"
-          },
-          "containers": [{
-            "resources": {
-              "requests": {
-                "cpu": "100m"
+          "spec": {
+            "annotations": {
+              "annotations-to-pod": "value"
+            },
+            "containers": [{
+              "resources": {
+                "requests": {
+                  "cpu": "100m"
+                }
               }
-            }
-          }]
+            }]
+          }
         }
       }
     }
