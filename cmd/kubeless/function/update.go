@@ -71,6 +71,11 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
+		serviceAccount, err := cmd.Flags().GetString("service-account")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		runtime, err := cmd.Flags().GetString("runtime")
 		if err != nil {
 			logrus.Fatal(err)
@@ -169,7 +174,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 
-		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, imagePullPolicy, port, servicePort, headless, envs, labels, secrets, previousFunction)
+		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, imagePullPolicy, port, servicePort, headless, envs, labels, secrets, serviceAccount, previousFunction)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -218,6 +223,7 @@ func init() {
 	updateCmd.Flags().StringSliceP("label", "l", []string{}, "Specify labels of the function")
 	updateCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")
 	updateCmd.Flags().StringSliceP("env", "e", []string{}, "Specify environment variable of the function")
+	updateCmd.Flags().StringP("service-account", "", "", "Specify service account for the function. For example: --service-account controller-acct")
 	updateCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 	updateCmd.Flags().StringP("dependencies", "d", "", "Specify a file containing list of dependencies for the function")
 	updateCmd.Flags().StringP("runtime-image", "", "", "Custom runtime image")
