@@ -102,7 +102,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	result, err := getFunctionDescription("test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, 0, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+	result, err := getFunctionDescription("test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, 0, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, "serviceAccount", kubelessApi.Function{})
 
 	if err != nil {
 		t.Error(err)
@@ -133,6 +133,7 @@ func TestGetFunctionDescription(t *testing.T) {
 				Spec: appsv1.DeploymentSpec{
 					Template: v1.PodTemplateSpec{
 						Spec: v1.PodSpec{
+							ServiceAccountName: "serviceAccount",
 							Containers: []v1.Container{
 								{
 									Env: []v1.EnvVar{{
@@ -189,7 +190,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should take the default values
-	result2, err := getFunctionDescription("test", "default", "", "", "", "", "", "", "", "", "Always", 8080, 0, false, []string{}, []string{}, []string{}, expectedFunction)
+	result2, err := getFunctionDescription("test", "default", "", "", "", "", "", "", "", "", "Always", 8080, 0, false, []string{}, []string{}, []string{}, "", expectedFunction)
 
 	if err != nil {
 		t.Error(err)
@@ -210,7 +211,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	defer os.Remove(file.Name()) // clean up
 
-	result3, err := getFunctionDescription("test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test-image2", "256Mi", "100m", "20", "Always", 8080, 0, false, []string{"TEST=2"}, []string{"test=2"}, []string{"secret2"}, expectedFunction)
+	result3, err := getFunctionDescription("test", "default", "file.handler2", file.Name(), "dependencies2", "runtime2", "test-image2", "256Mi", "100m", "20", "Always", 8080, 0, false, []string{"TEST=2"}, []string{"test=2"}, []string{"secret2"}, "NewServiceAccount", expectedFunction)
 
 	if err != nil {
 		t.Error(err)
@@ -241,6 +242,7 @@ func TestGetFunctionDescription(t *testing.T) {
 				Spec: appsv1.DeploymentSpec{
 					Template: v1.PodTemplateSpec{
 						Spec: v1.PodSpec{
+							ServiceAccountName: "NewServiceAccount",
 							Containers: []v1.Container{
 								{
 									Env: []v1.EnvVar{{
@@ -336,7 +338,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	file.Close()
 	zipW.Close()
 
-	result4, err := getFunctionDescription("test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", "Always", 8080, 0, false, []string{}, []string{}, []string{}, expectedFunction)
+	result4, err := getFunctionDescription("test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", "Always", 8080, 0, false, []string{}, []string{}, []string{}, "", expectedFunction)
 	if err != nil {
 		t.Error(err)
 	}
@@ -345,7 +347,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should maintain previous HPA definition
-	result5, err := getFunctionDescription("test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, 0, false, []string{"TEST=1"}, []string{"test=1"}, []string{}, kubelessApi.Function{
+	result5, err := getFunctionDescription("test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, 0, false, []string{"TEST=1"}, []string{"test=1"}, []string{}, "serviceAccount", kubelessApi.Function{
 
 		Spec: kubelessApi.FunctionSpec{
 			HorizontalPodAutoscaler: v2beta1.HorizontalPodAutoscaler{
@@ -360,7 +362,7 @@ func TestGetFunctionDescription(t *testing.T) {
 	}
 
 	// It should set the Port, ServicePort and headless service properly
-	result6, err := getFunctionDescription("test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "", "Always", 9091, 9092, true, []string{}, []string{}, []string{}, kubelessApi.Function{})
+	result6, err := getFunctionDescription("test", "default", "file.handler", file.Name(), "dependencies", "runtime", "test-image", "128Mi", "", "", "Always", 9091, 9092, true, []string{}, []string{}, []string{}, "serviceAccount", kubelessApi.Function{})
 	expectedPort := v1.ServicePort{
 		Name:       "http-function-port",
 		Port:       9092,
@@ -405,6 +407,7 @@ func TestGetFunctionDescription(t *testing.T) {
 				Spec: appsv1.DeploymentSpec{
 					Template: v1.PodTemplateSpec{
 						Spec: v1.PodSpec{
+							ServiceAccountName: "serviceAccount",
 							Containers: []v1.Container{
 								{
 									Env: []v1.EnvVar{{
@@ -457,7 +460,7 @@ func TestGetFunctionDescription(t *testing.T) {
 		},
 	}
 
-	result7, err := getFunctionDescription("test", "default", "file.handler", ts.URL, "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, 0, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+	result7, err := getFunctionDescription("test", "default", "file.handler", ts.URL, "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, 0, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, "serviceAccount", kubelessApi.Function{})
 
 	if err != nil {
 		t.Error(err)
@@ -481,7 +484,7 @@ func TestGetFunctionDescription(t *testing.T) {
 
 	expectedURLFunction.Spec.FunctionContentType = "url+zip"
 	expectedURLFunction.Spec.Function = ts2.URL + "/test.zip"
-	result8, err := getFunctionDescription("test", "default", "file.handler", ts2.URL+"/test.zip", "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, 0, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, kubelessApi.Function{})
+	result8, err := getFunctionDescription("test", "default", "file.handler", ts2.URL+"/test.zip", "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", 8080, 0, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, "serviceAccount", kubelessApi.Function{})
 	if err != nil {
 		t.Error(err)
 	}
