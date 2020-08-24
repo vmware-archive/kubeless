@@ -195,13 +195,18 @@ var deployCmd = &cobra.Command{
 			logrus.Fatal("You must specify handler for the runtime.")
 		}
 
+		nodeSelectors, err := cmd.Flags().GetStringSlice("node-selectors")
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
 		defaultFunctionSpec := kubelessApi.Function{}
 		defaultFunctionSpec.ObjectMeta.Labels = map[string]string{
 			"created-by": "kubeless",
 			"function":   funcName,
 		}
 
-		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, imagePullPolicy, port, servicePort, headless, envs, labels, secrets, defaultFunctionSpec)
+		f, err := getFunctionDescription(funcName, ns, handler, file, funcDeps, runtime, runtimeImage, mem, cpu, timeout, imagePullPolicy, port, servicePort, headless, envs, labels, secrets, nodeSelectors, defaultFunctionSpec)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -275,6 +280,7 @@ func init() {
 	deployCmd.Flags().StringSliceP("label", "l", []string{}, "Specify labels of the function. Both separator ':' and '=' are allowed. For example: --label foo1=bar1,foo2:bar2")
 	deployCmd.Flags().StringSliceP("secrets", "", []string{}, "Specify Secrets to be mounted to the functions container. For example: --secrets mySecret")
 	deployCmd.Flags().StringSliceP("env", "e", []string{}, "Specify environment variable of the function. Both separator ':' and '=' are allowed. For example: --env foo1=bar1,foo2:bar2")
+	deployCmd.Flags().StringSliceP("node-selectors", "", []string{}, "Specify node selectors for the function. Both separator ':' and '=' are allowed. For example: --node-selectors key1=val1,key2:val2")
 	deployCmd.Flags().StringP("namespace", "n", "", "Specify namespace for the function")
 	deployCmd.Flags().StringP("dependencies", "d", "", "Specify a file containing list of dependencies for the function")
 	deployCmd.Flags().StringP("schedule", "", "", "Specify schedule in cron format for scheduled function")
