@@ -52,8 +52,11 @@ var updateCmd = &cobra.Command{
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		var nsArg string
 		if ns == "" {
 			ns = utils.GetDefaultNamespace()
+		} else {
+			nsArg = fmt.Sprintf(" -n %s", ns)
 		}
 
 		handler, err := cmd.Flags().GetString("handler")
@@ -210,7 +213,7 @@ var updateCmd = &cobra.Command{
 			logrus.Fatal(err)
 		}
 		logrus.Infof("Function %s submitted for deployment", funcName)
-		logrus.Infof("Check the deployment status executing 'kubeless function ls %s'", funcName)
+		logrus.Infof("Check the deployment status executing 'kubeless function ls %s%s'", funcName, nsArg)
 	},
 }
 
