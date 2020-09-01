@@ -100,8 +100,16 @@ func parseResource(in string) (resource.Quantity, error) {
 	return quantity, nil
 }
 
-func getFunctionDescription(funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, imagePullPolicy string, port int32, servicePort int32, headless bool, envs, labels []string, secrets []string, serviceAccount string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
+func parseNodeSelectors(nodeSelectors []string) map[string]string {
+	funcNodeSelectors := make(map[string]string)
+	for _, nodeSelector := range nodeSelectors {
+		k, v := getKV(nodeSelector)
+		funcNodeSelectors[k] = v
+	}
+	return funcNodeSelectors
+}
 
+func getFunctionDescription(funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, imagePullPolicy string, serviceAccount string, port int32, servicePort int32, headless bool, envs, labels, secrets, nodeSelectors []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
 		Kind:       "Function",
@@ -249,11 +257,12 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, runtimeI
 
 	}
 
-	selectorLabels := map[string]string{}
-	for k, v := range funcLabels {
-		selectorLabels[k] = v
+	funcNodeSelectors := parseNodeSelectors(nodeSelectors)
+	if len(funcNodeSelectors) == 0 && len(defaultFunction.Spec.Deployment.Spec.Template.Spec.NodeSelector) != 0 {
+		funcNodeSelectors = defaultFunction.Spec.Deployment.Spec.Template.Spec.NodeSelector
 	}
-	selectorLabels["function"] = funcName
+	function.Spec.Deployment.Spec.Template.Spec.NodeSelector = funcNodeSelectors
+
 	return &function, nil
 }
 

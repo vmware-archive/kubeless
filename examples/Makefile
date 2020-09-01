@@ -58,7 +58,7 @@ get-python-url-deps-verify:
 	kubeless function call get-python-url-deps |egrep Google	
 
 get-node-url-zip:
-	kubeless function deploy get-node-url-zip --runtime nodejs6 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/master/examples/nodejs/helloFunctions.zip?raw=true
+	kubeless function deploy get-node-url-zip --runtime nodejs10 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/master/examples/nodejs/helloFunctions.zip?raw=true
 
 get-node-url-zip-verify:
 	kubeless function call get-node-url-zip |egrep hello.world
@@ -93,20 +93,20 @@ timeout-python-verify:
 	echo $(MSG) | egrep Request.timeout.exceeded
 
 get-nodejs:
-	kubeless function deploy get-nodejs --runtime nodejs6 --handler helloget.foo --from-file nodejs/helloget.js
+	kubeless function deploy get-nodejs --runtime nodejs10 --handler helloget.foo --from-file nodejs/helloget.js
 
 get-nodejs-verify:
 	kubeless function call get-nodejs |egrep hello.world
 
 get-nodejs-custom-port:
-	kubeless function deploy get-nodejs-custom-port --runtime nodejs6 --handler helloget.foo --from-file nodejs/helloget.js --port 8083
+	kubeless function deploy get-nodejs-custom-port --runtime nodejs10 --handler helloget.foo --from-file nodejs/helloget.js --port 8083
 
 get-nodejs-custom-port-verify:
 	kubectl get svc get-nodejs-custom-port -o yaml | grep 'targetPort: 8083'
 	kubeless function call get-nodejs-custom-port |egrep hello.world
 
 get-nodejs-stream:
-	kubeless function deploy get-nodejs-stream --runtime nodejs6 --handler hellostream.foo --from-file nodejs/hellostream.js --dependencies nodejs/package.json
+	kubeless function deploy get-nodejs-stream --runtime nodejs10 --handler hellostream.foo --from-file nodejs/hellostream.js --dependencies nodejs/package.json
 
 get-nodejs-stream-verify:
 	kubeless function call get-nodejs-stream |egrep hello.world
@@ -114,7 +114,7 @@ get-nodejs-stream-verify:
 timeout-nodejs:
 	$(eval TMPDIR := $(shell mktemp -d))
 	printf 'module.exports = { foo: function (event, context) { while(true) {} } }\n' > $(TMPDIR)/hello-loop.js
-	kubeless function deploy timeout-nodejs --runtime nodejs6 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.js --timeout 4
+	kubeless function deploy timeout-nodejs --runtime nodejs10 --handler helloget.foo  --from-file $(TMPDIR)/hello-loop.js --timeout 4
 	rm -rf $(TMPDIR)
 
 timeout-nodejs-verify:
@@ -122,14 +122,14 @@ timeout-nodejs-verify:
 	echo $(MSG) | egrep Request.timeout.exceeded
 
 get-nodejs-deps:
-	kubeless function deploy get-nodejs-deps --runtime nodejs6 --handler helloget.handler --from-file nodejs/hellowithdeps.js --dependencies nodejs/package.json
+	kubeless function deploy get-nodejs-deps --runtime nodejs10 --handler helloget.handler --from-file nodejs/hellowithdeps.js --dependencies nodejs/package.json
 
 get-nodejs-deps-verify:
 	kubeless function call get-nodejs-deps --data '{"hello": "world"}' | grep -q 'hello.*world.*date.*UTC'
 
 get-nodejs-multi:
 	cd nodejs; zip helloFunctions.zip *js
-	kubeless function deploy get-nodejs-multi --runtime nodejs6 --handler index.helloGet --from-file nodejs/helloFunctions.zip
+	kubeless function deploy get-nodejs-multi --runtime nodejs10 --handler index.helloGet --from-file nodejs/helloFunctions.zip
 	rm nodejs/helloFunctions.zip
 
 get-nodejs-multi-verify:
@@ -318,7 +318,7 @@ post-python-custom-port-verify:
 	kubeless function call post-python-custom-port --data '{"it-s": "alive"}'|egrep "it.*alive"
 
 post-nodejs:
-	kubeless function deploy post-nodejs --runtime nodejs6 --handler hellowithdata.handler --from-file nodejs/hellowithdata.js
+	kubeless function deploy post-nodejs --runtime nodejs10 --handler hellowithdata.handler --from-file nodejs/hellowithdata.js
 
 post-nodejs-verify:
 	kubeless function call post-nodejs --data '{"it-s": "alive"}'|egrep "it.*alive"
@@ -693,7 +693,7 @@ pubsub-python36-verify:
 
 pubsub-nodejs:
 	kubeless topic create s3-nodejs || true
-	kubeless function deploy pubsub-nodejs --runtime nodejs6 --handler pubsub-nodejs.handler --from-file nodejs/hellowithdata.js
+	kubeless function deploy pubsub-nodejs --runtime nodejs10 --handler pubsub-nodejs.handler --from-file nodejs/hellowithdata.js
 	kubeless trigger kafka create pubsub-nodejs --function-selector created-by=kubeless,function=pubsub-nodejs --trigger-topic s3-nodejs
 
 pubsub-nodejs-verify:
