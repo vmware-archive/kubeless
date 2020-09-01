@@ -109,7 +109,7 @@ func parseNodeSelectors(nodeSelectors []string) map[string]string {
 	return funcNodeSelectors
 }
 
-func getFunctionDescription(funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, imagePullPolicy string, port int32, servicePort int32, headless bool, envs, labels, secrets, nodeSelectors []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
+func getFunctionDescription(funcName, ns, handler, file, deps, runtime, runtimeImage, mem, cpu, timeout string, imagePullPolicy string, serviceAccount string, port int32, servicePort int32, headless bool, envs, labels, secrets, nodeSelectors []string, defaultFunction kubelessApi.Function) (*kubelessApi.Function, error) {
 	function := defaultFunction
 	function.TypeMeta = metav1.TypeMeta{
 		Kind:       "Function",
@@ -206,6 +206,10 @@ func getFunctionDescription(funcName, ns, handler, file, deps, runtime, runtimeI
 			Resources:       resources,
 			Image:           runtimeImage,
 		},
+	}
+
+	if serviceAccount != "" {
+		function.Spec.Deployment.Spec.Template.Spec.ServiceAccountName = serviceAccount
 	}
 
 	if len(defaultFunction.Spec.Deployment.Spec.Template.Spec.Containers) != 0 {
