@@ -116,6 +116,7 @@ func NewFunctionController(cfg Config, smclient *monitoringv1alpha1.MonitoringV1
 	if config.Data["enable-build-step"] == "true" {
 		imagePullSecrets = append(imagePullSecrets, utils.GetSecretsAsLocalObjectReference("kubeless-registry-credentials")...)
 	}
+
 	return &FunctionController{
 		logger:           logrus.WithField("pkg", "function-controller"),
 		clientset:        cfg.KubeCli,
@@ -277,19 +278,31 @@ func (c *FunctionController) startImageBuildJob(funcObj *kubelessApi.Function, o
 		return "", false, fmt.Errorf("Unable to parse registry URL: %v", err)
 	}
 	image := fmt.Sprintf("%s/%s:%s", regURL.Host, imageName, tag)
-	if !exists {
-		tlsVerify := true
-		if c.config.Data["function-registry-tls-verify"] == "false" {
-			tlsVerify = false
-		}
-		err = utils.EnsureFuncImage(c.clientset, funcObj, c.langRuntime, or, imageName, tag, c.config.Data["builder-image"], regURL.Host, imagePullSecret.Name, c.config.Data["provision-image"], tlsVerify, c.imagePullSecrets)
-		if err != nil {
-			return "", false, fmt.Errorf("Unable to create image build job: %v", err)
-		}
-	} else {
-		// Image already exists
+	if exists {
 		return image, false, nil
 	}
+
+	tlsVerify := true
+	if c.config.Data["function-registry-tls-verify"] == "false" {
+		tlsVerify = false
+	}
+	if err = utils.EnsureFuncImage(
+		c.clientset,
+		funcObj,
+		c.langRuntime,
+		or,
+		imageName,
+		tag,
+		c.config.Data["builder-image"],
+		regURL.Host,
+		imagePullSecret.Name,
+		c.config.Data["provision-image"],
+		tlsVerify,
+		c.imagePullSecrets,
+	); err != nil {
+		return "", false, fmt.Errorf("Unable to create image build job: %v", err)
+	}
+
 	return image, true, nil
 }
 
@@ -352,8 +365,15 @@ func (c *FunctionController) ensureK8sResources(funcObj *kubelessApi.Function) e
 		logrus.Infof("Skipping image-build step for %s", funcObj.ObjectMeta.Name)
 	}
 
-	err = utils.EnsureFuncDeployment(c.clientset, funcObj, or, c.langRuntime, prebuiltImage, c.config.Data["provision-image"], c.imagePullSecrets)
-	if err != nil {
+	if err = utils.EnsureFuncDeployment(
+		c.clientset,
+		funcObj,
+		or,
+		c.langRuntime,
+		prebuiltImage,
+		c.config.Data["provision-image"],
+		c.imagePullSecrets,
+	); err != nil {
 		return err
 	}
 

@@ -417,8 +417,20 @@ func TestEnsureImage(t *testing.T) {
 	pullSecrets := []v1.LocalObjectReference{
 		{Name: "creds"},
 	}
-	err := EnsureFuncImage(clientset, f1, lr, or, "user/image", "4840d87600137157493ba43a24f0b4bb6cf524ebbf095ce96c79f85bf5a3ff5a", "kubeless/builder", "registry.docker.io", "registry-creds", "unzip", true, pullSecrets)
-	if err != nil {
+	if err := EnsureFuncImage(
+		clientset,
+		f1,
+		lr,
+		or,
+		"user/image",
+		"4840d87600137157493ba43a24f0b4bb6cf524ebbf095ce96c79f85bf5a3ff5a",
+		"kubeless/builder",
+		"registry.docker.io",
+		"registry-creds",
+		"unzip",
+		true,
+		pullSecrets,
+	); err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
 	jobs, err := clientset.BatchV1().Jobs(ns).List(metav1.ListOptions{})
@@ -447,6 +459,26 @@ func TestEnsureImage(t *testing.T) {
 	}
 	if reflect.DeepEqual(jobs.Items[0].Spec.Template.Spec.ImagePullSecrets, pullSecrets) {
 		t.Error("Missing ImagePullSecrets")
+	}
+
+	// ensure my-secret is mounted as /my-secret to install container
+	var container v1.Container
+	for _, c := range jobs.Items[0].Spec.Template.Spec.InitContainers {
+		if c.Name == "install" {
+			container = c
+		}
+	}
+	if len(container.Name) == 0 {
+		t.Fatalf("Cannot find init container %q", "install")
+	}
+	var found bool
+	for _, v := range container.VolumeMounts {
+		if v.MountPath == "/my-secret" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("Cannot find volume mount /my-secret")
 	}
 }
 
@@ -683,6 +715,25 @@ func TestEnsureDeployment(t *testing.T) {
 		t.Errorf("Resources must be set for init container")
 	}
 
+	// ensure my-secret is mounted as /my-secret to install container
+	var container v1.Container
+	for _, c := range dpm.Spec.Template.Spec.InitContainers {
+		if c.Name == "install" {
+			container = c
+		}
+	}
+	if len(container.Name) == 0 {
+		t.Fatalf("Cannot find init container %q", "install")
+	}
+	var found bool
+	for _, v := range container.VolumeMounts {
+		if v.MountPath == "/my-secret" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("Cannot find volume mount /my-secret")
+	}
 }
 
 func TestEnsureDeploymentWithoutFuncNorHandler(t *testing.T) {
@@ -692,7 +743,7 @@ func TestEnsureDeploymentWithoutFuncNorHandler(t *testing.T) {
 	f2 := getDefaultFunc(funcName, ns)
 	f2.Spec.Function = ""
 	f2.Spec.Handler = ""
-	err := EnsureFuncDeployment(clientset, f2, or, lr, "", "unzip", []v1.LocalObjectReference{})
+	err := EnsureFuncDeployment(clientset, f2, or, lr, "", "unzip", nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -708,7 +759,7 @@ func TestEnsureDeploymentWithImage(t *testing.T) {
 	// If the Image has been already provided it should not resolve it
 	f3 := getDefaultFunc(funcName, ns)
 	f3.Spec.Deployment.Spec.Template.Spec.Containers[0].Image = "test-image"
-	err := EnsureFuncDeployment(clientset, f3, or, lr, "", "unzip", []v1.LocalObjectReference{})
+	err := EnsureFuncDeployment(clientset, f3, or, lr, "", "unzip", nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -728,7 +779,7 @@ func TestEnsureDeploymentWithoutFunc(t *testing.T) {
 	f4 := getDefaultFunc(funcName, ns)
 	f4.Spec.Function = ""
 	f4.Spec.Deps = ""
-	err := EnsureFuncDeployment(clientset, f4, or, lr, "", "unzip", []v1.LocalObjectReference{})
+	err := EnsureFuncDeployment(clientset, f4, or, lr, "", "unzip", nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -755,7 +806,7 @@ func TestEnsureUpdateDeployment(t *testing.T) {
 	f1.Spec.Deployment.Spec.Template.ObjectMeta = metav1.ObjectMeta{
 		Annotations: funcAnno,
 	}
-	err := EnsureFuncDeployment(clientset, f1, or, lr, "", "unzip", []v1.LocalObjectReference{})
+	err := EnsureFuncDeployment(clientset, f1, or, lr, "", "unzip", nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -763,7 +814,7 @@ func TestEnsureUpdateDeployment(t *testing.T) {
 	f6 = *f1
 	f6.Spec.Handler = "foo.bar2"
 	f6.Spec.Deployment.ObjectMeta.Annotations["new-key"] = "value"
-	err = EnsureFuncDeployment(clientset, &f6, or, lr, "", "unzip", []v1.LocalObjectReference{})
+	err = EnsureFuncDeployment(clientset, &f6, or, lr, "", "unzip", nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -781,7 +832,7 @@ func TestAvoidDeploymentOverwrite(t *testing.T) {
 		},
 	})
 	f1 := getDefaultFunc(f1Name, ns)
-	err := EnsureFuncDeployment(clientset, f1, or, lr, "", "unzip", []v1.LocalObjectReference{})
+	err := EnsureFuncDeployment(clientset, f1, or, lr, "", "unzip", nil)
 	if err == nil && strings.Contains(err.Error(), "conflicting object") {
 		t.Errorf("It should fail because a conflict")
 	}
@@ -794,7 +845,7 @@ func TestDeploymentWithUnsupportedRuntime(t *testing.T) {
 	f7 := getDefaultFunc("func7", ns)
 	f7.Spec.Deps = "deps"
 	f7.Spec.Runtime = "cobol"
-	err := EnsureFuncDeployment(clientset, f7, or, lr, "", "unzip", []v1.LocalObjectReference{})
+	err := EnsureFuncDeployment(clientset, f7, or, lr, "", "unzip", nil)
 
 	if err == nil {
 		t.Fatal("An error should be thrown")
@@ -807,7 +858,7 @@ func TestDeploymentWithTimeout(t *testing.T) {
 	// If a timeout is specified it should set an environment variable FUNC_TIMEOUT
 	f8 := getDefaultFunc(funcName, ns)
 	f8.Spec.Timeout = "10"
-	err := EnsureFuncDeployment(clientset, f8, or, lr, "", "unzip", []v1.LocalObjectReference{})
+	err := EnsureFuncDeployment(clientset, f8, or, lr, "", "unzip", nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -825,7 +876,7 @@ func TestDeploymentWithPrebuiltImage(t *testing.T) {
 	clientset, or, ns, lr := prepareDeploymentTest(funcName)
 	// If a prebuilt image is specified it should not build the function using init containers
 	f9 := getDefaultFunc(funcName, ns)
-	err := EnsureFuncDeployment(clientset, f9, or, lr, "user/image:test", "unzip", []v1.LocalObjectReference{})
+	err := EnsureFuncDeployment(clientset, f9, or, lr, "user/image:test", "unzip", nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -858,7 +909,7 @@ func TestDeploymentWithVolumes(t *testing.T) {
 			MountPath: "/tmp/test",
 		},
 	}
-	err := EnsureFuncDeployment(clientset, f10, or, lr, "", "unzip", []v1.LocalObjectReference{})
+	err := EnsureFuncDeployment(clientset, f10, or, lr, "", "unzip", nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -880,7 +931,7 @@ func TestEnsureDeploymentWithAffinityOverridden(t *testing.T) {
 	// If the Image has been already provided it should not resolve it
 	f3 := getDefaultFunc(funcName, ns)
 	f3.Spec.Deployment.Spec.Template.Spec.Affinity = &v1.Affinity{}
-	err := EnsureFuncDeployment(clientset, f3, or, lr, "", "unzip", []v1.LocalObjectReference{})
+	err := EnsureFuncDeployment(clientset, f3, or, lr, "", "unzip", nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
