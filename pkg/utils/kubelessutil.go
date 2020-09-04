@@ -111,10 +111,16 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 		}
 	}
 
-	// Extract content in case it is a Zip file
 	if strings.Contains(contentType, "zip") {
+		// Extract content in case it is a Zip file
 		prepareCommand = appendToCommand(prepareCommand,
 			fmt.Sprintf("unzip -o %s -d %s", originFile, runtimeVolume.MountPath),
+		)
+	} else if strings.Contains(contentType, "compressedtar") {
+		// Extract content in case it is a compressed tar file.
+		// The `tar` command auto-detects the compression type.
+		prepareCommand = appendToCommand(prepareCommand,
+			fmt.Sprintf("tar xf %s -C %s", originFile, runtimeVolume.MountPath),
 		)
 	} else {
 		// Copy the target as a single file
@@ -352,9 +358,6 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 
 	if funcObj.Spec.Function != "" {
 		fileName, err := getFileName(funcObj.Spec.Handler, funcObj.Spec.FunctionContentType, funcObj.Spec.Runtime, lr)
-		if err != nil {
-			return err
-		}
 		if err != nil {
 			return err
 		}
@@ -879,15 +882,28 @@ func DryRunFmt(format string, trigger interface{}) (string, error) {
 	}
 }
 
+// getCompressionType returns the compression type (if any) of the given file by looking at the file extension
+func getCompressionType(filename string) (compressionType string) {
+	if strings.HasSuffix(filename, ".zip") {
+		compressionType = "+zip"
+	}
+
+	extensions := []string{".tar.gz", ".taz", ".tgz", ".tar.bz2", ".tb2", ".tbz", ".tbz2", ".tz2", ".tar.xz"}
+	for _, ext := range extensions {
+		if strings.HasSuffix(filename, ext) {
+			compressionType = "+compressedtar"
+			break
+		}
+	}
+	return
+}
+
 // GetContentType Gets the content type of a given filename
 func GetContentType(filename string) (string, error) {
 	var contentType string
 
 	if strings.Index(filename, "http://") == 0 || strings.Index(filename, "https://") == 0 {
-		contentType = "url"
-		if path.Ext(strings.Split(filename, "?")[0]) == ".zip" {
-			contentType += "+zip"
-		}
+		contentType = "url" + getCompressionType(strings.Split(filename, "?")[0])
 	} else {
 		fbytes, err := ioutil.ReadFile(filename)
 		if err != nil {
@@ -898,10 +914,8 @@ func GetContentType(filename string) (string, error) {
 			contentType = "text"
 		} else {
 			contentType = "base64"
-			if path.Ext(filename) == ".zip" {
-				contentType += "+zip"
-			}
 		}
+		contentType += getCompressionType(filename)
 	}
 	return contentType, nil
 }

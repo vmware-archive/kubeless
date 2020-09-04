@@ -15,11 +15,32 @@ get-python-update-verify:
 	kubeless function call get-python |egrep hello.world.updated
 
 get-python-deps:
-	cd python && zip hellowithdeps.zip hellowithdeps.py  hellowithdepshelper.py && cd ..
+	cd python && zip hellowithdeps.zip hellowithdeps.py hellowithdepshelper.py && cd ..
 	kubeless function deploy get-python-deps --runtime python2.7 --handler hellowithdeps.foo --from-file python/hellowithdeps.zip --dependencies python/requirements.txt
+
+get-python-deps-tar-gz:
+	cd python && tar czf hellowithdeps.tar.gz hellowithdeps.py hellowithdepshelper.py && cd ..
+	kubeless function deploy get-python-deps-tar-gz --runtime python2.7 --handler hellowithdeps.foo --from-file python/hellowithdeps.tar.gz --dependencies python/requirements.txt
+
+get-python-deps-tar-bz2:
+	cd python && tar cjf hellowithdeps.tar.bz2 hellowithdeps.py hellowithdepshelper.py && cd ..
+	kubeless function deploy get-python-deps-tar-bz2 --runtime python2.7 --handler hellowithdeps.foo --from-file python/hellowithdeps.tar.bz2 --dependencies python/requirements.txt
+
+get-python-deps-tar-xz:
+	cd python && tar cJf hellowithdeps.tar.xz hellowithdeps.py hellowithdepshelper.py && cd ..
+	kubeless function deploy get-python-deps-tar-xz --runtime python2.7 --handler hellowithdeps.foo --from-file python/hellowithdeps.tar.xz --dependencies python/requirements.txt
 
 get-python-deps-verify:
 	kubeless function call get-python-deps |egrep Google
+
+get-python-deps-tar-gz-verify:
+	kubeless function call get-python-deps-tar-gz |egrep Google
+
+get-python-deps-tar-bz2-verify:
+	kubeless function call get-python-deps-tar-bz2 |egrep Google
+
+get-python-deps-tar-xz-verify:
+	kubeless function call get-python-deps-tar-xz |egrep Google
 
 get-python-custom-port:
 	kubeless function deploy get-python-custom-port --runtime python2.7 --handler helloget.foo --from-file python/helloget.py --port 8081
@@ -60,8 +81,26 @@ get-python-url-deps-verify:
 get-node-url-zip:
 	kubeless function deploy get-node-url-zip --runtime nodejs10 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/master/examples/nodejs/helloFunctions.zip?raw=true
 
+get-node-url-tar-gz:
+	kubeless function deploy get-node-url-tar-gz --runtime nodejs10 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/master/examples/nodejs/helloFunctions.tar.gz?raw=true
+
+get-node-url-tar-bz2:
+	kubeless function deploy get-node-url-tar-bz2 --runtime nodejs10 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/master/examples/nodejs/helloFunctions.tar.bz2?raw=true
+
+get-node-url-tar-xz:
+	kubeless function deploy get-node-url-tar-xz --runtime nodejs10 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/master/examples/nodejs/helloFunctions.tar.xz?raw=true
+
 get-node-url-zip-verify:
 	kubeless function call get-node-url-zip |egrep hello.world
+
+get-node-url-tar-gz-verify:
+	kubeless function call get-node-url-tar-gz |egrep hello.world
+
+get-node-url-tar-bz2-verify:
+	kubeless function call get-node-url-tar-bz2 |egrep hello.world
+
+get-node-url-tar-xz-verify:
+	kubeless function call get-node-url-tar-xz |egrep hello.world
 
 scheduled-get-python:
 	kubeless function deploy scheduled-get-python --schedule "* * * * *" --runtime python2.7 --handler helloget.foo --from-file python/helloget.py

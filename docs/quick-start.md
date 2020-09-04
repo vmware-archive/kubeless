@@ -89,7 +89,7 @@ Let's dissect the command:
 
 * `hello`: This is the name of the function we want to deploy.
 * `--runtime python2.7`: This is the runtime we want to use to run our function. Available runtimes can be found executing `kubeless get-server-config`.
-* `--from-file test.py`: This is the file containing the function code. It is supported to specify a zip file as far as it doesn't exceed the maximum size for an etcd entry (1 MB).
+* `--from-file test.py`: This is the file containing the function code. Specifying a zip file or a gzip/bzip2/xz compressed tar file (see [list of supported suffixes](https://en.wikipedia.org/wiki/Tar_(computing)#Suffixes_for_compressed_files) for compressed tar files) is supported as long as it doesn't exceed the maximum size for an etcd entry (1 MB).
 * `--handler test.hello`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `hello` from the file `test.py`.
 
 You can find the rest of options available when deploying a function executing `kubeless function deploy --help`

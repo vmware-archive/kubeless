@@ -17,7 +17,11 @@ limitations under the License.
 package function
 
 import (
+	"archive/tar"
 	"archive/zip"
+	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -331,26 +335,38 @@ func TestGetFunctionDescription(t *testing.T) {
 		t.Errorf("Unexpected result. Expecting:\n %+v\n Received %+v\n", newFunction, *result3)
 	}
 
-	// It should detect that it is a Zip file
+	// It should detect that it is a Zip file or a compressed tar file
 	file, err = os.Open(file.Name())
 	if err != nil {
 		t.Error(err)
 	}
-	newfile, err := os.Create(file.Name() + ".zip")
+
+	zipFile, err := os.Create(file.Name() + ".zip")
 	if err != nil {
 		t.Error(err)
 	}
-	defer os.Remove(newfile.Name()) // clean up
-	zipW := zip.NewWriter(newfile)
+	defer os.Remove(zipFile.Name()) // clean up
+
+	tarGzFile, err := os.Create(file.Name() + ".tar.gz")
+	if err != nil {
+		t.Error(err)
+	}
+	defer os.Remove(tarGzFile.Name()) // clean up
+
+	zipW := zip.NewWriter(zipFile)
+	gzipW := gzip.NewWriter(tarGzFile)
+	tarW := tar.NewWriter(gzipW)
+
 	info, err := file.Stat()
 	if err != nil {
 		t.Error(err)
 	}
-	header, err := zip.FileInfoHeader(info)
+
+	zipHeader, err := zip.FileInfoHeader(info)
 	if err != nil {
 		t.Error(err)
 	}
-	writer, err := zipW.CreateHeader(header)
+	writer, err := zipW.CreateHeader(zipHeader)
 	if err != nil {
 		t.Error(err)
 	}
@@ -358,15 +374,42 @@ func TestGetFunctionDescription(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	file.Close()
-	zipW.Close()
 
-	result4, err := getFunctionDescription("test", "default", "file.handler", newfile.Name(), "dependencies", "runtime", "", "", "", "", "Always", "", 8080, 0, false, []string{}, []string{}, []string{}, []string{}, expectedFunction)
+	tarHeader, err := tar.FileInfoHeader(info, info.Name())
 	if err != nil {
 		t.Error(err)
 	}
-	if result4.Spec.FunctionContentType != "base64+zip" {
-		t.Errorf("Should return base64+zip, received %s", result4.Spec.FunctionContentType)
+	tarHeader.Name = file.Name()
+	err = tarW.WriteHeader(tarHeader)
+	if err != nil {
+		t.Error(err)
+	}
+	_, err = io.Copy(writer, file)
+	if err != nil {
+		t.Error(err)
+	}
+
+	file.Close()
+	zipW.Close()
+	zipFile.Close()
+	tarW.Close()
+	gzipW.Close()
+	tarGzFile.Close()
+
+	result4A, err := getFunctionDescription("test", "default", "file.handler", zipFile.Name(), "dependencies", "runtime", "", "", "", "", "Always", "", 8080, 0, false, []string{}, []string{}, []string{}, []string{}, expectedFunction)
+	if err != nil {
+		t.Error(err)
+	}
+	if result4A.Spec.FunctionContentType != "base64+zip" {
+		t.Errorf("Should return base64+zip, received %s", result4A.Spec.FunctionContentType)
+	}
+
+	result4B, err := getFunctionDescription("test", "default", "file.handler", tarGzFile.Name(), "dependencies", "runtime", "", "", "", "", "Always", "", 8080, 0, false, []string{}, []string{}, []string{}, []string{}, expectedFunction)
+	if err != nil {
+		t.Error(err)
+	}
+	if result4B.Spec.FunctionContentType != "base64+compressedtar" {
+		t.Errorf("Should return base64+compressedtar, received %s", result4B.Spec.FunctionContentType)
 	}
 
 	// It should maintain previous HPA definition
@@ -496,30 +539,65 @@ func TestGetFunctionDescription(t *testing.T) {
 	if !reflect.DeepEqual(expectedURLFunction, *result7) {
 		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedURLFunction, *result7)
 	}
-	// end test
 
-	// it should handle zip files from a URL and detect url+zip encoding
-	zipBytes, err := ioutil.ReadFile(newfile.Name())
+	// It should handle zip files and compressed tar files from a URL and detect url+zip and url+compressedtar encoding respectively
+	zipBytes, err := ioutil.ReadFile(zipFile.Name())
 	if err != nil {
 		t.Error(err)
 	}
 
-	ts2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts2A := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write(zipBytes)
 	}))
-	defer ts2.Close()
+	defer ts2A.Close()
 
 	expectedURLFunction.Spec.FunctionContentType = "url+zip"
-	expectedURLFunction.Spec.Function = ts2.URL + "/test.zip"
-	result8, err := getFunctionDescription("test", "default", "file.handler", ts2.URL+"/test.zip", "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", "serviceAccount", 8080, 0, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, []string{}, kubelessApi.Function{})
+	expectedURLFunction.Spec.Function = ts2A.URL + "/test.zip"
+	expectedURLFunction.Spec.Checksum, err = getSha256(zipBytes)
 	if err != nil {
 		t.Error(err)
 	}
-	if result8.Spec.FunctionContentType != "url+zip" {
-		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedURLFunction, *result8)
+
+	result8A, err := getFunctionDescription("test", "default", "file.handler", ts2A.URL+"/test.zip", "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", "serviceAccount", 8080, 0, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, []string{"foo3=bar3", "baz3:qux3"}, kubelessApi.Function{})
+	if err != nil {
+		t.Error(err)
 	}
-	if result8.Spec.Function != ts2.URL+"/test.zip" {
-		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedURLFunction, *result8)
+	if !reflect.DeepEqual(expectedURLFunction, *result8A) {
+		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedURLFunction, *result8A)
+	}
+
+	tarGzBytes, err := ioutil.ReadFile(tarGzFile.Name())
+	if err != nil {
+		t.Error(err)
+	}
+	ts2B := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(tarGzBytes)
+	}))
+	defer ts2B.Close()
+
+	expectedURLFunction.Spec.FunctionContentType = "url+compressedtar"
+	expectedURLFunction.Spec.Function = ts2B.URL + "/test.tar.gz"
+	expectedURLFunction.Spec.Checksum, err = getSha256(tarGzBytes)
+	if err != nil {
+		t.Error(err)
+	}
+
+	result8B, err := getFunctionDescription("test", "default", "file.handler", ts2B.URL+"/test.tar.gz", "dependencies", "runtime", "test-image", "128Mi", "", "10", "Always", "serviceAccount", 8080, 0, false, []string{"TEST=1"}, []string{"test=1"}, []string{"secretName"}, []string{"foo3=bar3", "baz3:qux3"}, kubelessApi.Function{})
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(expectedURLFunction, *result8B) {
+		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedURLFunction, *result8B)
 	}
 	// end test
+}
+
+func getSha256(bytes []byte) (string, error) {
+	h := sha256.New()
+	_, err := h.Write(bytes)
+	if err != nil {
+		return "", err
+	}
+	checksum := hex.EncodeToString(h.Sum(nil))
+	return "sha256:" + checksum, nil
 }
