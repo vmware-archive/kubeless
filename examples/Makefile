@@ -1,3 +1,6 @@
+GIT_SHA1 ?= master
+BASE_URL := https://raw.githubusercontent.com/kubeless/kubeless/$(GIT_SHA1)
+
 get-python:
 	kubeless function deploy get-python --runtime python2.7 --handler helloget.foo --from-file python/helloget.py
 
@@ -73,22 +76,23 @@ get-python-36-verify:
 	kubeless function call get-python-36 |egrep hello.world
 
 get-python-url-deps:
-	kubeless function deploy get-python-url-deps --runtime python2.7 --handler helloget.foo --from-file https://raw.githubusercontent.com/kubeless/kubeless/v1.0.0-alpha.1/examples/python/hellowithdeps.py --dependencies https://raw.githubusercontent.com/kubeless/kubeless/v1.0.0-alpha.1/examples/python/requirements.txt
+	cd python && tar czf hellowithdeps.tgz hellowithdeps.py hellowithdepshelper.py && cd ..
+	kubeless function deploy get-python-url-deps --runtime python2.7 --handler hellowithdeps.foo --from-file python/hellowithdeps.tgz --dependencies $(BASE_URL)/examples/python/requirements.txt
 
 get-python-url-deps-verify:
 	kubeless function call get-python-url-deps |egrep Google	
 
 get-node-url-zip:
-	kubeless function deploy get-node-url-zip --runtime nodejs10 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/master/examples/nodejs/helloFunctions.zip?raw=true
+	kubeless function deploy get-node-url-zip --runtime nodejs10 --handler index.helloGet --from-file $(BASE_URL)/examples/nodejs/helloFunctions.zip
 
 get-node-url-tar-gz:
-	kubeless function deploy get-node-url-tar-gz --runtime nodejs10 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/master/examples/nodejs/helloFunctions.tar.gz?raw=true
+	kubeless function deploy get-node-url-tar-gz --runtime nodejs10 --handler index.helloGet --from-file $(BASE_URL)/examples/nodejs/helloFunctions.tar.gz
 
 get-node-url-tar-bz2:
-	kubeless function deploy get-node-url-tar-bz2 --runtime nodejs10 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/master/examples/nodejs/helloFunctions.tar.bz2?raw=true
+	kubeless function deploy get-node-url-tar-bz2 --runtime nodejs10 --handler index.helloGet --from-file $(BASE_URL)/examples/nodejs/helloFunctions.tar.bz2
 
 get-node-url-tar-xz:
-	kubeless function deploy get-node-url-tar-xz --runtime nodejs10 --handler index.helloGet --from-file https://github.com/kubeless/kubeless/blob/master/examples/nodejs/helloFunctions.tar.xz?raw=true
+	kubeless function deploy get-node-url-tar-xz --runtime nodejs10 --handler index.helloGet --from-file $(BASE_URL)/examples/nodejs/helloFunctions.tar.xz
 
 get-node-url-zip-verify:
 	kubeless function call get-node-url-zip |egrep hello.world
@@ -221,8 +225,11 @@ get-python-metadata:
 
 get-python-metadata-verify:
 	kubeless function call get-python-metadata |egrep hello.world
-	kubectl get po -o jsonpath='{.items[0].spec.containers[0].env}' -l function=get-python-metadata | grep "name:foo value:bar"
-	kubectl get po -o jsonpath='{.items[0].spec.containers[0].env}' -l function=get-python-metadata | grep "name:bar value:foo"
+	kubectl get po -o jsonpath='{.items[0].spec.containers[0].env}' -l function=get-python-metadata | grep '"name":"foo","value":"bar"'
+	kubectl get po -o jsonpath='{.items[0].spec.containers[0].env}' -l function=get-python-metadata | grep '"name":"bar","value":"foo"'
+	kubectl get po -o jsonpath='{.items[0].metadata.labels}' -l function=get-python-metadata | grep '"foo":"bar"'
+	kubectl get po -o jsonpath='{.items[0].metadata.labels}' -l function=get-python-metadata | grep '"bar":"foo"'
+	kubectl get po -o jsonpath='{.items[0].metadata.labels}' -l function=get-python-metadata | grep '"foobar":""'
 
 get-python-secrets:
 	kubectl create secret generic test-secret --from-literal=key=MY_KEY || true
