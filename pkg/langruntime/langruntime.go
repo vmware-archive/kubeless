@@ -237,7 +237,7 @@ func (l *Langruntimes) GetImageSecrets(runtime string) ([]v1.LocalObjectReferenc
 	return lors, nil
 }
 
-// GetInitContainersSecrets gets the secrets of the init container with name
+// GetInitContainerSecrets gets the secrets of the init container with name
 func (l *Langruntimes) GetInitContainerSecrets(runtime, name string) ([]v1.LocalObjectReference, error) {
 	runtimeInf, err := l.findRuntimeVersion(runtime)
 	if err != nil {
