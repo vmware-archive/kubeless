@@ -184,8 +184,11 @@ func TestEnsureFileNames(t *testing.T) {
 		{name: "base64", contentType: "base64", fileNameSuffix: ".py"},
 		{name: "url", contentType: "url", fileNameSuffix: ".py"},
 		{name: "text+zip", contentType: "text+zip", fileNameSuffix: ""},
+		{name: "text+compressedtar", contentType: "text+compressedtar", fileNameSuffix: ""},
 		{name: "base64+zip", contentType: "base64+zip", fileNameSuffix: ""},
+		{name: "base64+compressedtar", contentType: "base64+compressedtar", fileNameSuffix: ""},
 		{name: "url+zip", contentType: "url+zip", fileNameSuffix: ""},
+		{name: "url+compressedtar", contentType: "url+compressedtar", fileNameSuffix: ""},
 	}
 
 	for _, test := range tests {
@@ -960,7 +963,25 @@ func TestGetProvisionContainer(t *testing.T) {
 
 	// It should extract the file in case it is a Zip
 	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64+zip", "python2.7", "unzip", rvol, dvol, resources, lr)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if !strings.HasPrefix(c.Args[0], "base64 -d < /deps/test.zip > /tmp/func.decoded") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
 	if !strings.Contains(c.Args[0], "unzip -o /tmp/func.decoded -d /runtime") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
+
+	// It should extract the compressed tar file
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.tar.gz", "test.foo", "base64+compressedtar", "python2.7", "unzip", rvol, dvol, resources, lr)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if !strings.HasPrefix(c.Args[0], "base64 -d < /deps/test.tar.gz > /tmp/func.decoded") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
+	if !strings.Contains(c.Args[0], "tar xf /tmp/func.decoded -C /runtime") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 
@@ -973,12 +994,27 @@ func TestGetProvisionContainer(t *testing.T) {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 
-	// If the content type is url it should use curl
-	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.py", "sha256:abc1234", "", "test.foo", "url+zip", "python2.7", "unzip", rvol, dvol, resources, lr)
+	// If the content type is url+zip it should use curl and unzip
+	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.zip", "sha256:abc1234", "", "test.foo", "url+zip", "python2.7", "unzip", rvol, dvol, resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-	if !strings.HasPrefix(c.Args[0], "curl 'https://raw.githubusercontent.com/test/test/test/test.py' -L --silent --output /tmp/func.fromurl") {
+	if !strings.HasPrefix(c.Args[0], "curl 'https://raw.githubusercontent.com/test/test/test/test.zip' -L --silent --output /tmp/func.fromurl") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
+	if !strings.Contains(c.Args[0], "unzip -o /tmp/func.fromurl -d /runtime") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
+
+	// If the content type is url+compressedtar it should use curl and tar
+	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.tar.gz", "sha256:abc1234", "", "test.foo", "url+compressedtar", "python2.7", "unzip", rvol, dvol, resources, lr)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	if !strings.HasPrefix(c.Args[0], "curl 'https://raw.githubusercontent.com/test/test/test/test.tar.gz' -L --silent --output /tmp/func.fromurl") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
+	if !strings.Contains(c.Args[0], "tar xf /tmp/func.fromurl -C /runtime") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 }

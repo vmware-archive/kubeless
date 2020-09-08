@@ -20,6 +20,9 @@ load ../script/libtest
 @test "Deploy functions to evaluate" {
   deploy_function get-python
   deploy_function get-python-deps
+  deploy_function get-python-deps-tar-gz
+  deploy_function get-python-deps-tar-bz2
+  deploy_function get-python-deps-tar-xz
   deploy_function get-python-custom-port
   deploy_function timeout-nodejs
   deploy_function get-nodejs-multi
@@ -29,12 +32,27 @@ load ../script/libtest
   deploy_function custom-get-python
   deploy_function get-python-url-deps
   deploy_function get-node-url-zip
+  deploy_function get-node-url-tar-gz
+  deploy_function get-node-url-tar-bz2
+  deploy_function get-node-url-tar-xz
 }
 @test "Test function: get-python" {
   verify_function get-python
 }
 @test "Test function: get-python-deps" {
   verify_function get-python-deps
+}
+@test "Test function: get-python-deps-tar-gz" {
+  verify_function get-python-deps-tar-gz
+  kubeless_function_delete get-python-deps-tar-gz
+}
+@test "Test function: get-python-deps-tar-bz2" {
+  verify_function get-python-deps-tar-bz2
+  kubeless_function_delete get-python-deps-tar-bz2
+}
+@test "Test function: get-python-deps-tar-xz" {
+  verify_function get-python-deps-tar-xz
+  kubeless_function_delete get-python-deps-tar-xz
 }
 @test "Test function: get-python-custom-port" {
   verify_function get-python-custom-port
@@ -91,5 +109,17 @@ load ../script/libtest
 @test "Test function: get-node-url-zip" {
   verify_function get-node-url-zip
   kubeless_function_delete get-node-url-zip
+}
+@test "Test function: get-node-url-tar-gz" {
+  verify_function get-node-url-tar-gz
+  kubeless_function_delete get-node-url-tar-gz
+}
+@test "Test function: get-node-url-tar-bz2" {
+  verify_function get-node-url-tar-bz2
+  kubeless_function_delete get-node-url-tar-bz2
+}
+@test "Test function: get-node-url-tar-xz" {
+  verify_function get-node-url-tar-xz
+  kubeless_function_delete get-node-url-tar-xz
 }
 # vim: ts=2 sw=2 si et syntax=sh

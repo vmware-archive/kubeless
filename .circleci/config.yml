@@ -27,6 +27,7 @@ exports: &exports
     echo "export FUNCTION_IMAGE_BUILDER=${BUILDER_IMAGE_NAME}:${CONTROLLER_TAG}" >> $BASH_ENV
     echo "export KUBECFG_JPATH=/home/circleci/src/github.com/kubeless/kubeless/ksonnet-lib" >> $BASH_ENV
     echo "export PATH=$(pwd)/bats/libexec:$GOPATH/bin:$PATH" >> $BASH_ENV
+    echo "export GIT_SHA1=${CIRCLE_SHA1}" >> $BASH_ENV
 restore_workspace: &restore_workspace
   run: |
     make bootstrap
@@ -112,6 +113,8 @@ jobs:
       image: ubuntu-1604:201903-01
     steps:
       - checkout
+      - run: sudo apt-get update -y
+      - run: sudo apt-get install -y tar gzip bzip2 xz-utils
       - attach_workspace:
           at: /tmp/go
       - <<: *exports
