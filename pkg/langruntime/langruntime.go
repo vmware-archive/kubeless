@@ -216,11 +216,11 @@ func (l *Langruntimes) GetImageSecrets(runtime string) ([]v1.LocalObjectReferenc
 
 	runtimeInf, err := l.findRuntimeVersion(runtime)
 	if err != nil {
-		return nil, err
+		return []v1.LocalObjectReference{}, err
 	}
 
 	if len(runtimeInf.ImagePullSecrets) == 0 {
-		return nil, nil
+		return []v1.LocalObjectReference{}, nil
 	}
 
 	for _, s := range runtimeInf.ImagePullSecrets {

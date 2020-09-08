@@ -448,7 +448,7 @@ func GetAnnotationsFromCRD(clientset clientsetAPIExtensions.Interface, name stri
 	return crd.GetAnnotations(), nil
 }
 
-// GetRandString returns a random string of length N
+// GetRandString returns a random string of lenght N
 func GetRandString(n int) (string, error) {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
@@ -459,7 +459,7 @@ func GetRandString(n int) (string, error) {
 
 // GetSecretsAsLocalObjectReference returns a list of LocalObjectReference based on secret names
 func GetSecretsAsLocalObjectReference(secrets ...string) []v1.LocalObjectReference {
-	var res []v1.LocalObjectReference
+	res := []v1.LocalObjectReference{}
 	for _, secret := range secrets {
 		if secret != "" {
 			res = append(res, v1.LocalObjectReference{Name: secret})

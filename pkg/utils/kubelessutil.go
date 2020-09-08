@@ -326,14 +326,7 @@ func getChecksum(content string) (string, error) {
 // The caller should define the runtime container(s).
 // It accepts a prepopulated podSpec with default information and volume that the
 // runtime container should mount
-func populatePodSpec(
-	funcObj *kubelessApi.Function,
-	lr *langruntime.Langruntimes,
-	podSpec *v1.PodSpec,
-	runtimeVolumeMount v1.VolumeMount,
-	provisionImage string,
-	imagePullSecrets []v1.LocalObjectReference,
-) error {
+func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes, podSpec *v1.PodSpec, runtimeVolumeMount v1.VolumeMount, provisionImage string, imagePullSecrets []v1.LocalObjectReference) error {
 	depsVolumeName := funcObj.ObjectMeta.Name + "-deps"
 	result := podSpec
 	if len(imagePullSecrets) > 0 {
@@ -480,20 +473,7 @@ func populatePodSpec(
 }
 
 // EnsureFuncImage creates a Job to build a function image
-func EnsureFuncImage(
-	client kubernetes.Interface,
-	funcObj *kubelessApi.Function,
-	lr *langruntime.Langruntimes,
-	or []metav1.OwnerReference,
-	imageName string,
-	tag string,
-	builderImage string,
-	registryHost string,
-	dockerSecretName string,
-	provisionImage string,
-	registryTLSEnabled bool,
-	imagePullSecrets []v1.LocalObjectReference,
-) error {
+func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function, lr *langruntime.Langruntimes, or []metav1.OwnerReference, imageName, tag, builderImage, registryHost, dockerSecretName, provisionImage string, registryTLSEnabled bool, imagePullSecrets []v1.LocalObjectReference) error {
 	if len(tag) < 64 {
 		return errors.New("Expecting sha256 as image tag")
 	}
@@ -508,15 +488,8 @@ func EnsureFuncImage(
 		RestartPolicy: v1.RestartPolicyOnFailure,
 	}
 	runtimeVolumeMount := getRuntimeVolumeMount(funcObj.ObjectMeta.Name)
-
-	if err = populatePodSpec(
-		funcObj,
-		lr,
-		&podSpec,
-		runtimeVolumeMount,
-		provisionImage,
-		imagePullSecrets,
-	); err != nil {
+	err = populatePodSpec(funcObj, lr, &podSpec, runtimeVolumeMount, provisionImage, imagePullSecrets)
+	if err != nil {
 		return err
 	}
 
@@ -628,15 +601,7 @@ func mergeMap(dst, src map[string]string) map[string]string {
 }
 
 // EnsureFuncDeployment creates/updates a function deployment
-func EnsureFuncDeployment(
-	client kubernetes.Interface,
-	funcObj *kubelessApi.Function,
-	or []metav1.OwnerReference,
-	lr *langruntime.Langruntimes,
-	prebuiltRuntimeImage string,
-	provisionImage string,
-	imagePullSecrets []v1.LocalObjectReference,
-) error {
+func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Function, or []metav1.OwnerReference, lr *langruntime.Langruntimes, prebuiltRuntimeImage, provisionImage string, imagePullSecrets []v1.LocalObjectReference) error {
 
 	var err error
 
@@ -685,15 +650,8 @@ func EnsureFuncDeployment(
 		}
 		// only resolve the image name and build the function if it has not been built already
 		if dpm.Spec.Template.Spec.Containers[0].Image == "" && prebuiltRuntimeImage == "" {
-
-			if err := populatePodSpec(
-				funcObj,
-				lr,
-				&dpm.Spec.Template.Spec,
-				runtimeVolumeMount,
-				provisionImage,
-				imagePullSecrets,
-			); err != nil {
+			err := populatePodSpec(funcObj, lr, &dpm.Spec.Template.Spec, runtimeVolumeMount, provisionImage, imagePullSecrets)
+			if err != nil {
 				return err
 			}
 
