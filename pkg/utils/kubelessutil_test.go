@@ -448,6 +448,26 @@ func TestEnsureImage(t *testing.T) {
 	if reflect.DeepEqual(jobs.Items[0].Spec.Template.Spec.ImagePullSecrets, pullSecrets) {
 		t.Error("Missing ImagePullSecrets")
 	}
+
+	// ensure my-secret is mounted as /var/run/secrets/kubeless.io/my-secret to install container
+	var container v1.Container
+	for _, c := range jobs.Items[0].Spec.Template.Spec.InitContainers {
+		if c.Name == "install" {
+			container = c
+		}
+	}
+	if len(container.Name) == 0 {
+		t.Fatalf("Cannot find init container %q", "install")
+	}
+	var found bool
+	for _, v := range container.VolumeMounts {
+		if v.MountPath == "/var/run/secrets/kubeless.io/my-secret" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("Cannot find volume mount /var/run/secrets/kubeless.io/my-secret")
+	}
 }
 
 func getDefaultFunc(name, ns string) *kubelessApi.Function {
@@ -683,6 +703,25 @@ func TestEnsureDeployment(t *testing.T) {
 		t.Errorf("Resources must be set for init container")
 	}
 
+	// ensure my-secret is mounted as /var/run/secrets/kubeless.io/my-secret to install container
+	var container v1.Container
+	for _, c := range dpm.Spec.Template.Spec.InitContainers {
+		if c.Name == "install" {
+			container = c
+		}
+	}
+	if len(container.Name) == 0 {
+		t.Fatalf("Cannot find init container %q", "install")
+	}
+	var found bool
+	for _, v := range container.VolumeMounts {
+		if v.MountPath == "/var/run/secrets/kubeless.io/my-secret" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("Cannot find volume mount /var/run/secrets/kubeless.io/my-secret")
+	}
 }
 
 func TestEnsureDeploymentWithoutFuncNorHandler(t *testing.T) {

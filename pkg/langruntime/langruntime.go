@@ -7,10 +7,10 @@ import (
 	"regexp"
 	"strings"
 
-	yaml "github.com/ghodss/yaml"
+	"github.com/ghodss/yaml"
 	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -35,6 +35,12 @@ type Image struct {
 	Image   string            `yaml:"image"`
 	Command string            `yaml:"command,omitempty"`
 	Env     map[string]string `yaml:"env,omitempty"`
+	Secrets []Secret          `yaml:"secrets,omitempty"`
+}
+
+// Secret is a reference to a secret.
+type Secret struct {
+	Name string `yaml:"name,omitempty"`
 }
 
 // RuntimeVersion is a struct with all the info about the images and secrets
@@ -231,6 +237,33 @@ func (l *Langruntimes) GetImageSecrets(runtime string) ([]v1.LocalObjectReferenc
 	return lors, nil
 }
 
+// GetInitContainerSecrets gets the secrets of the init container with name
+func (l *Langruntimes) GetInitContainerSecrets(runtime, name string) ([]v1.LocalObjectReference, error) {
+	runtimeInf, err := l.findRuntimeVersion(runtime)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(runtimeInf.Images) == 0 {
+		return nil, nil
+	}
+
+	var secrets []Secret
+	phase := name2phase(name)
+	for _, i := range runtimeInf.Images {
+		if i.Phase == phase {
+			secrets = append(secrets, i.Secrets...)
+			break
+		}
+	}
+	var refs []v1.LocalObjectReference
+	for _, s := range secrets {
+		refs = append(refs, v1.LocalObjectReference{Name: s.Name})
+	}
+
+	return refs, nil
+}
+
 func appendToCommand(orig string, command ...string) string {
 	if len(orig) > 0 {
 		return fmt.Sprintf("%s && %s", orig, strings.Join(command, " && "))
@@ -346,4 +379,15 @@ func (l *Langruntimes) GetCompilationContainer(runtime, funcName string, env []v
 		WorkingDir:      installVolume.MountPath,
 		Resources:       resources,
 	}, nil
+}
+
+// name2phase returns the phase of an init container
+func name2phase(name string) string {
+	switch name {
+	case "compile":
+		return PhaseCompilation
+	case "install":
+		return PhaseInstallation
+	}
+	return name
 }

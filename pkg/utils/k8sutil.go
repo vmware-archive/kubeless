@@ -163,7 +163,7 @@ func GetKubelessClientOutCluster() (versioned.Interface, error) {
 	return kubelessClient, nil
 }
 
-//GetDefaultNamespace returns the namespace set in current cluster context
+// GetDefaultNamespace returns the namespace set in current cluster context
 func GetDefaultNamespace() string {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig

@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -28,6 +29,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -48,6 +50,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
+
+// secretsMountPath is the file system path where volumes populated with secrets are mounted.
+const secretsMountPath = "/var/run/secrets/kubeless.io"
 
 // GetFunctionPort returns the port for a function service
 func GetFunctionPort(clientset kubernetes.Interface, namespace, functionName string) (string, error) {
@@ -384,7 +389,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 		result.InitContainers = []v1.Container{provisionContainer}
 	}
 
-	// Add the imagesecrets if present to pull images from private docker registry
+	// add the image secrets if present to pull images from private docker registry
 	if funcObj.Spec.Runtime != "" {
 		imageSecrets, err := lr.GetImageSecrets(funcObj.Spec.Runtime)
 		if err != nil {
@@ -430,13 +435,51 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 			*compContainer,
 		)
 	}
+
+	// mount volumes with init container secrets specified in runtime configuration
+	lr.ReadConfigMap()
+	for i := 0; i < len(result.InitContainers); i++ {
+		secrets, err := lr.GetInitContainerSecrets(funcObj.Spec.Runtime, result.InitContainers[i].Name)
+		if err != nil {
+			return fmt.Errorf("Unable to fetch init container secrets for runtime %s at phase %s: %v", funcObj.Spec.Runtime, result.InitContainers[i].Name, err)
+		}
+		for _, secret := range secrets {
+			// add volume if not available in the pod spec already
+			var found bool
+			for _, vol := range result.Volumes {
+				if vol.Name == secret.Name && (vol.Secret == nil || vol.Secret.SecretName != secret.Name) {
+					return fmt.Errorf("Unable to add volume for secret %s, volume already defined %#v", secret.Name, vol)
+				}
+				if vol.Name == secret.Name && vol.Secret != nil && vol.Secret.SecretName == secret.Name {
+					found = true
+					break
+				}
+			}
+			if !found {
+				result.Volumes = append(result.Volumes, v1.Volume{
+					Name: secret.Name,
+					VolumeSource: v1.VolumeSource{
+						Secret: &v1.SecretVolumeSource{SecretName: secret.Name},
+					},
+				})
+			}
+
+			// add volume mount to the init container
+			result.InitContainers[i].VolumeMounts = append(result.InitContainers[i].VolumeMounts, v1.VolumeMount{
+				Name:      secret.Name,
+				ReadOnly:  true,
+				MountPath: filepath.Join(secretsMountPath, secret.Name),
+			})
+		}
+	}
+
 	return nil
 }
 
 // EnsureFuncImage creates a Job to build a function image
 func EnsureFuncImage(client kubernetes.Interface, funcObj *kubelessApi.Function, lr *langruntime.Langruntimes, or []metav1.OwnerReference, imageName, tag, builderImage, registryHost, dockerSecretName, provisionImage string, registryTLSEnabled bool, imagePullSecrets []v1.LocalObjectReference) error {
 	if len(tag) < 64 {
-		return fmt.Errorf("Expecting sha256 as image tag")
+		return errors.New("Expecting sha256 as image tag")
 	}
 	jobName := fmt.Sprintf("build-%s-%s", funcObj.ObjectMeta.Name, tag[0:10])
 	_, err := client.BatchV1().Jobs(funcObj.ObjectMeta.Namespace).Get(jobName, metav1.GetOptions{})
@@ -578,7 +621,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	}
 	maxUnavailable := intstr.FromInt(0)
 
-	//add deployment and copy all func's Spec.Deployment to the deployment
+	// add deployment and copy all func's Spec.Deployment to the deployment
 	dpm := funcObj.Spec.Deployment.DeepCopy()
 	dpm.OwnerReferences = or
 	dpm.ObjectMeta.Name = funcObj.ObjectMeta.Name
@@ -592,7 +635,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		},
 	}
 
-	//append data to dpm deployment
+	// append data to dpm deployment
 	dpm.Labels = addDefaultLabel(mergeMap(dpm.Labels, funcObj.Labels))
 	dpm.Spec.Template.Labels = mergeMap(dpm.Spec.Template.Labels, funcObj.Labels)
 	dpm.Annotations = mergeMap(dpm.Annotations, funcObj.Annotations)
@@ -609,7 +652,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 		if err != nil {
 			return err
 		}
-		//only resolve the image name and build the function if it has not been built already
+		// only resolve the image name and build the function if it has not been built already
 		if dpm.Spec.Template.Spec.Containers[0].Image == "" && prebuiltRuntimeImage == "" {
 			err := populatePodSpec(funcObj, lr, &dpm.Spec.Template.Spec, runtimeVolumeMount, provisionImage, imagePullSecrets)
 			if err != nil {
