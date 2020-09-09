@@ -29,6 +29,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -49,6 +50,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
+
+// secretsMountPath is the files system path where volumes populated with secrets are mounted.
+const secretsMountPath = "/var/run/secrets/kubeless.io"
 
 // GetFunctionPort returns the port for a function service
 func GetFunctionPort(clientset kubernetes.Interface, namespace, functionName string) (string, error) {
@@ -464,7 +468,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 			result.InitContainers[i].VolumeMounts = append(result.InitContainers[i].VolumeMounts, v1.VolumeMount{
 				Name:      secret.Name,
 				ReadOnly:  true,
-				MountPath: "/" + secret.Name,
+				MountPath: filepath.Join(secretsMountPath, secret.Name),
 			})
 		}
 	}
