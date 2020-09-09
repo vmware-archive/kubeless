@@ -51,7 +51,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-// secretsMountPath is the files system path where volumes populated with secrets are mounted.
+// secretsMountPath is the file system path where volumes populated with secrets are mounted.
 const secretsMountPath = "/var/run/secrets/kubeless.io"
 
 // GetFunctionPort returns the port for a function service
