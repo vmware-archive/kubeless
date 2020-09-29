@@ -56,24 +56,22 @@ When you install kubeless, there is a CRD `functions.kubeless.io` created to rep
 
 ```yaml
 $ kubectl get customresourcedefinition functions.kubeless.io -o yaml
-apiVersion: v1
-items:
-- apiVersion: apiextensions.k8s.io/v1beta1
-  kind: CustomResourceDefinition
-  metadata:
-    ...
-    name: functions.kubeless.io
-    ...
-    selfLink: /apis/apiextensions.k8s.io/v1beta1/customresourcedefinitions/functions.kubeless.io
-  spec:
-    group: kubeless.io
-    names:
-      kind: Function
-      listKind: FunctionList
-      plural: functions
-      singular: function
-    scope: Namespaced
-    version: v1beta1
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  ...
+  name: functions.kubeless.io
+  ...
+  selfLink: /apis/apiextensions.k8s.io/v1beta1/customresourcedefinitions/functions.kubeless.io
+spec:
+  group: kubeless.io
+  names:
+    kind: Function
+    listKind: FunctionList
+    plural: functions
+    singular: function
+  scope: Namespaced
+  version: v1beta1
 ```
 
 Then function custom objects will be created under this CRD endpoint. A function object looks like this:
