@@ -72,7 +72,7 @@ Hello World!
 If you do not have NATS cluster its pretty easy to setup a NATS cluster. Run below command to deploy a [NATS operator](https://github.com/nats-io/nats-operator)
 
 ```console
-$ kubectl apply -f https://raw.githubusercontent.com/nats-io/nats-operator/master/example/deployment-rbac.yaml
+$ kubectl apply -f https://github.com/nats-io/nats-operator/releases/latest/download/10-deployment.yaml
 ```
 
 Once NATS operator is up and running run below command to deploy a NATS cluster
