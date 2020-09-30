@@ -7,7 +7,8 @@ Kubeless lets you trigger any Kubeless function in response to ingested records 
 To trigger Kubeless functions in response to ingested records into the AWS kinesis stream you need to deploy Kubeless AWS Kinesis trigger controller. Please use this manifest to deploy Kubeless AWS Kinesis trigger controller.
 
 ```console
-kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kinesis-$RELEASE.yaml
+export RELEASE=$(curl -s https://api.github.com/repos/kubeless/kinesis-trigger/releases/latest | grep tag_name | cut -d '"' -f 4)
+kubectl create -f https://github.com/kubeless/kinesis-trigger/releases/download/$RELEASE/kinesis-$RELEASE.yaml
 ```
 
 Once you deploy the manifest you shall see Kinesis trigger controller running in the Kubeless namespace as below.
