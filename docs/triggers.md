@@ -12,6 +12,10 @@ In this section, we're going to list our triggers. Since Kubeless is an open-sou
 * [CronJob Trigger](/docs/cronjob-triggers)
 * [PubSub Triggers](/docs/pubsub-functions)
   * [Kafka Trigger](/docs/pubsub-functions#kafka)
+  * [NATS Trigger](/docs/pubsub-functions#nats)
+* [Data Stream Triggers](/docs/streaming-functions)
+  * [AWS Kinesis Trigger](/docs/streaming-functions/#aws-kinesis)
+ 
 
 ## Creating a new trigger
 
