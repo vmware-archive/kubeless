@@ -94,6 +94,7 @@ Each Kubeless trigger controller is being developed on its own repository. You c
  - [CronJob Trigger](https://github.com/kubeless/cronjob-trigger)
  - [Kafka Trigger](https://github.com/kubeless/kafka-trigger)
  - [NATS Trigger](https://github.com/kubeless/nats-trigger)
+ - [AWS Kinesis Trigger](https://github.com/kubeless/kinesis-trigger)
 
 ### Building k8s manifests file
 
