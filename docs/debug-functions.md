@@ -36,9 +36,18 @@ $ kubeless function ls
 NAME 	NAMESPACE	HANDLER  	RUNTIME  	DEPENDENCIES	STATUS
 foo  	default  	hello,foo	python3.6	            	MISSING: Check controller logs
 $ kubectl logs -n kubeless -l kubeless=controller
-time="2018-04-27T15:12:28Z" level=info msg="Processing update to function object foo Namespace: default" controller=cronjob-trigger-controller
-time="2018-04-27T15:12:28Z" level=error msg="Function can not be created/updated: failed: incorrect handler format. It should be module_name.handler_name" pkg=function-controller
-time="2018-04-27T15:12:28Z" level=error msg="Error processing default/foo (will retry): failed: incorrect handler format. It should be module_name.handler_name" pkg=function-controller
+Error from server (BadRequest): a container name must be specified for pod kubeless-controller-manager-cd68f56c4-cjbnz, choose one of: [kubeless-function-controller http-trigger-controller cronjob-trigger-controller]
+$ kubectl logs -n kubeless -l kubeless=controller -c kubeless-function-controller
+time="2020-10-01T01:48:29Z" level=info msg="Processing change to Function default/foo" pkg=function-controller
+time="2020-10-01T01:48:29Z" level=error msg="Function can not be created/updated: failed: incorrect handler format. It should be module_name.handler_name" pkg=function-controller
+time="2020-10-01T01:48:29Z" level=error msg="Error processing default/foo (will retry): failed: incorrect handler format. It should be module_name.handler_name" pkg=function-controller
+time="2020-10-01T01:48:29Z" level=info msg="Processing change to Function default/foo" pkg=function-controller
+time="2020-10-01T01:48:29Z" level=error msg="Function can not be created/updated: failed: incorrect handler format. It should be module_name.handler_name" pkg=function-controller
+time="2020-10-01T01:48:29Z" level=error msg="Error processing default/foo (will retry): failed: incorrect handler format. It should be module_name.handler_name" pkg=function-controller
+time="2020-10-01T01:48:29Z" level=info msg="Processing change to Function default/foo" pkg=function-controller
+time="2020-10-01T01:48:29Z" level=error msg="Function can not be created/updated: failed: incorrect handler format. It should be module_name.handler_name" pkg=function-controller
+time="2020-10-01T01:48:29Z" level=error msg="Error processing default/foo (giving up): failed: incorrect handler format. It should be module_name.handler_name" pkg=function-controller
+ERROR: logging before flag.Parse: E1001 01:48:29.164740       1 function_controller.go:185] failed: incorrect handler format. It should be module_name.handler_name
 ```
 
 From the logs we can see that there is a problem with the handler: we specified `hello,foo` while the correct value is `hello.foo`.
