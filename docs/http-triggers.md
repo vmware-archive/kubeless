@@ -30,7 +30,7 @@ You can deploy a Nginx Ingress controller manually (it is the same controller th
 
 ### Kong Ingress
 
-[Kong](https://getkong.org) have an Ingress controller that can be used to expose functions and secure them. You can check the deployment instructions in [their repository](https://github.com/Kong/kubernetes-ingress-controller/blob/master/deploy/README.md). Once Kong is deployed you should be able to see the controller in the `kong` namespace:
+[Kong](https://getkong.org) have an Ingress controller that can be used to expose functions and secure them. You can check the deployment instructions in [their repository](https://github.com/Kong/kubernetes-ingress-controller/tree/master/docs/deployment). Once Kong is deployed you should be able to see the controller in the `kong` namespace:
 
 ```console
 kubectl get pods -n kong
