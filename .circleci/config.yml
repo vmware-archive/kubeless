@@ -29,7 +29,7 @@ restore_workspace: &restore_workspace
   run: |
     make bootstrap
     sudo cp -r /tmp/go/bin/* /usr/local/bin/
-    cp -r /tmp/go/*yaml .
+    cp -r /tmp/go/src/github.com/kubeless/kubeless/*yaml .
 #### End of definitions
 
 workflows:
