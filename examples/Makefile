@@ -63,18 +63,6 @@ get-python-deps-update-verify:
 	echo "Checking updated deps of $$pod"; \
 	kubectl exec -it $$pod pip freeze | grep -q "twitter=="
 
-get-python-34:
-	kubeless function deploy get-python --runtime python3.4 --handler helloget.foo --from-file python/helloget.py
-
-get-python-34-verify:
-	kubeless function call get-python |egrep hello.world
-
-get-python-36:
-	kubeless function deploy get-python-36 --runtime python3.6 --handler helloget.foo --from-file python/helloget.py
-
-get-python-36-verify:
-	kubeless function call get-python-36 |egrep hello.world
-
 get-python-url-deps:
 	cd python && tar czf hellowithdeps.tgz hellowithdeps.py hellowithdepshelper.py && cd ..
 	kubeless function deploy get-python-url-deps --runtime python3.7 --handler hellowithdeps.foo --from-file python/hellowithdeps.tgz --dependencies $(BASE_URL)/examples/python/requirements.txt
