@@ -79,9 +79,9 @@ fmt:
 
 bats:
 	@if ! which bats >/dev/null; then \
-	git clone --branch=v0.4.0 --depth=1 https://github.com/sstephenson/bats.git
-	sudo ./bats/install.sh /usr/local
-	rm -rf bats
+	git clone --branch=v0.4.0 --depth=1 https://github.com/sstephenson/bats.git; \
+	sudo ./bats/install.sh /usr/local; \
+	rm -rf bats; \
 	fi
 
 ksonnet-lib:
