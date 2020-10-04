@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
-import urllib3
+import urllib.request
 
 def foo(event, context):
-    page = urllib3.urlopen("GET", "https://www.google.com/").read()
+    page = urllib.request.urlopen("https://www.google.com/").read()
     soup = BeautifulSoup(page, 'html.parser')
     return soup.title.string
