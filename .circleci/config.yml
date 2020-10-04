@@ -156,8 +156,7 @@ jobs:
       - <<: *restore_workspace
       - run: ./script/pull-or-build-image.sh function-controller
       - run: ./script/pull-or-build-image.sh function-image-builder
-      - run: cat /etc/docker/daemon.json
-      - run: "echo '{\"host\": \"unix:///var/run/docker.sock\", \"storage-driver\": \"overlay2\", \"insecure-registries\" : [\"0.0.0.0/0\"]}' > /tmp/daemon.json"
+      - run: "echo '{\"insecure-registries\" : [\"0.0.0.0/0\"]}' > /tmp/daemon.json"
       - run: sudo mv /tmp/daemon.json /etc/docker/daemon.json
       - run: sudo service docker restart
       - run: docker info
