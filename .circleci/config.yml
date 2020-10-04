@@ -97,7 +97,7 @@ jobs:
             cp ${f}.yaml build-manifests/
           done
       - persist_to_workspace:
-          root: ${GOPATH}
+          root: /go
           paths:
             - ./bin
       - persist_to_workspace:
@@ -105,7 +105,7 @@ jobs:
           paths:
             - ./*yaml
       - store_artifacts:
-          path: ${GOPATH}/bin/kubeless
+          path: /go/bin/kubeless
           destination: ./bin/kubeless
       - store_artifacts:
           path: ./build-manifests/
