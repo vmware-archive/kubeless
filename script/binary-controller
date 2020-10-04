@@ -49,6 +49,8 @@ BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/pkg/version.Version=${
 rm -rf bundles/kubeless*
 
 echo "Current directory: $(pwd)"
+echo "Go version:"
+go version
 echo "Go env:"
 go env
 set -x
