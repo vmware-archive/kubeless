@@ -202,7 +202,7 @@ timeout-go-verify:
 	echo $(MSG) | egrep Request.timeout.exceeded
 
 get-go-deps:
-	kubeless function deploy get-go-deps --runtime go1.14 --handler helloget.Hello --from-file golang/hellowithdeps.go --dependencies golang/Gopkg.toml
+	kubeless function deploy get-go-deps --runtime go1.14 --handler helloget.Hello --from-file golang/hellowithdeps.go --dependencies golang/go.mod
 
 get-go-deps-verify:
 	kubeless function call get-go-deps --data '{"hello": "world"}'
