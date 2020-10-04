@@ -48,13 +48,6 @@ BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/pkg/version.Version=${
 # Get rid of existing binaries
 rm -rf bundles/kubeless*
 
-echo "Current directory: $(pwd)"
-echo "Go version:"
-go version
-echo "Go env:"
-go env
-set -x
-
 # Build kubeless-controller
 gox "${OS_PLATFORM_ARG[@]}" "${OS_ARCH_ARG[@]}" \
     -output="bundles/kubeless_{{.OS}}-{{.Arch}}/$TARGET" \
