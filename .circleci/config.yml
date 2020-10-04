@@ -147,7 +147,7 @@ jobs:
   minikube_build_functions:
     <<: *defaults
     machine:
-      image: ubuntu-1604:201903-01
+      image: ubuntu-1604:202007-01
     steps:
       - checkout
       - <<: *exports
