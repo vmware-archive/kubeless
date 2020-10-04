@@ -113,9 +113,9 @@ jobs:
       - store_artifacts:
           path: ./build-manifests/
       - save_cache:
-        key: go-mod-v4-{{ checksum "go.sum" }}
-        paths:
-          - "/go/pkg/mod"
+          key: go-mod-v4-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
   minikube:
     <<: *defaults
     machine:
