@@ -29,7 +29,7 @@ restore_workspace: &restore_workspace
   run: |
     make bootstrap
     sudo cp -r /tmp/go/bin/* /usr/local/bin/
-    cp -r /tmp/go/src/github.com/kubeless/kubeless/*yaml .
+    cp -r /tmp/go/*yaml .
 #### End of definitions
 
 workflows:
@@ -96,6 +96,10 @@ jobs:
             sed -i.bak 's/:latest/'":${CONTROLLER_TAG}"'/g' ${f}.yaml
             cp ${f}.yaml build-manifests/
           done
+      - persist_to_workspace:
+          root: ${GOPATH}
+          paths:
+            - ./bin
       - persist_to_workspace:
           root: ./
           paths:
