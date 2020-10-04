@@ -83,7 +83,6 @@ jobs:
           keys:
             - go-mod-v4-{{ checksum "go.sum" }}
       - <<: *exports
-      - run: go env
       - run: go mod download
       - run: make bootstrap
       - run: make VERSION=${CONTROLLER_TAG} binary
@@ -113,7 +112,7 @@ jobs:
       - save_cache:
           key: go-mod-v4-{{ checksum "go.sum" }}
           paths:
-            - "/go/pkg/mod"
+            - /go/pkg/mod
   minikube:
     <<: *defaults
     machine:
