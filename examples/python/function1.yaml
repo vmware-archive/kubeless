@@ -5,7 +5,7 @@ metadata:
   name: function1
 spec:
   handler: hello.foobar
-  runtime: python2.7
+  runtime: python3.7
   deps: |
     cowpy
   function: |
