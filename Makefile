@@ -78,11 +78,7 @@ fmt:
 	$(GOFMT) -s -w $(GO_FILES)
 
 bats:
-	@if ! which bats >/dev/null; then \
-	git clone --branch=v0.4.0 --depth=1 https://github.com/sstephenson/bats.git; \
-	sudo ./bats/install.sh /usr/local; \
-	rm -rf bats; \
-	fi
+	git clone --branch=v0.4.0 --depth=1 https://github.com/sstephenson/bats.git
 
 ksonnet-lib:
 	git clone --depth=1 https://github.com/ksonnet/ksonnet-lib.git
