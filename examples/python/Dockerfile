@@ -5,4 +5,4 @@ ENV FUNC_HANDLER=foo \
 ADD helloget.py /
 RUN mkdir -p /kubeless/
 RUN chown 1000:1000 /kubeless
-ENTRYPOINT [ "bash", "-c", "cp /helloget.py /kubeless/ && python2.7 /kubeless.py"]
+ENTRYPOINT [ "bash", "-c", "cp /helloget.py /kubeless/ && python3.7 /kubeless.py"]

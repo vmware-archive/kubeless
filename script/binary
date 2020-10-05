@@ -18,7 +18,7 @@ set -e
 
 
 GIT_COMMIT=$(git describe --tags --dirty)
-BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/pkg/version.Version=${GIT_COMMIT}" -mod=vendor)
+BUILD_FLAGS=(-ldflags="-w -X github.com/kubeless/kubeless/pkg/version.Version=${GIT_COMMIT}")
 
 # Get rid of existing binary
 echo "Removing Old Kubeless binaries"
@@ -29,7 +29,7 @@ echo "Build Kubeless Components binaries"
 # Build binary
 go install \
     "${BUILD_FLAGS[@]}" \
-    github.com/kubeless/kubeless/cmd/...
+    ./cmd/...
 
 if [ $? -eq 0 ]; then
   echo "Build Kubeless Components successful. Program saved at ${GOPATH%%:*}/bin"

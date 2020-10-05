@@ -6,9 +6,7 @@ build_allways: &build_allways
     tags:
       only: /.*/
 defaults: &defaults
-  working_directory: /home/circleci/.go_workspace/src/github.com/kubeless/kubeless
   environment:
-    GOPATH: /home/circleci/.go_workspace
     CONTROLLER_IMAGE_NAME: kubeless/function-controller
     BUILDER_IMAGE_NAME: kubeless/function-image-builder
     CGO_ENABLED: "0"
@@ -16,7 +14,6 @@ defaults: &defaults
     GKE_VERSION: 1.12
     MINIKUBE_VERSION: v1.2.0
     MANIFESTS: kubeless kubeless-non-rbac kubeless-openshift
-    GO111MODULE: "on"
 exports: &exports
   # It is not possible to resolve env vars in the environment section:
   # https://discuss.circleci.com/t/using-environment-variables-in-config-yml-not-working/14237
@@ -32,7 +29,7 @@ restore_workspace: &restore_workspace
   run: |
     make bootstrap
     sudo cp -r /tmp/go/bin/* /usr/local/bin/
-    cp -r /tmp/go/src/github.com/kubeless/kubeless/*yaml .
+    cp -r /tmp/go/*yaml .
 #### End of definitions
 
 workflows:
@@ -79,13 +76,14 @@ jobs:
   build:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.12
+      - image: circleci/golang:1.15
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - go-mod-v4-{{ checksum "go.sum" }}
       - <<: *exports
-      # go build creates files under /usr/local/go where the running user doesn't have permissions to write
-      - run: sudo chown -R circleci:circleci /usr/local/go/
-      - run: go get -u golang.org/x/lint/golint
+      - run: go mod download
       - run: make bootstrap
       - run: make VERSION=${CONTROLLER_TAG} binary
       - run: make test
@@ -99,18 +97,26 @@ jobs:
             cp ${f}.yaml build-manifests/
           done
       - persist_to_workspace:
-          root: /home/circleci/.go_workspace
-          paths: 
-            - bin
-            - src/github.com/kubeless/kubeless/*yaml
+          root: /go
+          paths:
+            - ./bin
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - ./*yaml
       - store_artifacts:
-          path: /home/circleci/.go_workspace/bin/kubeless
+          path: /go/bin/kubeless
+          destination: ./bin/kubeless
       - store_artifacts:
-          path: build-manifests
+          path: ./build-manifests/
+      - save_cache:
+          key: go-mod-v4-{{ checksum "go.sum" }}
+          paths:
+            - /go/pkg/mod
   minikube:
     <<: *defaults
     machine:
-      image: ubuntu-1604:201903-01
+      image: ubuntu-1604:202007-01
     steps:
       - checkout
       - run: sudo apt-get update -y
@@ -125,7 +131,7 @@ jobs:
   build-cross-binaries:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.12
+      - image: circleci/golang:1.15
     steps:
       - <<: *exports
       - checkout
@@ -138,7 +144,7 @@ jobs:
   minikube_build_functions:
     <<: *defaults
     machine:
-      image: ubuntu-1604:201903-01
+      image: ubuntu-1604:202007-01
     steps:
       - checkout
       - <<: *exports
@@ -147,7 +153,7 @@ jobs:
       - <<: *restore_workspace
       - run: ./script/pull-or-build-image.sh function-controller
       - run: ./script/pull-or-build-image.sh function-image-builder
-      - run: "echo '{\"host\": \"unix:///var/run/docker.sock\", \"storage-driver\": \"overlay2\", \"insecure-registries\" : [\"0.0.0.0/0\"]}' > /tmp/daemon.json"
+      - run: "echo '{\"insecure-registries\" : [\"0.0.0.0/0\"]}' > /tmp/daemon.json"
       - run: sudo mv /tmp/daemon.json /etc/docker/daemon.json
       - run: sudo service docker restart
       - run: docker info
@@ -159,7 +165,7 @@ jobs:
   GKE:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.12
+      - image: circleci/golang:1.15
     steps:
       - run: |
           # In case of GKE we will only want to build if it is
@@ -186,7 +192,7 @@ jobs:
   push_latest_images:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.12
+      - image: circleci/golang:1.15
     steps:
       - <<: *exports
       - setup_remote_docker
@@ -205,7 +211,7 @@ jobs:
   release:
     <<: *defaults
     docker:
-      - image: circleci/golang:1.12
+      - image: circleci/golang:1.15
     steps:
       - <<: *exports
       - checkout

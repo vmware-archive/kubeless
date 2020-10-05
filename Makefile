@@ -78,7 +78,7 @@ fmt:
 	$(GOFMT) -s -w $(GO_FILES)
 
 bats:
-	git clone --depth=1 https://github.com/sstephenson/bats.git
+	git clone --branch=v0.4.0 --depth=1 https://github.com/sstephenson/bats.git
 
 ksonnet-lib:
 	git clone --depth=1 https://github.com/ksonnet/ksonnet-lib.git
@@ -86,7 +86,8 @@ ksonnet-lib:
 .PHONY: bootstrap
 bootstrap: bats ksonnet-lib
 
-	go get -u github.com/mitchellh/gox
+	GO111MODULE="off" go get -u github.com/mitchellh/gox
+	GO111MODULE="off" go get -u golang.org/x/lint/golint
 
 	@if ! which kubecfg >/dev/null; then \
 	sudo wget -q -O /usr/local/bin/kubecfg https://github.com/ksonnet/kubecfg/releases/download/v0.9.0/kubecfg-$$(go env GOOS)-$$(go env GOARCH); \

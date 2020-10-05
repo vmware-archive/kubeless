@@ -36,7 +36,7 @@ else
 fi
 
 if [ -z "$4" ]; then
-    PKG="github.com/kubeless/kubeless/cmd/function-controller"
+    PKG="./cmd/function-controller"
 else
     PKG=($4)
 fi
