@@ -6,7 +6,7 @@ RUN python3 ./get-pip.py
 RUN pip3 install --upgrade kubernetes
 RUN pip3 install --upgrade requests
 
-RUN git clone https://github.com/dpkp/kafka-python
+RUN git clone --depth 1 https://github.com/dpkp/kafka-python
 WORKDIR kafka-python
 RUN python3 ./setup.py install
 

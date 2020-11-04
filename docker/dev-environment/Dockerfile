@@ -25,7 +25,7 @@ RUN set -eux; \
     # Install gox and golint
     go get github.com/mitchellh/gox github.com/golang/lint/golint && \
     # Install bats
-    git clone https://github.com/sstephenson/bats /usr/local/bats && \
+    git clone --depth 1 https://github.com/sstephenson/bats /usr/local/bats && \
     # Install kubecfg
     wget "https://github.com/ksonnet/kubecfg/releases/download/v0.5.0/kubecfg-linux-amd64" -O "/usr/local/bin/kubecfg" && chmod +x "/usr/local/bin/kubecfg"
 
