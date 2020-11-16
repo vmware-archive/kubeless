@@ -21,6 +21,7 @@ import (
 	"os"
 )
 
+// CompletionCmd contains first-class command for completion
 var CompletionCmd = &cobra.Command{
 	Use:   "completion [bash|zsh|fish|powershell]",
 	Short: "Generate completion script",
