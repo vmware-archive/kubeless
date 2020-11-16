@@ -18,17 +18,57 @@ package completion
 
 import (
 	"github.com/spf13/cobra"
+	"os"
 )
 
 // CompletionCmd contains first-class command for completion
 var CompletionCmd = &cobra.Command{
-	Use:   "completion [shell]",
-	Short: "Output shell completion code for the specified shell.",
-	Long: `Output shell completion code for the specified shell. For bash, load the completion code into the current shell: 
-	
-	source <(kubeless completion bash)`,
-}
+	Use:   "completion [bash|zsh|fish|powershell]",
+	Short: "Generate completion script",
+	Long: `To load completions:
 
-func init() {
-	CompletionCmd.AddCommand(bashCmd)
+Bash:
+
+$ source <(kubeless completion bash)
+
+# To load completions for each session, execute once:
+Linux:
+  $ kubeless completion bash > /etc/bash_completion.d/kubeless
+MacOS:
+  $ kubeless completion bash > /usr/local/etc/bash_completion.d/kubeless
+
+Zsh:
+
+# If shell completion is not already enabled in your environment you will need
+# to enable it.  You can execute the following once:
+
+$ echo "autoload -U compinit; compinit" >> ~/.zshrc
+
+# To load completions for each session, execute once:
+$ kubeless completion zsh > "${fpath[1]}/_kubeless"
+
+# You will need to start a new shell for this setup to take effect.
+
+Fish:
+
+$ kubeless completion fish | source
+
+# To load completions for each session, execute once:
+$ kubeless completion fish > ~/.config/fish/completions/kubeless.fish
+`,
+	DisableFlagsInUseLine: true,
+	ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
+	Args:                  cobra.ExactValidArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		switch args[0] {
+		case "bash":
+			cmd.Root().GenBashCompletion(os.Stdout)
+		case "zsh":
+			cmd.Root().GenZshCompletion(os.Stdout)
+		case "fish":
+			cmd.Root().GenFishCompletion(os.Stdout, true)
+		case "powershell":
+			cmd.Root().GenPowerShellCompletion(os.Stdout)
+		}
+	},
 }
