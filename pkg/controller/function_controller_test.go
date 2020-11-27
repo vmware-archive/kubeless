@@ -168,6 +168,27 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 	}
 }
 
+func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMapUnknownKey(t *testing.T) {
+	funcObj := testFunc()
+	deploymentConfigData := `{
+		"spec": {
+			"template": {
+				"spec": {
+					"unknown": "property"
+				}
+			}
+		}
+	}`
+	controller := testController(fake.NewSimpleClientset(), funcObj.Namespace, map[string]string{
+		"deployment":     deploymentConfigData,
+		"runtime-images": testRuntimeImages(),
+	})
+
+	if err := controller.ensureK8sResources(funcObj); err == nil {
+		t.Fatalf("Unknown key in ConfigMap Deployment definition does not fail")
+	}
+}
+
 func TestEnsureK8sResourcesWithLivenessProbeFromConfigMap(t *testing.T) {
 	funcObj := testFunc()
 	runtimeImages := `[
