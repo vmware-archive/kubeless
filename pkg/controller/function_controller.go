@@ -302,7 +302,7 @@ func (c *FunctionController) ensureK8sResources(funcObj *kubelessApi.Function) e
 
 	deployment := appsv1.Deployment{}
 	if deploymentConfigData, ok := c.config.Data["deployment"]; ok {
-		err := yaml.Unmarshal([]byte(deploymentConfigData), &deployment)
+		err := yaml.UnmarshalStrict([]byte(deploymentConfigData), &deployment, yaml.DisallowUnknownFields)
 		if err != nil {
 			logrus.Errorf("Error parsing Deployment data in ConfigMap kubeless-function-deployment-config: %v", err)
 			return err

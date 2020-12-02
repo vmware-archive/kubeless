@@ -12,6 +12,7 @@ import (
 	"k8s.io/api/autoscaling/v2beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 )
@@ -111,56 +112,7 @@ func TestDeleteK8sResources(t *testing.T) {
 }
 
 func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
-	namespace := "default"
-	funcName := "foo"
-	var replicas int32
-	replicas = 10
-	funcLabels := map[string]string{
-		"foo": "bar",
-	}
-	funcAnno := map[string]string{
-		"bar": "foo",
-		"xyz": "valuefromfunc",
-	}
-	funcObj := kubelessApi.Function{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      funcName,
-			Namespace: namespace,
-			Labels:    funcLabels,
-			UID:       "foo-uid",
-		},
-		Spec: kubelessApi.FunctionSpec{
-			Function: "function",
-			Deps:     "deps",
-			Handler:  "foo.bar",
-			Runtime:  "ruby2.4",
-			Deployment: appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: funcAnno,
-				},
-				Spec: appsv1.DeploymentSpec{
-					Replicas: &replicas,
-					Template: v1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Annotations: funcAnno,
-						},
-						Spec: v1.PodSpec{
-							Containers: []v1.Container{
-								{
-									Env: []v1.EnvVar{
-										{
-											Name:  "foo",
-											Value: "bar",
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
+	funcObj := testFunc()
 	deploymentConfigData := `{
 		"metadata": {
 			"annotations": {
@@ -180,59 +132,16 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 		}
 	}`
 
-	runtimeImages := []langruntime.RuntimeInfo{{
-		ID:             "ruby",
-		DepName:        "Gemfile",
-		FileNameSuffix: ".rb",
-		Versions: []langruntime.RuntimeVersion{
-			{
-				Name:    "ruby24",
-				Version: "2.4",
-				Images: []langruntime.Image{
-					{Phase: "runtime", Image: "bitnami/ruby:2.4"},
-				},
-				ImagePullSecrets: []langruntime.ImageSecret{},
-			},
-		},
-	}}
-
-	out, err := yaml.Marshal(runtimeImages)
-	if err != nil {
-		logrus.Fatal("Canot Marshall runtimeimage")
-	}
-
 	clientset := fake.NewSimpleClientset()
-	kubelessConfigMap := &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "kubeless-config",
-		},
-		Data: map[string]string{"deployment": deploymentConfigData, "runtime-images": string(out)},
-	}
-	deploymentObjFromConfigMap := appsv1.Deployment{}
-	_ = yaml.Unmarshal([]byte(deploymentConfigData), &deploymentObjFromConfigMap)
-	_, err = clientset.CoreV1().ConfigMaps(namespace).Create(kubelessConfigMap)
-	if err != nil {
-		logrus.Fatal("Unable to create configmap")
-	}
+	controller := testController(clientset, funcObj.Namespace, map[string]string{
+		"deployment":     deploymentConfigData,
+		"runtime-images": testRuntimeImages(),
+	})
 
-	config, err := clientset.CoreV1().ConfigMaps(namespace).Get("kubeless-config", metav1.GetOptions{})
-	if err != nil {
-		logrus.Fatal("Unable to read the configmap")
-	}
-	var lr = langruntime.New(config)
-	lr.ReadConfigMap()
-
-	controller := FunctionController{
-		logger:      logrus.WithField("pkg", "controller"),
-		clientset:   clientset,
-		langRuntime: lr,
-		config:      config,
-	}
-
-	if err := controller.ensureK8sResources(&funcObj); err != nil {
+	if err := controller.ensureK8sResources(funcObj); err != nil {
 		t.Fatalf("Creating/Updating resources returned err: %v", err)
 	}
-	dpm, _ := clientset.AppsV1().Deployments(namespace).Get(funcName, metav1.GetOptions{})
+	dpm, _ := clientset.AppsV1().Deployments(funcObj.Namespace).Get(funcObj.Name, metav1.GetOptions{})
 	expectedAnnotations := map[string]string{
 		"bar":                "foo",
 		"foo-from-deploy-cm": "bar-from-deploy-cm",
@@ -259,57 +168,29 @@ func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMap(t *testing.T) {
 	}
 }
 
+func TestEnsureK8sResourcesWithDeploymentDefinitionFromConfigMapUnknownKey(t *testing.T) {
+	funcObj := testFunc()
+	deploymentConfigData := `{
+		"spec": {
+			"template": {
+				"spec": {
+					"unknown": "property"
+				}
+			}
+		}
+	}`
+	controller := testController(fake.NewSimpleClientset(), funcObj.Namespace, map[string]string{
+		"deployment":     deploymentConfigData,
+		"runtime-images": testRuntimeImages(),
+	})
+
+	if err := controller.ensureK8sResources(funcObj); err == nil {
+		t.Fatalf("Unknown key in ConfigMap Deployment definition does not fail")
+	}
+}
+
 func TestEnsureK8sResourcesWithLivenessProbeFromConfigMap(t *testing.T) {
-	namespace := "default"
-	funcName := "foo"
-	var replicas int32
-	replicas = 10
-	funcLabels := map[string]string{
-		"foo": "bar",
-	}
-	funcAnno := map[string]string{
-		"bar": "foo",
-		"xyz": "valuefromfunc",
-	}
-	funcObj := kubelessApi.Function{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      funcName,
-			Namespace: namespace,
-			Labels:    funcLabels,
-			UID:       "foo-uid",
-		},
-		Spec: kubelessApi.FunctionSpec{
-			Function: "function",
-			Deps:     "deps",
-			Handler:  "foo.bar",
-			Runtime:  "ruby2.4",
-			Deployment: appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: funcAnno,
-				},
-				Spec: appsv1.DeploymentSpec{
-					Replicas: &replicas,
-					Template: v1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Annotations: funcAnno,
-						},
-						Spec: v1.PodSpec{
-							Containers: []v1.Container{
-								{
-									Env: []v1.EnvVar{
-										{
-											Name:  "foo",
-											Value: "bar",
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
+	funcObj := testFunc()
 	runtimeImages := `[
 		{
 			"ID": "ruby",
@@ -338,36 +219,14 @@ func TestEnsureK8sResourcesWithLivenessProbeFromConfigMap(t *testing.T) {
 	]`
 
 	clientset := fake.NewSimpleClientset()
-	kubelessConfigMap := &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "kubeless-config",
-		},
-		Data: map[string]string{"runtime-images": runtimeImages},
-	}
+	controller := testController(clientset, funcObj.Namespace, map[string]string{
+		"runtime-images": runtimeImages,
+	})
 
-	_, err := clientset.CoreV1().ConfigMaps(namespace).Create(kubelessConfigMap)
-	if err != nil {
-		logrus.Fatal("Unable to create configmap")
-	}
-
-	config, err := clientset.CoreV1().ConfigMaps(namespace).Get("kubeless-config", metav1.GetOptions{})
-	if err != nil {
-		logrus.Fatal("Unable to read the configmap")
-	}
-	var lr = langruntime.New(config)
-	lr.ReadConfigMap()
-
-	controller := FunctionController{
-		logger:      logrus.WithField("pkg", "controller"),
-		clientset:   clientset,
-		langRuntime: lr,
-		config:      config,
-	}
-
-	if err := controller.ensureK8sResources(&funcObj); err != nil {
+	if err := controller.ensureK8sResources(funcObj); err != nil {
 		t.Fatalf("Creating/Updating resources returned err: %v", err)
 	}
-	dpm, _ := clientset.AppsV1().Deployments(namespace).Get(funcName, metav1.GetOptions{})
+	dpm, _ := clientset.AppsV1().Deployments(funcObj.Namespace).Get(funcObj.Name, metav1.GetOptions{})
 	expectedLivenessProbe := &v1.Probe{
 		InitialDelaySeconds: int32(5),
 		PeriodSeconds:       int32(10),
@@ -382,4 +241,103 @@ func TestEnsureK8sResourcesWithLivenessProbeFromConfigMap(t *testing.T) {
 		t.Fatalf("LivenessProbe found is '%v', although expected was '%v'", dpm.Spec.Template.Spec.Containers[0].LivenessProbe, expectedLivenessProbe)
 	}
 
+}
+
+func testFunc() *kubelessApi.Function {
+	var replicas int32
+	replicas = 10
+	funcAnno := map[string]string{
+		"bar": "foo",
+		"xyz": "valuefromfunc",
+	}
+	return &kubelessApi.Function{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "default",
+			Labels:    map[string]string{"foo": "bar"},
+			UID:       "foo-uid",
+		},
+		Spec: kubelessApi.FunctionSpec{
+			Function: "function",
+			Deps:     "deps",
+			Handler:  "foo.bar",
+			Runtime:  "ruby2.4",
+			Deployment: appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: funcAnno,
+				},
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &replicas,
+					Template: v1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Annotations: funcAnno,
+						},
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{
+								{
+									Env: []v1.EnvVar{
+										{
+											Name:  "foo",
+											Value: "bar",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func testRuntimeImages() string {
+	runtimeImages := []langruntime.RuntimeInfo{{
+		ID:             "ruby",
+		DepName:        "Gemfile",
+		FileNameSuffix: ".rb",
+		Versions: []langruntime.RuntimeVersion{
+			{
+				Name:    "ruby24",
+				Version: "2.4",
+				Images: []langruntime.Image{
+					{Phase: "runtime", Image: "bitnami/ruby:2.4"},
+				},
+				ImagePullSecrets: []langruntime.ImageSecret{},
+			},
+		},
+	}}
+
+	out, err := yaml.Marshal(runtimeImages)
+	if err != nil {
+		logrus.Fatal("Canot Marshall runtimeimage")
+	}
+	return string(out)
+}
+
+func testController(clientset kubernetes.Interface, namespace string, configData map[string]string) *FunctionController {
+	kubelessConfigMap := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "kubeless-config",
+		},
+		Data: configData,
+	}
+	_, err := clientset.CoreV1().ConfigMaps(namespace).Create(kubelessConfigMap)
+	if err != nil {
+		logrus.Fatal("Unable to create configmap")
+	}
+
+	config, err := clientset.CoreV1().ConfigMaps(namespace).Get("kubeless-config", metav1.GetOptions{})
+	if err != nil {
+		logrus.Fatal("Unable to read the configmap")
+	}
+	var lr = langruntime.New(config)
+	lr.ReadConfigMap()
+
+	return &FunctionController{
+		logger:      logrus.WithField("pkg", "controller"),
+		clientset:   clientset,
+		langRuntime: lr,
+		config:      config,
+	}
 }

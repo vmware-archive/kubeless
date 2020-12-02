@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go v1.16.26
 	github.com/coreos/prometheus-operator v0.0.0-20171201110357-197eb012d973
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
-	github.com/ghodss/yaml v1.0.0
+	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
 	github.com/googleapis/gnostic v0.2.0 // indirect
@@ -34,6 +34,7 @@ require (
 	github.com/spf13/cobra v1.1.1
 	golang.org/x/build v0.0.0-20190111050920-041ab4dc3f9d // indirect
 	golang.org/x/net v0.0.0-20190620200207-3b0461eec859
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/api v0.0.0-20180308224125-73d903622b73
 	k8s.io/apiextensions-apiserver v0.0.0-20180327033742-750feebe2038
 	k8s.io/apimachinery v0.0.0-20180228050457-302974c03f7e
