@@ -300,14 +300,16 @@ func (l *Langruntimes) GetBuildContainer(runtime, depsChecksum string, env []v1.
 	var command string
 	// Validate deps checksum
 	shaFile := "/tmp/deps.sha256"
-	command = appendToCommand(command, imageInf.Command)
 
 	// if checksum exist, check sum
 	if depsChecksum != "" {
 		command = appendToCommand(command,
 			fmt.Sprintf("echo '%s  %s' > %s", depsChecksum, depsFile, shaFile),
 			fmt.Sprintf("sha256sum -c %s", shaFile),
+			imageInf.Command,
 		)
+	} else {
+		command = appendToCommand(command, imageInf.Command)
 	}
 
 	env = append(
