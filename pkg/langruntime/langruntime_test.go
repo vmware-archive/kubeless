@@ -136,3 +136,33 @@ func TestGetBuildContainer(t *testing.T) {
 		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedContainer, c)
 	}
 }
+
+func TestGetBuildContainerWithBundledDeps(t *testing.T) {
+	lr := SetupLangRuntime(clientset)
+	lr.ReadConfigMap()
+
+	// It should return the proper build image for python
+	vol1 := v1.VolumeMount{Name: "v1", MountPath: "/v1"}
+	resources := v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceLimitsCPU: resource.MustParse("100m")}}
+	c, err := lr.GetBuildContainer("python2.7", "", []v1.EnvVar{}, vol1, resources)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+	expectedContainer := v1.Container{
+		Name:            "install",
+		Image:           "python:2.7",
+		Command:         []string{"sh", "-c"},
+		Args:            []string{"foo"},
+		VolumeMounts:    []v1.VolumeMount{vol1},
+		WorkingDir:      "/v1",
+		ImagePullPolicy: v1.PullIfNotPresent,
+		Env: []v1.EnvVar{
+			{Name: "KUBELESS_INSTALL_VOLUME", Value: "/v1"},
+			{Name: "KUBELESS_DEPS_FILE", Value: "/v1/requirements.txt"},
+		},
+		Resources: v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceLimitsCPU: resource.MustParse("100m")}},
+	}
+	if !reflect.DeepEqual(expectedContainer, c) {
+		t.Errorf("Unexpected result. Expecting:\n %+v\nReceived:\n %+v", expectedContainer, c)
+	}
+}
