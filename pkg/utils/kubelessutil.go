@@ -407,7 +407,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 	}
 	if funcObj.Spec.Deps != "" && err != nil {
 		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
-	} else if funcObj.Spec.Deps != "" {
+	} else if funcObj.Spec.Deps != "" || funcObj.Spec.IgnoreConfigDeps != "" {
 		depsChecksum, err := getChecksum(funcObj.Spec.Deps)
 		if err != nil {
 			return fmt.Errorf("Unable to obtain dependencies checksum: %v", err)
