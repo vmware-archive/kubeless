@@ -77,7 +77,7 @@ func appendToCommand(orig string, command ...string) string {
 	return strings.Join(command, " && ")
 }
 
-func getProvisionContainer(function, checksum, fileName, handler, contentType, runtime, prepareImage string, runtimeVolume, depsVolume v1.VolumeMount, ignoreConfigDeps string, resources v1.ResourceRequirements, lr *langruntime.Langruntimes) (v1.Container, error) {
+func getProvisionContainer(function, checksum, fileName, handler, contentType, runtime, prepareImage string, runtimeVolume, depsVolume v1.VolumeMount, useBundledDeps string, resources v1.ResourceRequirements, lr *langruntime.Langruntimes) (v1.Container, error) {
 	prepareCommand := ""
 	originFile := path.Join(depsVolume.MountPath, fileName)
 
@@ -141,7 +141,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 
 	// Copy deps file to the installation path
 	runtimeInf, err := lr.GetRuntimeInfo(runtime)
-	if err == nil && runtimeInf.DepName != "" && ignoreConfigDeps == "" {
+	if err == nil && runtimeInf.DepName != "" && useBundledDeps == "" {
 		depsFile := path.Join(depsVolume.MountPath, runtimeInf.DepName)
 		prepareCommand = appendToCommand(prepareCommand,
 			fmt.Sprintf("cp %s %s", depsFile, runtimeVolume.MountPath),
@@ -380,7 +380,7 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 			provisionImage,
 			runtimeVolumeMount,
 			srcVolumeMount,
-			funcObj.Spec.IgnoreConfigDeps,
+			funcObj.Spec.UseBundledDeps,
 			resources,
 			lr,
 		)
@@ -407,12 +407,12 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 	}
 	if funcObj.Spec.Deps != "" && err != nil {
 		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
-	} else if funcObj.Spec.Deps != "" || funcObj.Spec.IgnoreConfigDeps != "" {
+	} else if funcObj.Spec.Deps != "" || funcObj.Spec.UseBundledDeps != "" {
 		depsChecksum, err := getChecksum(funcObj.Spec.Deps)
 		if err != nil {
 			return fmt.Errorf("Unable to obtain dependencies checksum: %v", err)
 		}
-		if funcObj.Spec.IgnoreConfigDeps != "" {
+		if funcObj.Spec.UseBundledDeps != "" {
 			depsChecksum = ""
 		}
 		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, depsChecksum, envVars, runtimeVolumeMount, resources)

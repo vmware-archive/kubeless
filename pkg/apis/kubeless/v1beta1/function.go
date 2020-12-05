@@ -42,7 +42,7 @@ type FunctionSpec struct {
 	Runtime                 string                          `json:"runtime"`               // Function runtime to use
 	Timeout                 string                          `json:"timeout"`               // Maximum timeout for the function to complete its execution
 	Deps                    string                          `json:"deps"`                  // Function dependencies
-	IgnoreConfigDeps        string                          `json:"ignore-config-deps"`    // Function use requirement.txt bundled with function
+	UseBundledDeps          string                          `json:"use-bundled-deps"`      // Function use requirement.txt bundled with function
 	Deployment              appsv1.Deployment               `json:"deployment" protobuf:"bytes,3,opt,name=template"`
 	ServiceSpec             v1.ServiceSpec                  `json:"service"`
 	HorizontalPodAutoscaler v2beta1.HorizontalPodAutoscaler `json:"horizontalPodAutoscaler" protobuf:"bytes,3,opt,name=horizontalPodAutoscaler"`
