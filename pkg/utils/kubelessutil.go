@@ -412,6 +412,9 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 		if err != nil {
 			return fmt.Errorf("Unable to obtain dependencies checksum: %v", err)
 		}
+		if funcObj.Spec.IgnoreConfigDeps != "" {
+			depsChecksum = ""
+		}
 		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, depsChecksum, envVars, runtimeVolumeMount, resources)
 		if err != nil {
 			return err
