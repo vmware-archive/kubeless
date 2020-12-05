@@ -956,7 +956,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	dvol := v1.VolumeMount{Name: "deps", MountPath: "/deps"}
 	resources := v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceLimitsCPU: resource.MustParse("100m")}}
 
-	c, err := getProvisionContainer("test", "sha256:abc1234", "test.func", "test.foo", "text", "python2.7", "unzip", rvol, dvol, resources, lr)
+	c, err := getProvisionContainer("test", "sha256:abc1234", "test.func", "test.foo", "text", "python2.7", "unzip", rvol, dvol, "", resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -974,7 +974,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// If the content type is encoded it should decode it
-	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.func", "test.foo", "base64", "python2.7", "unzip", rvol, dvol, resources, lr)
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.func", "test.foo", "base64", "python2.7", "unzip", rvol, dvol, "", resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -992,7 +992,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// It should skip the dependencies installation if the runtime is not supported
-	c, err = getProvisionContainer("function", "sha256:abc1234", "test.func", "test.foo", "text", "cobol", "unzip", rvol, dvol, resources, lr)
+	c, err = getProvisionContainer("function", "sha256:abc1234", "test.func", "test.foo", "text", "cobol", "unzip", rvol, dvol, "", resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -1001,7 +1001,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// It should extract the file in case it is a Zip
-	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64+zip", "python2.7", "unzip", rvol, dvol, resources, lr)
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.zip", "test.foo", "base64+zip", "python2.7", "unzip", rvol, dvol, "", resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -1013,7 +1013,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// It should extract the compressed tar file
-	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.tar.gz", "test.foo", "base64+compressedtar", "python2.7", "unzip", rvol, dvol, resources, lr)
+	c, err = getProvisionContainer("Zm9vYmFyCg==", "sha256:abc1234", "test.tar.gz", "test.foo", "base64+compressedtar", "python2.7", "unzip", rvol, dvol, "", resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -1025,7 +1025,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// If the content type is url it should use curl
-	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.py", "sha256:abc1234", "", "test.foo", "url", "python2.7", "unzip", rvol, dvol, resources, lr)
+	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.py", "sha256:abc1234", "", "test.foo", "url", "python2.7", "unzip", rvol, dvol, "", resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -1034,7 +1034,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// If the content type is url+zip it should use curl and unzip
-	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.zip", "sha256:abc1234", "", "test.foo", "url+zip", "python2.7", "unzip", rvol, dvol, resources, lr)
+	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.zip", "sha256:abc1234", "", "test.foo", "url+zip", "python2.7", "unzip", rvol, dvol, "", resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -1046,7 +1046,7 @@ func TestGetProvisionContainer(t *testing.T) {
 	}
 
 	// If the content type is url+compressedtar it should use curl and tar
-	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.tar.gz", "sha256:abc1234", "", "test.foo", "url+compressedtar", "python2.7", "unzip", rvol, dvol, resources, lr)
+	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.tar.gz", "sha256:abc1234", "", "test.foo", "url+compressedtar", "python2.7", "unzip", rvol, dvol, "", resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
