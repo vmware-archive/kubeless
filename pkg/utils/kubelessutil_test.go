@@ -1057,3 +1057,32 @@ func TestGetProvisionContainer(t *testing.T) {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 }
+
+func TestGetProvisionContainerWithBundledDeps(t *testing.T) {
+	clientSet := fake.NewSimpleClientset()
+	langruntime.AddFakeConfig(clientSet)
+	lr := langruntime.SetupLangRuntime(clientSet)
+	lr.ReadConfigMap()
+
+	rVol := v1.VolumeMount{Name: "runtime", MountPath: "/runtime"}
+	dVol := v1.VolumeMount{Name: "deps", MountPath: "/deps"}
+	resources := v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceLimitsCPU: resource.MustParse("100m")}}
+
+	c, err := getProvisionContainer("test", "sha256:abc1234", "test.func", "test.foo", "text", "python2.7", "unzip", rVol, dVol, "true", resources, lr)
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err)
+	}
+
+	expectedContainer := v1.Container{
+		Name:            "prepare",
+		Image:           "unzip",
+		Command:         []string{"sh", "-c"},
+		Args:            []string{"echo 'abc1234  /deps/test.func' > /tmp/func.sha256 && sha256sum -c /tmp/func.sha256 && cp /deps/test.func /runtime/test.py"},
+		VolumeMounts:    []v1.VolumeMount{rVol, dVol},
+		ImagePullPolicy: v1.PullIfNotPresent,
+		Resources:       v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceLimitsCPU: resource.MustParse("100m")}},
+	}
+	if !reflect.DeepEqual(expectedContainer, c) {
+		t.Errorf("Unexpected result:\n %+v", c)
+	}
+}
