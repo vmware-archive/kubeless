@@ -1068,7 +1068,7 @@ func TestGetProvisionContainerWithBundledDeps(t *testing.T) {
 	dVol := v1.VolumeMount{Name: "deps", MountPath: "/deps"}
 	resources := v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceLimitsCPU: resource.MustParse("100m")}}
 
-	c, err := getProvisionContainer("test", "sha256:abc1234", "test.func", "test.foo", "text", "python2.7", "unzip", rVol, dVol, resources, lr)
+	c, err := getProvisionContainer("test", "", "test.func", "test.foo", "text+deps", "python2.7", "unzip", rVol, dVol, resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
