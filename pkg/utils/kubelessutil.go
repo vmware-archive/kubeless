@@ -141,7 +141,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 
 	// Copy deps file to the installation path
 	runtimeInf, err := lr.GetRuntimeInfo(runtime)
-	if err == nil && runtimeInf.DepName != "" {
+	if err == nil && runtimeInf.DepName != "" && !strings.Contains(contentType, "deps") {
 		depsFile := path.Join(depsVolume.MountPath, runtimeInf.DepName)
 		prepareCommand = appendToCommand(prepareCommand,
 			fmt.Sprintf("cp %s %s", depsFile, runtimeVolume.MountPath),
