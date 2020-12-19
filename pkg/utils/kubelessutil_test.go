@@ -1056,33 +1056,20 @@ func TestGetProvisionContainer(t *testing.T) {
 	if !strings.Contains(c.Args[0], "tar xf /tmp/func.fromurl -C /runtime") {
 		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
-}
 
-func TestGetProvisionContainerWithBundledDeps(t *testing.T) {
-	clientSet := fake.NewSimpleClientset()
-	langruntime.AddFakeConfig(clientSet)
-	lr := langruntime.SetupLangRuntime(clientSet)
-	lr.ReadConfigMap()
-
-	rVol := v1.VolumeMount{Name: "runtime", MountPath: "/runtime"}
-	dVol := v1.VolumeMount{Name: "deps", MountPath: "/deps"}
-	resources := v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceLimitsCPU: resource.MustParse("100m")}}
-
-	c, err := getProvisionContainer("test", "", "test.func", "test.foo", "text+deps", "python2.7", "unzip", rVol, dVol, resources, lr)
+	// if the function use bundled deps in remote zip file
+	c, err = getProvisionContainer("https://raw.githubusercontent.com/test/test/test/test.zip", "sha256:abc1234", "", "test.foo", "url+zip+deps", "python2.7", "unzip", rvol, dvol, resources, lr)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
-
-	expectedContainer := v1.Container{
-		Name:            "prepare",
-		Image:           "unzip",
-		Command:         []string{"sh", "-c"},
-		Args:            []string{"echo 'abc1234  /deps/test.func' > /tmp/func.sha256 && sha256sum -c /tmp/func.sha256 && cp /deps/test.func /runtime/test.py"},
-		VolumeMounts:    []v1.VolumeMount{rVol, dVol},
-		ImagePullPolicy: v1.PullIfNotPresent,
-		Resources:       v1.ResourceRequirements{Limits: v1.ResourceList{v1.ResourceLimitsCPU: resource.MustParse("100m")}},
+	if !strings.HasPrefix(c.Args[0], "curl 'https://raw.githubusercontent.com/test/test/test/test.zip' -L --silent --output /tmp/func.fromurl") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
-	if !reflect.DeepEqual(expectedContainer, c) {
-		t.Errorf("Unexpected result:\n %+v", c)
+	if !strings.Contains(c.Args[0], "unzip -o /tmp/func.fromurl -d /runtime") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
+	}
+	// use bundled deps will not copy the requirements.txt to /runtime
+	if strings.Contains(c.Args[0], "cp /deps/requirements.txt /runtime") {
+		t.Errorf("Unexpected command: %s", c.Args[0])
 	}
 }
