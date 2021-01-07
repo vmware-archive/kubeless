@@ -626,7 +626,7 @@ func EnsureFuncDeployment(client kubernetes.Interface, funcObj *kubelessApi.Func
 	dpm.OwnerReferences = or
 	dpm.ObjectMeta.Name = funcObj.ObjectMeta.Name
 	dpm.Spec.Selector = &metav1.LabelSelector{
-		MatchLabels: funcObj.ObjectMeta.Labels,
+		MatchLabels: map[string]string{"created-by": funcObj.ObjectMeta.Labels["created-by"], "function": funcObj.ObjectMeta.Labels["function"]},
 	}
 
 	dpm.Spec.Strategy = appsv1.DeploymentStrategy{
