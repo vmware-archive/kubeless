@@ -51,11 +51,11 @@ As any Kubernetes object, function objects have a maximum size of 1.5MiB (due to
 
 ## Functions with bundled deps file
 
-Since the ``requirement.txt``(function deps file) will become long and difficult to put into kubernetes object as function getting complex, Kubeless support use the deps file in remote zip file with function.
+Since the dependencies file(for python runtime: ``requirement.txt``) will become long and difficult to put into kubernetes object as function getting complex, Kubeless support use the deps file in remote zip file with function.
 
 Usage: 
 
-- 1.Compress your function and ``requirement.txt``(Dependent on runtime) into a zip file
+- 1.Compress your function and dependencies file(in this case: ``requirement.txt``) into a zip file
 - 2.add ``+deps`` into ``function-content-type``
 
 ```yaml
