@@ -49,6 +49,21 @@ As any Kubernetes object, function objects have a maximum size of 1.5MiB (due to
   function-content-type: url+zip
 ```
 
+## Functions with bundled deps file
+
+Since the dependencies file(for python runtime: ``requirement.txt``) will become long and difficult to put into kubernetes object as function getting complex, Kubeless support use the deps file in remote zip file with function.
+
+Usage: 
+
+- 1.Compress your function and dependencies file(in this case: ``requirement.txt``) into a zip file
+- 2.add ``+deps`` into ``function-content-type``
+
+```yaml
+  checksum: sha256:d1f84e9f0a8ce27e7d9ce6f457126a8f92e957e5109312e7996373f658015547
+  function: https://github.com/kubeless/kubeless/blob/master/examples/nodejs/hellowithbundleddeps.zip?raw=true
+  function-content-type: url+zip+deps
+```
+
 ## Custom Deployment
 
 It is possible to specify a [`Deployment` spec](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#creating-a-deployment) in the Function spec that will be merged with default values set by the Kubeless controller. It is not necessary to specify all the fields of the deployment, just the fields you are interested on overwriting. For example:

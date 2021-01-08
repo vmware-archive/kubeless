@@ -141,7 +141,7 @@ func getProvisionContainer(function, checksum, fileName, handler, contentType, r
 
 	// Copy deps file to the installation path
 	runtimeInf, err := lr.GetRuntimeInfo(runtime)
-	if err == nil && runtimeInf.DepName != "" {
+	if err == nil && runtimeInf.DepName != "" && !strings.Contains(contentType, "deps") {
 		depsFile := path.Join(depsVolume.MountPath, runtimeInf.DepName)
 		prepareCommand = appendToCommand(prepareCommand,
 			fmt.Sprintf("cp %s %s", depsFile, runtimeVolume.MountPath),
@@ -404,13 +404,19 @@ func populatePodSpec(funcObj *kubelessApi.Function, lr *langruntime.Langruntimes
 	if len(result.Containers) > 0 {
 		envVars = result.Containers[0].Env
 	}
-	if funcObj.Spec.Deps != "" && err != nil {
+
+	hasDeps := funcObj.Spec.Deps != "" || strings.Contains(funcObj.Spec.FunctionContentType, "deps")
+	if hasDeps && err != nil {
 		return fmt.Errorf("Unable to install dependencies for the runtime %s", funcObj.Spec.Runtime)
-	} else if funcObj.Spec.Deps != "" {
-		depsChecksum, err := getChecksum(funcObj.Spec.Deps)
-		if err != nil {
-			return fmt.Errorf("Unable to obtain dependencies checksum: %v", err)
+	} else if hasDeps {
+		depsChecksum := ""
+		if funcObj.Spec.Deps != "" {
+			depsChecksum, err = getChecksum(funcObj.Spec.Deps)
+			if err != nil {
+				return fmt.Errorf("Unable to obtain dependencies checksum: %v", err)
+			}
 		}
+
 		depsInstallContainer, err := lr.GetBuildContainer(funcObj.Spec.Runtime, depsChecksum, envVars, runtimeVolumeMount, resources)
 		if err != nil {
 			return err
