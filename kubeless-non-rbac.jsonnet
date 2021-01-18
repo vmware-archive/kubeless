@@ -36,12 +36,12 @@ local functionControllerContainer =
   container.env(controllerEnv);
 
 local httpTriggerControllerContainer =
-  container.default("http-trigger-controller", "kubeless/http-trigger-controller:v1.0.1") +
+  container.default("http-trigger-controller", "kubeless/http-trigger-controller:v1.0.3") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(controllerEnv);
 
 local cronjobTriggerContainer =
-  container.default("cronjob-trigger-controller", "kubeless/cronjob-trigger-controller:v1.0.1") +
+  container.default("cronjob-trigger-controller", "kubeless/cronjob-trigger-controller:v1.0.3") +
   container.imagePullPolicy("IfNotPresent") +
   container.env(controllerEnv);
 
