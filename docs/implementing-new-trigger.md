@@ -34,7 +34,7 @@ Give appropriate and intutive name to the event source.
 
 ## Model the CRD spec
 
-Once CRD is defined, you need to model the event source and its attributes as resource object spec. Please see [API conventions](https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md) for key attributes of Kubernetes API resource object. Except fot `Spec` part rest of the needed parts to define a Trigger are pretty similar to other Triggers.
+Once CRD is defined, you need to model the event source and its attributes as resource object spec. Please see [API conventions](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md) for key attributes of Kubernetes API resource object. Except fot `Spec` part rest of the needed parts to define a Trigger are pretty similar to other Triggers.
 
 For e.g below is the definition of [Kafka Trigger](https://github.com/kubeless/kafka-trigger/blob/master/pkg/apis/kubeless/v1beta1/kafka_trigger.go)
 
