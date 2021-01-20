@@ -59,6 +59,6 @@ To do this, use the `--cpu` parameter when deploying your function. Please see t
 
 ### Further reading
 
-[Custom Metrics API](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/custom-metrics-api.md)
+[Custom Metrics API](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/instrumentation/custom-metrics-api.md)
 
 [Support for custom metrics](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-custom-metrics)
