@@ -39,7 +39,7 @@ RELEASE=$(curl -s https://api.github.com/repos/kubeless/kubeless/releases/latest
 For this CronJob test, we're going to use a simple function that just logs a "Hello world!" message. Since this isn't a tutorial explaining how to deploy a function you can just run the following command:
 
 ```shell
- kubectl apply -f https://gist.githubusercontent.com/odelucca/1f3a71b7ff05f31d492dc5bfd3f3afba/raw/5237991f018f99a697e937a85e60e57dd8ac1a1c/function.yaml
+ kubectl apply -f https://gist.githubusercontent.com/delucca/1f3a71b7ff05f31d492dc5bfd3f3afba/raw/5237991f018f99a697e937a85e60e57dd8ac1a1c/function.yaml
 ```
 
 ### Step 4: Create a new CronJob trigger
