@@ -62,7 +62,7 @@ You can use the CLI to create a function. Here is a toy:
 
 ```python
 def hello(event, context):
-  print event
+  print (event)
   return event['data']
 ```
 
@@ -77,7 +77,7 @@ You can find more details about the function interface [here](/docs/kubeless-fun
 You create it with:
 
 ```console
-$ kubeless function deploy hello --runtime python2.7 \
+$ kubeless function deploy hello --runtime python3.8 \
                                 --from-file test.py \
                                 --handler test.hello
 INFO[0000] Deploying function...
@@ -88,7 +88,7 @@ INFO[0000] Check the deployment status executing 'kubeless function ls hello'
 Let's dissect the command:
 
 * `hello`: This is the name of the function we want to deploy.
-* `--runtime python2.7`: This is the runtime we want to use to run our function. Available runtimes can be found executing `kubeless get-server-config`.
+* `--runtime python3.8`: This is the runtime we want to use to run our function. Available runtimes can be found executing `kubeless get-server-config`.
 * `--from-file test.py`: This is the file containing the function code. Specifying a zip file or a gzip/bzip2/xz compressed tar file (see [list of supported suffixes](https://en.wikipedia.org/wiki/Tar_(computing)#Suffixes_for_compressed_files) for compressed tar files) is supported as long as it doesn't exceed the maximum size for an etcd entry (1 MB).
 * `--handler test.hello`: This specifies the file and the exposed function that will be used when receiving requests. In this example we are using the function `hello` from the file `test.py`.
 
@@ -103,7 +103,7 @@ hello        1h
 
 $ kubeless function ls
 NAME           	NAMESPACE	HANDLER       RUNTIME  	DEPENDENCIES	STATUS
-hello         	default  	helloget.foo  python2.7	            	1/1 READY
+hello         	default  	helloget.foo  python3.8	            	1/1 READY
 ```
 
 You can then call the function with:
