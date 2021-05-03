@@ -78,7 +78,7 @@ var callCmd = &cobra.Command{
 		if get {
 			req = clientset.CoreV1().RESTClient().Get().Namespace(ns).Resource("services").SubResource("proxy").Name(funcName + ":" + port)
 		} else {
-			req = clientset.CoreV1().RESTClient().Post().Body(bytes.NewBuffer(str))
+			req = clientset.CoreV1().RESTClient().Post().Namespace(ns).Resource("services").SubResource("proxy").Name(funcName + ":" + port).Body(bytes.NewBuffer(str))
 			if utils.IsJSON(string(str)) {
 				req.SetHeader("Content-Type", "application/json")
 				req.SetHeader("event-type", "application/json")
@@ -89,7 +89,7 @@ var callCmd = &cobra.Command{
 			// REST package removes trailing slash when building URLs
 			// Causing POST requests to be redirected with an empty body
 			// So we need to manually build the URL
-			req = req.AbsPath(svc.ObjectMeta.SelfLink + ":" + port + "/proxy/")
+			req = req.AbsPath(req.URL().Path + "/")
 		}
 		timestamp := time.Now().UTC()
 		eventID, err := utils.GetRandString(11)
