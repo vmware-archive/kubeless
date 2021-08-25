@@ -2,6 +2,15 @@
 
 [![CircleCI](https://circleci.com/gh/kubeless/kubeless.svg?style=svg)](https://circleci.com/gh/kubeless/kubeless)
 [![Slack](https://img.shields.io/badge/slack-join%20chat%20%E2%86%92-e01563.svg)](http://slack.k8s.io)
+[![Not Maintained](https://img.shields.io/badge/Maintenance%20Level-Not%20Maintained-yellow.svg)](https://gist.github.com/cheerfulstoic/d107229326a01ff0f333a1d3476e068d)
+
+## WARNING: Kubeless is Not Maintained
+
+After some time of inactive maintenance, Kubeless owners set this project as not maintained and therefore a decision about the future of Kubeless will be taken by the end of 2021.
+
+Thank you
+
+## Overview
 
 `kubeless` is a Kubernetes-native serverless framework that lets you deploy small bits of code without having to worry about the underlying infrastructure plumbing. It leverages Kubernetes resources to provide auto-scaling, API routing, monitoring, troubleshooting and more.
 
