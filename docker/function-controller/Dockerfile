@@ -1,4 +1,4 @@
-FROM bitnami/minideb:jessie
+FROM bitnami/minideb:stretch
 
 RUN install_packages ca-certificates
 
