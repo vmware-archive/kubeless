@@ -1,6 +1,7 @@
-FROM fedora:27
+FROM debian:bullseye
 
-RUN dnf install -y skopeo nodejs
+RUN apt-get update
+RUN apt-get -y install skopeo nodejs
 
 ADD imbuilder /
 ADD entrypoint.sh /
