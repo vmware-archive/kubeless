@@ -1,0 +1,76 @@
+name: Kubeless Premerge
+on: [pull_request]
+jobs:
+  test-kubeless:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - run: go mod download
+      - run: make bootstrap
+      - run: make binary
+      - run: make test
+      - run: make validation
+      - run: make all-yaml
+      - run: |
+          mkdir build-manifests
+          GIT_COMMIT=$(git rev-parse --short HEAD)
+          for f in kubeless kubeless-non-rbac kubeless-openshift; do
+            sed -i.bak 's/:latest/'":${GIT_COMMIT}"'/g' ${f}.yaml
+            cp ${f}.yaml build-manifests/
+          done
+      - name: Store kubeless binary
+        uses: actions/upload-artifact@v2
+        with:
+          name: kubeless
+          path: ~/go/bin/kubeless
+      - name: Store build manifests
+        uses: actions/upload-artifact@v2
+        with:
+          name: build-manifest
+          path: ./build-manifests/
+  build-images-premerge:
+    runs-on: ubuntu-latest
+    env:
+      CONTROLLER_IMAGE_NAME: ciscom31/function-controller
+      BUILDER_IMAGE_NAME: ciscom31/function-image-builder
+      CGO_ENABLED: "0"
+      TEST_DEBUG: "1"
+      GKE_VERSION: 1.12
+      MINIKUBE_VERSION: v1.2.0
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - run: go mod download
+      - run: make bootstrap
+      - run: sudo apt-get update -y
+      - run: sudo apt-get install -y tar gzip bzip2 xz-utils conntrack
+      - run: |
+          export CONTROLLER_TAG="premerge-$(git rev-parse --short HEAD)"
+          export CONTROLLER_IMAGE=${CONTROLLER_IMAGE_NAME}:${CONTROLLER_TAG}
+          export FUNCTION_IMAGE_BUILDER=${BUILDER_IMAGE_NAME}:${CONTROLLER_TAG}
+          export PATH=$(pwd)/bats/libexec:~/go/bin:/home/runner/work/:$PATH
+          export GOPATH=$(pwd)/go
+          ./script/pull-or-build-image.sh function-controller
+          ./script/pull-or-build-image.sh function-image-builder
+          docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"   
+          images=( 
+            $CONTROLLER_IMAGE_NAME
+            $BUILDER_IMAGE_NAME 
+          )
+          for image in "${images[@]}"; do
+            echo "Pulling ${image}:${CONTROLLER_TAG}"
+            docker push ${image}:${CONTROLLER_TAG}
+          done
