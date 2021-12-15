@@ -4,11 +4,11 @@
 [![Slack](https://img.shields.io/badge/slack-join%20chat%20%E2%86%92-e01563.svg)](http://slack.k8s.io)
 [![Not Maintained](https://img.shields.io/badge/Maintenance%20Level-Not%20Maintained-yellow.svg)](https://gist.github.com/cheerfulstoic/d107229326a01ff0f333a1d3476e068d)
 
-## WARNING: Kubeless is Not Maintained
+## WARNING: Kubeless is no longer actively maintained by VMware.
 
-After some time of inactive maintenance, Kubeless owners set this project as not maintained and therefore a decision about the future of Kubeless will be taken by the end of 2021.
+VMware has made the difficult decision to stop driving this project and therefore we will no longer actively respond to issues or pull requests. If you would like to take over maintaining this project independently from VMware, please let us know so we can add a link to your forked project here.
 
-Thank you
+Thank You.
 
 ## Overview
 
